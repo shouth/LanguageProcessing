@@ -52,7 +52,7 @@ void print_idtab()
 
     for (p = idroot; p != NULL; p = p->nextp) {
         if (p->count != 0)
-            printf("\t\"Identifier\" \"%s\"\t%d\n", p->name, p->count);
+            printf("Identifier / %-10s : %5d\n", p->name, p->count);
     }
 }
 

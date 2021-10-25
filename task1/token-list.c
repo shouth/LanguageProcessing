@@ -1,4 +1,5 @@
 ﻿#include "token-list.h"
+#include "id-list.h"
 
 /* keyword list */
 struct KEY key[KEYWORDSIZE] = {
@@ -59,20 +60,25 @@ int main(int nc, char *np[])
     }
     /* Initialize the array for counting token */
     memset((void *) numtoken, 0, sizeof(numtoken));
+    init_idtab();
     while ((token = scan()) >= 0) {
         /* Count token */
         if (token < 0) {
             break;
         }
         numtoken[token]++;
+        if (token == TNAME) {
+            id_countup(string_attr);
+        }
     }
     end_scan();
     /* Print the result of counting */
     for (i = 1; i <= NUMOFTOKEN; i++) {
         if (numtoken[i] != 0) {
-            printf("%-10s%5d\n", tokenstr[i], numtoken[i]);
+            printf("%-10s : %5d\n", tokenstr[i], numtoken[i]);
         }
     }
+    print_idtab();
     return 0;
 }
 
