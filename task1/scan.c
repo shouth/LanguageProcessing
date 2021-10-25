@@ -39,12 +39,12 @@ void scan_info_advance_line(scan_info_t *si)
     si->line_number++;
 }
 
-int scan_info_next(scan_info_t *si)
+int scan_info_top(scan_info_t *si)
 {
     return si->c0;
 }
 
-int scan_info_ahead(scan_info_t *si)
+int scan_info_next(scan_info_t *si)
 {
     return si->c1;
 }
@@ -54,9 +54,39 @@ int scan_info_line_number(scan_info_t *si)
     return si->line_number;
 }
 
-int scan_info_eof(scan_info_t *si)
+typedef struct {
+    char buffer[MAXSTRSIZE];
+    size_t end;
+} str_buf_t;
+
+void init_str_buf(str_buf_t *sb)
 {
-    return si->c0 == EOF;
+    sb->buffer[0] = '\0';
+    sb->end = 0;
+}
+
+int str_buf_push(str_buf_t *sb, char c)
+{
+    if (sb->end + 1 >= MAXSTRSIZE) {
+        return -1;
+    }
+    sb->buffer[sb->end] = c;
+    sb->end++;
+    sb->buffer[sb->end] = '\0';
+    return 0;
+}
+
+char str_buf_pop(str_buf_t *sb)
+{
+    sb->end--;
+    char ret = sb->buffer[sb->end];
+    sb->buffer[sb->end] = '\0';
+    return ret;
+}
+
+const char *str_buf_data(str_buf_t *sb)
+{
+    return sb->buffer;
 }
 
 int initialized = 0;
@@ -71,7 +101,7 @@ int num_attr;
  */
 char string_attr[MAXSTRSIZE];
 
-scan_info_t scan_info;
+static scan_info_t scan_info;
 
 /**
  * Open the file and initiate the scanner.
@@ -94,7 +124,7 @@ int init_scan(char *filename)
 
 int read_symbol(scan_info_t *si)
 {
-    switch (scan_info_next(si)) {
+    switch (scan_info_top(si)) {
     case '+':
         scan_info_advance(si);
         return TPLUS;
@@ -131,7 +161,7 @@ int read_symbol(scan_info_t *si)
 
     case ':':
         scan_info_advance(si);
-        switch (scan_info_next(si)) {
+        switch (scan_info_top(si)) {
         case '=':
             scan_info_advance(si);
             return TASSIGN;
@@ -141,7 +171,7 @@ int read_symbol(scan_info_t *si)
 
     case '>':
         scan_info_advance(si);
-        switch (scan_info_next(si)) {
+        switch (scan_info_top(si)) {
         case '=':
             scan_info_advance(si);
             return TGREQ;
@@ -151,7 +181,7 @@ int read_symbol(scan_info_t *si)
 
     case '<':
         scan_info_advance(si);
-        switch (scan_info_next(si)) {
+        switch (scan_info_top(si)) {
         case '>':
             scan_info_advance(si);
             return TNOTEQ;
@@ -178,28 +208,31 @@ int read_symbol(scan_info_t *si)
 int scan(void)
 {
     scan_info_t *si = &scan_info;
-    static char buffer[MAXSTRSIZE];
-    size_t buffer_end = 0;
+    static str_buf_t str_buf;
+    str_buf_t *sb = &str_buf;
+
     long num;
     int code;
     size_t i;
 
+    init_str_buf(sb);
+
     while (1) {
         /* return on EOF */
-        if (scan_info_eof(si)) {
+        if (scan_info_top(si) == EOF) {
             return -1;
         }
 
         /* skip space and tab */
-        if (isblank(scan_info_next(si))) {
+        if (isblank(scan_info_top(si))) {
             scan_info_advance(si);
             continue;
         }
 
         /* skip new line with \n */
-        if (scan_info_next(si) == '\n') {
+        if (scan_info_top(si) == '\n') {
             scan_info_advance(si);
-            if (scan_info_next(si) == '\r') {
+            if (scan_info_top(si) == '\r') {
                 scan_info_advance(si);
             }
             scan_info_advance_line(si);
@@ -207,9 +240,9 @@ int scan(void)
         }
 
         /* skip new line with \r */
-        if (scan_info_next(si) == '\r') {
+        if (scan_info_top(si) == '\r') {
             scan_info_advance(si);
-            if (scan_info_next(si) == '\n') {
+            if (scan_info_top(si) == '\n') {
                 scan_info_advance(si);
             }
             scan_info_advance_line(si);
@@ -217,14 +250,14 @@ int scan(void)
         }
 
         /* skip braces comment */
-        if (scan_info_next(si) == '{') {
+        if (scan_info_top(si) == '{') {
             scan_info_advance(si);
 
             while (1) {
-                if (scan_info_eof(si)) {
+                if (scan_info_top(si) == EOF) {
                     return -1;
                 }
-                if (scan_info_next(si) == '}') {
+                if (scan_info_top(si) == '}') {
                     scan_info_advance(si);
                     break;
                 }
@@ -235,15 +268,15 @@ int scan(void)
         }
 
         /* skip c-style comment */
-        if (scan_info_next(si) == '/' && scan_info_ahead(si) == '*') {
+        if (scan_info_top(si) == '/' && scan_info_next(si) == '*') {
             scan_info_advance(si);
             scan_info_advance(si);
 
             while (1) {
-                if (scan_info_eof(si)) {
+                if (scan_info_top(si) == EOF) {
                     return -1;
                 }
-                if (scan_info_next(si) == '*' && scan_info_ahead(si) == '/') {
+                if (scan_info_top(si) == '*' && scan_info_next(si) == '/') {
                     scan_info_advance(si);
                     scan_info_advance(si);
                     break;
@@ -255,60 +288,57 @@ int scan(void)
         }
 
         /* read string */
-        if (scan_info_next(si) == '\'') {
+        if (scan_info_top(si) == '\'') {
             scan_info_advance(si);
 
             while (1) {
-                if (scan_info_eof(si)) {
+                if (scan_info_top(si) == EOF) {
                     return -1;
                 }
-                if (scan_info_next(si) == '\n' || scan_info_next(si) == '\r') {
+                if (scan_info_top(si) == '\n' || scan_info_top(si) == '\r') {
                     return -1;
                 }
 
-                if (scan_info_next(si) == '\'' && scan_info_ahead(si) == '\'') {
-                    if (buffer_end + 2 >= MAXSTRSIZE) {
+                if (scan_info_top(si) == '\'' && scan_info_next(si) == '\'') {
+                    if (str_buf_push(sb, '\'') < 0) {
                         return -1;
                     }
-                    buffer[buffer_end++] = '\'';
-                    buffer[buffer_end++] = '\'';
+                    if (str_buf_push(sb, '\'') < 0) {
+                        return -1;
+                    }
                     scan_info_advance(si);
                     scan_info_advance(si);
                 } else {
-                    if (buffer_end + 1 >= MAXSTRSIZE) {
+                    if (str_buf_push(sb, scan_info_top(si)) < 0) {
                         return -1;
                     }
-                    buffer[buffer_end++] = scan_info_next(si);
                     scan_info_advance(si);
                 }
 
-                if (scan_info_next(si) == '\'' && scan_info_ahead(si) != '\'') {
+                if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
                     scan_info_advance(si);
                     break;
                 }
             }
 
-            buffer[buffer_end++] = '\0';
-            strcpy(string_attr, buffer);
+            strcpy(string_attr, str_buf_data(sb));
             return TSTRING;
         }
 
         /* read unsigned number */
-        if (isdigit(scan_info_next(si))) {
-            buffer[buffer_end++] = scan_info_next(si);
+        if (isdigit(scan_info_top(si))) {
+            str_buf_push(sb, scan_info_top(si));
             scan_info_advance(si);
 
-            while (isdigit(scan_info_next(si))) {
-                if (buffer_end + 1 >= MAXSTRSIZE) {
+            while (isdigit(scan_info_top(si))) {
+                if (str_buf_push(sb, scan_info_top(si)) < 0) {
                     return -1;
                 }
-                buffer[buffer_end++] = scan_info_next(si);
                 scan_info_advance(si);
             }
-            buffer[buffer_end++] = '\0';
 
             errno = 0;
-            num = strtol(buffer, NULL, 10);
+            num = strtol(str_buf_data(sb), NULL, 10);
             if (errno == ERANGE || num > 32767) {
                 return -1;
             }
@@ -317,26 +347,24 @@ int scan(void)
         }
 
         /* read name or keyword */
-        if (isalpha(scan_info_next(si))) {
-            buffer[buffer_end++] = scan_info_next(si);
+        if (isalpha(scan_info_top(si))) {
+            str_buf_push(sb, scan_info_top(si));
             scan_info_advance(si);
 
-            while (isalnum(scan_info_next(si))) {
-                if (buffer_end + 1 >= MAXSTRSIZE) {
+            while (isalnum(scan_info_top(si))) {
+                if (str_buf_push(sb, scan_info_top(si)) < 0) {
                     return -1;
                 }
-                buffer[buffer_end++] = scan_info_next(si);
                 scan_info_advance(si);
             }
-            buffer[buffer_end++] = '\0';
 
             for (i = 0; i < KEYWORDSIZE; i++) {
-                if (strcmp(buffer, key[i].keyword) == 0) {
+                if (strcmp(str_buf_data(sb), key[i].keyword) == 0) {
                     return key[i].keytoken;
                 }
             }
 
-            strcpy(string_attr, buffer);
+            strcpy(string_attr, str_buf_data(sb));
             return TNAME;
         }
 
