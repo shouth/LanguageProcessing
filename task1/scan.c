@@ -248,26 +248,37 @@ int scan(void)
         if (scan_info_next(si) == '\'') {
             scan_info_proceed(si);
 
-            if (scan_info_next(si) == '\n' || scan_info_next(si) == '\r') {
+            while (!scan_info_eof(si)) {
+                if (scan_info_next(si) == '\n' || scan_info_next(si) == '\r') {
+                    return -1;
+                }
+
+                if (scan_info_next(si) == '\'' && scan_info_ahead(si) == '\'') {
+                    if (buffer_end + 2 >= MAXSTRSIZE) {
+                        return -1;
+                    }
+                    buffer[buffer_end++] = '\'';
+                    buffer[buffer_end++] = '\'';
+                    scan_info_proceed(si);
+                    scan_info_proceed(si);
+                } else {
+                    if (buffer_end + 1 >= MAXSTRSIZE) {
+                        return -1;
+                    }
+                    buffer[buffer_end++] = scan_info_next(si);
+                    scan_info_proceed(si);
+                }
+
+                if (scan_info_next(si) == '\'' && scan_info_ahead(si) != '\'') {
+                    break;
+                }
+            }
+
+            if (scan_info_eof(si)) {
                 return -1;
             }
 
-            if (scan_info_next(si) == '\'' && scan_info_ahead(si) == '\'') {
-                if (buffer_end + 2 >= MAXSTRSIZE) {
-                    return -1;
-                }
-                string_attr[buffer_end++] = '\'';
-                string_attr[buffer_end++] = '\'';
-                scan_info_proceed(si);
-                scan_info_proceed(si);
-            } else {
-                if (buffer_end + 1 >= MAXSTRSIZE) {
-                    return -1;
-                }
-                buffer[buffer_end++] = scan_info_next(si);
-                scan_info_proceed(si);
-            }
-
+            scan_info_proceed(si);
             buffer[buffer_end++] = '\0';
             strcpy(string_attr, buffer);
             return TSTRING;

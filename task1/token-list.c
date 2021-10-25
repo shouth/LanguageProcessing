@@ -65,6 +65,13 @@ int main(int nc, char *np[])
             break;
         }
         numtoken[token]++;
+        printf("%s\n", tokenstr[token]);
+        if (token == TNUMBER) {
+            printf("%d\n", num_attr);
+        }
+        if (token == TSTRING) {
+            printf("%s\n", string_attr);
+        }
     }
     end_scan();
     /* Print the result of counting */
