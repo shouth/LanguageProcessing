@@ -18,14 +18,15 @@ int init_scan_info(scan_info_t *si, char *filename)
 
     si->c0 = fgetc(si->file);
     si->c1 = fgetc(si->file);
+    return 0;
 }
 
 int free_scan_info(scan_info_t *si)
 {
-    fclose(si->file);
+    return fclose(si->file);
 }
 
-int scan_info_proceed(scan_info_t *si)
+void scan_info_proceed(scan_info_t *si)
 {
     si->c0 = si->c1;
     si->c1 = fgetc(si->file);
@@ -47,7 +48,6 @@ int scan_info_eof(scan_info_t *si)
 }
 
 int initialized = 0;
-FILE *file;
 
 /**
  * This variable is a part of the specification of Task 1.
@@ -169,6 +169,7 @@ int scan(void)
     static char buffer[MAXSTRSIZE];
     size_t buffer_end = 0;
     long num;
+    int code;
     size_t i;
 
     while (1) {
@@ -244,7 +245,7 @@ int scan(void)
         }
 
         /* read string */
-        if (scan_info_next(si) == "'") {
+        if (scan_info_next(si) == '\'') {
             scan_info_proceed(si);
 
             if (scan_info_next(si) == '\n' || scan_info_next(si) == '\r') {
@@ -301,7 +302,7 @@ int scan(void)
             scan_info_proceed(si);
 
             while (isalnum(scan_info_next(si))) {
-                if (buffer + 1 >= MAXSTRSIZE) {
+                if (buffer_end + 1 >= MAXSTRSIZE) {
                     return -1;
                 }
                 buffer[buffer_end++] = scan_info_next(si);
@@ -320,9 +321,9 @@ int scan(void)
         }
 
         /* read symbol */
-        num = read_symbol(si);
-        if (num > 0) {
-            return num;
+        code = read_symbol(si);
+        if (code > 0) {
+            return code;
         }
 
         return -1;
@@ -349,5 +350,5 @@ int get_linenum(void)
 void end_scan(void)
 {
     initialized = 0;
-    fclose(file);
+    free_scan_info(&scan_info);
 }

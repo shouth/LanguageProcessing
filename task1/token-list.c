@@ -57,12 +57,20 @@ int main(int nc, char *np[])
         printf("File %s can not open.\n", np[1]);
         return 0;
     }
-    /* 作成する部分：トークンカウント用の配列？を初期化する */
+    /* Initialize the array for counting token */
+    memset((void *) numtoken, 0, sizeof(numtoken));
     while ((token = scan()) >= 0) {
-        /* 作成する部分：トークンをカウントする */
+        /* Count token */
+        if (token < 0) {
+            break;
+        }
+        numtoken[token]++;
     }
     end_scan();
-    /* 作成する部分:カウントした結果を出力する */
+    /* Print the result of counting */
+    for (i = 1; i <= NUMOFTOKEN; i++) {
+        printf("%10s%4d\n", tokenstr[i], numtoken[i]);
+    }
     return 0;
 }
 
