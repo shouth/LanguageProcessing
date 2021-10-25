@@ -32,13 +32,31 @@ static str_buf_t str_buf;
 int init_scan(char *filename)
 {
     if (initialized) {
+        fprintf(stderr, "Error on line %d: Already initialized\n", get_linenum());
         return -1;
     }
     if (scan_info_init(&scan_info, filename) < 0) {
+        fprintf(stderr, "Error on line %d: Cannot initialize. Maybe `filename` is wrong.\n", get_linenum());
         return -1;
     }
     initialized = 1;
     return 1;
+}
+
+/**
+ * Gets the number of lines that the last read token lies on.
+ *
+ * This function is a part of the specification of Task 1.
+ *
+ * @return The number of lines that the last read token lies on
+ * or 0 if scan() is not called before.
+ */
+int get_linenum(void)
+{
+    if (!scanning) {
+        return 0;
+    }
+    return scan_info_line_number(&scan_info);
 }
 
 int isgraphical(int c)
@@ -86,9 +104,11 @@ static int scan_comment(scan_info_t *si)
 
         while (1) {
             if (scan_info_top(si) == EOF) {
+                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
                 return -1;
             }
             if (!isgraphical(scan_info_top(si))) {
+                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
                 return -1;
             }
             if (scan_info_top(si) == '}') {
@@ -107,9 +127,11 @@ static int scan_comment(scan_info_t *si)
 
         while (1) {
             if (scan_info_top(si) == EOF) {
+                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
                 return -1;
             }
             if (!isgraphical(scan_info_top(si))) {
+                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
                 return -1;
             }
             if (scan_info_top(si) == '*' && scan_info_next(si) == '/') {
@@ -137,26 +159,32 @@ static int scan_string(scan_info_t *si)
 
         while (1) {
             if (scan_info_top(si) == EOF) {
+                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
                 return -1;
             }
             if (scan_info_top(si) == '\n' || scan_info_top(si) == '\r') {
+                fprintf(stderr, "Error on line %d: New line in string is not allowed\n", get_linenum());
                 return -1;
             }
             if (!isgraphical(scan_info_top(si))) {
+                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
                 return -1;
             }
 
             if (scan_info_top(si) == '\'' && scan_info_next(si) == '\'') {
                 if (str_buf_push(sb, '\'') < 0) {
+                    fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
                 }
                 if (str_buf_push(sb, '\'') < 0) {
+                    fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
                 }
                 scan_info_advance(si);
                 scan_info_advance(si);
             } else {
                 if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                    fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
                 }
                 scan_info_advance(si);
@@ -188,6 +216,7 @@ static int scan_unsigned_number(scan_info_t *si)
 
         while (isdigit(scan_info_top(si))) {
             if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                fprintf(stderr, "Error on line %d: Number is too long\n", get_linenum());
                 return -1;
             }
             scan_info_advance(si);
@@ -196,6 +225,7 @@ static int scan_unsigned_number(scan_info_t *si)
         errno = 0;
         num = strtol(str_buf_data(sb), NULL, 10);
         if (errno == ERANGE || num > 32767) {
+            fprintf(stderr, "Error on line %d: Number needs to be less than 32768\n", get_linenum());
             return -1;
         }
         num_attr = (int) num;
@@ -218,6 +248,7 @@ static int scan_name_or_keyword(scan_info_t *si)
 
         while (isalnum(scan_info_top(si))) {
             if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                fprintf(stderr, "Error on line %d: Name or Keyword is too long\n", get_linenum());
                 return -1;
             }
             scan_info_advance(si);
@@ -382,24 +413,9 @@ int scan(void)
             return -1;
         }
 
+        fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
         return -1;
     }
-}
-
-/**
- * Gets the number of lines that the last read token lies on.
- *
- * This function is a part of the specification of Task 1.
- *
- * @return The number of lines that the last read token lies on
- * or 0 if scan() is not called before.
- */
-int get_linenum(void)
-{
-    if (!scanning) {
-        return 0;
-    }
-    return scan_info_line_number(&scan_info);
 }
 
 /**
@@ -411,6 +427,7 @@ void end_scan(void)
 {
     if (!initialized) {
         initialized = 0;
+        scanning = 0;
         scan_info_free(&scan_info);
     }
 }

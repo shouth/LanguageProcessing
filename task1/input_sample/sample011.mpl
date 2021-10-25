@@ -1,4 +1,4 @@
-NAME program var array of begin end if then else procedure return 
+NAME program var array of begin end if then else procedure return
 call break
 while do not or div and char integer boolean readln
 writeln true false NUMBER STRING + - * = <>
@@ -11,4 +11,3 @@ a=b<=c:=-d;
 
 
  break
-

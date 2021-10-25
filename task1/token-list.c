@@ -81,9 +81,3 @@ int main(int nc, char *np[])
     print_idtab();
     return 0;
 }
-
-void error(char *mes)
-{
-    printf("\n ERROR: %s\n", mes);
-    end_scan();
-}
