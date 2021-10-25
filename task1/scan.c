@@ -7,6 +7,7 @@
 typedef struct {
     FILE *file;
     int c0, c1;
+    int line_number;
 } scan_info_t;
 
 int init_scan_info(scan_info_t *si, char *filename)
@@ -18,6 +19,7 @@ int init_scan_info(scan_info_t *si, char *filename)
 
     si->c0 = fgetc(si->file);
     si->c1 = fgetc(si->file);
+    si->line_number = 1;
     return 0;
 }
 
@@ -32,6 +34,11 @@ void scan_info_proceed(scan_info_t *si)
     si->c1 = fgetc(si->file);
 }
 
+void scan_info_proceed_line(scan_info_t *si)
+{
+    si->line_number++;
+}
+
 int scan_info_next(scan_info_t *si)
 {
     return si->c0;
@@ -40,6 +47,11 @@ int scan_info_next(scan_info_t *si)
 int scan_info_ahead(scan_info_t *si)
 {
     return si->c1;
+}
+
+int scan_info_line_number(scan_info_t *si)
+{
+    return si->line_number;
 }
 
 int scan_info_eof(scan_info_t *si)
@@ -196,6 +208,7 @@ int scan(void)
             if (scan_info_next(si) == '\r') {
                 scan_info_proceed(si);
             }
+            scan_info_proceed_line(si);
             continue;
         }
 
@@ -205,6 +218,7 @@ int scan(void)
             if (scan_info_next(si) == '\n') {
                 scan_info_proceed(si);
             }
+            scan_info_proceed_line(si);
             continue;
         }
 
@@ -351,6 +365,10 @@ int scan(void)
  */
 int get_linenum(void)
 {
+    if (!initialized) {
+        return 0;
+    }
+    return scan_info_line_number(&scan_info);
 }
 
 /**
