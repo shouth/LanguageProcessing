@@ -78,8 +78,9 @@ int str_buf_push(str_buf_t *sb, char c)
 
 char str_buf_pop(str_buf_t *sb)
 {
+    char ret;
     sb->end--;
-    char ret = sb->buffer[sb->end];
+    ret = sb->buffer[sb->end];
     sb->buffer[sb->end] = '\0';
     return ret;
 }

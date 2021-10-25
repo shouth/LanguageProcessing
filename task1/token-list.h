@@ -1,4 +1,8 @@
 ﻿/* token-list.h  */
+
+#ifndef TOKEN_LIST_H
+#define TOKEN_LIST_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,3 +80,5 @@ extern int num_attr;
 extern char string_attr[MAXSTRSIZE];
 extern int get_linenum(void);
 extern void end_scan(void);
+
+#endif /* TOKEN_LIST_H */
