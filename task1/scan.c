@@ -3,95 +3,11 @@
 #include <errno.h>
 
 #include "token-list.h"
+#include "scan-info.h"
+#include "str-buf.h"
 
-typedef struct {
-    FILE *file;
-    int c0, c1;
-    int line_number;
-} scan_info_t;
-
-int scan_info_init(scan_info_t *si, char *filename)
-{
-    si->file = fopen(filename, "r");
-    if (si->file == NULL) {
-        return -1;
-    }
-
-    si->c0 = fgetc(si->file);
-    si->c1 = fgetc(si->file);
-    si->line_number = 1;
-    return 0;
-}
-
-int scan_info_free(scan_info_t *si)
-{
-    return fclose(si->file);
-}
-
-void scan_info_advance(scan_info_t *si)
-{
-    si->c0 = si->c1;
-    si->c1 = fgetc(si->file);
-}
-
-void scan_info_advance_line(scan_info_t *si)
-{
-    si->line_number++;
-}
-
-int scan_info_top(scan_info_t *si)
-{
-    return si->c0;
-}
-
-int scan_info_next(scan_info_t *si)
-{
-    return si->c1;
-}
-
-int scan_info_line_number(scan_info_t *si)
-{
-    return si->line_number;
-}
-
-typedef struct {
-    char buffer[MAXSTRSIZE];
-    size_t end;
-} str_buf_t;
-
-void str_buf_init(str_buf_t *sb)
-{
-    sb->buffer[0] = '\0';
-    sb->end = 0;
-}
-
-int str_buf_push(str_buf_t *sb, char c)
-{
-    if (sb->end + 1 >= MAXSTRSIZE) {
-        return -1;
-    }
-    sb->buffer[sb->end] = c;
-    sb->end++;
-    sb->buffer[sb->end] = '\0';
-    return 0;
-}
-
-char str_buf_pop(str_buf_t *sb)
-{
-    char ret;
-    sb->end--;
-    ret = sb->buffer[sb->end];
-    sb->buffer[sb->end] = '\0';
-    return ret;
-}
-
-const char *str_buf_data(str_buf_t *sb)
-{
-    return sb->buffer;
-}
-
-int initialized = 0;
-int scanning = 0;
+static int initialized = 0;
+static int scanning = 0;
 
 /**
  * This variable is a part of the specification of Task 1.
@@ -130,7 +46,7 @@ int isgraphical(int c)
     return isblank(c) || isgraph(c) || c == '\n' || c == '\r';
 }
 
-int scan_blank(scan_info_t *si)
+static int scan_blank(scan_info_t *si)
 {
     if (isblank(scan_info_top(si))) {
         scan_info_advance(si);
@@ -140,7 +56,7 @@ int scan_blank(scan_info_t *si)
     return 0;
 }
 
-int scan_newline(scan_info_t *si)
+static int scan_newline(scan_info_t *si)
 {
     if (scan_info_top(si) == '\n') {
         scan_info_advance(si);
@@ -163,7 +79,7 @@ int scan_newline(scan_info_t *si)
     return 0;
 }
 
-int scan_comment(scan_info_t *si)
+static int scan_comment(scan_info_t *si)
 {
     if (scan_info_top(si) == '{') {
         scan_info_advance(si);
@@ -210,7 +126,7 @@ int scan_comment(scan_info_t *si)
     return 0;
 }
 
-int scan_string(scan_info_t *si)
+static int scan_string(scan_info_t *si)
 {
     str_buf_t *sb = &str_buf;
 
@@ -259,7 +175,7 @@ int scan_string(scan_info_t *si)
     return 0;
 }
 
-int scan_unsigned_number(scan_info_t *si)
+static int scan_unsigned_number(scan_info_t *si)
 {
     str_buf_t *sb = &str_buf;
     long num;
@@ -289,7 +205,7 @@ int scan_unsigned_number(scan_info_t *si)
     return 0;
 }
 
-int scan_name_or_keyword(scan_info_t *si)
+static int scan_name_or_keyword(scan_info_t *si)
 {
     str_buf_t *sb = &str_buf;
     size_t i;
@@ -320,7 +236,7 @@ int scan_name_or_keyword(scan_info_t *si)
     return 0;
 }
 
-int scan_symbol(scan_info_t *si)
+static int scan_symbol(scan_info_t *si)
 {
     switch (scan_info_top(si)) {
     case '+':
