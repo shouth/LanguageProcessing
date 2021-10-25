@@ -373,6 +373,8 @@ int get_linenum(void)
  */
 void end_scan(void)
 {
-    initialized = 0;
-    free_scan_info(&scan_info);
+    if (!initialized) {
+        initialized = 0;
+        free_scan_info(&scan_info);
+    }
 }
