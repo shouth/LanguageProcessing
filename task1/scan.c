@@ -159,7 +159,7 @@ static int scan_string(scan_info_t *si)
 
         while (1) {
             if (scan_info_top(si) == EOF) {
-                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
+                fprintf(stderr, "Error on line %d: Reached EOF before end of string\n", get_linenum());
                 return -1;
             }
             if (scan_info_top(si) == '\n' || scan_info_top(si) == '\r') {
