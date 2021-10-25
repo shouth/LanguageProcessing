@@ -10,7 +10,7 @@ typedef struct {
     int line_number;
 } scan_info_t;
 
-int init_scan_info(scan_info_t *si, char *filename)
+int scan_info_init(scan_info_t *si, char *filename)
 {
     si->file = fopen(filename, "r");
     if (si->file == NULL) {
@@ -23,7 +23,7 @@ int init_scan_info(scan_info_t *si, char *filename)
     return 0;
 }
 
-int free_scan_info(scan_info_t *si)
+int scan_info_free(scan_info_t *si)
 {
     return fclose(si->file);
 }
@@ -59,7 +59,7 @@ typedef struct {
     size_t end;
 } str_buf_t;
 
-void init_str_buf(str_buf_t *sb)
+void str_buf_init(str_buf_t *sb)
 {
     sb->buffer[0] = '\0';
     sb->end = 0;
@@ -90,6 +90,7 @@ const char *str_buf_data(str_buf_t *sb)
 }
 
 int initialized = 0;
+int scanning = 0;
 
 /**
  * This variable is a part of the specification of Task 1.
@@ -102,6 +103,7 @@ int num_attr;
 char string_attr[MAXSTRSIZE];
 
 static scan_info_t scan_info;
+static str_buf_t str_buf;
 
 /**
  * Open the file and initiate the scanner.
@@ -115,14 +117,209 @@ int init_scan(char *filename)
     if (initialized) {
         return -1;
     }
-    if (init_scan_info(&scan_info, filename) < 0) {
+    if (scan_info_init(&scan_info, filename) < 0) {
         return -1;
     }
     initialized = 1;
     return 1;
 }
 
-int read_symbol(scan_info_t *si)
+int isgraphical(int c)
+{
+    return isblank(c) || isgraph(c) || c == '\n' || c == '\r';
+}
+
+int scan_blank(scan_info_t *si)
+{
+    if (isblank(scan_info_top(si))) {
+        scan_info_advance(si);
+        return 1;
+    }
+
+    return 0;
+}
+
+int scan_newline(scan_info_t *si)
+{
+    if (scan_info_top(si) == '\n') {
+        scan_info_advance(si);
+        if (scan_info_top(si) == '\r') {
+            scan_info_advance(si);
+        }
+        scan_info_advance_line(si);
+        return 1;
+    }
+
+    if (scan_info_top(si) == '\r') {
+        scan_info_advance(si);
+        if (scan_info_top(si) == '\n') {
+            scan_info_advance(si);
+        }
+        scan_info_advance_line(si);
+        return 1;
+    }
+
+    return 0;
+}
+
+int scan_comment(scan_info_t *si)
+{
+    if (scan_info_top(si) == '{') {
+        scan_info_advance(si);
+
+        while (1) {
+            if (scan_info_top(si) == EOF) {
+                return -1;
+            }
+            if (!isgraphical(scan_info_top(si))) {
+                return -1;
+            }
+            if (scan_info_top(si) == '}') {
+                scan_info_advance(si);
+                break;
+            }
+            scan_info_advance(si);
+        }
+
+        return 1;
+    }
+
+    if (scan_info_top(si) == '/' && scan_info_next(si) == '*') {
+        scan_info_advance(si);
+        scan_info_advance(si);
+
+        while (1) {
+            if (scan_info_top(si) == EOF) {
+                return -1;
+            }
+            if (!isgraphical(scan_info_top(si))) {
+                return -1;
+            }
+            if (scan_info_top(si) == '*' && scan_info_next(si) == '/') {
+                scan_info_advance(si);
+                scan_info_advance(si);
+                break;
+            }
+            scan_info_advance(si);
+        }
+
+        return 1;
+    }
+
+    return 0;
+}
+
+int scan_string(scan_info_t *si)
+{
+    str_buf_t *sb = &str_buf;
+
+    str_buf_init(sb);
+
+    if (scan_info_top(si) == '\'') {
+        scan_info_advance(si);
+
+        while (1) {
+            if (scan_info_top(si) == EOF) {
+                return -1;
+            }
+            if (scan_info_top(si) == '\n' || scan_info_top(si) == '\r') {
+                return -1;
+            }
+            if (!isgraphical(scan_info_top(si))) {
+                return -1;
+            }
+
+            if (scan_info_top(si) == '\'' && scan_info_next(si) == '\'') {
+                if (str_buf_push(sb, '\'') < 0) {
+                    return -1;
+                }
+                if (str_buf_push(sb, '\'') < 0) {
+                    return -1;
+                }
+                scan_info_advance(si);
+                scan_info_advance(si);
+            } else {
+                if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                    return -1;
+                }
+                scan_info_advance(si);
+            }
+
+            if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
+                scan_info_advance(si);
+                break;
+            }
+        }
+
+        strcpy(string_attr, str_buf_data(sb));
+        return TSTRING;
+    }
+
+    return 0;
+}
+
+int scan_unsigned_number(scan_info_t *si)
+{
+    str_buf_t *sb = &str_buf;
+    long num;
+
+    str_buf_init(sb);
+
+    if (isdigit(scan_info_top(si))) {
+        str_buf_push(sb, scan_info_top(si));
+        scan_info_advance(si);
+
+        while (isdigit(scan_info_top(si))) {
+            if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                return -1;
+            }
+            scan_info_advance(si);
+        }
+
+        errno = 0;
+        num = strtol(str_buf_data(sb), NULL, 10);
+        if (errno == ERANGE || num > 32767) {
+            return -1;
+        }
+        num_attr = (int) num;
+        return TNUMBER;
+    }
+
+    return 0;
+}
+
+int scan_name_or_keyword(scan_info_t *si)
+{
+    str_buf_t *sb = &str_buf;
+    size_t i;
+
+    str_buf_init(sb);
+
+    if (isalpha(scan_info_top(si))) {
+        str_buf_push(sb, scan_info_top(si));
+        scan_info_advance(si);
+
+        while (isalnum(scan_info_top(si))) {
+            if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                return -1;
+            }
+            scan_info_advance(si);
+        }
+
+        for (i = 0; i < KEYWORDSIZE; i++) {
+            if (strcmp(str_buf_data(sb), key[i].keyword) == 0) {
+                return key[i].keytoken;
+            }
+        }
+
+        strcpy(string_attr, str_buf_data(sb));
+        return TNAME;
+    }
+
+    return 0;
+}
+
+int scan_symbol(scan_info_t *si)
 {
     switch (scan_info_top(si)) {
     case '+':
@@ -193,7 +390,7 @@ int read_symbol(scan_info_t *si)
         }
 
     default:
-        return -1;
+        return 0;
     }
 }
 
@@ -207,171 +404,65 @@ int read_symbol(scan_info_t *si)
  */
 int scan(void)
 {
-    scan_info_t *si = &scan_info;
-    static str_buf_t str_buf;
-    str_buf_t *sb = &str_buf;
-
-    long num;
     int code;
-    size_t i;
 
-    init_str_buf(sb);
+    if (!scanning) {
+        scanning = 1;
+    }
 
     while (1) {
         /* return on EOF */
-        if (scan_info_top(si) == EOF) {
+        if (scan_info_top(&scan_info) == EOF) {
             return -1;
         }
 
         /* skip space and tab */
-        if (isblank(scan_info_top(si))) {
-            scan_info_advance(si);
+        if ((code = scan_blank(&scan_info)) > 0) {
             continue;
+        } else if (code < 0) {
+            return -1;
         }
 
-        /* skip new line with \n */
-        if (scan_info_top(si) == '\n') {
-            scan_info_advance(si);
-            if (scan_info_top(si) == '\r') {
-                scan_info_advance(si);
-            }
-            scan_info_advance_line(si);
+        /* skip new line */
+        if ((code = scan_newline(&scan_info)) > 0) {
             continue;
+        } else if (code < 0) {
+            return -1;
         }
 
-        /* skip new line with \r */
-        if (scan_info_top(si) == '\r') {
-            scan_info_advance(si);
-            if (scan_info_top(si) == '\n') {
-                scan_info_advance(si);
-            }
-            scan_info_advance_line(si);
+        /* skip comment */
+        if ((code = scan_comment(&scan_info)) > 0) {
             continue;
-        }
-
-        /* skip braces comment */
-        if (scan_info_top(si) == '{') {
-            scan_info_advance(si);
-
-            while (1) {
-                if (scan_info_top(si) == EOF) {
-                    return -1;
-                }
-                if (scan_info_top(si) == '}') {
-                    scan_info_advance(si);
-                    break;
-                }
-                scan_info_advance(si);
-            }
-
-            continue;
-        }
-
-        /* skip c-style comment */
-        if (scan_info_top(si) == '/' && scan_info_next(si) == '*') {
-            scan_info_advance(si);
-            scan_info_advance(si);
-
-            while (1) {
-                if (scan_info_top(si) == EOF) {
-                    return -1;
-                }
-                if (scan_info_top(si) == '*' && scan_info_next(si) == '/') {
-                    scan_info_advance(si);
-                    scan_info_advance(si);
-                    break;
-                }
-                scan_info_advance(si);
-            }
-
-            continue;
+        } else if (code < 0) {
+            return -1;
         }
 
         /* read string */
-        if (scan_info_top(si) == '\'') {
-            scan_info_advance(si);
-
-            while (1) {
-                if (scan_info_top(si) == EOF) {
-                    return -1;
-                }
-                if (scan_info_top(si) == '\n' || scan_info_top(si) == '\r') {
-                    return -1;
-                }
-
-                if (scan_info_top(si) == '\'' && scan_info_next(si) == '\'') {
-                    if (str_buf_push(sb, '\'') < 0) {
-                        return -1;
-                    }
-                    if (str_buf_push(sb, '\'') < 0) {
-                        return -1;
-                    }
-                    scan_info_advance(si);
-                    scan_info_advance(si);
-                } else {
-                    if (str_buf_push(sb, scan_info_top(si)) < 0) {
-                        return -1;
-                    }
-                    scan_info_advance(si);
-                }
-
-                if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
-                    scan_info_advance(si);
-                    break;
-                }
-            }
-
-            strcpy(string_attr, str_buf_data(sb));
-            return TSTRING;
+        if ((code = scan_string(&scan_info)) > 0) {
+            return code;
+        } else if (code < 0) {
+            return -1;
         }
 
         /* read unsigned number */
-        if (isdigit(scan_info_top(si))) {
-            str_buf_push(sb, scan_info_top(si));
-            scan_info_advance(si);
-
-            while (isdigit(scan_info_top(si))) {
-                if (str_buf_push(sb, scan_info_top(si)) < 0) {
-                    return -1;
-                }
-                scan_info_advance(si);
-            }
-
-            errno = 0;
-            num = strtol(str_buf_data(sb), NULL, 10);
-            if (errno == ERANGE || num > 32767) {
-                return -1;
-            }
-            num_attr = (int) num;
-            return TNUMBER;
+        if ((code = scan_unsigned_number(&scan_info)) > 0) {
+            return code;
+        } else if (code < 0) {
+            return -1;
         }
 
         /* read name or keyword */
-        if (isalpha(scan_info_top(si))) {
-            str_buf_push(sb, scan_info_top(si));
-            scan_info_advance(si);
-
-            while (isalnum(scan_info_top(si))) {
-                if (str_buf_push(sb, scan_info_top(si)) < 0) {
-                    return -1;
-                }
-                scan_info_advance(si);
-            }
-
-            for (i = 0; i < KEYWORDSIZE; i++) {
-                if (strcmp(str_buf_data(sb), key[i].keyword) == 0) {
-                    return key[i].keytoken;
-                }
-            }
-
-            strcpy(string_attr, str_buf_data(sb));
-            return TNAME;
+        if ((code = scan_name_or_keyword(&scan_info)) > 0) {
+            return code;
+        } else if (code < 0) {
+            return -1;
         }
 
         /* read symbol */
-        code = read_symbol(si);
-        if (code > 0) {
+        if ((code = scan_symbol(&scan_info)) > 0) {
             return code;
+        } else if (code < 0) {
+            return -1;
         }
 
         return -1;
@@ -388,7 +479,7 @@ int scan(void)
  */
 int get_linenum(void)
 {
-    if (!initialized) {
+    if (!scanning) {
         return 0;
     }
     return scan_info_line_number(&scan_info);
@@ -403,6 +494,6 @@ void end_scan(void)
 {
     if (!initialized) {
         initialized = 0;
-        free_scan_info(&scan_info);
+        scan_info_free(&scan_info);
     }
 }

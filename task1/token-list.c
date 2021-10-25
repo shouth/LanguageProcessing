@@ -70,7 +70,7 @@ int main(int nc, char *np[])
     /* Print the result of counting */
     for (i = 1; i <= NUMOFTOKEN; i++) {
         if (numtoken[i] != 0) {
-            printf("%10s%4d\n", tokenstr[i], numtoken[i]);
+            printf("%-10s%5d\n", tokenstr[i], numtoken[i]);
         }
     }
     return 0;
