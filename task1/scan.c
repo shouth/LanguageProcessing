@@ -28,13 +28,13 @@ int free_scan_info(scan_info_t *si)
     return fclose(si->file);
 }
 
-void scan_info_proceed(scan_info_t *si)
+void scan_info_advance(scan_info_t *si)
 {
     si->c0 = si->c1;
     si->c1 = fgetc(si->file);
 }
 
-void scan_info_proceed_line(scan_info_t *si)
+void scan_info_advance_line(scan_info_t *si)
 {
     si->line_number++;
 }
@@ -96,67 +96,67 @@ int read_symbol(scan_info_t *si)
 {
     switch (scan_info_next(si)) {
     case '+':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TPLUS;
     case '-':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TMINUS;
     case '*':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TSTAR;
     case '=':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TEQUAL;
     case '(':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TLPAREN;
     case ')':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TRPAREN;
     case '[':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TLSQPAREN;
     case ']':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TRSQPAREN;
     case '.':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TDOT;
     case ',':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TCOMMA;
     case ';':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         return TSEMI;
 
     case ':':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         switch (scan_info_next(si)) {
         case '=':
-            scan_info_proceed(si);
+            scan_info_advance(si);
             return TASSIGN;
         default:
             return TCOLON;
         }
 
     case '>':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         switch (scan_info_next(si)) {
         case '=':
-            scan_info_proceed(si);
+            scan_info_advance(si);
             return TGREQ;
         default:
             return TGR;
         }
 
     case '<':
-        scan_info_proceed(si);
+        scan_info_advance(si);
         switch (scan_info_next(si)) {
         case '>':
-            scan_info_proceed(si);
+            scan_info_advance(si);
             return TNOTEQ;
         case '=':
-            scan_info_proceed(si);
+            scan_info_advance(si);
             return TLEEQ;
         default:
             return TLE;
@@ -190,79 +190,78 @@ int scan(void)
             return -1;
         }
 
-        /* skip space */
-        if (scan_info_next(si) == ' ') {
-            scan_info_proceed(si);
-            continue;
-        }
-
-        /* skip tab */
-        if (scan_info_next(si) == '\t') {
-            scan_info_proceed(si);
+        /* skip space and tab */
+        if (isblank(scan_info_next(si))) {
+            scan_info_advance(si);
             continue;
         }
 
         /* skip new line with \n */
         if (scan_info_next(si) == '\n') {
-            scan_info_proceed(si);
+            scan_info_advance(si);
             if (scan_info_next(si) == '\r') {
-                scan_info_proceed(si);
+                scan_info_advance(si);
             }
-            scan_info_proceed_line(si);
+            scan_info_advance_line(si);
             continue;
         }
 
         /* skip new line with \r */
         if (scan_info_next(si) == '\r') {
-            scan_info_proceed(si);
+            scan_info_advance(si);
             if (scan_info_next(si) == '\n') {
-                scan_info_proceed(si);
+                scan_info_advance(si);
             }
-            scan_info_proceed_line(si);
+            scan_info_advance_line(si);
             continue;
         }
 
         /* skip braces comment */
         if (scan_info_next(si) == '{') {
-            while (!scan_info_eof(si)) {
-                scan_info_proceed(si);
+            scan_info_advance(si);
+
+            while (1) {
+                if (scan_info_eof(si)) {
+                    return -1;
+                }
                 if (scan_info_next(si) == '}') {
+                    scan_info_advance(si);
                     break;
                 }
+                scan_info_advance(si);
             }
 
-            if (scan_info_eof(si)) {
-                return -1;
-            }
-
-            scan_info_proceed(si);
             continue;
         }
 
         /* skip c-style comment */
         if (scan_info_next(si) == '/' && scan_info_ahead(si) == '*') {
-            scan_info_proceed(si);
-            while (!scan_info_eof(si)) {
-                scan_info_proceed(si);
+            scan_info_advance(si);
+            scan_info_advance(si);
+
+            while (1) {
+                if (scan_info_eof(si)) {
+                    return -1;
+                }
                 if (scan_info_next(si) == '*' && scan_info_ahead(si) == '/') {
+                    scan_info_advance(si);
+                    scan_info_advance(si);
                     break;
                 }
+                scan_info_advance(si);
             }
 
-            if (scan_info_eof(si)) {
-                return -1;
-            }
-
-            scan_info_proceed(si);
-            scan_info_proceed(si);
             continue;
         }
 
         /* read string */
         if (scan_info_next(si) == '\'') {
-            scan_info_proceed(si);
+            scan_info_advance(si);
 
-            while (!scan_info_eof(si)) {
+            while (1) {
+                if (scan_info_eof(si)) {
+                    return -1;
+                }
                 if (scan_info_next(si) == '\n' || scan_info_next(si) == '\r') {
                     return -1;
                 }
@@ -273,26 +272,22 @@ int scan(void)
                     }
                     buffer[buffer_end++] = '\'';
                     buffer[buffer_end++] = '\'';
-                    scan_info_proceed(si);
-                    scan_info_proceed(si);
+                    scan_info_advance(si);
+                    scan_info_advance(si);
                 } else {
                     if (buffer_end + 1 >= MAXSTRSIZE) {
                         return -1;
                     }
                     buffer[buffer_end++] = scan_info_next(si);
-                    scan_info_proceed(si);
+                    scan_info_advance(si);
                 }
 
                 if (scan_info_next(si) == '\'' && scan_info_ahead(si) != '\'') {
+                    scan_info_advance(si);
                     break;
                 }
             }
 
-            if (scan_info_eof(si)) {
-                return -1;
-            }
-
-            scan_info_proceed(si);
             buffer[buffer_end++] = '\0';
             strcpy(string_attr, buffer);
             return TSTRING;
@@ -301,14 +296,14 @@ int scan(void)
         /* read unsigned number */
         if (isdigit(scan_info_next(si))) {
             buffer[buffer_end++] = scan_info_next(si);
-            scan_info_proceed(si);
+            scan_info_advance(si);
 
             while (isdigit(scan_info_next(si))) {
                 if (buffer_end + 1 >= MAXSTRSIZE) {
                     return -1;
                 }
                 buffer[buffer_end++] = scan_info_next(si);
-                scan_info_proceed(si);
+                scan_info_advance(si);
             }
             buffer[buffer_end++] = '\0';
 
@@ -324,14 +319,14 @@ int scan(void)
         /* read name or keyword */
         if (isalpha(scan_info_next(si))) {
             buffer[buffer_end++] = scan_info_next(si);
-            scan_info_proceed(si);
+            scan_info_advance(si);
 
             while (isalnum(scan_info_next(si))) {
                 if (buffer_end + 1 >= MAXSTRSIZE) {
                     return -1;
                 }
                 buffer[buffer_end++] = scan_info_next(si);
-                scan_info_proceed(si);
+                scan_info_advance(si);
             }
             buffer[buffer_end++] = '\0';
 
@@ -361,7 +356,7 @@ int scan(void)
  * This function is a part of the specification of Task 1.
  *
  * @return The number of lines that the last read token lies on
- * or 0 if scan() isn't called before.
+ * or 0 if scan() is not called before.
  */
 int get_linenum(void)
 {
