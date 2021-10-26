@@ -32,11 +32,11 @@ static str_buf_t str_buf;
 int init_scan(char *filename)
 {
     if (initialized) {
-        fprintf(stderr, "Error on line %d: Already initialized\n", get_linenum());
+        fprintf(stderr, "Already initialized\n");
         return -1;
     }
     if (scan_info_init(&scan_info, filename) < 0) {
-        fprintf(stderr, "Error on line %d: Cannot initialize. Maybe `filename` is wrong.\n", get_linenum());
+        fprintf(stderr, "Cannot initialize. Maybe `filename` is wrong.\n");
         return -1;
     }
     initialized = 1;
