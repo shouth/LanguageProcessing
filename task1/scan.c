@@ -170,6 +170,10 @@ static int scan_string(scan_info_t *si)
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
                 return -1;
             }
+            if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
+                scan_info_advance(si);
+                break;
+            }
 
             if (scan_info_top(si) == '\'' && scan_info_next(si) == '\'') {
                 if (str_buf_push(sb, '\'') < 0) {
@@ -188,11 +192,6 @@ static int scan_string(scan_info_t *si)
                     return -1;
                 }
                 scan_info_advance(si);
-            }
-
-            if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
-                scan_info_advance(si);
-                break;
             }
         }
 
