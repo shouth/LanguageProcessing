@@ -103,10 +103,6 @@ static int scan_comment(scan_info_t *si)
         scan_info_advance(si);
 
         while (1) {
-            if (scan_info_top(si) == EOF) {
-                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
-                return -1;
-            }
             if (scan_info_top(si) == '}') {
                 scan_info_advance(si);
                 break;
@@ -117,7 +113,11 @@ static int scan_comment(scan_info_t *si)
                 continue;
             }
 
-            fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            if (scan_info_top(si) == EOF) {
+                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
+            } else {
+                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            }
             return -1;
         }
 
@@ -129,10 +129,6 @@ static int scan_comment(scan_info_t *si)
         scan_info_advance(si);
 
         while (1) {
-            if (scan_info_top(si) == EOF) {
-                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
-                return -1;
-            }
             if (scan_info_top(si) == '*' && scan_info_next(si) == '/') {
                 scan_info_advance(si);
                 scan_info_advance(si);
@@ -144,7 +140,11 @@ static int scan_comment(scan_info_t *si)
                 continue;
             }
 
-            fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            if (scan_info_top(si) == EOF) {
+                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
+            } else {
+                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            }
             return -1;
         }
 
@@ -164,14 +164,6 @@ static int scan_string(scan_info_t *si)
         scan_info_advance(si);
 
         while (1) {
-            if (scan_info_top(si) == EOF) {
-                fprintf(stderr, "Error on line %d: Reached EOF before end of string\n", get_linenum());
-                return -1;
-            }
-            if (scan_info_top(si) == '\n' || scan_info_top(si) == '\r') {
-                fprintf(stderr, "Error on line %d: New line in string is not allowed\n", get_linenum());
-                return -1;
-            }
             if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
                 scan_info_advance(si);
                 break;
@@ -190,7 +182,7 @@ static int scan_string(scan_info_t *si)
                 scan_info_advance(si);
                 continue;
             }
-            if (isgraphical(scan_info_top(si))) {
+            if (scan_info_top(si) != '\n' && scan_info_top(si) != '\r' && isgraphical(scan_info_top(si))) {
                 if (str_buf_push(sb, scan_info_top(si)) < 0) {
                     fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
@@ -199,7 +191,11 @@ static int scan_string(scan_info_t *si)
                 continue;
             }
 
-            fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            if (scan_info_top(si) == EOF) {
+                fprintf(stderr, "Error on line %d: Reached EOF before end of string\n", get_linenum());
+            } else {
+                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            }
             return -1;
         }
 
