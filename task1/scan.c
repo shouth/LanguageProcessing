@@ -107,15 +107,18 @@ static int scan_comment(scan_info_t *si)
                 fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
                 return -1;
             }
-            if (!isgraphical(scan_info_top(si))) {
-                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
-                return -1;
-            }
             if (scan_info_top(si) == '}') {
                 scan_info_advance(si);
                 break;
             }
-            scan_info_advance(si);
+
+            if (isgraphical(scan_info_top(si))) {
+                scan_info_advance(si);
+                continue;
+            }
+
+            fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            return -1;
         }
 
         return 1;
@@ -130,16 +133,19 @@ static int scan_comment(scan_info_t *si)
                 fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
                 return -1;
             }
-            if (!isgraphical(scan_info_top(si))) {
-                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
-                return -1;
-            }
             if (scan_info_top(si) == '*' && scan_info_next(si) == '/') {
                 scan_info_advance(si);
                 scan_info_advance(si);
                 break;
             }
-            scan_info_advance(si);
+
+            if (isgraphical(scan_info_top(si))) {
+                scan_info_advance(si);
+                continue;
+            }
+
+            fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            return -1;
         }
 
         return 1;
@@ -166,10 +172,6 @@ static int scan_string(scan_info_t *si)
                 fprintf(stderr, "Error on line %d: New line in string is not allowed\n", get_linenum());
                 return -1;
             }
-            if (!isgraphical(scan_info_top(si))) {
-                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
-                return -1;
-            }
             if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
                 scan_info_advance(si);
                 break;
@@ -186,13 +188,19 @@ static int scan_string(scan_info_t *si)
                 }
                 scan_info_advance(si);
                 scan_info_advance(si);
-            } else {
+                continue;
+            }
+            if (isgraphical(scan_info_top(si))) {
                 if (str_buf_push(sb, scan_info_top(si)) < 0) {
                     fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
                 }
                 scan_info_advance(si);
+                continue;
             }
+
+            fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+            return -1;
         }
 
         strcpy(string_attr, str_buf_data(sb));
@@ -213,12 +221,17 @@ static int scan_unsigned_number(scan_info_t *si)
         str_buf_push(sb, scan_info_top(si));
         scan_info_advance(si);
 
-        while (isdigit(scan_info_top(si))) {
-            if (str_buf_push(sb, scan_info_top(si)) < 0) {
-                fprintf(stderr, "Error on line %d: Number is too long\n", get_linenum());
-                return -1;
+        while (1) {
+            if (isdigit(scan_info_top(si))) {
+                if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                    fprintf(stderr, "Error on line %d: Number is too long\n", get_linenum());
+                    return -1;
+                }
+                scan_info_advance(si);
+                continue;
             }
-            scan_info_advance(si);
+
+            break;
         }
 
         errno = 0;
@@ -245,12 +258,17 @@ static int scan_name_or_keyword(scan_info_t *si)
         str_buf_push(sb, scan_info_top(si));
         scan_info_advance(si);
 
-        while (isalnum(scan_info_top(si))) {
-            if (str_buf_push(sb, scan_info_top(si)) < 0) {
-                fprintf(stderr, "Error on line %d: Name or Keyword is too long\n", get_linenum());
-                return -1;
+        while (1) {
+            if (isalnum(scan_info_top(si))) {
+                if (str_buf_push(sb, scan_info_top(si)) < 0) {
+                    fprintf(stderr, "Error on line %d: Name is too long\n", get_linenum());
+                    return -1;
+                }
+                scan_info_advance(si);
+                continue;
             }
-            scan_info_advance(si);
+
+            break;
         }
 
         for (i = 0; i < KEYWORDSIZE; i++) {
