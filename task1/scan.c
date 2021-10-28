@@ -59,9 +59,14 @@ int get_linenum(void)
     return scan_info_line_number(&scan_info);
 }
 
+int iscrlf(int c)
+{
+    return c == '\n' || c == '\r';
+}
+
 int isgraphical(int c)
 {
-    return isblank(c) || isgraph(c) || c == '\n' || c == '\r';
+    return isblank(c) || isgraph(c) || iscrlf(c);
 }
 
 static int scan_blank(scan_info_t *si)
@@ -108,6 +113,10 @@ static int scan_comment(scan_info_t *si)
                 break;
             }
 
+            if (iscrlf(scan_info_top(si))) {
+                scan_newline(si);
+                continue;
+            }
             if (isgraphical(scan_info_top(si))) {
                 scan_info_advance(si);
                 continue;
@@ -135,6 +144,10 @@ static int scan_comment(scan_info_t *si)
                 break;
             }
 
+            if (iscrlf(scan_info_top(si))) {
+                scan_newline(si);
+                continue;
+            }
             if (isgraphical(scan_info_top(si))) {
                 scan_info_advance(si);
                 continue;
@@ -182,7 +195,7 @@ static int scan_string(scan_info_t *si)
                 scan_info_advance(si);
                 continue;
             }
-            if (scan_info_top(si) != '\n' && scan_info_top(si) != '\r' && isgraphical(scan_info_top(si))) {
+            if (!iscrlf(scan_info_top(si)) && isgraphical(scan_info_top(si))) {
                 if (str_buf_push(sb, scan_info_top(si)) < 0) {
                     fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
