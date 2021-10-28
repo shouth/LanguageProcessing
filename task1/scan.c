@@ -76,7 +76,7 @@ static int scan_blank(scan_info_t *si)
         return 1;
     }
 
-    return 0;
+    return -1;
 }
 
 static int scan_newline(scan_info_t *si)
@@ -99,7 +99,7 @@ static int scan_newline(scan_info_t *si)
         return 1;
     }
 
-    return 0;
+    return -1;
 }
 
 static int scan_comment(scan_info_t *si)
@@ -164,7 +164,7 @@ static int scan_comment(scan_info_t *si)
         return 1;
     }
 
-    return 0;
+    return -1;
 }
 
 static int scan_string(scan_info_t *si)
@@ -216,7 +216,7 @@ static int scan_string(scan_info_t *si)
         return TSTRING;
     }
 
-    return 0;
+    return -1;
 }
 
 static int scan_unsigned_number(scan_info_t *si)
@@ -253,7 +253,7 @@ static int scan_unsigned_number(scan_info_t *si)
         return TNUMBER;
     }
 
-    return 0;
+    return -1;
 }
 
 static int scan_name_or_keyword(scan_info_t *si)
@@ -290,7 +290,7 @@ static int scan_name_or_keyword(scan_info_t *si)
         return TNAME;
     }
 
-    return 0;
+    return -1;
 }
 
 static int scan_symbol(scan_info_t *si)
@@ -364,7 +364,7 @@ static int scan_symbol(scan_info_t *si)
         }
 
     default:
-        return 0;
+        return -1;
     }
 }
 
@@ -378,6 +378,7 @@ static int scan_symbol(scan_info_t *si)
  */
 int scan(void)
 {
+    scan_info_t *si = &scan_info;
     int code;
 
     if (!scanning) {
@@ -391,52 +392,41 @@ int scan(void)
         }
 
         /* skip space and tab */
-        if ((code = scan_blank(&scan_info)) > 0) {
+        if (isblank(scan_info_top(si))) {
+            scan_blank(si);
             continue;
-        } else if (code < 0) {
-            return -1;
         }
 
         /* skip new line */
-        if ((code = scan_newline(&scan_info)) > 0) {
+        if (iscrlf(scan_info_top(si))) {
+            scan_newline(si);
             continue;
-        } else if (code < 0) {
-            return -1;
         }
 
         /* skip comment */
-        if ((code = scan_comment(&scan_info)) > 0) {
+        if (scan_info_top(si) == '{' || (scan_info_top(si) == '/' && scan_info_next(si) == '*')) {
+            scan_comment(si);
             continue;
-        } else if (code < 0) {
-            return -1;
         }
 
         /* read string */
-        if ((code = scan_string(&scan_info)) > 0) {
-            return code;
-        } else if (code < 0) {
-            return -1;
+        if (scan_info_top(si) == '\'') {
+            return scan_string(si);
         }
 
         /* read unsigned number */
-        if ((code = scan_unsigned_number(&scan_info)) > 0) {
-            return code;
-        } else if (code < 0) {
-            return -1;
+        if (isdigit(scan_info_top(si))) {
+            return scan_unsigned_number(si);
         }
 
         /* read name or keyword */
-        if ((code = scan_name_or_keyword(&scan_info)) > 0) {
-            return code;
-        } else if (code < 0) {
-            return -1;
+        if (isalpha(scan_info_top(si))) {
+            return scan_name_or_keyword(si);
         }
 
         /* read symbol */
         if ((code = scan_symbol(&scan_info)) > 0) {
             return code;
-        } else if (code < 0) {
-            return -1;
         }
 
         fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
