@@ -358,7 +358,7 @@ int scan(void)
 
     while (1) {
         /* return on EOF */
-        if (scanner_top(&scanner) == EOF) {
+        if (scanner_top(si) == EOF) {
             return -1;
         }
 
@@ -396,7 +396,7 @@ int scan(void)
         }
 
         /* read symbol */
-        if ((code = scan_symbol(&scanner)) > 0) {
+        if ((code = scan_symbol(si)) > 0) {
             return code;
         }
 
