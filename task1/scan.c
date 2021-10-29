@@ -52,10 +52,10 @@ static int scan_blank(scanner_t *sc)
 
     if (isblank(scanner_top(sc))) {
         scanner_advance(sc);
-        return 1;
+        return SCAN_SUCCESS;
     }
 
-    return -1;
+    return SCAN_FAILURE;
 }
 
 static int scan_newline(scanner_t *sc)
@@ -68,7 +68,7 @@ static int scan_newline(scanner_t *sc)
             scanner_advance(sc);
         }
         scanner_advance_line(sc);
-        return 1;
+        return SCAN_SUCCESS;
     }
 
     if (scanner_top(sc) == '\r') {
@@ -77,10 +77,10 @@ static int scan_newline(scanner_t *sc)
             scanner_advance(sc);
         }
         scanner_advance_line(sc);
-        return 1;
+        return SCAN_SUCCESS;
     }
 
-    return -1;
+    return SCAN_FAILURE;
 }
 
 static int scan_comment(scanner_t *sc)
@@ -110,7 +110,7 @@ static int scan_comment(scanner_t *sc)
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
             }
-            return -1;
+            return SCAN_FAILURE;
         }
 
         return 1;
@@ -141,13 +141,13 @@ static int scan_comment(scanner_t *sc)
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
             }
-            return -1;
+            return SCAN_FAILURE;
         }
 
-        return 1;
+        return SCAN_SUCCESS;
     }
 
-    return -1;
+    return SCAN_FAILURE;
 }
 
 static int scan_string(scanner_t *sc)
@@ -184,7 +184,7 @@ static int scan_string(scanner_t *sc)
         return TSTRING;
     }
 
-    return -1;
+    return SCAN_FAILURE;
 }
 
 static int scan_unsigned_number(scanner_t *sc)
@@ -206,7 +206,7 @@ static int scan_unsigned_number(scanner_t *sc)
         return TNUMBER;
     }
 
-    return -1;
+    return SCAN_FAILURE;
 }
 
 static int scan_name_or_keyword(scanner_t *sc)
@@ -236,7 +236,7 @@ static int scan_name_or_keyword(scanner_t *sc)
         return TNAME;
     }
 
-    return -1;
+    return SCAN_FAILURE;
 }
 
 static int scan_symbol(scanner_t *sc)
@@ -312,7 +312,7 @@ static int scan_symbol(scanner_t *sc)
         }
 
     default:
-        return -1;
+        return SCAN_FAILURE;
     }
 }
 
@@ -329,7 +329,7 @@ int scan(void)
     while (1) {
         /* return on EOF */
         if (scanner_top(sc) == EOF) {
-            return -1;
+            return SCAN_FAILURE;
         }
 
         /* skip space and tab */
@@ -355,7 +355,7 @@ int scan(void)
             code = scan_string(sc);
             if (scanner_buf_overflow(sc)) {
                 fprintf(stderr, "Error on line %d: String needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
-                return -1;
+                return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
             return code;
@@ -368,7 +368,7 @@ int scan(void)
             num = strtol(scanner_buf_data(sc), NULL, 10);
             if (errno == ERANGE || num > 32767) {
                 fprintf(stderr, "Error on line %d: Number needs to be less than 32768\n", get_linenum());
-                return -1;
+                return SCAN_FAILURE;
             }
             num_attr = (int) num;
             return code;
@@ -379,7 +379,7 @@ int scan(void)
             code = scan_name_or_keyword(sc);
             if (scanner_buf_overflow(sc)) {
                 fprintf(stderr, "Error on line %d: Name needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
-                return -1;
+                return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
             return code;
@@ -391,7 +391,7 @@ int scan(void)
         }
 
         fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
-        return -1;
+        return SCAN_FAILURE;
     }
 }
 
