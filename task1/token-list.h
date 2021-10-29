@@ -71,14 +71,4 @@ extern struct KEY {
     int keytoken;
 } key[KEYWORDSIZE];
 
-extern void error(char* mes);
-
-/* scan.c */
-extern int init_scan(char* filename);
-extern int scan(void);
-extern int num_attr;
-extern char string_attr[MAXSTRSIZE];
-extern int get_linenum(void);
-extern void end_scan(void);
-
 #endif /* TOKEN_LIST_H */

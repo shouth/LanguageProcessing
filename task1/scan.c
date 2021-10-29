@@ -5,30 +5,17 @@
 #include "token-list.h"
 #include "scan-info.h"
 #include "str-buf.h"
+#include "scan.h"
 
 static int initialized = 0;
 static int scanning = 0;
 
-/**
- * This variable is a part of the specification of Task 1.
- */
 int num_attr;
-
-/**
- * This variable is a part of the specification of Task 1.
- */
 char string_attr[MAXSTRSIZE];
 
 static scan_info_t scan_info;
 static str_buf_t str_buf;
 
-/**
- * Open the file and initiate the scanner.
- *
- * This function is a part of the specification of Task 1.
- *
- * @return 0 on successful initiation or a negative number on failure.
- */
 int init_scan(char *filename)
 {
     if (initialized) {
@@ -43,14 +30,6 @@ int init_scan(char *filename)
     return 1;
 }
 
-/**
- * Gets the number of lines that the last read token lies on.
- *
- * This function is a part of the specification of Task 1.
- *
- * @return The number of lines that the last read token lies on
- * or 0 if scan() is not called before.
- */
 int get_linenum(void)
 {
     if (!scanning) {
@@ -368,14 +347,6 @@ static int scan_symbol(scan_info_t *si)
     }
 }
 
-/**
- * Reads the current file and gets the code of next token.
- * Refer to token-list.h to see which value will be returned.
- *
- * This function is a part of the specification of Task 1.
- *
- * @return The code of the next token or -1 when failed to scan.
- */
 int scan(void)
 {
     scan_info_t *si = &scan_info;
@@ -434,11 +405,6 @@ int scan(void)
     }
 }
 
-/**
- * Close the current file and terminate the scaner.
- *
- * This function is a part of the specification of Task 1.
- */
 void end_scan(void)
 {
     if (!initialized) {

@@ -1,5 +1,6 @@
 ﻿#include "token-list.h"
 #include "id-list.h"
+#include "scan.h"
 
 /* keyword list */
 struct KEY key[KEYWORDSIZE] = {
