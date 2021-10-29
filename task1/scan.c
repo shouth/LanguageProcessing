@@ -363,7 +363,7 @@ int scan(void)
         if (scanner_top(si) == '\'') {
             code = scan_string(si);
             if (str_buf_overflow(sb)) {
-                fprintf(stderr, "Error no line %d: String needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
+                fprintf(stderr, "Error on line %d: String needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
                 return -1;
             }
             return code;
@@ -386,7 +386,7 @@ int scan(void)
         if (isalpha(scanner_top(si))) {
             code = scan_name_or_keyword(si);
             if (str_buf_overflow(sb)) {
-                fprintf(stderr, "Error no line %d: Name needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
+                fprintf(stderr, "Error on line %d: Name needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
                 return -1;
             }
             return code;
