@@ -12,7 +12,7 @@ void str_buf_init(str_buf_t *sb);
 
 int str_buf_push(str_buf_t *sb, char c);
 
-char str_buf_pop(str_buf_t *sb);
+void str_buf_pop(str_buf_t *sb);
 
 const char *str_buf_data(str_buf_t *sb);
 

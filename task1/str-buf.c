@@ -18,13 +18,13 @@ int str_buf_push(str_buf_t *sb, char c)
     return 0;
 }
 
-char str_buf_pop(str_buf_t *sb)
+void str_buf_pop(str_buf_t *sb)
 {
-    char ret;
+    if (sb->end == 0) {
+        return;
+    }
     sb->end--;
-    ret = sb->buffer[sb->end];
     sb->buffer[sb->end] = '\0';
-    return ret;
 }
 
 const char *str_buf_data(str_buf_t *sb)
