@@ -182,7 +182,6 @@ static int scan_string(scanner_t *si)
             return -1;
         }
 
-        strcpy(string_attr, str_buf_data(sb));
         return TSTRING;
     }
 
@@ -242,7 +241,6 @@ static int scan_name_or_keyword(scanner_t *si)
             }
         }
 
-        strcpy(string_attr, str_buf_data(sb));
         return TNAME;
     }
 
@@ -366,6 +364,7 @@ int scan(void)
                 fprintf(stderr, "Error on line %d: String needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
                 return -1;
             }
+            strcpy(string_attr, str_buf_data(sb));
             return code;
         }
 
@@ -389,6 +388,7 @@ int scan(void)
                 fprintf(stderr, "Error on line %d: Name needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
                 return -1;
             }
+            strcpy(string_attr, str_buf_data(sb));
             return code;
         }
 
