@@ -2,54 +2,84 @@
 #include <stddef.h>
 #include <stdio.h>
 
-int scanner_init(scanner_t *si, char *filename)
+int scanner_init(scanner_t *sc, char *filename)
 {
-    si->file = fopen(filename, "r");
-    if (si->file == NULL) {
+    sc->file = fopen(filename, "r");
+    if (sc->file == NULL) {
         return -1;
     }
 
-    si->top = fgetc(si->file);
-    si->next = fgetc(si->file);
-    si->line_num = 1;
-    si->col_num = 1;
+    sc->top = fgetc(sc->file);
+    sc->next = fgetc(sc->file);
+
+    sc->buf[0] = '\0';
+    sc->buf_capacity = sizeof(sc->buf) / sizeof(sc->buf[0]);
+    sc->buf_end = 0;
+    sc->buf_overflow = 0;
+
+    sc->line_num = 1;
+    sc->col_num = 1;
     return 0;
 }
 
-int scanner_free(scanner_t *si)
+int scanner_free(scanner_t *sc)
 {
-    return fclose(si->file);
+    return fclose(sc->file);
 }
 
-void scanner_advance(scanner_t *si)
+void scanner_advance(scanner_t *sc)
 {
-    si->top = si->next;
-    si->next = fgetc(si->file);
-    si->col_num++;
+    if (sc->buf_end + 1 < sc->buf_capacity) {
+        sc->buf[sc->buf_end] = sc->top;
+        sc->buf_end++;
+        sc->buf[sc->buf_end] = '\0';
+    } else {
+        sc->buf_overflow = 1;
+    }
+    sc->top = sc->next;
+    sc->next = fgetc(sc->file);
+    sc->col_num++;
 }
 
-void scanner_advance_line(scanner_t *si)
+void scanner_advance_line(scanner_t *sc)
 {
-    si->line_num++;
-    si->col_num = 1;
+    sc->line_num++;
+    sc->col_num = 1;
 }
 
-int scanner_top(scanner_t *si)
+int scanner_top(scanner_t *sc)
 {
-    return si->top;
+    return sc->top;
 }
 
-int scanner_next(scanner_t *si)
+int scanner_next(scanner_t *sc)
 {
-    return si->next;
+    return sc->next;
 }
 
-int scanner_line_number(scanner_t *si)
+const char *scanner_buf_data(scanner_t *sc)
 {
-    return si->line_num;
+    return sc->buf;
 }
 
-int scanner_col_number(scanner_t *si)
+int scanner_buf_overflow(scanner_t *sc)
 {
-    return si->col_num;
+    return sc->buf_overflow;
+}
+
+void scanner_clear_buf(scanner_t *sc)
+{
+    sc->buf[0] = '\0';
+    sc->buf_end = 0;
+    sc->buf_overflow = 0;
+}
+
+size_t scanner_line_number(scanner_t *sc)
+{
+    return sc->line_num;
+}
+
+size_t scanner_col_number(scanner_t *sc)
+{
+    return sc->col_num;
 }

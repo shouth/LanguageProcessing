@@ -4,7 +4,6 @@
 
 #include "token-list.h"
 #include "scanner.h"
-#include "str-buf.h"
 #include "scan.h"
 
 static int initialized = 0;
@@ -14,7 +13,6 @@ int num_attr;
 char string_attr[MAXSTRSIZE];
 
 static scanner_t scanner;
-static str_buf_t str_buf;
 
 int init_scan(char *filename)
 {
@@ -48,60 +46,60 @@ int isgraphical(int c)
     return isblank(c) || isgraph(c) || iscrlf(c);
 }
 
-static int scan_blank(scanner_t *si)
+static int scan_blank(scanner_t *sc)
 {
-    if (isblank(scanner_top(si))) {
-        scanner_advance(si);
+    if (isblank(scanner_top(sc))) {
+        scanner_advance(sc);
         return 1;
     }
 
     return -1;
 }
 
-static int scan_newline(scanner_t *si)
+static int scan_newline(scanner_t *sc)
 {
-    if (scanner_top(si) == '\n') {
-        scanner_advance(si);
-        if (scanner_top(si) == '\r') {
-            scanner_advance(si);
+    if (scanner_top(sc) == '\n') {
+        scanner_advance(sc);
+        if (scanner_top(sc) == '\r') {
+            scanner_advance(sc);
         }
-        scanner_advance_line(si);
+        scanner_advance_line(sc);
         return 1;
     }
 
-    if (scanner_top(si) == '\r') {
-        scanner_advance(si);
-        if (scanner_top(si) == '\n') {
-            scanner_advance(si);
+    if (scanner_top(sc) == '\r') {
+        scanner_advance(sc);
+        if (scanner_top(sc) == '\n') {
+            scanner_advance(sc);
         }
-        scanner_advance_line(si);
+        scanner_advance_line(sc);
         return 1;
     }
 
     return -1;
 }
 
-static int scan_comment(scanner_t *si)
+static int scan_comment(scanner_t *sc)
 {
-    if (scanner_top(si) == '{') {
-        scanner_advance(si);
+    if (scanner_top(sc) == '{') {
+        scanner_advance(sc);
 
         while (1) {
-            if (scanner_top(si) == '}') {
-                scanner_advance(si);
+            if (scanner_top(sc) == '}') {
+                scanner_advance(sc);
                 break;
             }
 
-            if (iscrlf(scanner_top(si))) {
-                scan_newline(si);
+            if (iscrlf(scanner_top(sc))) {
+                scan_newline(sc);
                 continue;
             }
-            if (isgraphical(scanner_top(si))) {
-                scanner_advance(si);
+            if (isgraphical(scanner_top(sc))) {
+                scanner_advance(sc);
                 continue;
             }
 
-            if (scanner_top(si) == EOF) {
+            if (scanner_top(sc) == EOF) {
                 fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
@@ -112,27 +110,27 @@ static int scan_comment(scanner_t *si)
         return 1;
     }
 
-    if (scanner_top(si) == '/' && scanner_next(si) == '*') {
-        scanner_advance(si);
-        scanner_advance(si);
+    if (scanner_top(sc) == '/' && scanner_next(sc) == '*') {
+        scanner_advance(sc);
+        scanner_advance(sc);
 
         while (1) {
-            if (scanner_top(si) == '*' && scanner_next(si) == '/') {
-                scanner_advance(si);
-                scanner_advance(si);
+            if (scanner_top(sc) == '*' && scanner_next(sc) == '/') {
+                scanner_advance(sc);
+                scanner_advance(sc);
                 break;
             }
 
-            if (iscrlf(scanner_top(si))) {
-                scan_newline(si);
+            if (iscrlf(scanner_top(sc))) {
+                scan_newline(sc);
                 continue;
             }
-            if (isgraphical(scanner_top(si))) {
-                scanner_advance(si);
+            if (isgraphical(scanner_top(sc))) {
+                scanner_advance(sc);
                 continue;
             }
 
-            if (scanner_top(si) == EOF) {
+            if (scanner_top(sc) == EOF) {
                 fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
@@ -146,35 +144,28 @@ static int scan_comment(scanner_t *si)
     return -1;
 }
 
-static int scan_string(scanner_t *si)
+static int scan_string(scanner_t *sc)
 {
-    str_buf_t *sb = &str_buf;
-
-    str_buf_init(sb);
-
-    if (scanner_top(si) == '\'') {
-        scanner_advance(si);
+    if (scanner_top(sc) == '\'') {
+        scanner_advance(sc);
 
         while (1) {
-            if (scanner_top(si) == '\'' && scanner_next(si) != '\'') {
-                scanner_advance(si);
+            if (scanner_top(sc) == '\'' && scanner_next(sc) != '\'') {
+                scanner_advance(sc);
                 break;
             }
 
-            if (scanner_top(si) == '\'' && scanner_next(si) == '\'') {
-                str_buf_push(sb, '\'');
-                str_buf_push(sb, '\'');
-                scanner_advance(si);
-                scanner_advance(si);
+            if (scanner_top(sc) == '\'' && scanner_next(sc) == '\'') {
+                scanner_advance(sc);
+                scanner_advance(sc);
                 continue;
             }
-            if (!iscrlf(scanner_top(si)) && isgraphical(scanner_top(si))) {
-                str_buf_push(sb, scanner_top(si));
-                scanner_advance(si);
+            if (!iscrlf(scanner_top(sc)) && isgraphical(scanner_top(sc))) {
+                scanner_advance(sc);
                 continue;
             }
 
-            if (scanner_top(si) == EOF) {
+            if (scanner_top(sc) == EOF) {
                 fprintf(stderr, "Error on line %d: Reached EOF before end of string\n", get_linenum());
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
@@ -188,20 +179,14 @@ static int scan_string(scanner_t *si)
     return -1;
 }
 
-static int scan_unsigned_number(scanner_t *si)
+static int scan_unsigned_number(scanner_t *sc)
 {
-    str_buf_t *sb = &str_buf;
-
-    str_buf_init(sb);
-
-    if (isdigit(scanner_top(si))) {
-        str_buf_push(sb, scanner_top(si));
-        scanner_advance(si);
+    if (isdigit(scanner_top(sc))) {
+        scanner_advance(sc);
 
         while (1) {
-            if (isdigit(scanner_top(si))) {
-                str_buf_push(sb, scanner_top(si));
-                scanner_advance(si);
+            if (isdigit(scanner_top(sc))) {
+                scanner_advance(sc);
                 continue;
             }
 
@@ -214,21 +199,16 @@ static int scan_unsigned_number(scanner_t *si)
     return -1;
 }
 
-static int scan_name_or_keyword(scanner_t *si)
+static int scan_name_or_keyword(scanner_t *sc)
 {
-    str_buf_t *sb = &str_buf;
     size_t i;
 
-    str_buf_init(sb);
-
-    if (isalpha(scanner_top(si))) {
-        str_buf_push(sb, scanner_top(si));
-        scanner_advance(si);
+    if (isalpha(scanner_top(sc))) {
+        scanner_advance(sc);
 
         while (1) {
-            if (isalnum(scanner_top(si))) {
-                str_buf_push(sb, scanner_top(si));
-                scanner_advance(si);
+            if (isalnum(scanner_top(sc))) {
+                scanner_advance(sc);
                 continue;
             }
 
@@ -236,7 +216,7 @@ static int scan_name_or_keyword(scanner_t *si)
         }
 
         for (i = 0; i < KEYWORDSIZE; i++) {
-            if (strcmp(str_buf_data(sb), key[i].keyword) == 0) {
+            if (strcmp(scanner_buf_data(sc), key[i].keyword) == 0) {
                 return key[i].keytoken;
             }
         }
@@ -247,71 +227,71 @@ static int scan_name_or_keyword(scanner_t *si)
     return -1;
 }
 
-static int scan_symbol(scanner_t *si)
+static int scan_symbol(scanner_t *sc)
 {
-    switch (scanner_top(si)) {
+    switch (scanner_top(sc)) {
     case '+':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TPLUS;
     case '-':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TMINUS;
     case '*':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TSTAR;
     case '=':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TEQUAL;
     case '(':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TLPAREN;
     case ')':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TRPAREN;
     case '[':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TLSQPAREN;
     case ']':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TRSQPAREN;
     case '.':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TDOT;
     case ',':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TCOMMA;
     case ';':
-        scanner_advance(si);
+        scanner_advance(sc);
         return TSEMI;
 
     case ':':
-        scanner_advance(si);
-        switch (scanner_top(si)) {
+        scanner_advance(sc);
+        switch (scanner_top(sc)) {
         case '=':
-            scanner_advance(si);
+            scanner_advance(sc);
             return TASSIGN;
         default:
             return TCOLON;
         }
 
     case '>':
-        scanner_advance(si);
-        switch (scanner_top(si)) {
+        scanner_advance(sc);
+        switch (scanner_top(sc)) {
         case '=':
-            scanner_advance(si);
+            scanner_advance(sc);
             return TGREQ;
         default:
             return TGR;
         }
 
     case '<':
-        scanner_advance(si);
-        switch (scanner_top(si)) {
+        scanner_advance(sc);
+        switch (scanner_top(sc)) {
         case '>':
-            scanner_advance(si);
+            scanner_advance(sc);
             return TNOTEQ;
         case '=':
-            scanner_advance(si);
+            scanner_advance(sc);
             return TLEEQ;
         default:
             return TLE;
@@ -324,8 +304,7 @@ static int scan_symbol(scanner_t *si)
 
 int scan(void)
 {
-    scanner_t *si = &scanner;
-    str_buf_t *sb = &str_buf;
+    scanner_t *sc = &scanner;
     int code;
     long num;
 
@@ -334,45 +313,47 @@ int scan(void)
     }
 
     while (1) {
+        scanner_clear_buf(sc);
+
         /* return on EOF */
-        if (scanner_top(si) == EOF) {
+        if (scanner_top(sc) == EOF) {
             return -1;
         }
 
         /* skip space and tab */
-        if (isblank(scanner_top(si))) {
-            scan_blank(si);
+        if (isblank(scanner_top(sc))) {
+            scan_blank(sc);
             continue;
         }
 
         /* skip new line */
-        if (iscrlf(scanner_top(si))) {
-            scan_newline(si);
+        if (iscrlf(scanner_top(sc))) {
+            scan_newline(sc);
             continue;
         }
 
         /* skip comment */
-        if (scanner_top(si) == '{' || (scanner_top(si) == '/' && scanner_next(si) == '*')) {
-            scan_comment(si);
+        if (scanner_top(sc) == '{' || (scanner_top(sc) == '/' && scanner_next(sc) == '*')) {
+            scan_comment(sc);
             continue;
         }
 
         /* read string */
-        if (scanner_top(si) == '\'') {
-            code = scan_string(si);
-            if (str_buf_overflow(sb)) {
+        if (scanner_top(sc) == '\'') {
+            code = scan_string(sc);
+            if (scanner_buf_overflow(sc)) {
                 fprintf(stderr, "Error on line %d: String needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
                 return -1;
             }
-            strcpy(string_attr, str_buf_data(sb));
+            strcpy(string_attr, scanner_buf_data(sc));
             return code;
         }
 
         /* read unsigned number */
-        if (isdigit(scanner_top(si))) {
-            code = scan_unsigned_number(si);
+        if (isdigit(scanner_top(sc))) {
+            code = scan_unsigned_number(sc);
             errno = 0;
-            num = strtol(str_buf_data(sb), NULL, 10);
+            num = strtol(scanner_buf_data(sc), NULL, 10);
             if (errno == ERANGE || num > 32767) {
                 fprintf(stderr, "Error on line %d: Number needs to be less than 32768\n", get_linenum());
                 return -1;
@@ -382,18 +363,18 @@ int scan(void)
         }
 
         /* read name or keyword */
-        if (isalpha(scanner_top(si))) {
-            code = scan_name_or_keyword(si);
-            if (str_buf_overflow(sb)) {
+        if (isalpha(scanner_top(sc))) {
+            code = scan_name_or_keyword(sc);
+            if (scanner_buf_overflow(sc)) {
                 fprintf(stderr, "Error on line %d: Name needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
                 return -1;
             }
-            strcpy(string_attr, str_buf_data(sb));
+            strcpy(string_attr, scanner_buf_data(sc));
             return code;
         }
 
         /* read symbol */
-        if ((code = scan_symbol(si)) > 0) {
+        if ((code = scan_symbol(sc)) > 0) {
             return code;
         }
 
