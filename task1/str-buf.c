@@ -5,11 +5,13 @@ void str_buf_init(str_buf_t *sb)
 {
     sb->buffer[0] = '\0';
     sb->end = 0;
+    sb->overflow = 0;
 }
 
 int str_buf_push(str_buf_t *sb, char c)
 {
     if (sb->end + 1 >= MAXSTRSIZE) {
+        sb->overflow = 1;
         return -1;
     }
     sb->buffer[sb->end] = c;
@@ -25,6 +27,11 @@ void str_buf_pop(str_buf_t *sb)
     }
     sb->end--;
     sb->buffer[sb->end] = '\0';
+}
+
+int str_buf_overflow(str_buf_t *sb)
+{
+    return sb->overflow;
 }
 
 const char *str_buf_data(str_buf_t *sb)

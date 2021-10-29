@@ -162,23 +162,14 @@ static int scan_string(scanner_t *si)
             }
 
             if (scanner_top(si) == '\'' && scanner_next(si) == '\'') {
-                if (str_buf_push(sb, '\'') < 0) {
-                    fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
-                    return -1;
-                }
-                if (str_buf_push(sb, '\'') < 0) {
-                    fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
-                    return -1;
-                }
+                str_buf_push(sb, '\'');
+                str_buf_push(sb, '\'');
                 scanner_advance(si);
                 scanner_advance(si);
                 continue;
             }
             if (!iscrlf(scanner_top(si)) && isgraphical(scanner_top(si))) {
-                if (str_buf_push(sb, scanner_top(si)) < 0) {
-                    fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
-                    return -1;
-                }
+                str_buf_push(sb, scanner_top(si));
                 scanner_advance(si);
                 continue;
             }
@@ -201,7 +192,6 @@ static int scan_string(scanner_t *si)
 static int scan_unsigned_number(scanner_t *si)
 {
     str_buf_t *sb = &str_buf;
-    long num;
 
     str_buf_init(sb);
 
@@ -211,10 +201,7 @@ static int scan_unsigned_number(scanner_t *si)
 
         while (1) {
             if (isdigit(scanner_top(si))) {
-                if (str_buf_push(sb, scanner_top(si)) < 0) {
-                    fprintf(stderr, "Error on line %d: Number is too long\n", get_linenum());
-                    return -1;
-                }
+                str_buf_push(sb, scanner_top(si));
                 scanner_advance(si);
                 continue;
             }
@@ -222,13 +209,6 @@ static int scan_unsigned_number(scanner_t *si)
             break;
         }
 
-        errno = 0;
-        num = strtol(str_buf_data(sb), NULL, 10);
-        if (errno == ERANGE || num > 32767) {
-            fprintf(stderr, "Error on line %d: Number needs to be less than 32768\n", get_linenum());
-            return -1;
-        }
-        num_attr = (int) num;
         return TNUMBER;
     }
 
@@ -248,10 +228,7 @@ static int scan_name_or_keyword(scanner_t *si)
 
         while (1) {
             if (isalnum(scanner_top(si))) {
-                if (str_buf_push(sb, scanner_top(si)) < 0) {
-                    fprintf(stderr, "Error on line %d: Name is too long\n", get_linenum());
-                    return -1;
-                }
+                str_buf_push(sb, scanner_top(si));
                 scanner_advance(si);
                 continue;
             }
@@ -350,7 +327,9 @@ static int scan_symbol(scanner_t *si)
 int scan(void)
 {
     scanner_t *si = &scanner;
+    str_buf_t *sb = &str_buf;
     int code;
+    long num;
 
     if (!scanning) {
         scanning = 1;
@@ -382,17 +361,35 @@ int scan(void)
 
         /* read string */
         if (scanner_top(si) == '\'') {
-            return scan_string(si);
+            code = scan_string(si);
+            if (str_buf_overflow(sb)) {
+                fprintf(stderr, "Error no line %d: String needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
+                return -1;
+            }
+            return code;
         }
 
         /* read unsigned number */
         if (isdigit(scanner_top(si))) {
-            return scan_unsigned_number(si);
+            code = scan_unsigned_number(si);
+            errno = 0;
+            num = strtol(str_buf_data(sb), NULL, 10);
+            if (errno == ERANGE || num > 32767) {
+                fprintf(stderr, "Error on line %d: Number needs to be less than 32768\n", get_linenum());
+                return -1;
+            }
+            num_attr = (int) num;
+            return code;
         }
 
         /* read name or keyword */
         if (isalpha(scanner_top(si))) {
-            return scan_name_or_keyword(si);
+            code = scan_name_or_keyword(si);
+            if (str_buf_overflow(sb)) {
+                fprintf(stderr, "Error no line %d: Name needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
+                return -1;
+            }
+            return code;
         }
 
         /* read symbol */
