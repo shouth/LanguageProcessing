@@ -48,6 +48,8 @@ int isgraphical(int c)
 
 static int scan_blank(scanner_t *sc)
 {
+    scanner_clear_buf(sc);
+
     if (isblank(scanner_top(sc))) {
         scanner_advance(sc);
         return 1;
@@ -58,6 +60,8 @@ static int scan_blank(scanner_t *sc)
 
 static int scan_newline(scanner_t *sc)
 {
+    scanner_clear_buf(sc);
+
     if (scanner_top(sc) == '\n') {
         scanner_advance(sc);
         if (scanner_top(sc) == '\r') {
@@ -81,6 +85,8 @@ static int scan_newline(scanner_t *sc)
 
 static int scan_comment(scanner_t *sc)
 {
+    scanner_clear_buf(sc);
+
     if (scanner_top(sc) == '{') {
         scanner_advance(sc);
 
@@ -146,6 +152,8 @@ static int scan_comment(scanner_t *sc)
 
 static int scan_string(scanner_t *sc)
 {
+    scanner_clear_buf(sc);
+
     if (scanner_top(sc) == '\'') {
         scanner_advance(sc);
 
@@ -181,6 +189,8 @@ static int scan_string(scanner_t *sc)
 
 static int scan_unsigned_number(scanner_t *sc)
 {
+    scanner_clear_buf(sc);
+
     if (isdigit(scanner_top(sc))) {
         scanner_advance(sc);
 
@@ -202,6 +212,8 @@ static int scan_unsigned_number(scanner_t *sc)
 static int scan_name_or_keyword(scanner_t *sc)
 {
     size_t i;
+
+    scanner_clear_buf(sc);
 
     if (isalpha(scanner_top(sc))) {
         scanner_advance(sc);
@@ -229,6 +241,8 @@ static int scan_name_or_keyword(scanner_t *sc)
 
 static int scan_symbol(scanner_t *sc)
 {
+    scanner_clear_buf(sc);
+
     switch (scanner_top(sc)) {
     case '+':
         scanner_advance(sc);
@@ -313,8 +327,6 @@ int scan(void)
     }
 
     while (1) {
-        scanner_clear_buf(sc);
-
         /* return on EOF */
         if (scanner_top(sc) == EOF) {
             return -1;
