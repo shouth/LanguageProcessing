@@ -1,4 +1,4 @@
-#include "scan-info.h"
+#include "scanner.h"
 #include <stddef.h>
 #include <stdio.h>
 

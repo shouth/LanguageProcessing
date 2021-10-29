@@ -3,7 +3,7 @@
 #include <errno.h>
 
 #include "token-list.h"
-#include "scan-info.h"
+#include "scanner.h"
 #include "str-buf.h"
 #include "scan.h"
 

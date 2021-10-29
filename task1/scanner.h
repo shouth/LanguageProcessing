@@ -1,5 +1,5 @@
-#ifndef scanner_H
-#define scanner_H
+#ifndef SCANNER_H
+#define SCANNER_H
 
 #include <stdio.h>
 
@@ -26,4 +26,4 @@ int scanner_line_number(scanner_t *si);
 
 int scanner_col_number(scanner_t *si);
 
-#endif /* scanner_H */
+#endif /* SCANNER_H */
