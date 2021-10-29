@@ -1,5 +1,5 @@
-#ifndef SCAN_INFO_H
-#define SCAN_INFO_H
+#ifndef scanner_H
+#define scanner_H
 
 #include <stdio.h>
 
@@ -8,22 +8,22 @@ typedef struct {
     int top, next;
     int line_num;
     int col_num;
-} scan_info_t;
+} scanner_t;
 
-int scan_info_init(scan_info_t *si, char *filename);
+int scanner_init(scanner_t *si, char *filename);
 
-int scan_info_free(scan_info_t *si);
+int scanner_free(scanner_t *si);
 
-void scan_info_advance(scan_info_t *si);
+void scanner_advance(scanner_t *si);
 
-void scan_info_advance_line(scan_info_t *si);
+void scanner_advance_line(scanner_t *si);
 
-int scan_info_top(scan_info_t *si);
+int scanner_top(scanner_t *si);
 
-int scan_info_next(scan_info_t *si);
+int scanner_next(scanner_t *si);
 
-int scan_info_line_number(scan_info_t *si);
+int scanner_line_number(scanner_t *si);
 
-int scan_info_col_number(scan_info_t *si);
+int scanner_col_number(scanner_t *si);
 
-#endif /* SCAN_INFO_H */
+#endif /* scanner_H */

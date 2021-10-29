@@ -13,7 +13,7 @@ static int scanning = 0;
 int num_attr;
 char string_attr[MAXSTRSIZE];
 
-static scan_info_t scan_info;
+static scanner_t scanner;
 static str_buf_t str_buf;
 
 int init_scan(char *filename)
@@ -22,7 +22,7 @@ int init_scan(char *filename)
         fprintf(stderr, "Already initialized\n");
         return -1;
     }
-    if (scan_info_init(&scan_info, filename) < 0) {
+    if (scanner_init(&scanner, filename) < 0) {
         fprintf(stderr, "Cannot initialize. Maybe `filename` is wrong.\n");
         return -1;
     }
@@ -35,7 +35,7 @@ int get_linenum(void)
     if (!scanning) {
         return 0;
     }
-    return scan_info_line_number(&scan_info);
+    return scanner_line_number(&scanner);
 }
 
 int iscrlf(int c)
@@ -48,60 +48,60 @@ int isgraphical(int c)
     return isblank(c) || isgraph(c) || iscrlf(c);
 }
 
-static int scan_blank(scan_info_t *si)
+static int scan_blank(scanner_t *si)
 {
-    if (isblank(scan_info_top(si))) {
-        scan_info_advance(si);
+    if (isblank(scanner_top(si))) {
+        scanner_advance(si);
         return 1;
     }
 
     return -1;
 }
 
-static int scan_newline(scan_info_t *si)
+static int scan_newline(scanner_t *si)
 {
-    if (scan_info_top(si) == '\n') {
-        scan_info_advance(si);
-        if (scan_info_top(si) == '\r') {
-            scan_info_advance(si);
+    if (scanner_top(si) == '\n') {
+        scanner_advance(si);
+        if (scanner_top(si) == '\r') {
+            scanner_advance(si);
         }
-        scan_info_advance_line(si);
+        scanner_advance_line(si);
         return 1;
     }
 
-    if (scan_info_top(si) == '\r') {
-        scan_info_advance(si);
-        if (scan_info_top(si) == '\n') {
-            scan_info_advance(si);
+    if (scanner_top(si) == '\r') {
+        scanner_advance(si);
+        if (scanner_top(si) == '\n') {
+            scanner_advance(si);
         }
-        scan_info_advance_line(si);
+        scanner_advance_line(si);
         return 1;
     }
 
     return -1;
 }
 
-static int scan_comment(scan_info_t *si)
+static int scan_comment(scanner_t *si)
 {
-    if (scan_info_top(si) == '{') {
-        scan_info_advance(si);
+    if (scanner_top(si) == '{') {
+        scanner_advance(si);
 
         while (1) {
-            if (scan_info_top(si) == '}') {
-                scan_info_advance(si);
+            if (scanner_top(si) == '}') {
+                scanner_advance(si);
                 break;
             }
 
-            if (iscrlf(scan_info_top(si))) {
+            if (iscrlf(scanner_top(si))) {
                 scan_newline(si);
                 continue;
             }
-            if (isgraphical(scan_info_top(si))) {
-                scan_info_advance(si);
+            if (isgraphical(scanner_top(si))) {
+                scanner_advance(si);
                 continue;
             }
 
-            if (scan_info_top(si) == EOF) {
+            if (scanner_top(si) == EOF) {
                 fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
@@ -112,27 +112,27 @@ static int scan_comment(scan_info_t *si)
         return 1;
     }
 
-    if (scan_info_top(si) == '/' && scan_info_next(si) == '*') {
-        scan_info_advance(si);
-        scan_info_advance(si);
+    if (scanner_top(si) == '/' && scanner_next(si) == '*') {
+        scanner_advance(si);
+        scanner_advance(si);
 
         while (1) {
-            if (scan_info_top(si) == '*' && scan_info_next(si) == '/') {
-                scan_info_advance(si);
-                scan_info_advance(si);
+            if (scanner_top(si) == '*' && scanner_next(si) == '/') {
+                scanner_advance(si);
+                scanner_advance(si);
                 break;
             }
 
-            if (iscrlf(scan_info_top(si))) {
+            if (iscrlf(scanner_top(si))) {
                 scan_newline(si);
                 continue;
             }
-            if (isgraphical(scan_info_top(si))) {
-                scan_info_advance(si);
+            if (isgraphical(scanner_top(si))) {
+                scanner_advance(si);
                 continue;
             }
 
-            if (scan_info_top(si) == EOF) {
+            if (scanner_top(si) == EOF) {
                 fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
@@ -146,22 +146,22 @@ static int scan_comment(scan_info_t *si)
     return -1;
 }
 
-static int scan_string(scan_info_t *si)
+static int scan_string(scanner_t *si)
 {
     str_buf_t *sb = &str_buf;
 
     str_buf_init(sb);
 
-    if (scan_info_top(si) == '\'') {
-        scan_info_advance(si);
+    if (scanner_top(si) == '\'') {
+        scanner_advance(si);
 
         while (1) {
-            if (scan_info_top(si) == '\'' && scan_info_next(si) != '\'') {
-                scan_info_advance(si);
+            if (scanner_top(si) == '\'' && scanner_next(si) != '\'') {
+                scanner_advance(si);
                 break;
             }
 
-            if (scan_info_top(si) == '\'' && scan_info_next(si) == '\'') {
+            if (scanner_top(si) == '\'' && scanner_next(si) == '\'') {
                 if (str_buf_push(sb, '\'') < 0) {
                     fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
@@ -170,20 +170,20 @@ static int scan_string(scan_info_t *si)
                     fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
                 }
-                scan_info_advance(si);
-                scan_info_advance(si);
+                scanner_advance(si);
+                scanner_advance(si);
                 continue;
             }
-            if (!iscrlf(scan_info_top(si)) && isgraphical(scan_info_top(si))) {
-                if (str_buf_push(sb, scan_info_top(si)) < 0) {
+            if (!iscrlf(scanner_top(si)) && isgraphical(scanner_top(si))) {
+                if (str_buf_push(sb, scanner_top(si)) < 0) {
                     fprintf(stderr, "Error on line %d: String is too long\n", get_linenum());
                     return -1;
                 }
-                scan_info_advance(si);
+                scanner_advance(si);
                 continue;
             }
 
-            if (scan_info_top(si) == EOF) {
+            if (scanner_top(si) == EOF) {
                 fprintf(stderr, "Error on line %d: Reached EOF before end of string\n", get_linenum());
             } else {
                 fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
@@ -198,24 +198,24 @@ static int scan_string(scan_info_t *si)
     return -1;
 }
 
-static int scan_unsigned_number(scan_info_t *si)
+static int scan_unsigned_number(scanner_t *si)
 {
     str_buf_t *sb = &str_buf;
     long num;
 
     str_buf_init(sb);
 
-    if (isdigit(scan_info_top(si))) {
-        str_buf_push(sb, scan_info_top(si));
-        scan_info_advance(si);
+    if (isdigit(scanner_top(si))) {
+        str_buf_push(sb, scanner_top(si));
+        scanner_advance(si);
 
         while (1) {
-            if (isdigit(scan_info_top(si))) {
-                if (str_buf_push(sb, scan_info_top(si)) < 0) {
+            if (isdigit(scanner_top(si))) {
+                if (str_buf_push(sb, scanner_top(si)) < 0) {
                     fprintf(stderr, "Error on line %d: Number is too long\n", get_linenum());
                     return -1;
                 }
-                scan_info_advance(si);
+                scanner_advance(si);
                 continue;
             }
 
@@ -235,24 +235,24 @@ static int scan_unsigned_number(scan_info_t *si)
     return -1;
 }
 
-static int scan_name_or_keyword(scan_info_t *si)
+static int scan_name_or_keyword(scanner_t *si)
 {
     str_buf_t *sb = &str_buf;
     size_t i;
 
     str_buf_init(sb);
 
-    if (isalpha(scan_info_top(si))) {
-        str_buf_push(sb, scan_info_top(si));
-        scan_info_advance(si);
+    if (isalpha(scanner_top(si))) {
+        str_buf_push(sb, scanner_top(si));
+        scanner_advance(si);
 
         while (1) {
-            if (isalnum(scan_info_top(si))) {
-                if (str_buf_push(sb, scan_info_top(si)) < 0) {
+            if (isalnum(scanner_top(si))) {
+                if (str_buf_push(sb, scanner_top(si)) < 0) {
                     fprintf(stderr, "Error on line %d: Name is too long\n", get_linenum());
                     return -1;
                 }
-                scan_info_advance(si);
+                scanner_advance(si);
                 continue;
             }
 
@@ -272,71 +272,71 @@ static int scan_name_or_keyword(scan_info_t *si)
     return -1;
 }
 
-static int scan_symbol(scan_info_t *si)
+static int scan_symbol(scanner_t *si)
 {
-    switch (scan_info_top(si)) {
+    switch (scanner_top(si)) {
     case '+':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TPLUS;
     case '-':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TMINUS;
     case '*':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TSTAR;
     case '=':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TEQUAL;
     case '(':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TLPAREN;
     case ')':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TRPAREN;
     case '[':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TLSQPAREN;
     case ']':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TRSQPAREN;
     case '.':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TDOT;
     case ',':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TCOMMA;
     case ';':
-        scan_info_advance(si);
+        scanner_advance(si);
         return TSEMI;
 
     case ':':
-        scan_info_advance(si);
-        switch (scan_info_top(si)) {
+        scanner_advance(si);
+        switch (scanner_top(si)) {
         case '=':
-            scan_info_advance(si);
+            scanner_advance(si);
             return TASSIGN;
         default:
             return TCOLON;
         }
 
     case '>':
-        scan_info_advance(si);
-        switch (scan_info_top(si)) {
+        scanner_advance(si);
+        switch (scanner_top(si)) {
         case '=':
-            scan_info_advance(si);
+            scanner_advance(si);
             return TGREQ;
         default:
             return TGR;
         }
 
     case '<':
-        scan_info_advance(si);
-        switch (scan_info_top(si)) {
+        scanner_advance(si);
+        switch (scanner_top(si)) {
         case '>':
-            scan_info_advance(si);
+            scanner_advance(si);
             return TNOTEQ;
         case '=':
-            scan_info_advance(si);
+            scanner_advance(si);
             return TLEEQ;
         default:
             return TLE;
@@ -349,7 +349,7 @@ static int scan_symbol(scan_info_t *si)
 
 int scan(void)
 {
-    scan_info_t *si = &scan_info;
+    scanner_t *si = &scanner;
     int code;
 
     if (!scanning) {
@@ -358,45 +358,45 @@ int scan(void)
 
     while (1) {
         /* return on EOF */
-        if (scan_info_top(&scan_info) == EOF) {
+        if (scanner_top(&scanner) == EOF) {
             return -1;
         }
 
         /* skip space and tab */
-        if (isblank(scan_info_top(si))) {
+        if (isblank(scanner_top(si))) {
             scan_blank(si);
             continue;
         }
 
         /* skip new line */
-        if (iscrlf(scan_info_top(si))) {
+        if (iscrlf(scanner_top(si))) {
             scan_newline(si);
             continue;
         }
 
         /* skip comment */
-        if (scan_info_top(si) == '{' || (scan_info_top(si) == '/' && scan_info_next(si) == '*')) {
+        if (scanner_top(si) == '{' || (scanner_top(si) == '/' && scanner_next(si) == '*')) {
             scan_comment(si);
             continue;
         }
 
         /* read string */
-        if (scan_info_top(si) == '\'') {
+        if (scanner_top(si) == '\'') {
             return scan_string(si);
         }
 
         /* read unsigned number */
-        if (isdigit(scan_info_top(si))) {
+        if (isdigit(scanner_top(si))) {
             return scan_unsigned_number(si);
         }
 
         /* read name or keyword */
-        if (isalpha(scan_info_top(si))) {
+        if (isalpha(scanner_top(si))) {
             return scan_name_or_keyword(si);
         }
 
         /* read symbol */
-        if ((code = scan_symbol(&scan_info)) > 0) {
+        if ((code = scan_symbol(&scanner)) > 0) {
             return code;
         }
 
@@ -410,6 +410,6 @@ void end_scan(void)
     if (!initialized) {
         initialized = 0;
         scanning = 0;
-        scan_info_free(&scan_info);
+        scanner_free(&scanner);
     }
 }
