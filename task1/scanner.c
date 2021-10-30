@@ -14,6 +14,7 @@ int scanner_init(scanner_t *sc, char *filename)
     fgetpos(sc->file, &sc->loc.fpos);
     sc->loc.line = 1;
     sc->loc.col = 1;
+    sc->preloc = sc->loc;
 
     sc->top = fgetc(sc->file);
     sc->next = fgetc(sc->file);
