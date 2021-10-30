@@ -323,9 +323,9 @@ int scan(void)
             code = lex_comment(sc);
             if (code == LEX_FAILURE) {
                 if (scanner_top(sc) == EOF) {
-                    print_error(scanner_pre_location(sc), "comment is unterminated");
+                    message_error(sc, scanner_pre_location(sc), "comment is unterminated");
                 } else {
-                    print_error(scanner_location(sc), "invalid character is detected");
+                    message_error(sc, scanner_location(sc), "invalid character is detected");
                 }
                 return SCAN_FAILURE;
             }
@@ -337,15 +337,15 @@ int scan(void)
             code = lex_string(sc);
             if (code == LEX_FAILURE) {
                 if (scanner_top(sc) == EOF || iscrlf(scanner_top(sc))) {
-                    print_error(scanner_pre_location(sc), "string is unterminated");
+                    message_error(sc, scanner_pre_location(sc), "string is unterminated");
                 } else {
-                    print_error(scanner_location(sc), "invalid character is detected");
+                    message_error(sc, scanner_location(sc), "invalid character is detected");
                 }
                 return SCAN_FAILURE;
             }
 
             if (scanner_buf_overflow(sc)) {
-                print_token_error(scanner_pre_location(sc), scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
+                message_token_error(sc, scanner_pre_location(sc), scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
@@ -358,7 +358,7 @@ int scan(void)
             errno = 0;
             num = strtol(scanner_buf_data(sc), NULL, 10);
             if (errno == ERANGE || num > 32767) {
-                print_token_error(scanner_pre_location(sc), scanner_location(sc), "number needs to be less than 32768", MAXSTRSIZE);
+                message_token_error(sc, scanner_pre_location(sc), scanner_location(sc), "number needs to be less than 32768", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             num_attr = (int) num;
@@ -369,7 +369,7 @@ int scan(void)
         if (isalpha(scanner_top(sc))) {
             code = lex_name_or_keyword(sc);
             if (scanner_buf_overflow(sc)) {
-                print_token_error(scanner_pre_location(sc), scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
+                message_token_error(sc, scanner_pre_location(sc), scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
@@ -381,7 +381,7 @@ int scan(void)
             return code;
         }
 
-        print_error(scanner_location(sc), "invalid character is detected");
+        message_error(sc, scanner_location(sc), "invalid character is detected");
         return SCAN_FAILURE;
     }
 }
@@ -398,178 +398,4 @@ void end_scan(void)
 const scanner_loc_t *get_location()
 {
     return scanner_location(&scanner);
-}
-
-static void print_message_color(const scan_message_t type)
-{
-    printf("\033[1m");
-    switch (type) {
-    case SCAN_WARNING:
-        printf("\033[95m");
-        break;
-    case SCAN_ERROR:
-        printf("\033[91m");
-        break;
-    }
-}
-
-static void print_message_impl(const scanner_loc_t *begin, const scanner_loc_t *end, const scan_message_t type, const char *format, va_list args)
-{
-    fpos_t fpos;
-    FILE *file;
-    size_t i, j, d, n, cnt;
-    int c;
-
-    d = 0;
-    for (i = begin->line; i > 0; i /= 10) {
-        d++;
-    }
-
-    print_message_color(type);
-    switch (type) {
-    case SCAN_WARNING:
-        printf("warning: ");
-        break;
-    case SCAN_ERROR:
-        printf("error: ");
-        break;
-    }
-    printf("\033[0m");
-
-    printf("\033[1m");
-    vprintf(format, args);
-    printf("\033[0m");
-    printf("\n");
-
-    printf("\033[94m");
-    for (i = 0; i < d; i++) {
-        printf(" ");
-    }
-    printf("--> ");
-    printf("\033[0m");
-    printf("%s:%ld:%ld\n", scanner.filename, begin->line, begin->col);
-
-    file = scanner.file;
-    fgetpos(file, &fpos);
-    fsetpos(file, &begin->fpos);
-    fseek(file, -2, SEEK_CUR);
-
-    printf("\033[94m");
-    for (i = 0; i < d; i++) {
-        printf(" ");
-    }
-    printf(" | \n");
-    printf("\033[0m");
-
-    cnt = 0;
-    printf("\033[94m");
-    printf("%ld | ", begin->line);
-    printf("\033[0m");
-    for (i = 0; i < begin->col - 1; i++) {
-        c = fgetc(file);
-        if (c == '\t') {
-            n = 4 - (cnt % 4);
-            for (j = 0; j < n; j++) {
-                printf(" ");
-            }
-            cnt += n;
-        } else {
-            printf("%c", c);
-            cnt++;
-        }
-    }
-
-    print_message_color(type);
-    for (i = begin->col; i < end->col; i++) {
-        printf("%c", fgetc(file));
-    }
-    printf("\033[0m");
-    while (1) {
-        c = fgetc(file);
-        if (c == EOF || c == '\n' || c == '\r') {
-            break;
-        }
-        printf("%c", (char) c);
-    }
-    printf("\n");
-
-    printf("\033[94m");
-    for (i = 0; i < d; i++) {
-        printf(" ");
-    }
-    printf(" | ");
-    printf("\033[0m");
-    for (i = 0; i < cnt; i++) {
-        printf(" ");
-    }
-
-    print_message_color(type);
-    for (i = begin->col; i < end->col; i++) {
-        printf("^");
-    }
-    printf("\033[0m");
-    printf("\n");
-    printf("\n");
-
-    fsetpos(file, &fpos);
-}
-
-void print_message(const scanner_loc_t *loc, const scan_message_t type, const char *format, ...)
-{
-    scanner_loc_t end;
-    va_list args;
-
-    end = *loc;
-    end.col++;
-    va_start(args, format);
-    print_message_impl(loc, &end, type, format, args);
-    va_end(args);
-}
-
-void print_warning(const scanner_loc_t *loc, const char *format, ...)
-{
-    scanner_loc_t end;
-    va_list args;
-
-    end = *loc;
-    end.col++;
-    va_start(args, format);
-    print_message_impl(loc, &end, SCAN_WARNING, format, args);
-    va_end(args);
-}
-
-void print_error(const scanner_loc_t *loc, const char *format, ...)
-{
-    scanner_loc_t end;
-    va_list args;
-
-    end = *loc;
-    end.col++;
-    va_start(args, format);
-    print_message_impl(loc, &end, SCAN_ERROR, format, args);
-    va_end(args);
-}
-
-void print_token_message(const scanner_loc_t *begin, const scanner_loc_t *end, const scan_message_t type, const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    print_message_impl(begin, end, type, format, args);
-    va_end(args);
-}
-
-void print_token_warning(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    print_message_impl(begin, end, SCAN_WARNING, format, args);
-    va_end(args);
-}
-
-void print_token_error(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    print_message_impl(begin, end, SCAN_ERROR, format, args);
-    va_end(args);
 }

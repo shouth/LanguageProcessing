@@ -58,17 +58,4 @@ void end_scan(void);
 
 const scanner_loc_t *get_location();
 
-typedef enum {
-    SCAN_WARNING,
-    SCAN_ERROR
-} scan_message_t;
-
-void print_message(const scanner_loc_t *loc, const scan_message_t type, const char *format, ...);
-void print_warning(const scanner_loc_t *loc, const char *format, ...);
-void print_error(const scanner_loc_t *loc, const char *format, ...);
-
-void print_token_message(const scanner_loc_t *begin, const scanner_loc_t *end, const scan_message_t type, const char *format, ...);
-void print_token_warning(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...);
-void print_token_error(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...);
-
 #endif
