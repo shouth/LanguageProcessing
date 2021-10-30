@@ -20,7 +20,7 @@ typedef struct {
     size_t buf_end;
     int buf_overflow;
 
-    scanner_loc_t loc;
+    scanner_loc_t preloc, loc;
 } scanner_t;
 
 int scanner_init(scanner_t *sc, char *filename);
@@ -40,6 +40,8 @@ const char *scanner_buf_data(scanner_t *sc);
 int scanner_buf_overflow(scanner_t *sc);
 
 void scanner_clear_buf(scanner_t *sc);
+
+const scanner_loc_t *scanner_pre_location(scanner_t *sc);
 
 const scanner_loc_t *scanner_location(scanner_t *sc);
 

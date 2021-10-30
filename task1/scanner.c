@@ -78,6 +78,12 @@ void scanner_clear_buf(scanner_t *sc)
     sc->buf[0] = '\0';
     sc->buf_end = 0;
     sc->buf_overflow = 0;
+    sc->preloc = sc->loc;
+}
+
+const scanner_loc_t *scanner_pre_location(scanner_t *sc)
+{
+    return &sc->preloc;
 }
 
 const scanner_loc_t *scanner_location(scanner_t *sc)

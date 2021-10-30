@@ -49,8 +49,6 @@ int isgraphical(int c)
 
 static int scan_blank(scanner_t *sc)
 {
-    scanner_clear_buf(sc);
-
     if (isblank(scanner_top(sc))) {
         scanner_advance(sc);
         return SCAN_SUCCESS;
@@ -61,8 +59,6 @@ static int scan_blank(scanner_t *sc)
 
 static int scan_newline(scanner_t *sc)
 {
-    scanner_clear_buf(sc);
-
     if (scanner_top(sc) == '\n') {
         scanner_advance(sc);
         if (scanner_top(sc) == '\r') {
@@ -86,9 +82,6 @@ static int scan_newline(scanner_t *sc)
 
 static int scan_comment(scanner_t *sc)
 {
-    scanner_loc_t sloc = *scanner_location(sc);
-    scanner_clear_buf(sc);
-
     if (scanner_top(sc) == '{') {
         scanner_advance(sc);
 
@@ -108,14 +101,14 @@ static int scan_comment(scanner_t *sc)
             }
 
             if (scanner_top(sc) == EOF) {
-                print_error(&sloc, "comment is unterminated");
+                print_error(scanner_pre_location(sc), "comment is unterminated");
             } else {
                 print_error(scanner_location(sc), "invalid character is detected");
             }
             return SCAN_FAILURE;
         }
 
-        return 1;
+        return SCAN_SUCCESS;
     }
 
     if (scanner_top(sc) == '/' && scanner_next(sc) == '*') {
@@ -139,7 +132,7 @@ static int scan_comment(scanner_t *sc)
             }
 
             if (scanner_top(sc) == EOF) {
-                print_error(&sloc, "comment is unterminated");
+                print_error(scanner_pre_location(sc), "comment is unterminated");
             } else {
                 print_error(scanner_location(sc), "invalid character is detected");
             }
@@ -154,9 +147,6 @@ static int scan_comment(scanner_t *sc)
 
 static int scan_string(scanner_t *sc)
 {
-    scanner_loc_t sloc = *scanner_location(sc);
-    scanner_clear_buf(sc);
-
     if (scanner_top(sc) == '\'') {
         scanner_advance(sc);
 
@@ -177,11 +167,11 @@ static int scan_string(scanner_t *sc)
             }
 
             if (scanner_top(sc) == EOF) {
-                print_error(&sloc, "string is unterminated");
+                print_error(scanner_pre_location(sc), "string is unterminated");
             } else {
                 print_error(scanner_location(sc), "invalid character is detected");
             }
-            return -1;
+            return SCAN_FAILURE;
         }
 
         return TSTRING;
@@ -192,8 +182,6 @@ static int scan_string(scanner_t *sc)
 
 static int scan_unsigned_number(scanner_t *sc)
 {
-    scanner_clear_buf(sc);
-
     if (isdigit(scanner_top(sc))) {
         scanner_advance(sc);
 
@@ -215,8 +203,6 @@ static int scan_unsigned_number(scanner_t *sc)
 static int scan_name_or_keyword(scanner_t *sc)
 {
     size_t i;
-
-    scanner_clear_buf(sc);
 
     if (isalpha(scanner_top(sc))) {
         scanner_advance(sc);
@@ -244,8 +230,6 @@ static int scan_name_or_keyword(scanner_t *sc)
 
 static int scan_symbol(scanner_t *sc)
 {
-    scanner_clear_buf(sc);
-
     switch (scanner_top(sc)) {
     case '+':
         scanner_advance(sc);
@@ -321,7 +305,6 @@ static int scan_symbol(scanner_t *sc)
 
 int scan(void)
 {
-    scanner_loc_t sloc;
     scanner_t *sc = &scanner;
     int code;
     long num;
@@ -331,7 +314,7 @@ int scan(void)
     }
 
     while (1) {
-        sloc = *scanner_location(sc);
+        scanner_clear_buf(sc);
 
         /* return on EOF */
         if (scanner_top(sc) == EOF) {
@@ -360,7 +343,7 @@ int scan(void)
         if (scanner_top(sc) == '\'') {
             code = scan_string(sc);
             if (scanner_buf_overflow(sc)) {
-                print_token_error(&sloc, scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
+                print_token_error(scanner_pre_location(sc), scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
@@ -373,7 +356,7 @@ int scan(void)
             errno = 0;
             num = strtol(scanner_buf_data(sc), NULL, 10);
             if (errno == ERANGE || num > 32767) {
-                print_token_error(&sloc, scanner_location(sc), "number needs to be less than 32768", MAXSTRSIZE);
+                print_token_error(scanner_pre_location(sc), scanner_location(sc), "number needs to be less than 32768", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             num_attr = (int) num;
@@ -384,7 +367,7 @@ int scan(void)
         if (isalpha(scanner_top(sc))) {
             code = scan_name_or_keyword(sc);
             if (scanner_buf_overflow(sc)) {
-                print_token_error(&sloc, scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
+                print_token_error(scanner_pre_location(sc), scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
