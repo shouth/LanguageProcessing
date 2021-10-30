@@ -4,6 +4,9 @@
 
 int scanner_init(scanner_t *sc, char *filename)
 {
+    if (sc == NULL || filename == NULL) {
+        return -1;
+    }
     sc->file = fopen(filename, "r");
     if (sc->file == NULL) {
         return -1;
@@ -29,12 +32,18 @@ int scanner_init(scanner_t *sc, char *filename)
 
 void scanner_free(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return;
+    }
     free(sc->filename);
     fclose(sc->file);
 }
 
 void scanner_advance(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return;
+    }
     if (sc->buf_end + 1 < sc->buf_capacity) {
         sc->buf[sc->buf_end] = sc->top;
         sc->buf_end++;
@@ -49,6 +58,9 @@ void scanner_advance(scanner_t *sc)
 
 void scanner_advance_line(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return;
+    }
     fgetpos(sc->file, &sc->loc.fpos);
     sc->loc.line++;
     sc->loc.col = 1;
@@ -56,26 +68,41 @@ void scanner_advance_line(scanner_t *sc)
 
 int scanner_top(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return EOF;
+    }
     return sc->top;
 }
 
 int scanner_next(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return EOF;
+    }
     return sc->next;
 }
 
 const char *scanner_buf_data(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return NULL;
+    }
     return sc->buf;
 }
 
 int scanner_buf_overflow(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return 0;
+    }
     return sc->buf_overflow;
 }
 
 void scanner_clear_buf(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return;
+    }
     sc->buf[0] = '\0';
     sc->buf_end = 0;
     sc->buf_overflow = 0;
@@ -84,10 +111,16 @@ void scanner_clear_buf(scanner_t *sc)
 
 const scanner_loc_t *scanner_pre_location(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return NULL;
+    }
     return &sc->preloc;
 }
 
 const scanner_loc_t *scanner_location(scanner_t *sc)
 {
+    if (sc == NULL) {
+        return NULL;
+    }
     return &sc->loc;
 }
