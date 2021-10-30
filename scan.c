@@ -6,7 +6,7 @@
 #include "token-list.h"
 #include "scanner.h"
 #include "scan.h"
-#include "lex.h"
+#include "lexer.h"
 
 static int initialized = 0;
 static int scanning = 0;

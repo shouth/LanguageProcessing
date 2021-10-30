@@ -1,5 +1,5 @@
-#ifndef LEX_H
-#define LEX_H
+#ifndef LEXER_H
+#define LEXER_H
 
 #include <ctype.h>
 #include "scanner.h"
@@ -25,4 +25,4 @@ int lex_name_or_keyword(scanner_t *sc);
 
 int lex_symbol(scanner_t *sc);
 
-#endif /* LEX_H */
+#endif /* LEXER_H */
