@@ -100,11 +100,6 @@ static int scan_comment(scanner_t *sc)
                 continue;
             }
 
-            if (scanner_top(sc) == EOF) {
-                print_error(scanner_pre_location(sc), "comment is unterminated");
-            } else {
-                print_error(scanner_location(sc), "invalid character is detected");
-            }
             return SCAN_FAILURE;
         }
 
@@ -131,11 +126,6 @@ static int scan_comment(scanner_t *sc)
                 continue;
             }
 
-            if (scanner_top(sc) == EOF) {
-                print_error(scanner_pre_location(sc), "comment is unterminated");
-            } else {
-                print_error(scanner_location(sc), "invalid character is detected");
-            }
             return SCAN_FAILURE;
         }
 
@@ -166,11 +156,6 @@ static int scan_string(scanner_t *sc)
                 continue;
             }
 
-            if (scanner_top(sc) == EOF) {
-                print_error(scanner_pre_location(sc), "string is unterminated");
-            } else {
-                print_error(scanner_location(sc), "invalid character is detected");
-            }
             return SCAN_FAILURE;
         }
 
@@ -335,13 +320,30 @@ int scan(void)
 
         /* skip comment */
         if (scanner_top(sc) == '{' || (scanner_top(sc) == '/' && scanner_next(sc) == '*')) {
-            scan_comment(sc);
+            code = scan_comment(sc);
+            if (code == SCAN_FAILURE) {
+                if (scanner_top(sc) == EOF) {
+                    print_error(scanner_pre_location(sc), "comment is unterminated");
+                } else {
+                    print_error(scanner_location(sc), "invalid character is detected");
+                }
+                return SCAN_FAILURE;
+            }
             continue;
         }
 
         /* read string */
         if (scanner_top(sc) == '\'') {
             code = scan_string(sc);
+            if (code == SCAN_FAILURE) {
+                if (scanner_top(sc) == EOF) {
+                    print_error(scanner_pre_location(sc), "string is unterminated");
+                } else {
+                    print_error(scanner_location(sc), "invalid character is detected");
+                }
+                return SCAN_FAILURE;
+            }
+
             if (scanner_buf_overflow(sc)) {
                 print_token_error(scanner_pre_location(sc), scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
