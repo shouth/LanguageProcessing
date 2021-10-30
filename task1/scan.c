@@ -419,9 +419,6 @@ static void print_message_color(const scan_message_t type)
 {
     printf("\033[1m");
     switch (type) {
-    case SCAN_NOTE:
-        printf("\033[96m");
-        break;
     case SCAN_WARNING:
         printf("\033[95m");
         break;
@@ -445,9 +442,6 @@ static void print_message_impl(const scanner_loc_t *begin, const scanner_loc_t *
 
     print_message_color(type);
     switch (type) {
-    case SCAN_NOTE:
-        printf("note: ");
-        break;
     case SCAN_WARNING:
         printf("warning: ");
         break;
@@ -489,7 +483,7 @@ static void print_message_impl(const scanner_loc_t *begin, const scanner_loc_t *
     for (i = 0; i < begin->col - 1; i++) {
         c = fgetc(file);
         if (c == '\t') {
-            n = 8 - (cnt % 8);
+            n = 4 - (cnt % 4);
             for (j = 0; j < n; j++) {
                 printf(" ");
             }
@@ -547,18 +541,6 @@ void print_message(const scanner_loc_t *loc, const scan_message_t type, const ch
     va_end(args);
 }
 
-void print_note(const scanner_loc_t *loc, const char *format, ...)
-{
-    scanner_loc_t end;
-    va_list args;
-
-    end = *loc;
-    end.col++;
-    va_start(args, format);
-    print_message_impl(loc, &end, SCAN_NOTE, format, args);
-    va_end(args);
-}
-
 void print_warning(const scanner_loc_t *loc, const char *format, ...)
 {
     scanner_loc_t end;
@@ -588,14 +570,6 @@ void print_token_message(const scanner_loc_t *begin, const scanner_loc_t *end, c
     va_list args;
     va_start(args, format);
     print_message_impl(begin, end, type, format, args);
-    va_end(args);
-}
-
-void print_token_note(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    print_message_impl(begin, end, SCAN_NOTE, format, args);
     va_end(args);
 }
 
