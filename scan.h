@@ -4,9 +4,6 @@
 #include "token-list.h"
 #include "scanner.h"
 
-#define LEX_SUCCESS 0
-#define LEX_FAILURE -1
-
 #define SCAN_SUCCESS 0
 #define SCAN_FAILURE -1
 
