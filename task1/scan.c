@@ -435,8 +435,8 @@ static void print_message_impl(const scanner_loc_t *begin, const scanner_loc_t *
 {
     fpos_t fpos;
     FILE *file;
-    size_t column;
-    int i, c, d;
+    size_t i, j, d, n, cnt;
+    int c;
 
     d = 0;
     for (i = begin->line; i > 0; i /= 10) {
@@ -482,15 +482,26 @@ static void print_message_impl(const scanner_loc_t *begin, const scanner_loc_t *
     printf(" | \n");
     printf("\033[0m");
 
+    cnt = 0;
     printf("\033[94m");
     printf("%ld | ", begin->line);
     printf("\033[0m");
-    for (column = 0; column < begin->col - 1; column++) {
-        printf("%c", fgetc(file));
+    for (i = 0; i < begin->col - 1; i++) {
+        c = fgetc(file);
+        if (c == '\t') {
+            n = 8 - (cnt % 8);
+            for (j = 0; j < n; j++) {
+                printf(" ");
+            }
+            cnt += n;
+        } else {
+            printf("%c", c);
+            cnt++;
+        }
     }
 
     print_message_color(type);
-    for (column = begin->col; column < end->col; column++) {
+    for (i = begin->col; i < end->col; i++) {
         printf("%c", fgetc(file));
     }
     printf("\033[0m");
@@ -509,12 +520,12 @@ static void print_message_impl(const scanner_loc_t *begin, const scanner_loc_t *
     }
     printf(" | ");
     printf("\033[0m");
-    for (column = 0; column < begin->col - 1; column++) {
+    for (i = 0; i < cnt; i++) {
         printf(" ");
     }
 
     print_message_color(type);
-    for (column = begin->col; column < end->col; column++) {
+    for (i = begin->col; i < end->col; i++) {
         printf("^");
     }
     printf("\033[0m");
