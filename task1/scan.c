@@ -47,17 +47,17 @@ int isgraphical(int c)
     return isblank(c) || isgraph(c) || iscrlf(c);
 }
 
-static int scan_blank(scanner_t *sc)
+static int lex_blank(scanner_t *sc)
 {
     if (isblank(scanner_top(sc))) {
         scanner_advance(sc);
-        return SCAN_SUCCESS;
+        return LEX_SUCCESS;
     }
 
-    return SCAN_FAILURE;
+    return LEX_FAILURE;
 }
 
-static int scan_newline(scanner_t *sc)
+static int lex_newline(scanner_t *sc)
 {
     if (scanner_top(sc) == '\n') {
         scanner_advance(sc);
@@ -65,7 +65,7 @@ static int scan_newline(scanner_t *sc)
             scanner_advance(sc);
         }
         scanner_advance_line(sc);
-        return SCAN_SUCCESS;
+        return LEX_SUCCESS;
     }
 
     if (scanner_top(sc) == '\r') {
@@ -74,13 +74,13 @@ static int scan_newline(scanner_t *sc)
             scanner_advance(sc);
         }
         scanner_advance_line(sc);
-        return SCAN_SUCCESS;
+        return LEX_SUCCESS;
     }
 
-    return SCAN_FAILURE;
+    return LEX_FAILURE;
 }
 
-static int scan_comment(scanner_t *sc)
+static int lex_comment(scanner_t *sc)
 {
     if (scanner_top(sc) == '{') {
         scanner_advance(sc);
@@ -92,7 +92,7 @@ static int scan_comment(scanner_t *sc)
             }
 
             if (iscrlf(scanner_top(sc))) {
-                scan_newline(sc);
+                lex_newline(sc);
                 continue;
             }
             if (isgraphical(scanner_top(sc))) {
@@ -100,10 +100,10 @@ static int scan_comment(scanner_t *sc)
                 continue;
             }
 
-            return SCAN_FAILURE;
+            return LEX_FAILURE;
         }
 
-        return SCAN_SUCCESS;
+        return LEX_SUCCESS;
     }
 
     if (scanner_top(sc) == '/' && scanner_next(sc) == '*') {
@@ -118,7 +118,7 @@ static int scan_comment(scanner_t *sc)
             }
 
             if (iscrlf(scanner_top(sc))) {
-                scan_newline(sc);
+                lex_newline(sc);
                 continue;
             }
             if (isgraphical(scanner_top(sc))) {
@@ -126,16 +126,16 @@ static int scan_comment(scanner_t *sc)
                 continue;
             }
 
-            return SCAN_FAILURE;
+            return LEX_FAILURE;
         }
 
-        return SCAN_SUCCESS;
+        return LEX_SUCCESS;
     }
 
-    return SCAN_FAILURE;
+    return LEX_FAILURE;
 }
 
-static int scan_string(scanner_t *sc)
+static int lex_string(scanner_t *sc)
 {
     if (scanner_top(sc) == '\'') {
         scanner_advance(sc);
@@ -156,16 +156,16 @@ static int scan_string(scanner_t *sc)
                 continue;
             }
 
-            return SCAN_FAILURE;
+            return LEX_FAILURE;
         }
 
         return TSTRING;
     }
 
-    return SCAN_FAILURE;
+    return LEX_FAILURE;
 }
 
-static int scan_unsigned_number(scanner_t *sc)
+static int lex_unsigned_number(scanner_t *sc)
 {
     if (isdigit(scanner_top(sc))) {
         scanner_advance(sc);
@@ -182,10 +182,10 @@ static int scan_unsigned_number(scanner_t *sc)
         return TNUMBER;
     }
 
-    return SCAN_FAILURE;
+    return LEX_FAILURE;
 }
 
-static int scan_name_or_keyword(scanner_t *sc)
+static int lex_name_or_keyword(scanner_t *sc)
 {
     size_t i;
 
@@ -210,10 +210,10 @@ static int scan_name_or_keyword(scanner_t *sc)
         return TNAME;
     }
 
-    return SCAN_FAILURE;
+    return LEX_FAILURE;
 }
 
-static int scan_symbol(scanner_t *sc)
+static int lex_symbol(scanner_t *sc)
 {
     switch (scanner_top(sc)) {
     case '+':
@@ -284,7 +284,7 @@ static int scan_symbol(scanner_t *sc)
         }
 
     default:
-        return SCAN_FAILURE;
+        return LEX_FAILURE;
     }
 }
 
@@ -308,20 +308,20 @@ int scan(void)
 
         /* skip space and tab */
         if (isblank(scanner_top(sc))) {
-            scan_blank(sc);
+            lex_blank(sc);
             continue;
         }
 
         /* skip new line */
         if (iscrlf(scanner_top(sc))) {
-            scan_newline(sc);
+            lex_newline(sc);
             continue;
         }
 
         /* skip comment */
         if (scanner_top(sc) == '{' || (scanner_top(sc) == '/' && scanner_next(sc) == '*')) {
-            code = scan_comment(sc);
-            if (code == SCAN_FAILURE) {
+            code = lex_comment(sc);
+            if (code == LEX_FAILURE) {
                 if (scanner_top(sc) == EOF) {
                     print_error(scanner_pre_location(sc), "comment is unterminated");
                 } else {
@@ -334,9 +334,9 @@ int scan(void)
 
         /* read string */
         if (scanner_top(sc) == '\'') {
-            code = scan_string(sc);
-            if (code == SCAN_FAILURE) {
-                if (scanner_top(sc) == EOF) {
+            code = lex_string(sc);
+            if (code == LEX_FAILURE) {
+                if (scanner_top(sc) == EOF || iscrlf(scanner_top(sc))) {
                     print_error(scanner_pre_location(sc), "string is unterminated");
                 } else {
                     print_error(scanner_location(sc), "invalid character is detected");
@@ -354,7 +354,7 @@ int scan(void)
 
         /* read unsigned number */
         if (isdigit(scanner_top(sc))) {
-            code = scan_unsigned_number(sc);
+            code = lex_unsigned_number(sc);
             errno = 0;
             num = strtol(scanner_buf_data(sc), NULL, 10);
             if (errno == ERANGE || num > 32767) {
@@ -367,7 +367,7 @@ int scan(void)
 
         /* read name or keyword */
         if (isalpha(scanner_top(sc))) {
-            code = scan_name_or_keyword(sc);
+            code = lex_name_or_keyword(sc);
             if (scanner_buf_overflow(sc)) {
                 print_token_error(scanner_pre_location(sc), scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
@@ -377,7 +377,7 @@ int scan(void)
         }
 
         /* read symbol */
-        if ((code = scan_symbol(sc)) > 0) {
+        if ((code = lex_symbol(sc)) > 0) {
             return code;
         }
 
