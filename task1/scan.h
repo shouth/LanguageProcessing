@@ -2,6 +2,7 @@
 #define SCAN_H
 
 #include "token-list.h"
+#include "scanner.h"
 
 #define SCAN_SUCCESS 0
 #define SCAN_FAILURE -1
@@ -51,5 +52,23 @@ int get_linenum(void);
  * This function is a part of the specification of Task 1.
  */
 void end_scan(void);
+
+const scanner_loc_t *get_location();
+
+typedef enum {
+    SCAN_NOTE,
+    SCAN_WARNING,
+    SCAN_ERROR
+} scan_message_t;
+
+void print_message(const scanner_loc_t *loc, const scan_message_t type, const char *format, ...);
+void print_note(const scanner_loc_t *loc, const char *format, ...);
+void print_warning(const scanner_loc_t *loc, const char *format, ...);
+void print_error(const scanner_loc_t *loc, const char *format, ...);
+
+void print_token_message(const scanner_loc_t *begin, const scanner_loc_t *end, const scan_message_t type, const char *format, ...);
+void print_token_note(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...);
+void print_token_warning(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...);
+void print_token_error(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...);
 
 #endif

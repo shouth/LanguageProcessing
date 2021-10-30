@@ -5,7 +5,14 @@
 #include "token-list.h"
 
 typedef struct {
+    fpos_t fpos;
+    size_t line;
+    size_t col;
+} scanner_loc_t;
+
+typedef struct {
     FILE *file;
+    char *filename;
     int top, next;
 
     char buf[MAXSTRSIZE];
@@ -13,13 +20,12 @@ typedef struct {
     size_t buf_end;
     int buf_overflow;
 
-    size_t line_num;
-    size_t col_num;
+    scanner_loc_t loc;
 } scanner_t;
 
 int scanner_init(scanner_t *sc, char *filename);
 
-int scanner_free(scanner_t *sc);
+void scanner_free(scanner_t *sc);
 
 void scanner_advance(scanner_t *sc);
 
@@ -35,8 +41,6 @@ int scanner_buf_overflow(scanner_t *sc);
 
 void scanner_clear_buf(scanner_t *sc);
 
-size_t scanner_line_number(scanner_t *sc);
-
-size_t scanner_col_number(scanner_t *sc);
+const scanner_loc_t *scanner_location(scanner_t *sc);
 
 #endif /* SCANNER_H */

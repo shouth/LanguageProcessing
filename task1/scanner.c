@@ -8,6 +8,12 @@ int scanner_init(scanner_t *sc, char *filename)
     if (sc->file == NULL) {
         return -1;
     }
+    sc->filename = malloc(sizeof(filename[0]) * (strlen(filename) + 1));
+    strcpy(sc->filename, filename);
+
+    fgetpos(sc->file, &sc->loc.fpos);
+    sc->loc.line = 1;
+    sc->loc.col = 1;
 
     sc->top = fgetc(sc->file);
     sc->next = fgetc(sc->file);
@@ -17,14 +23,13 @@ int scanner_init(scanner_t *sc, char *filename)
     sc->buf_end = 0;
     sc->buf_overflow = 0;
 
-    sc->line_num = 1;
-    sc->col_num = 1;
     return 0;
 }
 
-int scanner_free(scanner_t *sc)
+void scanner_free(scanner_t *sc)
 {
-    return fclose(sc->file);
+    free(sc->filename);
+    fclose(sc->file);
 }
 
 void scanner_advance(scanner_t *sc)
@@ -38,13 +43,14 @@ void scanner_advance(scanner_t *sc)
     }
     sc->top = sc->next;
     sc->next = fgetc(sc->file);
-    sc->col_num++;
+    sc->loc.col++;
 }
 
 void scanner_advance_line(scanner_t *sc)
 {
-    sc->line_num++;
-    sc->col_num = 1;
+    fgetpos(sc->file, &sc->loc.fpos);
+    sc->loc.line++;
+    sc->loc.col = 1;
 }
 
 int scanner_top(scanner_t *sc)
@@ -74,12 +80,7 @@ void scanner_clear_buf(scanner_t *sc)
     sc->buf_overflow = 0;
 }
 
-size_t scanner_line_number(scanner_t *sc)
+const scanner_loc_t *scanner_location(scanner_t *sc)
 {
-    return sc->line_num;
-}
-
-size_t scanner_col_number(scanner_t *sc)
-{
-    return sc->col_num;
+    return &sc->loc;
 }

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include "token-list.h"
 #include "scanner.h"
@@ -33,7 +34,7 @@ int get_linenum(void)
     if (!scanning) {
         return 0;
     }
-    return scanner_line_number(&scanner);
+    return scanner_location(&scanner)->line;
 }
 
 int iscrlf(int c)
@@ -85,6 +86,7 @@ static int scan_newline(scanner_t *sc)
 
 static int scan_comment(scanner_t *sc)
 {
+    scanner_loc_t sloc = *scanner_location(sc);
     scanner_clear_buf(sc);
 
     if (scanner_top(sc) == '{') {
@@ -106,9 +108,9 @@ static int scan_comment(scanner_t *sc)
             }
 
             if (scanner_top(sc) == EOF) {
-                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
+                print_error(&sloc, "comment is unterminated");
             } else {
-                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+                print_error(scanner_location(sc), "invalid character is detected");
             }
             return SCAN_FAILURE;
         }
@@ -137,9 +139,9 @@ static int scan_comment(scanner_t *sc)
             }
 
             if (scanner_top(sc) == EOF) {
-                fprintf(stderr, "Error on line %d: Reached EOF before closing comment\n", get_linenum());
+                print_error(&sloc, "comment is unterminated");
             } else {
-                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+                print_error(scanner_location(sc), "invalid character is detected");
             }
             return SCAN_FAILURE;
         }
@@ -152,6 +154,7 @@ static int scan_comment(scanner_t *sc)
 
 static int scan_string(scanner_t *sc)
 {
+    scanner_loc_t sloc = *scanner_location(sc);
     scanner_clear_buf(sc);
 
     if (scanner_top(sc) == '\'') {
@@ -174,9 +177,9 @@ static int scan_string(scanner_t *sc)
             }
 
             if (scanner_top(sc) == EOF) {
-                fprintf(stderr, "Error on line %d: Reached EOF before end of string\n", get_linenum());
+                print_error(&sloc, "string is unterminated");
             } else {
-                fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+                print_error(scanner_location(sc), "invalid character is detected");
             }
             return -1;
         }
@@ -318,6 +321,7 @@ static int scan_symbol(scanner_t *sc)
 
 int scan(void)
 {
+    scanner_loc_t sloc;
     scanner_t *sc = &scanner;
     int code;
     long num;
@@ -327,6 +331,8 @@ int scan(void)
     }
 
     while (1) {
+        sloc = *scanner_location(sc);
+
         /* return on EOF */
         if (scanner_top(sc) == EOF) {
             return SCAN_FAILURE;
@@ -354,7 +360,7 @@ int scan(void)
         if (scanner_top(sc) == '\'') {
             code = scan_string(sc);
             if (scanner_buf_overflow(sc)) {
-                fprintf(stderr, "Error on line %d: String needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
+                print_token_error(&sloc, scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
@@ -367,7 +373,7 @@ int scan(void)
             errno = 0;
             num = strtol(scanner_buf_data(sc), NULL, 10);
             if (errno == ERANGE || num > 32767) {
-                fprintf(stderr, "Error on line %d: Number needs to be less than 32768\n", get_linenum());
+                print_token_error(&sloc, scanner_location(sc), "number needs to be less than 32768", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             num_attr = (int) num;
@@ -378,7 +384,7 @@ int scan(void)
         if (isalpha(scanner_top(sc))) {
             code = scan_name_or_keyword(sc);
             if (scanner_buf_overflow(sc)) {
-                fprintf(stderr, "Error on line %d: Name needs to be shorter than %d\n", get_linenum(), MAXSTRSIZE);
+                print_token_error(&sloc, scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
                 return SCAN_FAILURE;
             }
             strcpy(string_attr, scanner_buf_data(sc));
@@ -390,7 +396,7 @@ int scan(void)
             return code;
         }
 
-        fprintf(stderr, "Error on line %d: Invalid character is detected\n", get_linenum());
+        print_error(scanner_location(sc), "invalid character is detected");
         return SCAN_FAILURE;
     }
 }
@@ -402,4 +408,198 @@ void end_scan(void)
         scanning = 0;
         scanner_free(&scanner);
     }
+}
+
+const scanner_loc_t *get_location()
+{
+    return scanner_location(&scanner);
+}
+
+static void print_message_color(const scan_message_t type)
+{
+    printf("\033[1m");
+    switch (type) {
+    case SCAN_NOTE:
+        printf("\033[96m");
+        break;
+    case SCAN_WARNING:
+        printf("\033[95m");
+        break;
+    case SCAN_ERROR:
+        printf("\033[91m");
+        break;
+    }
+}
+
+static void print_message_impl(const scanner_loc_t *begin, const scanner_loc_t *end, const scan_message_t type, const char *format, va_list args)
+{
+    fpos_t fpos;
+    FILE *file;
+    size_t column;
+    int i, c, d;
+
+    d = 0;
+    for (i = begin->line; i > 0; i /= 10) {
+        d++;
+    }
+
+    print_message_color(type);
+    switch (type) {
+    case SCAN_NOTE:
+        printf("note: ");
+        break;
+    case SCAN_WARNING:
+        printf("warning: ");
+        break;
+    case SCAN_ERROR:
+        printf("error: ");
+        break;
+    }
+    printf("\033[0m");
+
+    printf("\033[1m");
+    vprintf(format, args);
+    printf("\033[0m");
+    printf("\n");
+
+    printf("\033[94m");
+    for (i = 0; i < d; i++) {
+        printf(" ");
+    }
+    printf("--> ");
+    printf("\033[0m");
+    printf("%s:%ld:%ld\n", scanner.filename, begin->line, begin->col);
+
+    file = scanner.file;
+    fgetpos(file, &fpos);
+    fsetpos(file, &begin->fpos);
+    fseek(file, -2, SEEK_CUR);
+
+    printf("\033[94m");
+    for (i = 0; i < d; i++) {
+        printf(" ");
+    }
+    printf(" | \n");
+    printf("\033[0m");
+
+    printf("\033[94m");
+    printf("%ld | ", begin->line);
+    printf("\033[0m");
+    for (column = 0; column < begin->col - 1; column++) {
+        printf("%c", fgetc(file));
+    }
+
+    print_message_color(type);
+    for (column = begin->col; column < end->col; column++) {
+        printf("%c", fgetc(file));
+    }
+    printf("\033[0m");
+    while (1) {
+        c = fgetc(file);
+        if (c == EOF || c == '\n' || c == '\r') {
+            break;
+        }
+        printf("%c", (char) c);
+    }
+    printf("\n");
+
+    printf("\033[94m");
+    for (i = 0; i < d; i++) {
+        printf(" ");
+    }
+    printf(" | ");
+    printf("\033[0m");
+    for (column = 0; column < begin->col - 1; column++) {
+        printf(" ");
+    }
+
+    print_message_color(type);
+    for (column = begin->col; column < end->col; column++) {
+        printf("^");
+    }
+    printf("\033[0m");
+    printf("\n");
+    printf("\n");
+
+    fsetpos(file, &fpos);
+}
+
+void print_message(const scanner_loc_t *loc, const scan_message_t type, const char *format, ...)
+{
+    scanner_loc_t end;
+    va_list args;
+
+    end = *loc;
+    end.col++;
+    va_start(args, format);
+    print_message_impl(loc, &end, type, format, args);
+    va_end(args);
+}
+
+void print_note(const scanner_loc_t *loc, const char *format, ...)
+{
+    scanner_loc_t end;
+    va_list args;
+
+    end = *loc;
+    end.col++;
+    va_start(args, format);
+    print_message_impl(loc, &end, SCAN_NOTE, format, args);
+    va_end(args);
+}
+
+void print_warning(const scanner_loc_t *loc, const char *format, ...)
+{
+    scanner_loc_t end;
+    va_list args;
+
+    end = *loc;
+    end.col++;
+    va_start(args, format);
+    print_message_impl(loc, &end, SCAN_WARNING, format, args);
+    va_end(args);
+}
+
+void print_error(const scanner_loc_t *loc, const char *format, ...)
+{
+    scanner_loc_t end;
+    va_list args;
+
+    end = *loc;
+    end.col++;
+    va_start(args, format);
+    print_message_impl(loc, &end, SCAN_ERROR, format, args);
+    va_end(args);
+}
+
+void print_token_message(const scanner_loc_t *begin, const scanner_loc_t *end, const scan_message_t type, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    print_message_impl(begin, end, type, format, args);
+    va_end(args);
+}
+
+void print_token_note(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    print_message_impl(begin, end, SCAN_NOTE, format, args);
+    va_end(args);
+}
+
+void print_token_warning(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    print_message_impl(begin, end, SCAN_WARNING, format, args);
+    va_end(args);
+}
+
+void print_token_error(const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    print_message_impl(begin, end, SCAN_ERROR, format, args);
+    va_end(args);
 }
