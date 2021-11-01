@@ -23,26 +23,28 @@ typedef struct {
     scanner_loc_t preloc, loc;
 } scanner_t;
 
-int scanner_init(scanner_t *sc, char *filename);
+int scanner_init(scanner_t *sc, const char *filename);
 
 void scanner_free(scanner_t *sc);
 
-void scanner_advance(scanner_t *sc);
+void scanner_consume(scanner_t *sc);
 
-void scanner_advance_line(scanner_t *sc);
+void scanner_newline(scanner_t *sc);
 
-int scanner_top(scanner_t *sc);
+int scanner_top(const scanner_t *sc);
 
-int scanner_next(scanner_t *sc);
+int scanner_next(const scanner_t *sc);
 
-const char *scanner_buf_data(scanner_t *sc);
+const char *scanner_buf_data(const scanner_t *sc);
 
-int scanner_buf_overflow(scanner_t *sc);
+size_t scanner_buf_size(const scanner_t *sc);
+
+int scanner_buf_overflow(const scanner_t *sc);
 
 void scanner_clear_buf(scanner_t *sc);
 
-const scanner_loc_t *scanner_pre_location(scanner_t *sc);
+const scanner_loc_t *scanner_pre_location(const scanner_t *sc);
 
-const scanner_loc_t *scanner_location(scanner_t *sc);
+const scanner_loc_t *scanner_location(const scanner_t *sc);
 
 #endif /* SCANNER_H */

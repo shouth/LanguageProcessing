@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-int scanner_init(scanner_t *sc, char *filename)
+int scanner_init(scanner_t *sc, const char *filename)
 {
     if (sc == NULL || filename == NULL) {
         return -1;
@@ -39,7 +39,7 @@ void scanner_free(scanner_t *sc)
     fclose(sc->file);
 }
 
-void scanner_advance(scanner_t *sc)
+void scanner_consume(scanner_t *sc)
 {
     if (sc == NULL) {
         return;
@@ -56,7 +56,7 @@ void scanner_advance(scanner_t *sc)
     sc->loc.col++;
 }
 
-void scanner_advance_line(scanner_t *sc)
+void scanner_newline(scanner_t *sc)
 {
     if (sc == NULL) {
         return;
@@ -66,7 +66,7 @@ void scanner_advance_line(scanner_t *sc)
     sc->loc.col = 1;
 }
 
-int scanner_top(scanner_t *sc)
+int scanner_top(const scanner_t *sc)
 {
     if (sc == NULL) {
         return EOF;
@@ -74,7 +74,7 @@ int scanner_top(scanner_t *sc)
     return sc->top;
 }
 
-int scanner_next(scanner_t *sc)
+int scanner_next(const scanner_t *sc)
 {
     if (sc == NULL) {
         return EOF;
@@ -82,7 +82,7 @@ int scanner_next(scanner_t *sc)
     return sc->next;
 }
 
-const char *scanner_buf_data(scanner_t *sc)
+const char *scanner_buf_data(const scanner_t *sc)
 {
     if (sc == NULL) {
         return NULL;
@@ -90,7 +90,15 @@ const char *scanner_buf_data(scanner_t *sc)
     return sc->buf;
 }
 
-int scanner_buf_overflow(scanner_t *sc)
+size_t scanner_buf_size(const scanner_t *sc)
+{
+    if (sc == NULL) {
+        return 0;
+    }
+    return sc->buf_end;
+}
+
+int scanner_buf_overflow(const scanner_t *sc)
 {
     if (sc == NULL) {
         return 0;
@@ -109,7 +117,7 @@ void scanner_clear_buf(scanner_t *sc)
     sc->preloc = sc->loc;
 }
 
-const scanner_loc_t *scanner_pre_location(scanner_t *sc)
+const scanner_loc_t *scanner_pre_location(const scanner_t *sc)
 {
     if (sc == NULL) {
         return NULL;
@@ -117,7 +125,7 @@ const scanner_loc_t *scanner_pre_location(scanner_t *sc)
     return &sc->preloc;
 }
 
-const scanner_loc_t *scanner_location(scanner_t *sc)
+const scanner_loc_t *scanner_location(const scanner_t *sc)
 {
     if (sc == NULL) {
         return NULL;

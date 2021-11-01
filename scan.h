@@ -53,6 +53,4 @@ int get_linenum(void);
  */
 void end_scan(void);
 
-const scanner_loc_t *get_location();
-
 #endif
