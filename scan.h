@@ -4,9 +4,6 @@
 #include "token-list.h"
 #include "scanner.h"
 
-#define SCAN_SUCCESS 0
-#define SCAN_FAILURE -1
-
 /**
  * Open the file and initiate the scanner.
  *
