@@ -394,7 +394,7 @@ int lexer_free(lexer_t *le)
     scanner_free(&le->scanner);
 }
 
-int lexer_top(const lexer_t *le)
+int lexer_lookahead(const lexer_t *le)
 {
     if (le == NULL) {
         return -1;

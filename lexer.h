@@ -27,7 +27,7 @@ int lexer_init(lexer_t *le, const char *filename);
 
 int lexer_free(lexer_t *le);
 
-int lexer_top(const lexer_t *le);
+int lexer_lookahead(const lexer_t *le);
 
 void lexer_next(lexer_t *le);
 

@@ -49,7 +49,7 @@ int scan(void)
         scanning = 1;
     }
 
-    code = lexer_top(le);
+    code = lexer_lookahead(le);
     lexer_next(le);
 
     if (code == TNUMBER) {
