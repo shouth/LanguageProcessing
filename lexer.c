@@ -2,6 +2,7 @@
 
 #include "lexer.h"
 #include "scanner.h"
+#include "message.h"
 
 int iscrlf(int c)
 {

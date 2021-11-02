@@ -1,5 +1,5 @@
 #include <stdarg.h>
-#include "scanner-message.h"
+#include "message.h"
 
 static size_t digits_len(unsigned long int d)
 {
