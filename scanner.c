@@ -16,9 +16,8 @@ int scanner_init(scanner_t *sc, const char *filename)
         strcpy(sc->filename, filename);
     }
 
-    fgetpos(sc->file, &sc->loc.fpos);
-    sc->loc.line = 1;
-    sc->loc.col = 1;
+    sc->line = 1;
+    sc->col = 1;
 
     sc->lookahead[0] = fgetc(sc->file);
     sc->lookahead[1] = fgetc(sc->file);
@@ -42,7 +41,7 @@ void scanner_next(scanner_t *sc)
     }
     sc->lookahead[0] = sc->lookahead[1];
     sc->lookahead[1] = fgetc(sc->file);
-    sc->loc.col++;
+    sc->col++;
 }
 
 void scanner_next_line(scanner_t *sc)
@@ -50,9 +49,8 @@ void scanner_next_line(scanner_t *sc)
     if (sc == NULL) {
         return;
     }
-    fgetpos(sc->file, &sc->loc.fpos);
-    sc->loc.line++;
-    sc->loc.col = 1;
+    sc->line++;
+    sc->col = 1;
 }
 
 int scanner_lookahead_1(const scanner_t *sc)
@@ -71,10 +69,14 @@ int scanner_lookahead_2(const scanner_t *sc)
     return sc->lookahead[1];
 }
 
-const location_t *scanner_location(const scanner_t *sc)
+int scanner_location(const scanner_t *sc, location_t *loc)
 {
-    if (sc == NULL) {
-        return NULL;
+    if (sc == NULL || loc == NULL) {
+        return -1;
     }
-    return &sc->loc;
+
+    fgetpos(sc->file, &loc->fpos);
+    loc->line = sc->line;
+    loc->col = sc->col;
+    return 0;
 }

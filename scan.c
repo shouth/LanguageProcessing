@@ -32,10 +32,12 @@ int init_scan(char *filename)
 
 int get_linenum(void)
 {
+    location_t loc;
     if (!scanning) {
         return 0;
     }
-    return scanner_location(lexer_scanner(&lexer))->line;
+    scanner_location(lexer_scanner(&lexer), &loc);
+    return loc.line;
 }
 
 int scan(void)

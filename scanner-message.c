@@ -148,10 +148,10 @@ static void message_impl(
     file = sc->file;
     fgetpos(file, &fpos);
     fsetpos(file, &begin->fpos);
-    fseek(file, -2, SEEK_CUR);
+    fseek(file, -(begin->col + 1), SEEK_CUR);
 
     line_number_message(begin->line, digits_len(begin->line));
-    cnt = file_line_message(file, begin->col - 1);
+    cnt = file_line_message(file, begin->col);
     color_message(type);
     file_line_message(file, end->col - begin->col);
     reset_color_message();
