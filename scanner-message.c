@@ -151,7 +151,7 @@ static void message_impl(
     fseek(file, -(begin->col + 1), SEEK_CUR);
 
     line_number_message(begin->line, digits_len(begin->line));
-    cnt = file_line_message(file, begin->col);
+    cnt = file_line_message(file, begin->col - 1);
     color_message(type);
     file_line_message(file, end->col - begin->col);
     reset_color_message();

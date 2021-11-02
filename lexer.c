@@ -279,10 +279,10 @@ int lex_token(lexer_t *le)
     int code;
     long num;
 
-    scanner_location(sc, &pre_loc);
     while (1) {
         le->buf[0] = '\0';
         le->buf_size = 0;
+        scanner_location(sc, &pre_loc);
 
         /* return on EOF */
         if (scanner_lookahead_1(sc) == EOF) {
