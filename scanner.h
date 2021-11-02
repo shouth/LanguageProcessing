@@ -5,6 +5,8 @@
 #include "token-list.h"
 
 typedef struct {
+    FILE *file;
+    char *filename;
     fpos_t fpos;
     size_t line;
     size_t col;

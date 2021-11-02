@@ -306,10 +306,10 @@ int lex_token(lexer_t *le)
             code = lex_comment(le);
             if (code == LEX_FAILURE) {
                 if (scanner_lookahead_1(sc) == EOF) {
-                    message_error(sc, &pre_loc, "comment is unterminated");
+                    message_error(&pre_loc, "comment is unterminated");
                 } else {
                     scanner_location(sc, &loc);
-                    message_error(sc, &loc, "invalid character is detected");
+                    message_error(&loc, "invalid character is detected");
                 }
                 return LEX_FAILURE;
             }
@@ -321,17 +321,17 @@ int lex_token(lexer_t *le)
             code = lex_string(le);
             if (code == LEX_FAILURE) {
                 if (scanner_lookahead_1(sc) == EOF || iscrlf(scanner_lookahead_1(sc))) {
-                    message_error(sc, &pre_loc, "string is unterminated");
+                    message_error(&pre_loc, "string is unterminated");
                 } else {
                     scanner_location(sc, &loc);
-                    message_error(sc, &loc, "invalid character is detected");
+                    message_error(&loc, "invalid character is detected");
                 }
                 return LEX_FAILURE;
             }
 
             if (le->buf_size - 2 > MAXSTRSIZE) {
                 scanner_location(sc, &loc);
-                message_token_error(sc, &pre_loc, &loc, "string needs to be shorter than %d", MAXSTRSIZE);
+                message_token_error(&pre_loc, &loc, "string needs to be shorter than %d", MAXSTRSIZE);
                 return LEX_FAILURE;
             }
             strncpy(le->string_attr, le->buf + 1, le->buf_size - 2);
@@ -346,7 +346,7 @@ int lex_token(lexer_t *le)
             le->num_attr = strtol(le->buf, NULL, 10);
             if (errno == ERANGE || le->num_attr > 32767) {
                 scanner_location(sc, &loc);
-                message_token_error(sc, &pre_loc, &loc, "number needs to be less than 32768", MAXSTRSIZE);
+                message_token_error(&pre_loc, &loc, "number needs to be less than 32768", MAXSTRSIZE);
                 return LEX_FAILURE;
             }
             return code;
@@ -357,7 +357,7 @@ int lex_token(lexer_t *le)
             code = lex_name_or_keyword(le);
             if (le->buf_size > MAXSTRSIZE) {
                 scanner_location(sc, &loc);
-                message_token_error(sc, &pre_loc, &loc, "name needs to be shorter than %d", MAXSTRSIZE);
+                message_token_error(&pre_loc, &loc, "name needs to be shorter than %d", MAXSTRSIZE);
                 return LEX_FAILURE;
             }
             strcpy(le->string_attr, le->buf);
@@ -370,7 +370,7 @@ int lex_token(lexer_t *le)
         }
 
         scanner_location(sc, &loc);
-        message_error(sc, &loc, "invalid character is detected");
+        message_error(&loc, "invalid character is detected");
         return LEX_FAILURE;
     }
 }

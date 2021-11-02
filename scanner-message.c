@@ -46,12 +46,12 @@ static void main_message(const scan_message_t type, const char *format, va_list 
     printf("\033[0m");
 }
 
-static void location_message(const scanner_t *sc, const location_t *sloc)
+static void location_message(const location_t *sloc)
 {
     printf("\033[94m");
     printf("%*.s--> ", (int) digits_len(sloc->line), " ");
     printf("\033[0m");
-    printf("%s:%ld:%ld", sc->filename, sloc->line, sloc->col);
+    printf("%s:%ld:%ld", sloc->filename, sloc->line, sloc->col);
 }
 
 static void line_number_message(size_t line_number, size_t len)
@@ -127,7 +127,6 @@ static void indicator_message(size_t offset, size_t len)
 }
 
 static void message_impl(
-    const scanner_t *sc,
     const location_t *begin,
     const location_t *end,
     const scan_message_t type,
@@ -139,13 +138,13 @@ static void message_impl(
 
     main_message(type, format, args);
     newline_message();
-    location_message(sc, begin);
+    location_message(begin);
     newline_message();
 
     line_number_message(0, digits_len(begin->line));
     newline_message();
 
-    file = sc->file;
+    file = begin->file;
     fgetpos(file, &fpos);
     fsetpos(file, &begin->fpos);
     fseek(file, -(begin->col + 1), SEEK_CUR);
@@ -168,7 +167,7 @@ static void message_impl(
     fsetpos(file, &fpos);
 }
 
-void message(const scanner_t *sc, const location_t *loc, const scan_message_t type, const char *format, ...)
+void message(const location_t *loc, const scan_message_t type, const char *format, ...)
 {
     location_t end;
     va_list args;
@@ -176,11 +175,11 @@ void message(const scanner_t *sc, const location_t *loc, const scan_message_t ty
     end = *loc;
     end.col++;
     va_start(args, format);
-    message_impl(sc, loc, &end, type, format, args);
+    message_impl(loc, &end, type, format, args);
     va_end(args);
 }
 
-void message_warning(const scanner_t *sc, const location_t *loc, const char *format, ...)
+void message_warning(const location_t *loc, const char *format, ...)
 {
     location_t end;
     va_list args;
@@ -188,11 +187,11 @@ void message_warning(const scanner_t *sc, const location_t *loc, const char *for
     end = *loc;
     end.col++;
     va_start(args, format);
-    message_impl(sc, loc, &end, SCAN_WARNING, format, args);
+    message_impl(loc, &end, SCAN_WARNING, format, args);
     va_end(args);
 }
 
-void message_error(const scanner_t *sc, const location_t *loc, const char *format, ...)
+void message_error(const location_t *loc, const char *format, ...)
 {
     location_t end;
     va_list args;
@@ -200,30 +199,30 @@ void message_error(const scanner_t *sc, const location_t *loc, const char *forma
     end = *loc;
     end.col++;
     va_start(args, format);
-    message_impl(sc, loc, &end, SCAN_ERROR, format, args);
+    message_impl(loc, &end, SCAN_ERROR, format, args);
     va_end(args);
 }
 
-void message_token(const scanner_t *sc, const location_t *begin, const location_t *end, const scan_message_t type, const char *format, ...)
+void message_token(const location_t *begin, const location_t *end, const scan_message_t type, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    message_impl(sc, begin, end, type, format, args);
+    message_impl(begin, end, type, format, args);
     va_end(args);
 }
 
-void message_token_warning(const scanner_t *sc, const location_t *begin, const location_t *end, const char *format, ...)
+void message_token_warning(const location_t *begin, const location_t *end, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    message_impl(sc, begin, end, SCAN_WARNING, format, args);
+    message_impl(begin, end, SCAN_WARNING, format, args);
     va_end(args);
 }
 
-void message_token_error(const scanner_t *sc, const location_t *begin, const location_t *end, const char *format, ...)
+void message_token_error(const location_t *begin, const location_t *end, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    message_impl(sc, begin, end, SCAN_ERROR, format, args);
+    message_impl(begin, end, SCAN_ERROR, format, args);
     va_end(args);
 }

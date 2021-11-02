@@ -74,8 +74,9 @@ int scanner_location(const scanner_t *sc, location_t *loc)
     if (sc == NULL || loc == NULL) {
         return -1;
     }
-
-    fgetpos(sc->file, &loc->fpos);
+    loc->file = sc->file;
+    loc->filename = sc->filename;
+    fgetpos(loc->file, &loc->fpos);
     loc->line = sc->line;
     loc->col = sc->col;
     return 0;
