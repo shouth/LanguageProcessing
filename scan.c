@@ -48,7 +48,7 @@ int scan(void)
     }
 
     code = lexer_top(le);
-    lexer_consume(le);
+    lexer_next(le);
 
     if (code == TNUMBER) {
         num_attr = lexer_num_attr(le);

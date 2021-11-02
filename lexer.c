@@ -13,56 +13,69 @@ int isgraphical(int c)
     return isblank(c) || isgraph(c) || iscrlf(c);
 }
 
-int lex_blank(scanner_t *sc)
+int lexer_consume(lexer_t *le)
 {
-    if (isblank(scanner_top(sc))) {
-        scanner_consume(sc);
+    scanner_t *sc = &le->scanner;
+    if (le->buf_size + 1 < le->buf_capacity) {
+        le->buf[le->buf_size] = scanner_lookahead_1(sc);
+        le->buf_size++;
+        le->buf[le->buf_size] = '\0';
+    }
+    scanner_next(sc);
+}
+
+int lex_blank(lexer_t *le)
+{
+    scanner_t *sc = &le->scanner;
+    if (isblank(scanner_lookahead_1(sc))) {
+        lexer_consume(le);
+        return LEX_SUCCESS;
+    }
+    return LEX_FAILURE;
+}
+
+int lex_newline(lexer_t *le)
+{
+    scanner_t *sc = &le->scanner;
+    if (scanner_lookahead_1(sc) == '\n') {
+        lexer_consume(le);
+        if (scanner_lookahead_1(sc) == '\r') {
+            lexer_consume(le);
+        }
+        scanner_next_line(sc);
+        return LEX_SUCCESS;
+    }
+
+    if (scanner_lookahead_1(sc) == '\r') {
+        lexer_consume(le);
+        if (scanner_lookahead_1(sc) == '\n') {
+            lexer_consume(le);
+        }
+        scanner_next_line(sc);
         return LEX_SUCCESS;
     }
 
     return LEX_FAILURE;
 }
 
-int lex_newline(scanner_t *sc)
+int lex_comment(lexer_t *le)
 {
-    if (scanner_top(sc) == '\n') {
-        scanner_consume(sc);
-        if (scanner_top(sc) == '\r') {
-            scanner_consume(sc);
-        }
-        scanner_newline(sc);
-        return LEX_SUCCESS;
-    }
-
-    if (scanner_top(sc) == '\r') {
-        scanner_consume(sc);
-        if (scanner_top(sc) == '\n') {
-            scanner_consume(sc);
-        }
-        scanner_newline(sc);
-        return LEX_SUCCESS;
-    }
-
-    return LEX_FAILURE;
-}
-
-int lex_comment(scanner_t *sc)
-{
-    if (scanner_top(sc) == '{') {
-        scanner_consume(sc);
+    scanner_t *sc = &le->scanner;
+    if (scanner_lookahead_1(sc) == '{') {
+        lexer_consume(le);
 
         while (1) {
-            if (scanner_top(sc) == '}') {
-                scanner_consume(sc);
+            if (scanner_lookahead_1(sc) == '}') {
+                lexer_consume(le);
                 break;
             }
 
-            if (iscrlf(scanner_top(sc))) {
-                lex_newline(sc);
+            if (iscrlf(scanner_lookahead_1(sc))) {
+                lex_newline(le);
                 continue;
             }
-            if (isgraphical(scanner_top(sc))) {
-                scanner_consume(sc);
+            if (isgraphical(scanner_lookahead_1(sc))) {
+                lexer_consume(le);
                 continue;
             }
 
@@ -72,23 +85,23 @@ int lex_comment(scanner_t *sc)
         return LEX_SUCCESS;
     }
 
-    if (scanner_top(sc) == '/' && scanner_next(sc) == '*') {
-        scanner_consume(sc);
-        scanner_consume(sc);
+    if (scanner_lookahead_1(sc) == '/' && scanner_lookahead_2(sc) == '*') {
+        lexer_consume(le);
+        lexer_consume(le);
 
         while (1) {
-            if (scanner_top(sc) == '*' && scanner_next(sc) == '/') {
-                scanner_consume(sc);
-                scanner_consume(sc);
+            if (scanner_lookahead_1(sc) == '*' && scanner_lookahead_2(sc) == '/') {
+                lexer_consume(le);
+                lexer_consume(le);
                 break;
             }
 
-            if (iscrlf(scanner_top(sc))) {
-                lex_newline(sc);
+            if (iscrlf(scanner_lookahead_1(sc))) {
+                lex_newline(le);
                 continue;
             }
-            if (isgraphical(scanner_top(sc))) {
-                scanner_consume(sc);
+            if (isgraphical(scanner_lookahead_1(sc))) {
+                lexer_consume(le);
                 continue;
             }
 
@@ -101,24 +114,25 @@ int lex_comment(scanner_t *sc)
     return LEX_FAILURE;
 }
 
-int lex_string(scanner_t *sc)
+int lex_string(lexer_t *le)
 {
-    if (scanner_top(sc) == '\'') {
-        scanner_consume(sc);
+    scanner_t *sc = &le->scanner;
+    if (scanner_lookahead_1(sc) == '\'') {
+        lexer_consume(le);
 
         while (1) {
-            if (scanner_top(sc) == '\'' && scanner_next(sc) != '\'') {
-                scanner_consume(sc);
+            if (scanner_lookahead_1(sc) == '\'' && scanner_lookahead_2(sc) != '\'') {
+                lexer_consume(le);
                 break;
             }
 
-            if (scanner_top(sc) == '\'' && scanner_next(sc) == '\'') {
-                scanner_consume(sc);
-                scanner_consume(sc);
+            if (scanner_lookahead_1(sc) == '\'' && scanner_lookahead_2(sc) == '\'') {
+                lexer_consume(le);
+                lexer_consume(le);
                 continue;
             }
-            if (!iscrlf(scanner_top(sc)) && isgraphical(scanner_top(sc))) {
-                scanner_consume(sc);
+            if (!iscrlf(scanner_lookahead_1(sc)) && isgraphical(scanner_lookahead_1(sc))) {
+                lexer_consume(le);
                 continue;
             }
 
@@ -131,14 +145,15 @@ int lex_string(scanner_t *sc)
     return LEX_FAILURE;
 }
 
-int lex_unsigned_number(scanner_t *sc)
+int lex_unsigned_number(lexer_t *le)
 {
-    if (isdigit(scanner_top(sc))) {
-        scanner_consume(sc);
+    scanner_t *sc = &le->scanner;
+    if (isdigit(scanner_lookahead_1(sc))) {
+        lexer_consume(le);
 
         while (1) {
-            if (isdigit(scanner_top(sc))) {
-                scanner_consume(sc);
+            if (isdigit(scanner_lookahead_1(sc))) {
+                lexer_consume(le);
                 continue;
             }
 
@@ -151,16 +166,17 @@ int lex_unsigned_number(scanner_t *sc)
     return LEX_FAILURE;
 }
 
-int lex_name_or_keyword(scanner_t *sc)
+int lex_name_or_keyword(lexer_t *le)
 {
+    scanner_t *sc = &le->scanner;
     size_t i;
 
-    if (isalpha(scanner_top(sc))) {
-        scanner_consume(sc);
+    if (isalpha(scanner_lookahead_1(sc))) {
+        lexer_consume(le);
 
         while (1) {
-            if (isalnum(scanner_top(sc))) {
-                scanner_consume(sc);
+            if (isalnum(scanner_lookahead_1(sc))) {
+                lexer_consume(le);
                 continue;
             }
 
@@ -168,7 +184,7 @@ int lex_name_or_keyword(scanner_t *sc)
         }
 
         for (i = 0; i < KEYWORDSIZE; i++) {
-            if (strcmp(scanner_buf_data(sc), key[i].keyword) == 0) {
+            if (strcmp(le->buf, key[i].keyword) == 0) {
                 return key[i].keytoken;
             }
         }
@@ -179,71 +195,72 @@ int lex_name_or_keyword(scanner_t *sc)
     return LEX_FAILURE;
 }
 
-int lex_symbol(scanner_t *sc)
+int lex_symbol(lexer_t *le)
 {
-    switch (scanner_top(sc)) {
+    scanner_t *sc = &le->scanner;
+    switch (scanner_lookahead_1(sc)) {
     case '+':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TPLUS;
     case '-':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TMINUS;
     case '*':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TSTAR;
     case '=':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TEQUAL;
     case '(':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TLPAREN;
     case ')':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TRPAREN;
     case '[':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TLSQPAREN;
     case ']':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TRSQPAREN;
     case '.':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TDOT;
     case ',':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TCOMMA;
     case ';':
-        scanner_consume(sc);
+        lexer_consume(le);
         return TSEMI;
 
     case ':':
-        scanner_consume(sc);
-        switch (scanner_top(sc)) {
+        lexer_consume(le);
+        switch (scanner_lookahead_1(sc)) {
         case '=':
-            scanner_consume(sc);
+            lexer_consume(le);
             return TASSIGN;
         default:
             return TCOLON;
         }
 
     case '>':
-        scanner_consume(sc);
-        switch (scanner_top(sc)) {
+        lexer_consume(le);
+        switch (scanner_lookahead_1(sc)) {
         case '=':
-            scanner_consume(sc);
+            lexer_consume(le);
             return TGREQ;
         default:
             return TGR;
         }
 
     case '<':
-        scanner_consume(sc);
-        switch (scanner_top(sc)) {
+        lexer_consume(le);
+        switch (scanner_lookahead_1(sc)) {
         case '>':
-            scanner_consume(sc);
+            lexer_consume(le);
             return TNOTEQ;
         case '=':
-            scanner_consume(sc);
+            lexer_consume(le);
             return TLEEQ;
         default:
             return TLE;
@@ -254,37 +271,41 @@ int lex_symbol(scanner_t *sc)
     }
 }
 
-int lex_token(scanner_t *sc)
+int lex_token(lexer_t *le)
 {
+    scanner_t *sc = &le->scanner;
+    location_t loc = *scanner_location(sc);
+
     int code;
     long num;
 
     while (1) {
-        scanner_clear_buf(sc);
+        le->buf[0] = '\0';
+        le->buf_size = 0;
 
         /* return on EOF */
-        if (scanner_top(sc) == EOF) {
+        if (scanner_lookahead_1(sc) == EOF) {
             return LEX_FAILURE;
         }
 
         /* skip space and tab */
-        if (isblank(scanner_top(sc))) {
-            lex_blank(sc);
+        if (isblank(scanner_lookahead_1(sc))) {
+            lex_blank(le);
             continue;
         }
 
         /* skip new line */
-        if (iscrlf(scanner_top(sc))) {
-            lex_newline(sc);
+        if (iscrlf(scanner_lookahead_1(sc))) {
+            lex_newline(le);
             continue;
         }
 
         /* skip comment */
-        if (scanner_top(sc) == '{' || (scanner_top(sc) == '/' && scanner_next(sc) == '*')) {
-            code = lex_comment(sc);
+        if (scanner_lookahead_1(sc) == '{' || (scanner_lookahead_1(sc) == '/' && scanner_lookahead_2(sc) == '*')) {
+            code = lex_comment(le);
             if (code == LEX_FAILURE) {
-                if (scanner_top(sc) == EOF) {
-                    message_error(sc, scanner_pre_location(sc), "comment is unterminated");
+                if (scanner_lookahead_1(sc) == EOF) {
+                    message_error(sc, &loc, "comment is unterminated");
                 } else {
                     message_error(sc, scanner_location(sc), "invalid character is detected");
                 }
@@ -294,11 +315,11 @@ int lex_token(scanner_t *sc)
         }
 
         /* read string */
-        if (scanner_top(sc) == '\'') {
-            code = lex_string(sc);
+        if (scanner_lookahead_1(sc) == '\'') {
+            code = lex_string(le);
             if (code == LEX_FAILURE) {
-                if (scanner_top(sc) == EOF || iscrlf(scanner_top(sc))) {
-                    message_error(sc, scanner_pre_location(sc), "string is unterminated");
+                if (scanner_lookahead_1(sc) == EOF || iscrlf(scanner_lookahead_1(sc))) {
+                    message_error(sc, &loc, "string is unterminated");
                 } else {
                     message_error(sc, scanner_location(sc), "invalid character is detected");
                 }
@@ -308,19 +329,19 @@ int lex_token(scanner_t *sc)
         }
 
         /* read unsigned number */
-        if (isdigit(scanner_top(sc))) {
-            code = lex_unsigned_number(sc);
+        if (isdigit(scanner_lookahead_1(sc))) {
+            code = lex_unsigned_number(le);
             return code;
         }
 
         /* read name or keyword */
-        if (isalpha(scanner_top(sc))) {
-            code = lex_name_or_keyword(sc);
+        if (isalpha(scanner_lookahead_1(sc))) {
+            code = lex_name_or_keyword(le);
             return code;
         }
 
         /* read symbol */
-        if ((code = lex_symbol(sc)) > 0) {
+        if ((code = lex_symbol(le)) > 0) {
             return code;
         }
 
@@ -332,34 +353,35 @@ int lex_token(scanner_t *sc)
 int lexer_read(lexer_t *le)
 {
     scanner_t *sc = &le->scanner;
-    le->last_token = lex_token(sc);
+    location_t loc = *scanner_location(sc);
+    le->last_token = lex_token(le);
 
     if (le->last_token == TSTRING) {
-        if (scanner_buf_overflow(sc)) {
-            message_token_error(sc, scanner_pre_location(sc), scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
+        if (le->buf_size - 2 > MAXSTRSIZE) {
+            message_token_error(sc, &loc, scanner_location(sc), "string needs to be shorter than %d", MAXSTRSIZE);
             return LEX_FAILURE;
         }
-        strncpy(le->string_attr, scanner_buf_data(sc) + 1, scanner_buf_size(sc) - 2);
-        le->string_attr[scanner_buf_size(sc) - 2] = '\0';
+        strncpy(le->string_attr, le->buf + 1, le->buf_size - 2);
+        le->string_attr[le->buf_size - 2] = '\0';
         return LEX_SUCCESS;
     }
 
     if (le->last_token == TNUMBER) {
         errno = 0;
-        le->num_attr = strtol(scanner_buf_data(sc), NULL, 10);
+        le->num_attr = strtol(le->buf, NULL, 10);
         if (errno == ERANGE || le->num_attr > 32767) {
-            message_token_error(sc, scanner_pre_location(sc), scanner_location(sc), "number needs to be less than 32768", MAXSTRSIZE);
+            message_token_error(sc, &loc, scanner_location(sc), "number needs to be less than 32768", MAXSTRSIZE);
             return LEX_FAILURE;
         }
         return LEX_SUCCESS;
     }
 
     if (le->last_token == TNAME) {
-        if (scanner_buf_overflow(sc)) {
-            message_token_error(sc, scanner_pre_location(sc), scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
+        if (le->buf_size > MAXSTRSIZE) {
+            message_token_error(sc, &loc, scanner_location(sc), "name needs to be shorter than %d", MAXSTRSIZE);
             return LEX_FAILURE;
         }
-        strcpy(le->string_attr, scanner_buf_data(sc));
+        strcpy(le->string_attr, le->buf);
         return LEX_SUCCESS;
     }
 
@@ -371,6 +393,11 @@ int lexer_init(lexer_t *le, const char *filename)
     if (le == NULL || filename == NULL) {
         return -1;
     }
+
+    le->buf[0] = '\0';
+    le->buf_capacity = sizeof(le->buf) / sizeof(le->buf[0]);
+    le->buf_size = 0;
+
     scanner_init(&le->scanner, filename);
     lexer_read(le);
     return 0;
@@ -389,7 +416,7 @@ int lexer_top(const lexer_t *le)
     return le->last_token;
 }
 
-void lexer_consume(lexer_t *le)
+void lexer_next(lexer_t *le)
 {
     if (le == NULL) {
         return;

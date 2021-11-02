@@ -46,7 +46,7 @@ static void main_message(const scan_message_t type, const char *format, va_list 
     printf("\033[0m");
 }
 
-static void location_message(const scanner_t *sc, const scanner_loc_t *sloc)
+static void location_message(const scanner_t *sc, const location_t *sloc)
 {
     printf("\033[94m");
     printf("%*.s--> ", (int) digits_len(sloc->line), " ");
@@ -128,8 +128,8 @@ static void indicator_message(size_t offset, size_t len)
 
 static void message_impl(
     const scanner_t *sc,
-    const scanner_loc_t *begin,
-    const scanner_loc_t *end,
+    const location_t *begin,
+    const location_t *end,
     const scan_message_t type,
     const char *format, va_list args)
 {
@@ -168,9 +168,9 @@ static void message_impl(
     fsetpos(file, &fpos);
 }
 
-void message(const scanner_t *sc, const scanner_loc_t *loc, const scan_message_t type, const char *format, ...)
+void message(const scanner_t *sc, const location_t *loc, const scan_message_t type, const char *format, ...)
 {
-    scanner_loc_t end;
+    location_t end;
     va_list args;
 
     end = *loc;
@@ -180,9 +180,9 @@ void message(const scanner_t *sc, const scanner_loc_t *loc, const scan_message_t
     va_end(args);
 }
 
-void message_warning(const scanner_t *sc, const scanner_loc_t *loc, const char *format, ...)
+void message_warning(const scanner_t *sc, const location_t *loc, const char *format, ...)
 {
-    scanner_loc_t end;
+    location_t end;
     va_list args;
 
     end = *loc;
@@ -192,9 +192,9 @@ void message_warning(const scanner_t *sc, const scanner_loc_t *loc, const char *
     va_end(args);
 }
 
-void message_error(const scanner_t *sc, const scanner_loc_t *loc, const char *format, ...)
+void message_error(const scanner_t *sc, const location_t *loc, const char *format, ...)
 {
-    scanner_loc_t end;
+    location_t end;
     va_list args;
 
     end = *loc;
@@ -204,7 +204,7 @@ void message_error(const scanner_t *sc, const scanner_loc_t *loc, const char *fo
     va_end(args);
 }
 
-void message_token(const scanner_t *sc, const scanner_loc_t *begin, const scanner_loc_t *end, const scan_message_t type, const char *format, ...)
+void message_token(const scanner_t *sc, const location_t *begin, const location_t *end, const scan_message_t type, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -212,7 +212,7 @@ void message_token(const scanner_t *sc, const scanner_loc_t *begin, const scanne
     va_end(args);
 }
 
-void message_token_warning(const scanner_t *sc, const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
+void message_token_warning(const scanner_t *sc, const location_t *begin, const location_t *end, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -220,7 +220,7 @@ void message_token_warning(const scanner_t *sc, const scanner_loc_t *begin, cons
     va_end(args);
 }
 
-void message_token_error(const scanner_t *sc, const scanner_loc_t *begin, const scanner_loc_t *end, const char *format, ...)
+void message_token_error(const scanner_t *sc, const location_t *begin, const location_t *end, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
