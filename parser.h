@@ -6,7 +6,7 @@
 #define PARSE_SUCCESS 0
 #define PARSE_FAILURE -1
 
-typedef int (parser_cb_t)(lexer_t *le, va_list args);
+typedef int (parser_cb_t)(const parser_t *pa, va_list args);
 
 typedef struct {
     lexer_t lexer;
