@@ -1,4 +1,7 @@
 {
     "C_Cpp.clang_format_fallbackStyle": "WebKit",
+    "files.associations": {
+        "*.mpl": "pascal"
+    },
     "ros.distro": "noetic"
 }
