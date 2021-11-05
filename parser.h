@@ -2,12 +2,15 @@
 #define PARSER_H
 
 #include <stdarg.h>
+#include <stdint.h>
+
+#include "lexer.h"
 
 #define PARSE_SUCCESS 0
 #define PARSE_FAILURE -1
 
 typedef enum {
-    RULE_PROGRAM = 1,
+    RULE_PROGRAM,
     RULE_BLOCK,
     RULE_VARIABLE_DECLARATION,
     RULE_VARIABLE_NAMES,
@@ -40,19 +43,29 @@ typedef enum {
     RULE_INPUT_STATEMENT,
     RULE_OUTPUT_STATEMENT,
     RULE_OUTPUT_FORMAT,
-    RULE_EMPTY_STATEMENT
+    RULE_EMPTY_STATEMENT,
+
+    SIZE_OF_RULE
 } rule_id_t;
+
+typedef struct parser parser_t;
 
 typedef int (parser_cb_t)(const parser_t *pa, va_list args);
 
-typedef struct {
+struct parser {
     lexer_t lexer;
     parser_cb_t *on_success;
     parser_cb_t *on_failure;
-} parser_t;
+
+    uint64_t expected_terminals;
+};
 
 int parser_init(parser_t *pa, const char *filename, parser_cb_t *on_success, parser_cb_t *on_failure);
 
 void parser_free(parser_t *pa);
+
+int parser_failure(parser_t *pa, ...);
+
+int parser_success(parser_t *pa, ...);
 
 #endif /* PARSER_H */

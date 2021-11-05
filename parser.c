@@ -2,146 +2,103 @@
 #include "lexer.h"
 #include "scanner.h"
 #include "message.h"
-#include "macro.h"
+#include "parser-dsl.h"
+#include "token-list.h"
 
-#define MPPL_DSL_FAILURE PARSE_FAILURE
-#define MPPL_DSL_SUCCESS PARSE_SUCCESS
-
-#define MPPL_DSL_CALLBACK_ON_SUCCESS() \
-    parser_success(pa, parsing_rule);
-
-#define MPPL_DSL_CALLBACK_ON_FAILURE() \
-    parser_failure(pa, parsing_rule);
-
-#define MPPL_DSL_RETURN(x) \
-    parse_status = x; \
-    break;
-
-#define MPPL_DSL_IS_STATUS_SUCCESS() \
-    parse_status != MPPL_DSL_FAILURE
-
-#define MPPL_DSL_IS_STATUS_FAILURE() \
-    parse_status == MPPL_DSL_FAILURE
-
-#define MPPL_DSL_IS_RULE(x) \
-    BOOL(MPPL_IS_RULE_##x)
-
-#define MPPL_DSL_EXPAND(x) \
-    IF(MPPL_DSL_IS_RULE(x))( \
-        parse_status = mppl_parse_##x(pa);, \
-        MPPL_EXPAND_##x \
-    )
-
-#define MPPL_DSL_EARLY_RETURN(rule, cond, ret) \
-    MPPL_DSL_EXPAND(rule) \
-    if (MPPL_DSL_IS_STATUS_##cond()) { \
-        MPPL_DSL_RETURN(ret) \
-    }
-
-#define MPPL_DSL_SUCCESS_ON_SUCCESS(rule) \
-    MPPL_DSL_EARLY_RETURN(rule, SUCCESS, parsing_rule)
-
-#define MPPL_DSL_FAILURE_ON_FAILURE(rule) \
-    MPPL_DSL_EARLY_RETURN(rule, FAILURE, MPPL_DSL_FAILURE)
-
-#define IMPL_MPPL_EXPAND_MPPL_ALTERNATE(rules) \
-    do { \
-        INVOKE_ALL(MPPL_DSL_SUCCESS_ON_SUCCESS, rules) \
-        MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
-    } while (0);
-#define IMPL_MPPL_EXPAND_MPPL_ALTERNATE_INDIRECT() IMPL_MPPL_EXPAND_MPPL_ALTERNATE
-#define MPPL_EXPAND_MPPL_ALTERNATE(rules) OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_ALTERNATE_INDIRECT) () (rules)
-
-#define IMPL_MPPL_EXPAND_MPPL_REPEAT(rules) \
-    while (1) { \
-        MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), FAILURE, parsing_rule) \
-        INVOKE_ALL(MPPL_DSL_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
-    }
-#define IMPL_MPPL_EXPAND_MPPL_REPEAT_INDIRECT() IMPL_MPPL_EXPAND_MPPL_REPEAT
-#define MPPL_EXPAND_MPPL_REPEAT(rules) OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_REPEAT_INDIRECT) () (rules)
-
-#define IMPL_MPPL_EXPAND_MPPL_OPTION(rules) \
-    do { \
-        MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), FAILURE, parsing_rule) \
-        INVOKE_ALL(MPPL_DSL_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
-    } while (0);
-#define IMPL_MPPL_EXPAND_MPPL_OPTION_INDIRECT() IMPL_MPPL_EXPAND_MPPL_OPTION
-#define MPPL_EXPAND_MPPL_OPTION(rules) OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_OPTION_INDIRECT) () (rules)
-
-#define MPPL_DSL_RULE_FAILURE_ON_FAILURE(rule) \
-    MPPL_DSL_EXPAND(rule) \
-    if (MPPL_DSL_IS_STATUS_FAILURE()) { \
-        MPPL_DSL_CALLBACK_ON_FAILURE() \
-        MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
-    }
-
-#define MPPL_DEFINE_RULE(name, val, rules) \
-    int mppl_parse_##name(parser_t *pa) { \
-        const int parsing_rule = val; \
-        int parse_status; \
-        do { \
-            EVAL(MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), FAILURE, MPPL_DSL_FAILURE)) \
-            EVAL(INVOKE_ALL(MPPL_DSL_RULE_FAILURE_ON_FAILURE, LIST_TAIL(rules))) \
-        } while (0); \
-        if (MPPL_DSL_IS_STATUS_SUCCESS()) { \
-            MPPL_DSL_CALLBACK_ON_SUCCESS() \
-        } \
-        return parse_status; \
-    }
-
-#define MPPL_EXPAND_MPPL_TERMINAL(name) \
-    parse_status = mppl_parse_terminal_##name(pa);
-
-#define MPPL_DEFINE_TERMINAL(name, val) \
-    int mppl_parse_terminal_##name(parser_t *pa) { \
-        const int parsing_rule = val; \
-        if (lexer_lookahead(&pa->lexer) == parsing_rule) { \
-            return PARSE_FAILURE; \
-        } \
-        MPPL_DSL_CALLBACK_ON_SUCCESS() \
-        lexer_next(&pa->lexer); \
-        return PARSE_SUCCESS; \
-    }
-
-#define MPPL_EXPAND_MPPL_MANUAL(code) \
-    do { \
-        code \
-    } while (0); \
-
-#define MPPL_IS_RULE_MPPL_ALTERNATE(_) 0
-#define MPPL_IS_RULE_MPPL_REPEAT(_) 0
-#define MPPL_IS_RULE_MPPL_OPTION(_) 0
-#define MPPL_IS_RULE_MPPL_TERMINAL(_) 0
-#define MPPL_IS_RULE_MPPL_MANUAL(_) 0
-
-#define MPPL_ALTERNATE(_) MPPL_ALTERNATE(_)
-#define MPPL_REPEAT(_) MPPL_REPEAT(_)
-#define MPPL_OPTION(_) MPPL_OPTION(_)
-#define MPPL_TERMINAL(_) MPPL_TERMINAL(_)
-#define MPPL_MANUAL(_) MPPL_MANUAL(_)
-
-MPPL_DEFINE_TERMINAL(program, TPROGRAM)
 MPPL_DEFINE_TERMINAL(name, TNAME)
-MPPL_DEFINE_TERMINAL(semicolon, TSEMI)
+MPPL_DEFINE_TERMINAL(program, TPROGRAM)
+MPPL_DEFINE_TERMINAL(var, TVAR)
+MPPL_DEFINE_TERMINAL(array, TARRAY)
+MPPL_DEFINE_TERMINAL(of, TOF)
+MPPL_DEFINE_TERMINAL(begin, TBEGIN)
+MPPL_DEFINE_TERMINAL(end, TEND)
+MPPL_DEFINE_TERMINAL(if, TIF)
+MPPL_DEFINE_TERMINAL(then, TTHEN)
+MPPL_DEFINE_TERMINAL(else, TELSE)
+MPPL_DEFINE_TERMINAL(procedure, TPROCEDURE)
+MPPL_DEFINE_TERMINAL(return, TRETURN)
+MPPL_DEFINE_TERMINAL(call, TCALL)
+MPPL_DEFINE_TERMINAL(while, TWHILE)
+MPPL_DEFINE_TERMINAL(do, TDO)
+MPPL_DEFINE_TERMINAL(not, TNOT)
+MPPL_DEFINE_TERMINAL(or, TOR)
+MPPL_DEFINE_TERMINAL(div, TDIV)
+MPPL_DEFINE_TERMINAL(and, TAND)
+MPPL_DEFINE_TERMINAL(char, TCHAR)
+MPPL_DEFINE_TERMINAL(integer, TINTEGER)
+MPPL_DEFINE_TERMINAL(boolean, TBOOLEAN)
+MPPL_DEFINE_TERMINAL(readln, TREADLN)
+MPPL_DEFINE_TERMINAL(writeln, TWRITELN)
+MPPL_DEFINE_TERMINAL(true, TTRUE)
+MPPL_DEFINE_TERMINAL(false, TFALSE)
+MPPL_DEFINE_TERMINAL(number, TNUMBER)
+MPPL_DEFINE_TERMINAL(string, TSTRING)
+MPPL_DEFINE_TERMINAL(plus, TPLUS)
+MPPL_DEFINE_TERMINAL(minus, TMINUS)
+MPPL_DEFINE_TERMINAL(star, TSTAR)
+MPPL_DEFINE_TERMINAL(equal, TEQUAL)
+MPPL_DEFINE_TERMINAL(noteq, TNOTEQ)
+MPPL_DEFINE_TERMINAL(le, TLE)
+MPPL_DEFINE_TERMINAL(leeq, TLEEQ)
+MPPL_DEFINE_TERMINAL(gr, TGR)
+MPPL_DEFINE_TERMINAL(greq, TGREQ)
+MPPL_DEFINE_TERMINAL(lparen, TLPAREN)
+MPPL_DEFINE_TERMINAL(rparen, TRPAREN)
+MPPL_DEFINE_TERMINAL(lsqparen, TLSQPAREN)
+MPPL_DEFINE_TERMINAL(rsqparen, TRSQPAREN)
+MPPL_DEFINE_TERMINAL(assign, TASSIGN)
 MPPL_DEFINE_TERMINAL(dot, TDOT)
+MPPL_DEFINE_TERMINAL(comma, TCOMMA)
+MPPL_DEFINE_TERMINAL(colon, TCOLON)
+MPPL_DEFINE_TERMINAL(semi, TSEMI)
+MPPL_DEFINE_TERMINAL(read, TREAD)
+MPPL_DEFINE_TERMINAL(write, TWRITE)
+MPPL_DEFINE_TERMINAL(break, TBREAK)
+
+MPPL_DECLARE_RULE(program)
+MPPL_DECLARE_RULE(block)
+MPPL_DECLARE_RULE(variable_declaration)
+MPPL_DECLARE_RULE(variable_names)
+MPPL_DECLARE_RULE(variable_name)
+MPPL_DECLARE_RULE(type)
+MPPL_DECLARE_RULE(standard_type)
+MPPL_DECLARE_RULE(array_type)
+MPPL_DECLARE_RULE(subprogram_declaration)
+MPPL_DECLARE_RULE(procedure_name)
+MPPL_DECLARE_RULE(formal_parameters)
+MPPL_DECLARE_RULE(compound_statement)
+MPPL_DECLARE_RULE(statement)
+MPPL_DECLARE_RULE(condition_statement)
+MPPL_DECLARE_RULE(iteration_statement)
+MPPL_DECLARE_RULE(exit_statement)
+MPPL_DECLARE_RULE(call_statement)
+MPPL_DECLARE_RULE(expressions)
+MPPL_DECLARE_RULE(return_statement)
+MPPL_DECLARE_RULE(assignment_statement)
+MPPL_DECLARE_RULE(left_part)
+MPPL_DECLARE_RULE(variable)
+MPPL_DECLARE_RULE(expression)
+MPPL_DECLARE_RULE(simple_expression)
+MPPL_DECLARE_RULE(term)
+MPPL_DECLARE_RULE(factor)
+MPPL_DECLARE_RULE(constant)
+MPPL_DECLARE_RULE(multiplicative_operator)
+MPPL_DECLARE_RULE(additive_operator)
+MPPL_DECLARE_RULE(relational_operator)
+MPPL_DECLARE_RULE(input_statement)
+MPPL_DECLARE_RULE(output_statement)
+MPPL_DECLARE_RULE(output_format)
+MPPL_DECLARE_RULE(empty_statement)
 
 MPPL_DEFINE_RULE(
-    output_statement,
-    RULE_OUTPUT_STATEMENT,
+    program,
+    RULE_PROGRAM,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(write))
-        (MPPL_TERMINAL(writeln))
-    ))
-    (MPPL_OPTION(
-        (MPPL_TERMINAL(left_parenthesis))
-        (output_format)
-        (MPPL_REPEAT(
-            (MPPL_TERMINAL(comma))
-            (output_format)
-        ))
-        (MPPL_TERMINAL(right_parenthesis))
-    ))
+    (MPPL_TERMINAL(program))
+    (MPPL_TERMINAL(name))
+    (MPPL_TERMINAL(semi))
+    (block)
+    (MPPL_TERMINAL(dot))
 )
 
 MPPL_DEFINE_RULE(
@@ -158,21 +115,48 @@ MPPL_DEFINE_RULE(
 )
 
 MPPL_DEFINE_RULE(
-    program,
-    RULE_PROGRAM,
+    variable_declaration,
+    RULE_VARIABLE_DECLARATION,
 
-    (MPPL_TERMINAL(program))
-    (MPPL_TERMINAL(name))
-    (MPPL_TERMINAL(semicolon))
-    (block)
-    (MPPL_TERMINAL(dot))
+    (MPPL_TERMINAL(var))
+    (variable_names)
+    (MPPL_TERMINAL(colon))
+    (type)
+    (MPPL_TERMINAL(semi))
+    (MPPL_REPEAT(
+        (variable_names)
+        (MPPL_TERMINAL(colon))
+        (type)
+        (MPPL_TERMINAL(semi))
+    ))
 )
 
+
+
+MPPL_DEFINE_RULE(
+    output_statement,
+    RULE_OUTPUT_STATEMENT,
+
+    (MPPL_ALTERNATE(
+        (MPPL_TERMINAL(write))
+        (MPPL_TERMINAL(writeln))
+    ))
+    (MPPL_OPTION(
+        (MPPL_TERMINAL(lparen))
+        (output_format)
+        (MPPL_REPEAT(
+            (MPPL_TERMINAL(comma))
+            (output_format)
+        ))
+        (MPPL_TERMINAL(rparen))
+    ))
+)
 int parser_init(parser_t *pa, const char *filename, parser_cb_t *on_success, parser_cb_t *on_failure)
 {
     lexer_init(&pa->lexer, filename);
     pa->on_success = on_success;
     pa->on_failure = on_failure;
+    pa->expected_terminals = 0;
 }
 
 void parser_free(parser_t *pa)
@@ -185,7 +169,7 @@ int parser_success(parser_t *pa, ...)
     int ret;
     va_list args;
     va_start(args, pa);
-    ret = pa->on_success(pa->lexer, args);
+    ret = pa->on_success(pa, args);
     va_end(args);
     return ret;
 }
@@ -195,7 +179,7 @@ int parser_failure(parser_t *pa, ...)
     int ret;
     va_list args;
     va_start(args, pa);
-    ret = pa->on_failure(pa->lexer, args);
+    ret = pa->on_failure(pa, args);
     va_end(args);
     return ret;
 }
