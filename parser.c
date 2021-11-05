@@ -380,21 +380,21 @@ MPPL_DEFINE_RULE(
     (MPPL_ALTERNATE(
         (variable)
         (constant)
-        /* (
+        (MPPL_SEQUENCE(
             (MPPL_TERMINAL(lparen))
             (expression)
             (MPPL_TERMINAL(rparen))
-        ) */
-        /* (
+        ))
+        (MPPL_SEQUENCE(
             (MPPL_TERMINAL(not))
             (factor)
-        ) */
-        /* (
+        ))
+        (MPPL_SEQUENCE(
             (standard_type)
             (MPPL_TERMINAL(lparen))
             (expression)
             (MPPL_TERMINAL(rparen))
-        ) */
+        ))
     ))
 )
 
@@ -489,13 +489,13 @@ MPPL_DEFINE_RULE(
     RULE_OUTPUT_FORMAT,
 
     (MPPL_ALTERNATE(
-        /* (
+        (MPPL_SEQUENCE(
             (expression)
             (MPPL_OPTION(
                 (MPPL_TERMINAL(comma))
-                (number)
+                (MPPL_TERMINAL(number))
             ))
-        ) */
+        ))
         (MPPL_TERMINAL(string))
     ))
 )
