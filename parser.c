@@ -404,7 +404,7 @@ MPPL_DEFINE_RULE(
 
     (alt (
         (term (number))
-        (term (false))
+        (term (true))
         (term (false))
         (term (string))
     ))
