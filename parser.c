@@ -94,19 +94,19 @@ MPPL_DEFINE_RULE(
     program,
     RULE_PROGRAM,
 
-    (MPPL_TERMINAL(program))
-    (MPPL_TERMINAL(name))
-    (MPPL_TERMINAL(semi))
+    (term (program))
+    (term (name))
+    (term (semi))
     (block)
-    (MPPL_TERMINAL(dot))
+    (term (dot))
 )
 
 MPPL_DEFINE_RULE(
     block,
     RULE_BLOCK,
 
-    (MPPL_REPEAT(
-        (MPPL_ALTERNATE(
+    (rep (
+        (alt (
             (variable_declaration)
             (subprogram_declaration)
         ))
@@ -118,16 +118,16 @@ MPPL_DEFINE_RULE(
     variable_declaration,
     RULE_VARIABLE_DECLARATION,
 
-    (MPPL_TERMINAL(var))
+    (term (var))
     (variable_names)
-    (MPPL_TERMINAL(colon))
+    (term (colon))
     (type)
-    (MPPL_TERMINAL(semi))
-    (MPPL_REPEAT(
+    (term (semi))
+    (rep (
         (variable_names)
-        (MPPL_TERMINAL(colon))
+        (term (colon))
         (type)
-        (MPPL_TERMINAL(semi))
+        (term (semi))
     ))
 )
 
@@ -136,8 +136,8 @@ MPPL_DEFINE_RULE(
     RULE_VARIABLE_NAMES,
 
     (variable_name)
-    (MPPL_REPEAT(
-        (MPPL_TERMINAL(comma))
+    (rep (
+        (term (comma))
         (variable_name)
     ))
 )
@@ -146,14 +146,14 @@ MPPL_DEFINE_RULE(
     variable_name,
     RULE_VARIABLE_NAME,
 
-    (MPPL_TERMINAL(name))
+    (term (name))
 )
 
 MPPL_DEFINE_RULE(
     type,
     RULE_TYPE,
 
-    (MPPL_ALTERNATE(
+    (alt (
         (standard_type)
         (array_type)
     ))
@@ -163,10 +163,10 @@ MPPL_DEFINE_RULE(
     standard_type,
     RULE_STANDARD_TYPE,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(integer))
-        (MPPL_TERMINAL(boolean))
-        (MPPL_TERMINAL(char))
+    (alt (
+        (term (integer))
+        (term (boolean))
+        (term (char))
     ))
 )
 
@@ -174,11 +174,11 @@ MPPL_DEFINE_RULE(
     array_type,
     RULE_ARRAY_TYPE,
 
-    (MPPL_TERMINAL(array))
-    (MPPL_TERMINAL(lsqparen))
-    (MPPL_TERMINAL(number))
-    (MPPL_TERMINAL(rsqparen))
-    (MPPL_TERMINAL(of))
+    (term (array))
+    (term (lsqparen))
+    (term (number))
+    (term (rsqparen))
+    (term (of))
     (standard_type)
 )
 
@@ -186,61 +186,61 @@ MPPL_DEFINE_RULE(
     subprogram_declaration,
     RULE_SUBPROGRAM_DECLARATION,
 
-    (MPPL_TERMINAL(procedure))
+    (term (procedure))
     (procedure_name)
-    (MPPL_OPTION(
+    (opt (
         (formal_parameters)
     ))
-    (MPPL_TERMINAL(semi))
-    (MPPL_OPTION(
+    (term (semi))
+    (opt (
         (variable_declaration)
     ))
     (compound_statement)
-    (MPPL_TERMINAL(semi))
+    (term (semi))
 )
 
 MPPL_DEFINE_RULE(
     procedure_name,
     RULE_PROCEDURE_NAME,
 
-    (MPPL_TERMINAL(name))
+    (term (name))
 )
 
 MPPL_DEFINE_RULE(
     formal_parameters,
     RULE_FORMAL_PARAMETERS,
 
-    (MPPL_TERMINAL(lparen))
+    (term (lparen))
     (variable_names)
-    (MPPL_TERMINAL(colon))
+    (term (colon))
     (type)
-    (MPPL_REPEAT(
-        (MPPL_TERMINAL(semi))
+    (rep (
+        (term (semi))
         (variable_names)
-        (MPPL_TERMINAL(colon))
+        (term (colon))
         (type)
     ))
-    (MPPL_TERMINAL(rparen))
+    (term (rparen))
 )
 
 MPPL_DEFINE_RULE(
     compound_statement,
     RULE_COMPOUND_STATEMENT,
 
-    (MPPL_TERMINAL(begin))
+    (term (begin))
     (statement)
-    (MPPL_REPEAT(
-        (MPPL_TERMINAL(semi))
+    (rep (
+        (term (semi))
         (statement)
     ))
-    (MPPL_TERMINAL(end))
+    (term (end))
 )
 
 MPPL_DEFINE_RULE(
     statement,
     RULE_STATEMENT,
 
-    (MPPL_ALTERNATE(
+    (alt (
         (assignment_statement)
         (condition_statement)
         (iteration_statement)
@@ -258,12 +258,12 @@ MPPL_DEFINE_RULE(
     condition_statement,
     RULE_CONDITION_STATEMENT,
 
-    (MPPL_TERMINAL(if))
+    (term (if))
     (expression)
-    (MPPL_TERMINAL(then))
+    (term (then))
     (statement)
-    (MPPL_OPTION(
-        (MPPL_TERMINAL(else))
+    (opt (
+        (term (else))
         (statement)
     ))
 )
@@ -272,19 +272,19 @@ MPPL_DEFINE_RULE(
     exit_statement,
     RULE_EXIT_STATEMENT,
 
-    (MPPL_TERMINAL(break))
+    (term (break))
 )
 
 MPPL_DEFINE_RULE(
     call_statement,
     RULE_CALL_STATEMENT,
 
-    (MPPL_TERMINAL(call))
+    (term (call))
     (procedure_name)
-    (MPPL_OPTION(
-        (MPPL_TERMINAL(lparen))
+    (opt (
+        (term (lparen))
         (expressions)
-        (MPPL_TERMINAL(rparen))
+        (term (rparen))
     ))
 )
 
@@ -293,8 +293,8 @@ MPPL_DEFINE_RULE(
     RULE_EXPRESSIONS,
 
     (expression)
-    (MPPL_REPEAT(
-        (MPPL_TERMINAL(comma))
+    (rep (
+        (term (comma))
         (expression)
     ))
 )
@@ -303,7 +303,7 @@ MPPL_DEFINE_RULE(
     return_statement,
     RULE_RETURN_STATEMENT,
 
-    (MPPL_TERMINAL(return))
+    (term (return))
 )
 
 MPPL_DEFINE_RULE(
@@ -311,7 +311,7 @@ MPPL_DEFINE_RULE(
     RULE_ASSIGNMENT_STATEMENT,
 
     (left_part)
-    (MPPL_TERMINAL(assign))
+    (term (assign))
     (expression)
 )
 
@@ -327,10 +327,10 @@ MPPL_DEFINE_RULE(
     RULE_VARIABLE,
 
     (variable_name)
-    (MPPL_OPTION(
-        (MPPL_TERMINAL(lsqparen))
+    (opt (
+        (term (lsqparen))
         (expression)
-        (MPPL_TERMINAL(rsqparen))
+        (term (rsqparen))
     ))
 )
 
@@ -339,7 +339,7 @@ MPPL_DEFINE_RULE(
     RULE_EXPRESSION,
 
     (simple_expression)
-    (MPPL_REPEAT(
+    (rep (
         (relational_operator)
         (simple_expression)
     ))
@@ -349,14 +349,14 @@ MPPL_DEFINE_RULE(
     simple_expression,
     RULE_SIMPLE_EXPRESSION,
 
-    (MPPL_OPTION(
-        (MPPL_ALTERNATE(
-            (MPPL_TERMINAL(plus))
-            (MPPL_TERMINAL(minus))
+    (opt (
+        (alt (
+            (term (plus))
+            (term (minus))
         ))
     ))
     (term)
-    (MPPL_REPEAT(
+    (rep (
         (additive_operator)
         (term)
     ))
@@ -367,7 +367,7 @@ MPPL_DEFINE_RULE(
     RULE_TERM,
 
     (factor)
-    (MPPL_REPEAT(
+    (rep (
         (multiplicative_operator)
         (factor)
     ))
@@ -377,23 +377,23 @@ MPPL_DEFINE_RULE(
     factor,
     RULE_FACTOR,
 
-    (MPPL_ALTERNATE(
+    (alt (
         (variable)
         (constant)
-        (MPPL_SEQUENCE(
-            (MPPL_TERMINAL(lparen))
+        (seq (
+            (term (lparen))
             (expression)
-            (MPPL_TERMINAL(rparen))
+            (term (rparen))
         ))
-        (MPPL_SEQUENCE(
-            (MPPL_TERMINAL(not))
+        (seq (
+            (term (not))
             (factor)
         ))
-        (MPPL_SEQUENCE(
+        (seq (
             (standard_type)
-            (MPPL_TERMINAL(lparen))
+            (term (lparen))
             (expression)
-            (MPPL_TERMINAL(rparen))
+            (term (rparen))
         ))
     ))
 )
@@ -402,11 +402,11 @@ MPPL_DEFINE_RULE(
     constant,
     RULE_CONSTANT,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(number))
-        (MPPL_TERMINAL(false))
-        (MPPL_TERMINAL(false))
-        (MPPL_TERMINAL(string))
+    (alt (
+        (term (number))
+        (term (false))
+        (term (false))
+        (term (string))
     ))
 )
 
@@ -414,10 +414,10 @@ MPPL_DEFINE_RULE(
     multiplicative_operator,
     RULE_MULTIPLICATIVE_OPERATOR,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(star))
-        (MPPL_TERMINAL(div))
-        (MPPL_TERMINAL(and))
+    (alt (
+        (term (star))
+        (term (div))
+        (term (and))
     ))
 )
 
@@ -425,10 +425,10 @@ MPPL_DEFINE_RULE(
     additive_operator,
     RULE_ADDITIVE_OPERATOR,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(plus))
-        (MPPL_TERMINAL(minus))
-        (MPPL_TERMINAL(or))
+    (alt (
+        (term (plus))
+        (term (minus))
+        (term (or))
     ))
 )
 
@@ -436,13 +436,13 @@ MPPL_DEFINE_RULE(
     relational_operator,
     RULE_RELATIONAL_OPERATOR,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(equal))
-        (MPPL_TERMINAL(noteq))
-        (MPPL_TERMINAL(le))
-        (MPPL_TERMINAL(leeq))
-        (MPPL_TERMINAL(gr))
-        (MPPL_TERMINAL(greq))
+    (alt (
+        (term (equal))
+        (term (noteq))
+        (term (le))
+        (term (leeq))
+        (term (gr))
+        (term (greq))
     ))
 )
 
@@ -450,18 +450,18 @@ MPPL_DEFINE_RULE(
     input_statement,
     RULE_INPUT_STATEMENT,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(read))
-        (MPPL_TERMINAL(readln))
+    (alt (
+        (term (read))
+        (term (readln))
     ))
-    (MPPL_OPTION(
-        (MPPL_TERMINAL(lparen))
+    (opt (
+        (term (lparen))
         (variable)
-        (MPPL_REPEAT(
-            (MPPL_TERMINAL(comma))
+        (rep (
+            (term (comma))
             (variable)
         ))
-        (MPPL_TERMINAL(rparen))
+        (term (rparen))
     ))
 )
 
@@ -469,18 +469,18 @@ MPPL_DEFINE_RULE(
     output_statement,
     RULE_OUTPUT_STATEMENT,
 
-    (MPPL_ALTERNATE(
-        (MPPL_TERMINAL(write))
-        (MPPL_TERMINAL(writeln))
+    (alt (
+        (term (write))
+        (term (writeln))
     ))
-    (MPPL_OPTION(
-        (MPPL_TERMINAL(lparen))
+    (opt (
+        (term (lparen))
         (output_format)
-        (MPPL_REPEAT(
-            (MPPL_TERMINAL(comma))
+        (rep (
+            (term (comma))
             (output_format)
         ))
-        (MPPL_TERMINAL(rparen))
+        (term (rparen))
     ))
 )
 
@@ -488,15 +488,15 @@ MPPL_DEFINE_RULE(
     output_format,
     RULE_OUTPUT_FORMAT,
 
-    (MPPL_ALTERNATE(
-        (MPPL_SEQUENCE(
+    (alt (
+        (seq (
             (expression)
-            (MPPL_OPTION(
-                (MPPL_TERMINAL(comma))
-                (MPPL_TERMINAL(number))
+            (opt (
+                (term (comma))
+                (term (number))
             ))
         ))
-        (MPPL_TERMINAL(string))
+        (term (string))
     ))
 )
 

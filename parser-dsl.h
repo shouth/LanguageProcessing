@@ -51,46 +51,46 @@
 #define MPPL_DSL_FAILURE_ON_FAILURE(rule) \
     MPPL_DSL_EARLY_RETURN(rule, MPPL_DSL_FAILURE, MPPL_DSL_FAILURE)
 
-#define IMPL_MPPL_EXPAND_MPPL_SEQUENCE(rules) \
+#define IMPL_MPPL_EXPAND_seq(rules) \
     do { \
         MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), MPPL_DSL_FAILURE, MPPL_DSL_FAILURE) \
         INVOKE_ALL(MPPL_DSL_RULE_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
     } while (0);
-#define IMPL_MPPL_EXPAND_MPPL_SEQUENCE_INDIRECT() \
-    IMPL_MPPL_EXPAND_MPPL_SEQUENCE
-#define MPPL_EXPAND_MPPL_SEQUENCE(rules) \
-    OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_SEQUENCE_INDIRECT) () (rules)
+#define IMPL_MPPL_EXPAND_seq_INDIRECT() \
+    IMPL_MPPL_EXPAND_seq
+#define MPPL_EXPAND_seq(rules) \
+    OBSTRUCT(IMPL_MPPL_EXPAND_seq_INDIRECT) () (rules)
 
-#define IMPL_MPPL_EXPAND_MPPL_ALTERNATE(rules) \
+#define IMPL_MPPL_EXPAND_alt(rules) \
     do { \
         INVOKE_ALL(MPPL_DSL_SUCCESS_ON_SUCCESS, rules) \
         MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
     } while (0);
-#define IMPL_MPPL_EXPAND_MPPL_ALTERNATE_INDIRECT() \
-    IMPL_MPPL_EXPAND_MPPL_ALTERNATE
-#define MPPL_EXPAND_MPPL_ALTERNATE(rules) \
-    OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_ALTERNATE_INDIRECT) () (rules)
+#define IMPL_MPPL_EXPAND_alt_INDIRECT() \
+    IMPL_MPPL_EXPAND_alt
+#define MPPL_EXPAND_alt(rules) \
+    OBSTRUCT(IMPL_MPPL_EXPAND_alt_INDIRECT) () (rules)
 
-#define IMPL_MPPL_EXPAND_MPPL_REPEAT(rules) \
+#define IMPL_MPPL_EXPAND_rep(rules) \
     while (1) { \
         MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), MPPL_DSL_FAILURE, MPPL_DSL_SUCCESS) \
         INVOKE_ALL(MPPL_DSL_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
     }
-#define IMPL_MPPL_EXPAND_MPPL_REPEAT_INDIRECT() \
-    IMPL_MPPL_EXPAND_MPPL_REPEAT
-#define MPPL_EXPAND_MPPL_REPEAT(rules) \
-    OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_REPEAT_INDIRECT) () (rules)
+#define IMPL_MPPL_EXPAND_rep_INDIRECT() \
+    IMPL_MPPL_EXPAND_rep
+#define MPPL_EXPAND_rep(rules) \
+    OBSTRUCT(IMPL_MPPL_EXPAND_rep_INDIRECT) () (rules)
 
-#define IMPL_MPPL_EXPAND_MPPL_OPTION(rules) \
+#define IMPL_MPPL_EXPAND_opt(rules) \
     do { \
         MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), MPPL_DSL_FAILURE, MPPL_DSL_SUCCESS) \
         INVOKE_ALL(MPPL_DSL_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
         MPPL_DSL_RETURN(MPPL_DSL_SUCCESS) \
     } while (0);
-#define IMPL_MPPL_EXPAND_MPPL_OPTION_INDIRECT() \
-    IMPL_MPPL_EXPAND_MPPL_OPTION
-#define MPPL_EXPAND_MPPL_OPTION(rules) \
-    OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_OPTION_INDIRECT) () (rules)
+#define IMPL_MPPL_EXPAND_opt_INDIRECT() \
+    IMPL_MPPL_EXPAND_opt
+#define MPPL_EXPAND_opt(rules) \
+    OBSTRUCT(IMPL_MPPL_EXPAND_opt_INDIRECT) () (rules)
 
 #define MPPL_DSL_RULE_FAILURE_ON_FAILURE(rule) \
     MPPL_DSL_EXPAND(rule) \
@@ -106,7 +106,7 @@
         const int parsing_rule = val; \
         int parse_status = MPPL_DSL_SUCCESS; \
         WHEN(NOT(LIST_IS_EMPTY(rules)))( \
-            EVAL(MPPL_DSL_EXPAND(MPPL_SEQUENCE(rules))) \
+            EVAL(MPPL_DSL_EXPAND(seq(rules))) \
         ) \
         if (MPPL_DSL_IS_STATUS(MPPL_DSL_SUCCESS)) { \
             MPPL_DSL_CALLBACK_ON_SUCCESS() \
@@ -115,7 +115,7 @@
         return parse_status; \
     }
 
-#define MPPL_EXPAND_MPPL_TERMINAL(name) \
+#define MPPL_EXPAND_term(name) \
     parse_status = mppl_terminal_##name(pa);
 
 #define MPPL_DECLARE_TERMINAL(name) \
@@ -134,23 +134,16 @@
         return MPPL_DSL_SUCCESS; \
     }
 
-#define MPPL_EXPAND_MPPL_MANUAL(code) \
+#define MPPL_EXPAND_manual(code) \
     do { \
         code \
     } while (0); \
 
-#define MPPL_IS_RULE_MPPL_SEQUENCE(_) 0
-#define MPPL_IS_RULE_MPPL_ALTERNATE(_) 0
-#define MPPL_IS_RULE_MPPL_REPEAT(_) 0
-#define MPPL_IS_RULE_MPPL_OPTION(_) 0
-#define MPPL_IS_RULE_MPPL_TERMINAL(_) 0
-#define MPPL_IS_RULE_MPPL_MANUAL(_) 0
-
-#define MPPL_SEQUENCE(_) MPPL_SEQUENCE(_)
-#define MPPL_ALTERNATE(_) MPPL_ALTERNATE(_)
-#define MPPL_REPEAT(_) MPPL_REPEAT(_)
-#define MPPL_OPTION(_) MPPL_OPTION(_)
-#define MPPL_TERMINAL(_) MPPL_TERMINAL(_)
-#define MPPL_MANUAL(_) MPPL_MANUAL(_)
+#define MPPL_IS_RULE_seq(_) 0
+#define MPPL_IS_RULE_alt(_) 0
+#define MPPL_IS_RULE_rep(_) 0
+#define MPPL_IS_RULE_opt(_) 0
+#define MPPL_IS_RULE_term(_) 0
+#define MPPL_IS_RULE_MPPL_manual(_) 0
 
 #endif /* PARSER_DSL_H */
