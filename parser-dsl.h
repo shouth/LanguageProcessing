@@ -101,12 +101,12 @@
 #define MPPL_DECLARE_RULE(name) \
     int mppl_rule_##name(parser_t *pa);
 
-#define MPPL_DEFINE_RULE(name, val, rules) \
+#define MPPL_DEFINE_RULE(name, val, rule) \
     int mppl_rule_##name(parser_t *pa) { \
         const int parsing_rule = val; \
         int parse_status = MPPL_DSL_SUCCESS; \
-        WHEN(NOT(LIST_IS_EMPTY(rules)))( \
-            EVAL(MPPL_DSL_EXPAND(seq(rules))) \
+        WHEN(NOT(LIST_IS_EMPTY(rule))) ( \
+            EVAL(INVOKE(MPPL_DSL_EXPAND, rule)) \
         ) \
         if (MPPL_DSL_IS_STATUS(MPPL_DSL_SUCCESS)) { \
             MPPL_DSL_CALLBACK_ON_SUCCESS() \
@@ -144,6 +144,6 @@
 #define MPPL_IS_RULE_rep(_) 0
 #define MPPL_IS_RULE_opt(_) 0
 #define MPPL_IS_RULE_term(_) 0
-#define MPPL_IS_RULE_MPPL_manual(_) 0
+#define MPPL_IS_RULE_manual(_) 0
 
 #endif /* PARSER_DSL_H */
