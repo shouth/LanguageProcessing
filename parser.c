@@ -131,7 +131,339 @@ MPPL_DEFINE_RULE(
     ))
 )
 
+MPPL_DEFINE_RULE(
+    variable_names,
+    RULE_VARIABLE_NAMES,
 
+    (variable_name)
+    (MPPL_REPEAT(
+        (MPPL_TERMINAL(comma))
+        (variable_name)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    variable_name,
+    RULE_VARIABLE_NAME,
+
+    (MPPL_TERMINAL(name))
+)
+
+MPPL_DEFINE_RULE(
+    type,
+    RULE_TYPE,
+
+    (MPPL_ALTERNATE(
+        (standard_type)
+        (array_type)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    standard_type,
+    RULE_STANDARD_TYPE,
+
+    (MPPL_ALTERNATE(
+        (MPPL_TERMINAL(integer))
+        (MPPL_TERMINAL(boolean))
+        (MPPL_TERMINAL(char))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    array_type,
+    RULE_ARRAY_TYPE,
+
+    (MPPL_TERMINAL(array))
+    (MPPL_TERMINAL(lsqparen))
+    (MPPL_TERMINAL(number))
+    (MPPL_TERMINAL(rsqparen))
+    (MPPL_TERMINAL(of))
+    (standard_type)
+)
+
+MPPL_DEFINE_RULE(
+    subprogram_declaration,
+    RULE_SUBPROGRAM_DECLARATION,
+
+    (MPPL_TERMINAL(procedure))
+    (procedure_name)
+    (MPPL_OPTION(
+        (formal_parameters)
+    ))
+    (MPPL_TERMINAL(semi))
+    (MPPL_OPTION(
+        (variable_declaration)
+    ))
+    (compound_statement)
+    (MPPL_TERMINAL(semi))
+)
+
+MPPL_DEFINE_RULE(
+    procedure_name,
+    RULE_PROCEDURE_NAME,
+
+    (MPPL_TERMINAL(name))
+)
+
+MPPL_DEFINE_RULE(
+    formal_parameters,
+    RULE_FORMAL_PARAMETERS,
+
+    (MPPL_TERMINAL(lparen))
+    (variable_names)
+    (MPPL_TERMINAL(colon))
+    (type)
+    (MPPL_REPEAT(
+        (MPPL_TERMINAL(semi))
+        (variable_names)
+        (MPPL_TERMINAL(colon))
+        (type)
+    ))
+    (MPPL_TERMINAL(rparen))
+)
+
+MPPL_DEFINE_RULE(
+    compound_statement,
+    RULE_COMPOUND_STATEMENT,
+
+    (MPPL_TERMINAL(begin))
+    (statement)
+    (MPPL_REPEAT(
+        (MPPL_TERMINAL(semi))
+        (statement)
+    ))
+    (MPPL_TERMINAL(end))
+)
+
+MPPL_DEFINE_RULE(
+    statement,
+    RULE_STATEMENT,
+
+    (MPPL_ALTERNATE(
+        (assignment_statement)
+        (condition_statement)
+        (iteration_statement)
+        (exit_statement)
+        (call_statement)
+        (return_statement)
+        (input_statement)
+        (output_statement)
+        (compound_statement)
+        (empty_statement)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    condition_statement,
+    RULE_CONDITION_STATEMENT,
+
+    (MPPL_TERMINAL(if))
+    (expression)
+    (MPPL_TERMINAL(then))
+    (statement)
+    (MPPL_OPTION(
+        (MPPL_TERMINAL(else))
+        (statement)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    exit_statement,
+    RULE_EXIT_STATEMENT,
+
+    (MPPL_TERMINAL(break))
+)
+
+MPPL_DEFINE_RULE(
+    call_statement,
+    RULE_CALL_STATEMENT,
+
+    (MPPL_TERMINAL(call))
+    (procedure_name)
+    (MPPL_OPTION(
+        (MPPL_TERMINAL(lparen))
+        (expressions)
+        (MPPL_TERMINAL(rparen))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    expressions,
+    RULE_EXPRESSIONS,
+
+    (expression)
+    (MPPL_REPEAT(
+        (MPPL_TERMINAL(comma))
+        (expression)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    return_statement,
+    RULE_RETURN_STATEMENT,
+
+    (MPPL_TERMINAL(return))
+)
+
+MPPL_DEFINE_RULE(
+    assignment_statement,
+    RULE_ASSIGNMENT_STATEMENT,
+
+    (left_part)
+    (MPPL_TERMINAL(assign))
+    (expression)
+)
+
+MPPL_DEFINE_RULE(
+    left_part,
+    RULE_LEFT_PART,
+
+    (variable)
+)
+
+MPPL_DEFINE_RULE(
+    variable,
+    RULE_VARIABLE,
+
+    (variable_name)
+    (MPPL_OPTION(
+        (MPPL_TERMINAL(lsqparen))
+        (expression)
+        (MPPL_TERMINAL(rsqparen))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    expression,
+    RULE_EXPRESSION,
+
+    (simple_expression)
+    (MPPL_REPEAT(
+        (relational_operator)
+        (simple_expression)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    simple_expression,
+    RULE_SIMPLE_EXPRESSION,
+
+    (MPPL_OPTION(
+        (MPPL_ALTERNATE(
+            (MPPL_TERMINAL(plus))
+            (MPPL_TERMINAL(minus))
+        ))
+    ))
+    (term)
+    (MPPL_REPEAT(
+        (additive_operator)
+        (term)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    term,
+    RULE_TERM,
+
+    (factor)
+    (MPPL_REPEAT(
+        (multiplicative_operator)
+        (factor)
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    factor,
+    RULE_FACTOR,
+
+    (MPPL_ALTERNATE(
+        (variable)
+        (constant)
+        /* (
+            (MPPL_TERMINAL(lparen))
+            (expression)
+            (MPPL_TERMINAL(rparen))
+        ) */
+        /* (
+            (MPPL_TERMINAL(not))
+            (factor)
+        ) */
+        /* (
+            (standard_type)
+            (MPPL_TERMINAL(lparen))
+            (expression)
+            (MPPL_TERMINAL(rparen))
+        ) */
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    constant,
+    RULE_CONSTANT,
+
+    (MPPL_ALTERNATE(
+        (MPPL_TERMINAL(number))
+        (MPPL_TERMINAL(false))
+        (MPPL_TERMINAL(false))
+        (MPPL_TERMINAL(string))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    multiplicative_operator,
+    RULE_MULTIPLICATIVE_OPERATOR,
+
+    (MPPL_ALTERNATE(
+        (MPPL_TERMINAL(star))
+        (MPPL_TERMINAL(div))
+        (MPPL_TERMINAL(and))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    additive_operator,
+    RULE_ADDITIVE_OPERATOR,
+
+    (MPPL_ALTERNATE(
+        (MPPL_TERMINAL(plus))
+        (MPPL_TERMINAL(minus))
+        (MPPL_TERMINAL(or))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    relational_operator,
+    RULE_RELATIONAL_OPERATOR,
+
+    (MPPL_ALTERNATE(
+        (MPPL_TERMINAL(equal))
+        (MPPL_TERMINAL(noteq))
+        (MPPL_TERMINAL(le))
+        (MPPL_TERMINAL(leeq))
+        (MPPL_TERMINAL(gr))
+        (MPPL_TERMINAL(greq))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    input_statement,
+    RULE_INPUT_STATEMENT,
+
+    (MPPL_ALTERNATE(
+        (MPPL_TERMINAL(read))
+        (MPPL_TERMINAL(readln))
+    ))
+    (MPPL_OPTION(
+        (MPPL_TERMINAL(lparen))
+        (variable)
+        (MPPL_REPEAT(
+            (MPPL_TERMINAL(comma))
+            (variable)
+        ))
+        (MPPL_TERMINAL(rparen))
+    ))
+)
 
 MPPL_DEFINE_RULE(
     output_statement,
@@ -151,6 +483,28 @@ MPPL_DEFINE_RULE(
         (MPPL_TERMINAL(rparen))
     ))
 )
+
+MPPL_DEFINE_RULE(
+    output_format,
+    RULE_OUTPUT_FORMAT,
+
+    (MPPL_ALTERNATE(
+        /* (
+            (expression)
+            (MPPL_OPTION(
+                (MPPL_TERMINAL(comma))
+                (number)
+            ))
+        ) */
+        (MPPL_TERMINAL(string))
+    ))
+)
+
+MPPL_DEFINE_RULE(
+    empty_statement,
+    RULE_EMPTY_STATEMENT,
+)
+
 int parser_init(parser_t *pa, const char *filename, parser_cb_t *on_success, parser_cb_t *on_failure)
 {
     lexer_init(&pa->lexer, filename);

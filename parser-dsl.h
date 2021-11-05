@@ -51,6 +51,16 @@
 #define MPPL_DSL_FAILURE_ON_FAILURE(rule) \
     MPPL_DSL_EARLY_RETURN(rule, MPPL_DSL_FAILURE, MPPL_DSL_FAILURE)
 
+#define IMPL_MPPL_EXPAND_MPPL_SEQUENCE(rules) \
+    do { \
+        MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), MPPL_DSL_FAILURE, MPPL_DSL_FAILURE) \
+        INVOKE_ALL(MPPL_DSL_RULE_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
+    } while (0);
+#define IMPL_MPPL_EXPAND_MPPL_SEQUENCE_INDIRECT() \
+    IMPL_MPPL_EXPAND_MPPL_SEQUENCE
+#define MPPL_EXPAND_MPPL_SEQUENCE(rules) \
+    OBSTRUCT(IMPL_MPPL_EXPAND_MPPL_SEQUENCE_INDIRECT) () (rules)
+
 #define IMPL_MPPL_EXPAND_MPPL_ALTERNATE(rules) \
     do { \
         INVOKE_ALL(MPPL_DSL_SUCCESS_ON_SUCCESS, rules) \
@@ -75,6 +85,7 @@
     do { \
         MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), MPPL_DSL_FAILURE, MPPL_DSL_SUCCESS) \
         INVOKE_ALL(MPPL_DSL_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
+        MPPL_DSL_RETURN(MPPL_DSL_SUCCESS) \
     } while (0);
 #define IMPL_MPPL_EXPAND_MPPL_OPTION_INDIRECT() \
     IMPL_MPPL_EXPAND_MPPL_OPTION
@@ -87,18 +98,16 @@
         MPPL_DSL_CALLBACK_ON_FAILURE() \
         MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
     }
-
 #define MPPL_DECLARE_RULE(name) \
     int mppl_rule_##name(parser_t *pa);
 
 #define MPPL_DEFINE_RULE(name, val, rules) \
     int mppl_rule_##name(parser_t *pa) { \
         const int parsing_rule = val; \
-        int parse_status; \
-        do { \
-            EVAL(MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), MPPL_DSL_FAILURE, MPPL_DSL_FAILURE)) \
-            EVAL(INVOKE_ALL(MPPL_DSL_RULE_FAILURE_ON_FAILURE, LIST_TAIL(rules))) \
-        } while (0); \
+        int parse_status = MPPL_DSL_SUCCESS; \
+        WHEN(NOT(LIST_IS_EMPTY(rules)))( \
+            EVAL(MPPL_DSL_EXPAND(MPPL_SEQUENCE(rules))) \
+        ) \
         if (MPPL_DSL_IS_STATUS(MPPL_DSL_SUCCESS)) { \
             MPPL_DSL_CALLBACK_ON_SUCCESS() \
             pa->expected_terminals = 0; \
@@ -130,12 +139,14 @@
         code \
     } while (0); \
 
+#define MPPL_IS_RULE_MPPL_SEQUENCE(_) 0
 #define MPPL_IS_RULE_MPPL_ALTERNATE(_) 0
 #define MPPL_IS_RULE_MPPL_REPEAT(_) 0
 #define MPPL_IS_RULE_MPPL_OPTION(_) 0
 #define MPPL_IS_RULE_MPPL_TERMINAL(_) 0
 #define MPPL_IS_RULE_MPPL_MANUAL(_) 0
 
+#define MPPL_SEQUENCE(_) MPPL_SEQUENCE(_)
 #define MPPL_ALTERNATE(_) MPPL_ALTERNATE(_)
 #define MPPL_REPEAT(_) MPPL_REPEAT(_)
 #define MPPL_OPTION(_) MPPL_OPTION(_)
