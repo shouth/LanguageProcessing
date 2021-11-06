@@ -287,6 +287,21 @@ MPPL_DEFINE_RULE(
 )
 
 MPPL_DEFINE_RULE(
+    iteration_statement,
+    RULE_ITERATION_STATEMENT,
+
+    (seq (
+        (term (if))
+        (expression)
+        (term (then))
+        (opt (
+            (term (else))
+            (expression)
+        ))
+    ))
+)
+
+MPPL_DEFINE_RULE(
     exit_statement,
     RULE_EXIT_STATEMENT,
 
@@ -559,7 +574,9 @@ int parser_success(parser_t *pa, ...)
     int ret;
     va_list args;
     va_start(args, pa);
-    ret = pa->on_success(pa, args);
+    if (pa->on_success != NULL) {
+        ret = pa->on_success(pa, args);
+    }
     va_end(args);
     return ret;
 }
@@ -569,7 +586,9 @@ int parser_failure(parser_t *pa, ...)
     int ret;
     va_list args;
     va_start(args, pa);
-    ret = pa->on_failure(pa, args);
+    if (pa->on_failure) {
+        ret = pa->on_failure(pa, args);
+    }
     va_end(args);
     return ret;
 }
