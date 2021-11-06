@@ -555,11 +555,10 @@ MPPL_DEFINE_RULE(
     RULE_EMPTY_STATEMENT,
 )
 
-int parser_init(parser_t *pa, const char *filename, parser_cb_t *on_success, parser_cb_t *on_failure)
+int parser_init(parser_t *pa, const char *filename, parser_cb_t *cb)
 {
     lexer_init(&pa->lexer, filename);
-    pa->on_success = on_success;
-    pa->on_failure = on_failure;
+    pa->cb = cb;
     pa->expected_terminals = 0;
 }
 
@@ -568,25 +567,13 @@ void parser_free(parser_t *pa)
     lexer_free(&pa->lexer);
 }
 
-int parser_success(parser_t *pa, ...)
+int parser_callback(parser_t *pa, ...)
 {
     int ret;
     va_list args;
     va_start(args, pa);
-    if (pa->on_success != NULL) {
-        ret = pa->on_success(pa, args);
-    }
-    va_end(args);
-    return ret;
-}
-
-int parser_failure(parser_t *pa, ...)
-{
-    int ret;
-    va_list args;
-    va_start(args, pa);
-    if (pa->on_failure != NULL) {
-        ret = pa->on_failure(pa, args);
+    if (pa->cb != NULL) {
+        ret = pa->cb(pa, args);
     }
     va_end(args);
     return ret;

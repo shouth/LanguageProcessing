@@ -7,9 +7,6 @@
 #include "lexer.h"
 #include "parser-dsl.h"
 
-#define PARSE_SUCCESS 0
-#define PARSE_FAILURE -1
-
 typedef enum {
     RULE_PROGRAM,
     RULE_BLOCK,
@@ -55,19 +52,22 @@ typedef int (parser_cb_t)(const parser_t *pa, va_list args);
 
 struct parser {
     lexer_t lexer;
-    parser_cb_t *on_success;
-    parser_cb_t *on_failure;
+    parser_cb_t *cb;
 
     uint64_t expected_terminals;
 };
 
-int parser_init(parser_t *pa, const char *filename, parser_cb_t *on_success, parser_cb_t *on_failure);
+typedef enum {
+    PARSE_ENTER,
+    PARSE_FAILURE,
+    PARSE_SUCCESS
+} parser_event_t;
+
+int parser_init(parser_t *pa, const char *filename, parser_cb_t *cb);
 
 void parser_free(parser_t *pa);
 
-int parser_failure(parser_t *pa, ...);
-
-int parser_success(parser_t *pa, ...);
+int parser_callback(parser_t *pa, ...);
 
 MPPL_DECLARE_RULE(root)
 

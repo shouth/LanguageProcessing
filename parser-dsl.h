@@ -14,14 +14,12 @@
     When a global failure happens, the parser raises an error and stops processing.
  */
 
-#define MPPL_DSL_FAILURE -1
-#define MPPL_DSL_SUCCESS 0
+#define MPPL_DSL_ENTER   PARSE_ENTER
+#define MPPL_DSL_FAILURE PARSE_FAILURE
+#define MPPL_DSL_SUCCESS PARSE_SUCCESS
 
-#define MPPL_DSL_CALLBACK_ON_SUCCESS() \
-    parser_success(pa, parsing_rule);
-
-#define MPPL_DSL_CALLBACK_ON_FAILURE() \
-    parser_failure(pa, parsing_rule);
+#define MPPL_DSL_CALLBACK(event) \
+    parser_callback(pa, event, parsing_rule);
 
 #define MPPL_DSL_RETURN(x) \
     parse_status = x; \
@@ -94,7 +92,7 @@
 #define MPPL_DSL_RULE_FAILURE_ON_FAILURE(rule) \
     MPPL_DSL_EXPAND(rule) \
     if (MPPL_DSL_IS_STATUS(MPPL_DSL_FAILURE)) { \
-        MPPL_DSL_CALLBACK_ON_FAILURE() \
+        MPPL_DSL_CALLBACK(MPPL_DSL_FAILURE) \
         MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
     }
 #define MPPL_DECLARE_RULE(name) \
@@ -104,13 +102,14 @@
     int mppl_rule_##name(parser_t *pa) { \
         const int parsing_rule = val; \
         int parse_status = MPPL_DSL_SUCCESS; \
+        MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
         WHEN(NOT(LIST_IS_EMPTY(rule))) ( \
             EVAL(INVOKE(MPPL_DSL_EXPAND, rule)) \
         ) \
         if (MPPL_DSL_IS_STATUS(MPPL_DSL_SUCCESS)) { \
-            MPPL_DSL_CALLBACK_ON_SUCCESS() \
             pa->expected_terminals = 0; \
         } \
+        MPPL_DSL_CALLBACK(parse_status) \
         return parse_status; \
     }
 
@@ -123,11 +122,13 @@
 #define MPPL_DEFINE_TERMINAL(name, val) \
     int mppl_terminal_##name(parser_t *pa) { \
         const int parsing_rule = val; \
+        MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
         if (lexer_lookahead(&pa->lexer) != parsing_rule) { \
             pa->expected_terminals |= 1ull << val; \
+            MPPL_DSL_CALLBACK(MPPL_DSL_FAILURE) \
             return MPPL_DSL_FAILURE; \
         } \
-        MPPL_DSL_CALLBACK_ON_SUCCESS() \
+        MPPL_DSL_CALLBACK(MPPL_DSL_SUCCESS) \
         lexer_next(&pa->lexer); \
         pa->expected_terminals = 0; \
         return MPPL_DSL_SUCCESS; \
