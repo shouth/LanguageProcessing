@@ -17,11 +17,7 @@
 #define NOT(x) IS_UNIT(PREMITIVE_CONCAT(IMPL_NOT_, x))
 #define IMPL_NOT_0 ()
 
-#define COMPL(x) PREMITIVE_CONCAT(IMPL_COMPL_, x)
-#define IMPL_COMPL_0 1
-#define IMPL_COMPL_1 0
-
-#define BOOL(x) COMPL(NOT(x))
+#define BOOL(x) NOT(NOT(x))
 
 #define WHEN(cond) IF(cond)(EXPAND, SWALLOW)
 #define IF(cond) IMPL_IF(cond)
