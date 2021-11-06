@@ -90,6 +90,8 @@ MPPL_DECLARE_RULE(output_statement)
 MPPL_DECLARE_RULE(output_format)
 MPPL_DECLARE_RULE(empty_statement)
 
+MPPL_DEFINE_RULE(root, 0, (program))
+
 MPPL_DEFINE_RULE(
     program,
     RULE_PROGRAM,
@@ -291,13 +293,10 @@ MPPL_DEFINE_RULE(
     RULE_ITERATION_STATEMENT,
 
     (seq (
-        (term (if))
+        (term (while))
         (expression)
-        (term (then))
-        (opt (
-            (term (else))
-            (expression)
-        ))
+        (term (do))
+        (statement)
     ))
 )
 
@@ -543,7 +542,7 @@ MPPL_DEFINE_RULE(
         (seq (
             (expression)
             (opt (
-                (term (comma))
+                (term (colon))
                 (term (number))
             ))
         ))

@@ -54,8 +54,6 @@
 #define EVAL_IMPL_LIST_IS_EMPTY_0 0
 #define EVAL_IMPL_LIST_IS_EMPTY_1 1
 
-#define S_EXPR_REST 
-
 #define IMPL_INVOKE_ALL(macro, list) \
     WHEN(NOT(LIST_IS_EMPTY(list))) ( \
         OBSTRUCT(macro) (LIST_HEAD(list)) \

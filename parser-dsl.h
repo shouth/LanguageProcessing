@@ -53,8 +53,7 @@
 
 #define IMPL_MPPL_EXPAND_seq(rules) \
     do { \
-        MPPL_DSL_EARLY_RETURN(LIST_HEAD(rules), MPPL_DSL_FAILURE, MPPL_DSL_FAILURE) \
-        INVOKE_ALL(MPPL_DSL_RULE_FAILURE_ON_FAILURE, LIST_TAIL(rules)) \
+        INVOKE_ALL(MPPL_DSL_RULE_FAILURE_ON_FAILURE, rules) \
     } while (0);
 #define IMPL_MPPL_EXPAND_seq_INDIRECT() \
     IMPL_MPPL_EXPAND_seq

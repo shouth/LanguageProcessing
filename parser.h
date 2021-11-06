@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "lexer.h"
+#include "parser-dsl.h"
 
 #define PARSE_SUCCESS 0
 #define PARSE_FAILURE -1
@@ -67,5 +68,7 @@ void parser_free(parser_t *pa);
 int parser_failure(parser_t *pa, ...);
 
 int parser_success(parser_t *pa, ...);
+
+MPPL_DECLARE_RULE(root)
 
 #endif /* PARSER_H */
