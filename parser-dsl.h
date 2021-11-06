@@ -18,6 +18,30 @@
 #define MPPL_DSL_FAILURE PARSE_FAILURE
 #define MPPL_DSL_SUCCESS PARSE_SUCCESS
 
+#define LL1_TERMINAL_TO_VALUE(prefix, name) \
+    _##prefix##_map_terminal_##name()
+
+#define LL1_RULE_TO_VALUE(prefix, name) \
+    _##prefix##_map_rule_##name()
+
+#define LL1_MAP_TERMINAL(prefix, name, value) \
+    static inline int LL1_TERMINAL_TO_VALUE(prefix, name) { return value; }
+
+#define LL1_MAP_RULE(prefix, name, value) \
+    static inline int LL1_RULE_TO_VALUE(prefix, name) { return value; }
+
+#define MPPL_TERMINAL_TO_VALUE(name) \
+    LL1_TERMINAL_TO_VALUE(mppl, name)
+
+#define MPPL_RULE_TO_VALUE(name) \
+    LL1_RULE_TO_VALUE(mppl, name)
+
+#define MPPL_MAP_TERMINAL(name, value) \
+    LL1_MAP_TERMINAL(mppl, name, value)
+
+#define MPPL_MAP_RULE(name, value) \
+    LL1_MAP_RULE(mppl, name, value)
+
 #define MPPL_DSL_CALLBACK(event) \
     parser_callback(pa, event, parsing_rule);
 
@@ -92,23 +116,19 @@
 #define MPPL_DSL_RULE_FAILURE_ON_FAILURE(rule) \
     MPPL_DSL_EXPAND(rule) \
     if (MPPL_DSL_IS_STATUS(MPPL_DSL_FAILURE)) { \
-        MPPL_DSL_CALLBACK(MPPL_DSL_FAILURE) \
         MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
     }
 #define MPPL_DECLARE_RULE(name) \
     int mppl_rule_##name(parser_t *pa);
 
-#define MPPL_DEFINE_RULE(name, val, rule) \
+#define MPPL_DEFINE_RULE(name, rule) \
     int mppl_rule_##name(parser_t *pa) { \
-        const int parsing_rule = val; \
+        const int parsing_rule = MPPL_RULE_TO_VALUE(name); \
         int parse_status = MPPL_DSL_SUCCESS; \
         MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
         WHEN(NOT(LIST_IS_EMPTY(rule))) ( \
             EVAL(INVOKE(MPPL_DSL_EXPAND, rule)) \
         ) \
-        if (MPPL_DSL_IS_STATUS(MPPL_DSL_SUCCESS)) { \
-            pa->expected_terminals = 0; \
-        } \
         MPPL_DSL_CALLBACK(parse_status) \
         return parse_status; \
     }
@@ -119,18 +139,16 @@
 #define MPPL_DECLARE_TERMINAL(name) \
     int mppl_terminal_##name(parser_t *pa);
 
-#define MPPL_DEFINE_TERMINAL(name, val) \
+#define MPPL_DEFINE_TERMINAL(name) \
     int mppl_terminal_##name(parser_t *pa) { \
-        const int parsing_rule = val; \
+        const int parsing_rule = MPPL_TERMINAL_TO_VALUE(name); \
         MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
         if (lexer_lookahead(&pa->lexer) != parsing_rule) { \
-            pa->expected_terminals |= 1ull << val; \
             MPPL_DSL_CALLBACK(MPPL_DSL_FAILURE) \
             return MPPL_DSL_FAILURE; \
         } \
         MPPL_DSL_CALLBACK(MPPL_DSL_SUCCESS) \
         lexer_next(&pa->lexer); \
-        pa->expected_terminals = 0; \
         return MPPL_DSL_SUCCESS; \
     }
 

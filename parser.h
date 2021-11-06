@@ -6,9 +6,12 @@
 
 #include "lexer.h"
 #include "parser-dsl.h"
+#include "token-list.h"
 
 typedef enum {
-    RULE_PROGRAM,
+    _rule_begin = NUMOFTOKEN + 1,
+
+    RULE_PROGRAM = _rule_begin,
     RULE_BLOCK,
     RULE_VARIABLE_DECLARATION,
     RULE_VARIABLE_NAMES,
@@ -43,7 +46,8 @@ typedef enum {
     RULE_OUTPUT_FORMAT,
     RULE_EMPTY_STATEMENT,
 
-    SIZE_OF_RULE
+    _rule_sentinel,
+    SIZE_OF_RULE = _rule_sentinel - _rule_begin
 } rule_id_t;
 
 typedef struct parser parser_t;
@@ -53,8 +57,6 @@ typedef int (parser_cb_t)(const parser_t *pa, va_list args);
 struct parser {
     lexer_t lexer;
     parser_cb_t *cb;
-
-    uint64_t expected_terminals;
 };
 
 typedef enum {
