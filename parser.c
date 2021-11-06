@@ -585,7 +585,7 @@ int parser_failure(parser_t *pa, ...)
     int ret;
     va_list args;
     va_start(args, pa);
-    if (pa->on_failure) {
+    if (pa->on_failure != NULL) {
         ret = pa->on_failure(pa, args);
     }
     va_end(args);
