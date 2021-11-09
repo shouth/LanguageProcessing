@@ -46,39 +46,3 @@ char *tokenstr[NUMOFTOKEN + 1] = {
     "false", "NUMBER", "STRING", "+", "-", "*", "=", "<>", "<", "<=", ">",
     ">=", "(", ")", "[", "]", ":=", ".", ",", ":", ";", "read", "write", "break"
 };
-
-int main(int nc, char *np[])
-{
-    int token, i;
-
-    if (nc < 2) {
-        printf("File name id not given.\n");
-        return 0;
-    }
-    if (init_scan(np[1]) < 0) {
-        printf("File %s can not open.\n", np[1]);
-        return 0;
-    }
-    /* Initialize the array for counting token */
-    memset((void *) numtoken, 0, sizeof(numtoken));
-    init_idtab();
-    while ((token = scan()) >= 0) {
-        /* Count token */
-        if (token < 0) {
-            break;
-        }
-        numtoken[token]++;
-        if (token == TNAME) {
-            id_countup(string_attr);
-        }
-    }
-    end_scan();
-    /* Print the result of counting */
-    for (i = 1; i <= NUMOFTOKEN; i++) {
-        if (numtoken[i] != 0) {
-            printf("%-10s : %5d\n", tokenstr[i], numtoken[i]);
-        }
-    }
-    print_idtab();
-    return 0;
-}
