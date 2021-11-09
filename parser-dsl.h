@@ -55,11 +55,36 @@
 #define MPPL_DSL_IS_RULE(x) \
     BOOL(MPPL_IS_RULE_##x)
 
-#define MPPL_DSL_EXPAND(x) \
-    IF(MPPL_DSL_IS_RULE(x))( \
-        parse_status = mppl_rule_##x(pa);, \
-        MPPL_EXPAND_##x \
+#define MPPL_DSL_EXPAND_DIRECTIVE(x) \
+    EXPAND(CONCAT(MPPL_EXPAND_, LIST_HEAD(x)) (LIST_TAIL(x)))
+
+#define MPPL_DSL_EXPAND_RULE(rule) \
+    parse_status = mppl_rule_##rule(pa);
+
+#define MPPL_NORMALIZE_DIRECTIVE(x) \
+    EXPAND(PREMITIVE_CONCAT(MPPL_GET_DIRECTIVE_, x))
+
+#define MPPL_IS_DIRECTIVE_CELL(x) \
+    HEAD_IS_CELL(EXPAND(PREMITIVE_CONCAT(MPPL_GET_DIRECTIVE_, LIST_HEAD(x)) (LIST_TAIL(x))))
+
+#define MPPL_IS_DIRECTIVE_RAW(x) \
+    HEAD_IS_CELL(MPPL_NORMALIZE_DIRECTIVE(x))
+
+#define IMPL_MPPL_DSL_EXPAND(x) \
+    IF(HEAD_IS_CELL(x))( \
+        IF(MPPL_IS_DIRECTIVE_CELL(x))( \
+            OBSTRUCT(MPPL_DSL_EXPAND_DIRECTIVE)(x), \
+            OBSTRUCT(MPPL_DSL_EXPAND_RULE)(EXPAND x) \
+        ), \
+        IF(MPPL_IS_DIRECTIVE_RAW(x))( \
+            OBSTRUCT(MPPL_DSL_EXPAND_DIRECTIVE)(MPPL_NORMALIZE_DIRECTIVE(x)), \
+            OBSTRUCT(MPPL_DSL_EXPAND_RULE)(x) \
+        ) \
     )
+#define IMPL_MPPL_DSL_EXPAND_INDIRECT() \
+    IMPL_MPPL_DSL_EXPAND
+#define MPPL_DSL_EXPAND(x) \
+    OBSTRUCT(IMPL_MPPL_DSL_EXPAND_INDIRECT) () (x)
 
 #define MPPL_DSL_EARLY_RETURN(rule, cond, ret) \
     MPPL_DSL_EXPAND(rule) \
@@ -134,7 +159,7 @@
     }
 
 #define MPPL_EXPAND_term(name) \
-    parse_status = mppl_terminal_##name(pa);
+    parse_status = CONCAT(mppl_terminal_, LIST_HEAD(name))(pa);
 
 #define MPPL_DECLARE_TERMINAL(name) \
     int mppl_terminal_##name(parser_t *pa);
@@ -157,11 +182,11 @@
         code \
     } while (0); \
 
-#define MPPL_IS_RULE_seq(_) 0
-#define MPPL_IS_RULE_alt(_) 0
-#define MPPL_IS_RULE_rep(_) 0
-#define MPPL_IS_RULE_opt(_) 0
-#define MPPL_IS_RULE_term(_) 0
-#define MPPL_IS_RULE_manual(_) 0
+#define MPPL_GET_DIRECTIVE_seq(arg) (seq) (arg)
+#define MPPL_GET_DIRECTIVE_alt(arg) (alt) (arg)
+#define MPPL_GET_DIRECTIVE_rep(arg) (rep) (arg)
+#define MPPL_GET_DIRECTIVE_opt(arg) (opt) (arg)
+#define MPPL_GET_DIRECTIVE_term(arg) (term) (arg)
+#define MPPL_GET_DIRECTIVE_manual(arg) (manual) (arg)
 
 #endif /* PARSER_DSL_H */

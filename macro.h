@@ -16,6 +16,8 @@
 #define IMPL_VALUE_IMPL_HEAD_IS_CELL_1 1,
 #define IMPL_HEAD_IS_CELL_GET_VALUE(value, _) value
 
+#define PEEK_CELL(x) INVOKE(EXPAND, x)
+
 #define NOT(x) HEAD_IS_CELL(PREMITIVE_CONCAT(IMPL_NOT_, x))
 #define IMPL_NOT_0 ()
 
@@ -39,7 +41,7 @@
 
 #define LIST_COMMA(head) (head),
 
-#define LIST_HEAD(list) INVOKE(EXPAND, IMPL_LIST_HEAD_0(LIST_COMMA list))
+#define LIST_HEAD(list) PEEK_CELL(IMPL_LIST_HEAD_0(LIST_COMMA list))
 #define IMPL_LIST_HEAD_0(x) IMPL_LIST_HEAD_1(x)
 #define IMPL_LIST_HEAD_1(head, tail) head
 
