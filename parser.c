@@ -537,7 +537,7 @@ MPPL_DEFINE_RULE(output_format,
     )
 );
 
-MPPL_DEFINE_RULE(empty_statement,);
+MPPL_DEFINE_RULE(empty_statement, ());
 
 int parser_init(parser_t *pa, const char *filename, parser_cb_t *cb)
 {

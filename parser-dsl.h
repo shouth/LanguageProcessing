@@ -52,9 +52,6 @@
 #define MPPL_DSL_IS_STATUS(x) \
     parse_status == x
 
-#define MPPL_DSL_IS_RULE(x) \
-    BOOL(MPPL_IS_RULE_##x)
-
 #define MPPL_DSL_EXPAND_DIRECTIVE(x) \
     EXPAND(CONCAT(MPPL_EXPAND_, LIST_HEAD(x)) (LIST_TAIL(x)))
 
@@ -151,7 +148,7 @@
         const int parsing_rule = MPPL_RULE_TO_VALUE(name); \
         int parse_status = MPPL_DSL_SUCCESS; \
         MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
-        WHEN(NOT(LIST_IS_EMPTY(rule))) ( \
+        WHEN(NOT(INVOKE(IS_EMPTY, rule))) ( \
             EVAL(INVOKE(MPPL_DSL_EXPAND, rule)) \
         ) \
         MPPL_DSL_CALLBACK(parse_status) \
