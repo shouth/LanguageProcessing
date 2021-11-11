@@ -75,7 +75,7 @@
         ), \
         IF(MPPL_DSL_IS_DIRECTIVE_RAW(x))( \
             OBSTRUCT(MPPL_DSL_EXPAND_DIRECTIVE)(MPPL_NORMALIZE_DIRECTIVE(x)), \
-            OBSTRUCT(MPPL_DSL_EXPAND_RULE)(x) \
+            WHEN(NOT(IS_EMPTY(x)))(OBSTRUCT(MPPL_DSL_EXPAND_RULE)(x)) \
         ) \
     )
 #define IMPL_MPPL_DSL_EXPAND_INDIRECT() \
@@ -148,9 +148,7 @@
         const int parsing_rule = MPPL_RULE_TO_VALUE(name); \
         int parse_status = MPPL_DSL_SUCCESS; \
         MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
-        WHEN(NOT(INVOKE(IS_EMPTY, rule))) ( \
-            EVAL(INVOKE(MPPL_DSL_EXPAND, rule)) \
-        ) \
+        EVAL(MPPL_DSL_EXPAND rule) \
         MPPL_DSL_CALLBACK(parse_status) \
         return parse_status; \
     }
