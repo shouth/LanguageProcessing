@@ -29,9 +29,9 @@ void scanner_next(scanner_t *sc);
 
 void scanner_next_line(scanner_t *sc);
 
-int scanner_lookahead_1(const scanner_t *sc);
+int scanner_peek_0(const scanner_t *sc);
 
-int scanner_lookahead_2(const scanner_t *sc);
+int scanner_peek_1(const scanner_t *sc);
 
 int scanner_location(const scanner_t *sc, location_t *loc);
 

@@ -51,4 +51,3 @@ begin
 			writeln('Temporary Result =', x)
 	end
 end.
-

@@ -53,7 +53,7 @@ void scanner_next_line(scanner_t *sc)
     sc->col = 1;
 }
 
-int scanner_lookahead_1(const scanner_t *sc)
+int scanner_peek_0(const scanner_t *sc)
 {
     if (sc == NULL) {
         return EOF;
@@ -61,7 +61,7 @@ int scanner_lookahead_1(const scanner_t *sc)
     return sc->lookahead[0];
 }
 
-int scanner_lookahead_2(const scanner_t *sc)
+int scanner_peek_1(const scanner_t *sc)
 {
     if (sc == NULL) {
         return EOF;
