@@ -18,45 +18,33 @@
 #define MPPL_DSL_FAILURE PARSE_FAILURE
 #define MPPL_DSL_SUCCESS PARSE_SUCCESS
 
-#define LL1_TERMINAL_TO_VALUE(prefix, name) \
-    _##prefix##_map_terminal_##name()
-
-#define LL1_RULE_TO_VALUE(prefix, name) \
-    _##prefix##_map_rule_##name()
-
-#define LL1_MAP_TERMINAL(prefix, name, value) \
-    static inline int LL1_TERMINAL_TO_VALUE(prefix, name) { return value; }
-
-#define LL1_MAP_RULE(prefix, name, value) \
-    static inline int LL1_RULE_TO_VALUE(prefix, name) { return value; }
-
 #define MPPL_TERMINAL_TO_VALUE(name) \
-    LL1_TERMINAL_TO_VALUE(mppl, name)
+    _mppl_map_terminal_##name()
 
 #define MPPL_RULE_TO_VALUE(name) \
-    LL1_RULE_TO_VALUE(mppl, name)
+    _mppl_map_rule_##name()
 
 #define MPPL_MAP_TERMINAL(name, value) \
-    LL1_MAP_TERMINAL(mppl, name, value)
+    static inline int MPPL_TERMINAL_TO_VALUE(name) { return value; }
 
 #define MPPL_MAP_RULE(name, value) \
-    LL1_MAP_RULE(mppl, name, value)
+    static inline int MPPL_RULE_TO_VALUE(name) { return value; }
 
-#define MPPL_DSL_CALLBACK(event) \
-    parser_callback(pa, event, parsing_rule);
+#define MPPL_DSL_CALLBACK(event, rule) \
+    parser_callback(pa, event, MPPL_RULE_TO_VALUE(rule));
+
+#define MPPL_DSL_STATUS \
+    parse_status
 
 #define MPPL_DSL_RETURN(x) \
-    parse_status = x; \
+    MPPL_DSL_STATUS = x; \
     break;
-
-#define MPPL_DSL_IS_STATUS(x) \
-    parse_status == x
 
 #define MPPL_DSL_EXPAND_DIRECTIVE(x) \
     EXPAND(CONCAT(MPPL_EXPAND_, LIST_HEAD(x)) (LIST_TAIL(x)))
 
 #define MPPL_DSL_EXPAND_RULE(rule) \
-    parse_status = mppl_rule_##rule(pa);
+    MPPL_DSL_STATUS = mppl_rule_##rule(pa);
 
 #define MPPL_NORMALIZE_DIRECTIVE(x) \
     EXPAND(PREMITIVE_CONCAT(MPPL_GET_DIRECTIVE_, x))
@@ -66,6 +54,12 @@
 
 #define MPPL_DSL_IS_DIRECTIVE_CELL(x) \
     MPPL_DSL_IS_DIRECTIVE_RAW(LIST_HEAD(x) LIST_TAIL(x))
+
+#define MPPL_DSL_IS_DIRECTIVE(x) \
+    IF(HEAD_IS_CELL(x))( \
+        MPPL_DSL_IS_DIRECTIVE_CELL(x), \
+        MPPL_DSL_IS_DIRECTIVE_RAW(x) \
+    )
 
 #define IMPL_MPPL_DSL_EXPAND(x) \
     IF(HEAD_IS_CELL(x))( \
@@ -85,7 +79,7 @@
 
 #define MPPL_DSL_EARLY_RETURN(rule, cond, ret) \
     MPPL_DSL_EXPAND(rule) \
-    if (MPPL_DSL_IS_STATUS(cond)) { \
+    if (MPPL_DSL_STATUS == cond) { \
         MPPL_DSL_RETURN(ret) \
     }
 
@@ -94,6 +88,12 @@
 
 #define MPPL_DSL_FAILURE_ON_FAILURE(rule) \
     MPPL_DSL_EARLY_RETURN(rule, MPPL_DSL_FAILURE, MPPL_DSL_FAILURE)
+
+#define MPPL_DSL_RULE_FAILURE_ON_FAILURE(rule) \
+    MPPL_DSL_EXPAND(rule) \
+    if (MPPL_DSL_STATUS == MPPL_DSL_FAILURE) { \
+        MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
+    }
 
 #define IMPL_MPPL_EXPAND_seq(rules) \
     do { \
@@ -135,39 +135,27 @@
 #define MPPL_EXPAND_opt(rules) \
     OBSTRUCT(IMPL_MPPL_EXPAND_opt_INDIRECT) () (rules)
 
-#define MPPL_DSL_RULE_FAILURE_ON_FAILURE(rule) \
-    MPPL_DSL_EXPAND(rule) \
-    if (MPPL_DSL_IS_STATUS(MPPL_DSL_FAILURE)) { \
-        MPPL_DSL_RETURN(MPPL_DSL_FAILURE) \
-    }
 #define MPPL_DECLARE_RULE(name) \
     int mppl_rule_##name(parser_t *pa);
 
 #define MPPL_DEFINE_RULE(name, rule) \
     int mppl_rule_##name(parser_t *pa) { \
-        const int parsing_rule = MPPL_RULE_TO_VALUE(name); \
-        int parse_status = MPPL_DSL_SUCCESS; \
-        MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
+        int MPPL_DSL_STATUS = MPPL_DSL_SUCCESS; \
         EVAL(MPPL_DSL_EXPAND rule) \
-        MPPL_DSL_CALLBACK(parse_status) \
-        return parse_status; \
+        return MPPL_DSL_STATUS; \
     }
 
 #define MPPL_EXPAND_term(name) \
-    parse_status = CONCAT(mppl_terminal_, LIST_HEAD(name))(pa);
+    MPPL_DSL_STATUS = CONCAT(mppl_terminal_, LIST_HEAD(name))(pa);
 
 #define MPPL_DECLARE_TERMINAL(name) \
     int mppl_terminal_##name(parser_t *pa);
 
 #define MPPL_DEFINE_TERMINAL(name) \
     int mppl_terminal_##name(parser_t *pa) { \
-        const int parsing_rule = MPPL_TERMINAL_TO_VALUE(name); \
-        MPPL_DSL_CALLBACK(MPPL_DSL_ENTER) \
-        if (lexer_lookahead(&pa->lexer) != parsing_rule) { \
-            MPPL_DSL_CALLBACK(MPPL_DSL_FAILURE) \
+        if (lexer_lookahead(&pa->lexer) != MPPL_TERMINAL_TO_VALUE(name)) { \
             return MPPL_DSL_FAILURE; \
         } \
-        MPPL_DSL_CALLBACK(MPPL_DSL_SUCCESS) \
         lexer_next(&pa->lexer); \
         return MPPL_DSL_SUCCESS; \
     }
