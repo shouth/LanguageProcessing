@@ -3,5 +3,8 @@
     "files.associations": {
         "*.mpl": "pascal"
     },
-    "ros.distro": "noetic"
+    "ros.distro": "noetic",
+    "files.watcherExclude": {
+        "**/target": true
+    }
 }
