@@ -81,13 +81,13 @@ static stroff_t filesize(const char *filename)
 
 #endif
 
-static size_t nextline(const char *str)
+static const char *nextline(const char *str)
 {
-    size_t ret = strcspn(str, "\r\n");
-    if (strncmp("\r\n", str + ret, 2) == 0 || strncmp("\n\r", str + ret, 2) == 0) {
-        return ret + 2;
+    str += strcspn(str, "\r\n");
+    if (strncmp("\r\n", str, 2) == 0 || strncmp("\n\r", str, 2) == 0) {
+        return str + 2;
     }
-    return ret + 1;
+    return str + 1;
 }
 
 source_t *source_new(const char *filename)
@@ -95,7 +95,7 @@ source_t *source_new(const char *filename)
     source_t *src;
     FILE *file;
     size_t linecnt;
-    char *cur;
+    const char *cur;
 
     src = (source_t *) malloc(sizeof(source_t));
     if (src == NULL) {
@@ -133,7 +133,7 @@ source_t *source_new(const char *filename)
     fclose(file);
 
     linecnt = 0;
-    for (cur = src->str_ptr; cur[0] != '\0'; cur += nextline(cur)) {
+    for (cur = src->str_ptr; cur[0] != '\0'; cur = nextline(cur)) {
         linecnt++;
     }
 
@@ -145,7 +145,7 @@ source_t *source_new(const char *filename)
     }
 
     linecnt = 0;
-    for (cur = src->str_ptr; cur[0] != '\0'; cur += nextline(cur)) {
+    for (cur = src->str_ptr; cur[0] != '\0'; cur = nextline(cur)) {
         src->lines_ptr[linecnt] = cur - src->str_ptr;
         linecnt++;
     }
