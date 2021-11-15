@@ -2,34 +2,39 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "str.h"
+#include "strref.h"
 
 static const char *empty = "";
 
-const char *str_data(strref_t str)
+const char *strref_data(strref_t str)
 {
     return str.data;
 }
 
-size_t str_size(strref_t str)
+size_t strref_size(strref_t str)
 {
     return str.size;
 }
 
-strref_t str_new(const char *data, size_t size)
+int strref_empty(strref_t str)
+{
+    return strref_size(str) == 0;
+}
+
+strref_t strref_new(const char *data, size_t size)
 {
     if (data == NULL) {
         data = empty;
         size = 0;
     }
-    if (size == STR_NPOS) {
+    if (size == STRREF_NPOS) {
         size = strlen(data);
     }
 
     return (strref_t) { data, size };
 }
 
-int str_at(strref_t str, size_t index)
+int strref_at(strref_t str, size_t index)
 {
     assert(str.data != NULL);
 
@@ -40,17 +45,17 @@ int str_at(strref_t str, size_t index)
     return str.data[index];
 }
 
-strref_t str_slice(strref_t str, size_t begin, size_t end)
+strref_t strref_slice(strref_t str, size_t begin, size_t end)
 {
     assert(str.data != NULL);
 
-    if (begin == STR_NPOS) {
+    if (begin == STRREF_NPOS) {
         begin = 0;
     }
-    if (end == STR_NPOS) {
+    if (end == STRREF_NPOS) {
         end = str.size;
     }
 
     assert(begin <= end && end <= str.size);
-    return str_new(str.data + begin, end - begin);
+    return strref_new(str.data + begin, end - begin);
 }

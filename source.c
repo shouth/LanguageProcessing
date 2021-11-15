@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 
 #include "source.h"
+#include "strref.h"
 
 #if defined(_WIN32)
 
@@ -15,12 +16,12 @@ static size_t filesize(const char *filename)
 {
     struct __stat64 s;
     if (_stat64(filename, &s) < 0) {
-        return STR_NPOS;
+        return STRREF_NPOS;
     } else {
         if (s.st_mode & _S_IFREG) {
             return s.st_size;
         } else {
-            return STR_NPOS;
+            return STRREF_NPOS;
         }
     }
 }
@@ -31,12 +32,12 @@ static size_t filesize(const char *filename)
 {
     struct stat s;
     if (stat(filename, &s) < 0) {
-        return STR_NPOS;
+        return STRREF_NPOS;
     } else {
         if (S_ISREG(s.st_mode)) {
             return s.st_size;
         } else {
-            return STR_NPOS;
+            return STRREF_NPOS;
         }
     }
 }
@@ -59,7 +60,7 @@ static size_t filesize(const char *filename)
     } while (size == block_size);
 
     if (ferror(file) != 0) {
-        ret = STR_NPOS;
+        ret = STRREF_NPOS;
     }
     fclose(file);
     return ret;
@@ -101,14 +102,14 @@ source_t *source_new(const char *filename)
     }
     strcpy(src->filename, filename);
 
-    src->str_size = filesize(filename);
-    if (src->str_size == STR_NPOS) {
+    src->strref_size = filesize(filename);
+    if (src->strref_size == STRREF_NPOS) {
         source_free(src);
         return NULL;
     }
 
-    src->str_ptr = (char *) malloc(sizeof(char) * (src->str_size + 1));
-    if (src->str_ptr == NULL) {
+    src->strref_ptr = (char *) malloc(sizeof(char) * (src->strref_size + 1));
+    if (src->strref_ptr == NULL) {
         source_free(src);
         return NULL;
     }
@@ -117,16 +118,16 @@ source_t *source_new(const char *filename)
         source_free(src);
         return NULL;
     }
-    fread(src->str_ptr, sizeof(char), src->str_size, file);
+    fread(src->strref_ptr, sizeof(char), src->strref_size, file);
     if (ferror(file) != 0) {
         source_free(src);
         return NULL;
     }
     fclose(file);
-    src->str_ptr[src->str_size] = '\0';
+    src->strref_ptr[src->strref_size] = '\0';
 
     linecnt = 0;
-    for (cur = src->str_ptr; cur[0] != '\0'; cur = nextline(cur)) {
+    for (cur = src->strref_ptr; cur[0] != '\0'; cur = nextline(cur)) {
         linecnt++;
     }
 
@@ -138,8 +139,8 @@ source_t *source_new(const char *filename)
     }
 
     linecnt = 0;
-    for (cur = src->str_ptr; cur[0] != '\0'; cur = nextline(cur)) {
-        src->lines_ptr[linecnt] = cur - src->str_ptr;
+    for (cur = src->strref_ptr; cur[0] != '\0'; cur = nextline(cur)) {
+        src->lines_ptr[linecnt] = cur - src->strref_ptr;
         linecnt++;
     }
 
@@ -152,8 +153,8 @@ void source_free(source_t *src)
         if (src->filename != NULL) {
             free(src->filename);
         }
-        if (src->str_ptr != NULL) {
-            free(src->str_ptr);
+        if (src->strref_ptr != NULL) {
+            free(src->strref_ptr);
         }
         if (src->lines_ptr != NULL) {
             free(src->lines_ptr);
@@ -162,11 +163,16 @@ void source_free(source_t *src)
     }
 }
 
+strref_t source_str(source_t *src)
+{
+    return strref_new(src->strref_ptr, src->strref_size);
+}
+
 size_t source_line_at(source_t *src, size_t index)
 {
     size_t left = 0, right = src->lines_size, middle;
 
-    if (index > src->str_size) {
+    if (index > src->strref_size) {
         return src->lines_size;
     }
 
