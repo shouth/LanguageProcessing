@@ -11,14 +11,16 @@ typedef struct {
 
 #define STRREF_NPOS SIZE_MAX
 
-size_t strref_size(strref_t str);
+const char *strref_data(const strref_t *strref);
 
-int strref_empty(strref_t str);
+size_t strref_size(const strref_t *strref);
 
-strref_t strref_new(const char *data, size_t size);
+int strref_empty(const strref_t *strref);
 
-int strref_at(strref_t str, size_t index);
+void strref_init(strref_t *strref, const char *data, size_t size);
 
-strref_t strref_slice(strref_t str, size_t begin, size_t end);
+int strref_at(const strref_t *strref, size_t index);
+
+void strref_slice(strref_t *ret, const strref_t *strref, size_t begin, size_t end);
 
 #endif /* STRREF_H */

@@ -6,23 +6,27 @@
 
 static const char *empty = "";
 
-const char *strref_data(strref_t str)
+const char *strref_data(const strref_t *strref)
 {
-    return str.data;
+    assert(strref != NULL && strref->data != NULL);
+    return strref->data;
 }
 
-size_t strref_size(strref_t str)
+size_t strref_size(const strref_t *strref)
 {
-    return str.size;
+    assert(strref != NULL);
+    return strref->size;
 }
 
-int strref_empty(strref_t str)
+int strref_empty(const strref_t *strref)
 {
-    return strref_size(str) == 0;
+    return strref_size(strref) == 0;
 }
 
-strref_t strref_new(const char *data, size_t size)
+void strref_init(strref_t *strref, const char *data, size_t size)
 {
+    assert(strref != NULL);
+
     if (data == NULL) {
         data = empty;
         size = 0;
@@ -31,31 +35,29 @@ strref_t strref_new(const char *data, size_t size)
         size = strlen(data);
     }
 
-    return (strref_t) { data, size };
+    strref->data = data;
+    strref->size = size;
 }
 
-int strref_at(strref_t str, size_t index)
+int strref_at(const strref_t *strref, size_t index)
 {
-    assert(str.data != NULL);
-
-    if (index >= str.size) {
-        return -1;
-    }
-
-    return str.data[index];
+    assert(strref != NULL && strref->data != NULL);
+    assert(index < strref->size);
+    return strref->data[index];
 }
 
-strref_t strref_slice(strref_t str, size_t begin, size_t end)
+void strref_slice(strref_t *ret, const strref_t *strref, size_t begin, size_t end)
 {
-    assert(str.data != NULL);
+    assert(strref != NULL);
+    assert(strref->data != NULL);
 
     if (begin == STRREF_NPOS) {
         begin = 0;
     }
     if (end == STRREF_NPOS) {
-        end = str.size;
+        end = strref->size;
     }
 
-    assert(begin <= end && end <= str.size);
-    return strref_new(str.data + begin, end - begin);
+    assert(begin <= end && end <= strref->size);
+    strref_init(ret, strref->data + begin, end - begin);
 }

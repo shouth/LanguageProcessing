@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -15,6 +16,8 @@
 static size_t filesize(const char *filename)
 {
     struct __stat64 s;
+
+    assert(filename != NULL);
     if (_stat64(filename, &s) < 0) {
         return STRREF_NPOS;
     } else {
@@ -31,6 +34,8 @@ static size_t filesize(const char *filename)
 static size_t filesize(const char *filename)
 {
     struct stat s;
+
+    assert(filename != NULL);
     if (stat(filename, &s) < 0) {
         return STRREF_NPOS;
     } else {
@@ -52,6 +57,7 @@ static size_t filesize(const char *filename)
     size_t size;
     size_t ret = 0;
 
+    assert(filename != NULL);
     file = fopen(filename, "r");
     setvbuf(file, NULL, _IOFBF, block_size);
     do {
@@ -70,6 +76,7 @@ static size_t filesize(const char *filename)
 
 static const char *nextline(const char *str)
 {
+    assert(str != NULL);
     str += strcspn(str, "\r\n");
     if (str[0] == '\0') {
         return str;
@@ -87,9 +94,7 @@ source_t *source_new(const char *filename)
     size_t linecnt;
     const char *cur;
 
-    if (filename == NULL) {
-        return NULL;
-    }
+    assert(filename != NULL);
 
     src = (source_t *) malloc(sizeof(source_t));
     if (src == NULL) {
@@ -163,18 +168,18 @@ void source_free(source_t *src)
     }
 }
 
-strref_t source_str(source_t *src)
+void source_str(source_t *src, strref_t *strref)
 {
-    return strref_new(src->strref_ptr, src->strref_size);
+    assert(src != NULL && strref != NULL);
+    strref_init(strref, src->strref_ptr, src->strref_size);
 }
 
 size_t source_line_at(source_t *src, size_t index)
 {
     size_t left = 0, right = src->lines_size, middle;
 
-    if (index > src->strref_size) {
-        return src->lines_size;
-    }
+    assert(src != NULL && src->lines_ptr != NULL);
+    assert(index < src->strref_size);
 
     while (right - left > 1) {
         middle = (right - left) / 2 + left;

@@ -17,7 +17,7 @@ source_t *source_new(const char *filename);
 
 void source_free(source_t *src);
 
-strref_t source_str(source_t *src);
+void source_str(source_t *src, strref_t *strref);
 
 size_t source_line_at(source_t *src, size_t index);
 

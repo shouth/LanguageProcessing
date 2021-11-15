@@ -1,43 +1,49 @@
+#include <assert.h>
+
 #include "cursol.h"
 
-cursol_t cursol_new(strref_t strref)
+void cursol_init(cursol_t *cur, strref_t *strref)
 {
-    return (cursol_t) { strref.size, strref };
+    assert(cur != NULL && strref != NULL);
+    cur->initial_size = strref_size(strref);
+    cur->strref = *strref;
 }
 
-int cursol_nth(cursol_t cur, size_t index)
+int cursol_nth(const cursol_t *cur, size_t index)
 {
-    int c = strref_at(cur.strref, index);
-    if (c < 0) {
+    assert(cur != NULL);
+    if (index >= strref_size(&cur->strref)) {
         return EOF;
     }
-    return c;
+    return strref_at(&cur->strref, index);
 }
 
-int cursol_first(cursol_t cur)
+int cursol_first(const cursol_t *cur)
 {
     return cursol_nth(cur, 0);
 }
 
-int cursol_second(cursol_t cur)
+int cursol_second(const cursol_t *cur)
 {
     return cursol_nth(cur, 1);
 }
 
-int cursol_eof(cursol_t cur)
+int cursol_eof(const cursol_t *cur)
 {
-    return strref_empty(cur.strref);
+    return strref_empty(&cur->strref);
 }
 
-cursol_t cursol_next(cursol_t cur)
+void cursol_next(cursol_t *cur)
 {
+    assert(cur != NULL);
     if (cursol_eof(cur)) {
         return cur;
     }
-    return cursol_new(strref_slice(cur.strref, 1, STRREF_NPOS));
+    strref_slice(&cur->strref, &cur->strref, 1, STRREF_NPOS);
 }
 
-size_t cursol_consumed(cursol_t cur)
+size_t cursol_consumed(const cursol_t *cur)
 {
-    return cur.initial_size - strref_size(cur.strref);
+    assert(cur != NULL);
+    return cur->initial_size - strref_size(&cur->strref);
 }
