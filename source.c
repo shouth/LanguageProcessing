@@ -11,7 +11,7 @@
 
 #if defined(_WIN32)
 
-static stroff_t filesize(const char *filename)
+static size_t filesize(const char *filename)
 {
     struct __stat64 s;
     if (_stat64(filename, &s) < 0) {
@@ -27,7 +27,7 @@ static stroff_t filesize(const char *filename)
 
 #elif defined(__unix__) || defined(__APPLE__)
 
-static stroff_t filesize(const char *filename)
+static size_t filesize(const char *filename)
 {
     struct stat s;
     if (stat(filename, &s) < 0) {
@@ -43,13 +43,13 @@ static stroff_t filesize(const char *filename)
 
 #else
 
-static stroff_t filesize(const char *filename)
+static size_t filesize(const char *filename)
 {
     const size_t block_size = 4096;
     char buf[block_size];
     FILE *file;
     size_t size;
-    stroff_t ret = 0;
+    size_t ret = 0;
 
     file = fopen(filename, "r");
     setvbuf(file, NULL, _IOFBF, block_size);
@@ -86,6 +86,10 @@ source_t *source_new(const char *filename)
     size_t linecnt;
     const char *cur;
 
+    if (filename == NULL) {
+        return NULL;
+    }
+
     src = (source_t *) malloc(sizeof(source_t));
     if (src == NULL) {
         return NULL;
@@ -108,7 +112,6 @@ source_t *source_new(const char *filename)
         source_free(src);
         return NULL;
     }
-    src->str_ptr[src->str_size] = '\0';
     file = fopen(filename, "r");
     if (file == NULL) {
         source_free(src);
@@ -120,6 +123,7 @@ source_t *source_new(const char *filename)
         return NULL;
     }
     fclose(file);
+    src->str_ptr[src->str_size] = '\0';
 
     linecnt = 0;
     for (cur = src->str_ptr; cur[0] != '\0'; cur = nextline(cur)) {
@@ -127,7 +131,7 @@ source_t *source_new(const char *filename)
     }
 
     src->lines_size = linecnt;
-    src->lines_ptr = (stroff_t *) malloc(sizeof(stroff_t) * src->lines_size);
+    src->lines_ptr = (size_t *) malloc(sizeof(size_t) * src->lines_size);
     if (src->lines_ptr == NULL) {
         source_free(src);
         return NULL;
@@ -142,7 +146,7 @@ source_t *source_new(const char *filename)
     return src;
 }
 
-int source_free(source_t *src)
+void source_free(source_t *src)
 {
     if (src != NULL) {
         if (src->filename != NULL) {
@@ -156,4 +160,25 @@ int source_free(source_t *src)
         }
         free(src);
     }
+}
+
+size_t source_line_at(source_t *src, size_t index)
+{
+    size_t left = 0, right = src->lines_size, middle;
+
+    if (index > src->str_size) {
+        return src->lines_size;
+    }
+
+    while (right - left > 1) {
+        middle = (right - left) / 2 + left;
+
+        if (src->lines_ptr[middle] <= index) {
+            left = middle;
+        } else {
+            right = middle;
+        }
+    }
+
+    return left;
 }

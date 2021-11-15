@@ -11,12 +11,12 @@ const char *str_data(strref_t str)
     return str.data;
 }
 
-stroff_t str_size(strref_t str)
+size_t str_size(strref_t str)
 {
     return str.size;
 }
 
-strref_t str_new(const char *data, stroff_t size)
+strref_t str_new(const char *data, size_t size)
 {
     if (data == NULL) {
         data = empty;
@@ -29,7 +29,7 @@ strref_t str_new(const char *data, stroff_t size)
     return (strref_t) { data, size };
 }
 
-int str_at(strref_t str, stroff_t index)
+int str_at(strref_t str, size_t index)
 {
     assert(str.data != NULL);
 
@@ -40,7 +40,7 @@ int str_at(strref_t str, stroff_t index)
     return str.data[index];
 }
 
-strref_t str_slice(strref_t str, stroff_t begin, stroff_t end)
+strref_t str_slice(strref_t str, size_t begin, size_t end)
 {
     assert(str.data != NULL);
 
