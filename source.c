@@ -70,6 +70,9 @@ static stroff_t filesize(const char *filename)
 static const char *nextline(const char *str)
 {
     str += strcspn(str, "\r\n");
+    if (str[0] == '\0') {
+        return str;
+    }
     if (strncmp("\r\n", str, 2) == 0 || strncmp("\n\r", str, 2) == 0) {
         return str + 2;
     }
