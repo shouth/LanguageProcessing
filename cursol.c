@@ -36,10 +36,9 @@ int cursol_eof(const cursol_t *cur)
 void cursol_next(cursol_t *cur)
 {
     assert(cur != NULL);
-    if (cursol_eof(cur)) {
-        return cur;
+    if (!cursol_eof(cur)) {
+        strref_slice(&cur->strref, &cur->strref, 1, STRREF_NPOS);
     }
-    strref_slice(&cur->strref, &cur->strref, 1, STRREF_NPOS);
 }
 
 size_t cursol_consumed(const cursol_t *cur)
