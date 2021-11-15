@@ -11,7 +11,7 @@ typedef struct {
     stroff_t size;
 } strref_t;
 
-#define str_npos UINT64_MAX
+#define STR_NPOS UINT64_MAX
 
 stroff_t str_size(strref_t str);
 

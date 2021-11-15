@@ -22,7 +22,7 @@ strref_t str_new(const char *data, stroff_t size)
         data = empty;
         size = 0;
     }
-    if (size == str_npos) {
+    if (size == STR_NPOS) {
         size = strlen(data);
     }
 
@@ -44,10 +44,10 @@ strref_t str_slice(strref_t str, stroff_t begin, stroff_t end)
 {
     assert(str.data != NULL);
 
-    if (begin == str_npos) {
+    if (begin == STR_NPOS) {
         begin = 0;
     }
-    if (end == str_npos) {
+    if (end == STR_NPOS) {
         end = str.size;
     }
 
