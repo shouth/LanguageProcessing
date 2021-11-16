@@ -10,10 +10,6 @@ void token_init(token_t *token, token_type_t type, ...)
 
     assert(token != NULL);
 
-    if (token == NULL) {
-        return -1;
-    }
-
     token->type = type;
     va_start(args, type);
     switch (type) {
@@ -25,5 +21,4 @@ void token_init(token_t *token, token_type_t type, ...)
         token->cstyle_comment.terminated = va_arg(args, int);
     }
     va_end(args);
-    return 0;
 }

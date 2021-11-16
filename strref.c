@@ -46,7 +46,7 @@ int strref_at(const strref_t *strref, size_t index)
     return strref->data[index];
 }
 
-void strref_slice(strref_t *ret, const strref_t *strref, size_t begin, size_t end)
+void strref_slice(const strref_t *strref, strref_t *ret, size_t begin, size_t end)
 {
     assert(strref != NULL);
     assert(strref->data != NULL);

@@ -21,6 +21,6 @@ void strref_init(strref_t *strref, const char *data, size_t size);
 
 int strref_at(const strref_t *strref, size_t index);
 
-void strref_slice(strref_t *ret, const strref_t *strref, size_t begin, size_t end);
+void strref_slice(const strref_t *strref, strref_t *ret, size_t begin, size_t end);
 
 #endif /* STRREF_H */

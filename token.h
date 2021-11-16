@@ -55,6 +55,7 @@ typedef enum {
     TOKEN_BREAK,
     TOKEN_BRACES_COMMENT,
     TOKEN_CSTYLE_COMMENT,
+    TOKEN_WHITESPACE,
 } token_type_t;
 
 typedef struct {
