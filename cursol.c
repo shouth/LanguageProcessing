@@ -2,11 +2,11 @@
 
 #include "cursol.h"
 
-void cursol_init(cursol_t *cur, strref_t *strref)
+void cursol_init(cursol_t *cur, const strref_t *strref)
 {
     assert(cur != NULL && strref != NULL);
     cur->initial_size = strref_size(strref);
-    cur->strref = *strref;
+    strref_slice(strref, &cur->strref, STRREF_NPOS, STRREF_NPOS);
 }
 
 int cursol_nth(const cursol_t *cur, size_t index)
@@ -20,16 +20,19 @@ int cursol_nth(const cursol_t *cur, size_t index)
 
 int cursol_first(const cursol_t *cur)
 {
+    assert(cur != NULL);
     return cursol_nth(cur, 0);
 }
 
 int cursol_second(const cursol_t *cur)
 {
+    assert(cur != NULL);
     return cursol_nth(cur, 1);
 }
 
 int cursol_eof(const cursol_t *cur)
 {
+    assert(cur != NULL);
     return strref_empty(&cur->strref);
 }
 

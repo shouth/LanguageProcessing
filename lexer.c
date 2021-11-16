@@ -1,435 +1,283 @@
-#include <errno.h>
-
 #include "lexer.h"
-#include "scanner.h"
-#include "message.h"
+#include "cursol.h"
+#include "token.h"
+#include "assert.h"
 
-int iscrlf(int c)
+static int is_alphabet(int c)
 {
-    return c == '\n' || c == '\r';
-}
-
-int isgraphical(int c)
-{
-    return isblank(c) || isgraph(c) || iscrlf(c);
-}
-
-int lexer_consume(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    if (le->buf_size + 1 < le->buf_capacity) {
-        le->buf[le->buf_size] = scanner_peek_0(sc);
-        le->buf_size++;
-        le->buf[le->buf_size] = '\0';
+    switch (c) {
+    case 'a': case 'b': case 'c': case 'd': case 'e':
+    case 'f': case 'g': case 'h': case 'i': case 'j':
+    case 'k': case 'l': case 'm': case 'n': case 'o':
+    case 'p': case 'q': case 'r': case 's': case 't':
+    case 'u': case 'v': case 'w': case 'x': case 'y':
+    case 'z':
+    case 'A': case 'B': case 'C': case 'D': case 'E':
+    case 'F': case 'G': case 'H': case 'I': case 'J':
+    case 'K': case 'L': case 'M': case 'N': case 'O':
+    case 'P': case 'Q': case 'R': case 'S': case 'T':
+    case 'U': case 'V': case 'W': case 'X': case 'Y':
+    case 'Z':
+        return 1;
     }
-    scanner_next(sc);
-}
-
-int lex_blank(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    if (isblank(scanner_peek_0(sc))) {
-        lexer_consume(le);
-        return LEX_SUCCESS;
-    }
-    return LEX_FAILURE;
-}
-
-int lex_newline(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    if (scanner_peek_0(sc) == '\n') {
-        lexer_consume(le);
-        if (scanner_peek_0(sc) == '\r') {
-            lexer_consume(le);
-        }
-        scanner_next_line(sc);
-        return LEX_SUCCESS;
-    }
-
-    if (scanner_peek_0(sc) == '\r') {
-        lexer_consume(le);
-        if (scanner_peek_0(sc) == '\n') {
-            lexer_consume(le);
-        }
-        scanner_next_line(sc);
-        return LEX_SUCCESS;
-    }
-
-    return LEX_FAILURE;
-}
-
-int lex_comment(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    if (scanner_peek_0(sc) == '{') {
-        lexer_consume(le);
-
-        while (1) {
-            if (scanner_peek_0(sc) == '}') {
-                lexer_consume(le);
-                break;
-            }
-
-            if (iscrlf(scanner_peek_0(sc))) {
-                lex_newline(le);
-                continue;
-            }
-            if (isgraphical(scanner_peek_0(sc))) {
-                lexer_consume(le);
-                continue;
-            }
-
-            return LEX_FAILURE;
-        }
-
-        return LEX_SUCCESS;
-    }
-
-    if (scanner_peek_0(sc) == '/' && scanner_peek_1(sc) == '*') {
-        lexer_consume(le);
-        lexer_consume(le);
-
-        while (1) {
-            if (scanner_peek_0(sc) == '*' && scanner_peek_1(sc) == '/') {
-                lexer_consume(le);
-                lexer_consume(le);
-                break;
-            }
-
-            if (iscrlf(scanner_peek_0(sc))) {
-                lex_newline(le);
-                continue;
-            }
-            if (isgraphical(scanner_peek_0(sc))) {
-                lexer_consume(le);
-                continue;
-            }
-
-            return LEX_FAILURE;
-        }
-
-        return LEX_SUCCESS;
-    }
-
-    return LEX_FAILURE;
-}
-
-int lex_string(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    if (scanner_peek_0(sc) == '\'') {
-        lexer_consume(le);
-
-        while (1) {
-            if (scanner_peek_0(sc) == '\'' && scanner_peek_1(sc) != '\'') {
-                lexer_consume(le);
-                break;
-            }
-
-            if (scanner_peek_0(sc) == '\'' && scanner_peek_1(sc) == '\'') {
-                lexer_consume(le);
-                lexer_consume(le);
-                continue;
-            }
-            if (!iscrlf(scanner_peek_0(sc)) && isgraphical(scanner_peek_0(sc))) {
-                lexer_consume(le);
-                continue;
-            }
-
-            return LEX_FAILURE;
-        }
-
-        return TSTRING;
-    }
-
-    return LEX_FAILURE;
-}
-
-int lex_unsigned_number(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    if (isdigit(scanner_peek_0(sc))) {
-        lexer_consume(le);
-
-        while (1) {
-            if (isdigit(scanner_peek_0(sc))) {
-                lexer_consume(le);
-                continue;
-            }
-
-            break;
-        }
-
-        return TNUMBER;
-    }
-
-    return LEX_FAILURE;
-}
-
-int lex_name_or_keyword(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    size_t i;
-
-    if (isalpha(scanner_peek_0(sc))) {
-        lexer_consume(le);
-
-        while (1) {
-            if (isalnum(scanner_peek_0(sc))) {
-                lexer_consume(le);
-                continue;
-            }
-
-            break;
-        }
-
-        for (i = 0; i < KEYWORDSIZE; i++) {
-            if (strcmp(le->buf, key[i].keyword) == 0) {
-                return key[i].keytoken;
-            }
-        }
-
-        return TNAME;
-    }
-
-    return LEX_FAILURE;
-}
-
-int lex_symbol(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    switch (scanner_peek_0(sc)) {
-    case '+':
-        lexer_consume(le);
-        return TPLUS;
-    case '-':
-        lexer_consume(le);
-        return TMINUS;
-    case '*':
-        lexer_consume(le);
-        return TSTAR;
-    case '=':
-        lexer_consume(le);
-        return TEQUAL;
-    case '(':
-        lexer_consume(le);
-        return TLPAREN;
-    case ')':
-        lexer_consume(le);
-        return TRPAREN;
-    case '[':
-        lexer_consume(le);
-        return TLSQPAREN;
-    case ']':
-        lexer_consume(le);
-        return TRSQPAREN;
-    case '.':
-        lexer_consume(le);
-        return TDOT;
-    case ',':
-        lexer_consume(le);
-        return TCOMMA;
-    case ';':
-        lexer_consume(le);
-        return TSEMI;
-
-    case ':':
-        lexer_consume(le);
-        switch (scanner_peek_0(sc)) {
-        case '=':
-            lexer_consume(le);
-            return TASSIGN;
-        default:
-            return TCOLON;
-        }
-
-    case '>':
-        lexer_consume(le);
-        switch (scanner_peek_0(sc)) {
-        case '=':
-            lexer_consume(le);
-            return TGREQ;
-        default:
-            return TGR;
-        }
-
-    case '<':
-        lexer_consume(le);
-        switch (scanner_peek_0(sc)) {
-        case '>':
-            lexer_consume(le);
-            return TNOTEQ;
-        case '=':
-            lexer_consume(le);
-            return TLEEQ;
-        default:
-            return TLE;
-        }
-
-    default:
-        return LEX_FAILURE;
-    }
-}
-
-int lex_token(lexer_t *le)
-{
-    scanner_t *sc = &le->scanner;
-    location_t pre_loc, loc;
-
-    int code;
-    long num;
-
-    while (1) {
-        le->buf[0] = '\0';
-        le->buf_size = 0;
-        scanner_location(sc, &pre_loc);
-
-        /* return on EOF */
-        if (scanner_peek_0(sc) == EOF) {
-            return LEX_FAILURE;
-        }
-
-        /* skip space and tab */
-        if (isblank(scanner_peek_0(sc))) {
-            lex_blank(le);
-            continue;
-        }
-
-        /* skip new line */
-        if (iscrlf(scanner_peek_0(sc))) {
-            lex_newline(le);
-            continue;
-        }
-
-        /* skip comment */
-        if (scanner_peek_0(sc) == '{' || (scanner_peek_0(sc) == '/' && scanner_peek_1(sc) == '*')) {
-            code = lex_comment(le);
-            if (code == LEX_FAILURE) {
-                if (scanner_peek_0(sc) == EOF) {
-                    message_error(&pre_loc, "comment is unterminated");
-                } else {
-                    scanner_location(sc, &loc);
-                    message_error(&loc, "invalid character is detected");
-                }
-                return LEX_FAILURE;
-            }
-            continue;
-        }
-
-        /* read string */
-        if (scanner_peek_0(sc) == '\'') {
-            code = lex_string(le);
-            if (code == LEX_FAILURE) {
-                if (scanner_peek_0(sc) == EOF || iscrlf(scanner_peek_0(sc))) {
-                    message_error(&pre_loc, "string is unterminated");
-                } else {
-                    scanner_location(sc, &loc);
-                    message_error(&loc, "invalid character is detected");
-                }
-                return LEX_FAILURE;
-            }
-
-            if (le->buf_size - 2 > MAXSTRSIZE) {
-                scanner_location(sc, &loc);
-                message_token_error(&pre_loc, &loc, "string needs to be shorter than %d", MAXSTRSIZE);
-                return LEX_FAILURE;
-            }
-            strncpy(le->string_attr, le->buf + 1, le->buf_size - 2);
-            le->string_attr[le->buf_size - 2] = '\0';
-            return code;
-        }
-
-        /* read unsigned number */
-        if (isdigit(scanner_peek_0(sc))) {
-            code = lex_unsigned_number(le);
-            errno = 0;
-            le->num_attr = strtol(le->buf, NULL, 10);
-            if (errno == ERANGE || le->num_attr > 32767) {
-                scanner_location(sc, &loc);
-                message_token_error(&pre_loc, &loc, "number needs to be less than 32768", MAXSTRSIZE);
-                return LEX_FAILURE;
-            }
-            return code;
-        }
-
-        /* read name or keyword */
-        if (isalpha(scanner_peek_0(sc))) {
-            code = lex_name_or_keyword(le);
-            if (le->buf_size > MAXSTRSIZE) {
-                scanner_location(sc, &loc);
-                message_token_error(&pre_loc, &loc, "name needs to be shorter than %d", MAXSTRSIZE);
-                return LEX_FAILURE;
-            }
-            strcpy(le->string_attr, le->buf);
-            return code;
-        }
-
-        /* read symbol */
-        if ((code = lex_symbol(le)) > 0) {
-            return code;
-        }
-
-        scanner_location(sc, &loc);
-        message_error(&loc, "invalid character is detected");
-        return LEX_FAILURE;
-    }
-}
-
-int lexer_init(lexer_t *le, const char *filename)
-{
-    if (le == NULL || filename == NULL) {
-        return -1;
-    }
-    scanner_init(&le->scanner, filename);
-    le->buf[0] = '\0';
-    le->buf_capacity = sizeof(le->buf) / sizeof(le->buf[0]);
-    le->buf_size = 0;
-    le->last_token = lex_token(le);
     return 0;
 }
 
-int lexer_free(lexer_t *le)
+static int is_number(int c)
 {
-    scanner_free(&le->scanner);
-}
-
-int lexer_lookahead(const lexer_t *le)
-{
-    if (le == NULL) {
-        return -1;
+    switch (c) {
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+        return 1;
     }
-    return le->last_token;
+    return 0;
 }
 
-void lexer_next(lexer_t *le)
+static int is_space(int c)
 {
-    if (le == NULL) {
+    switch (c) {
+    case ' ': case '\t': case '\n': case '\r':
+        return 1;
+    }
+    return 0;
+}
+
+static int is_graphical(int c)
+{
+    switch (c) {
+    case '!': case '"': case '#': case '$': case '%':
+    case '&': case '\'': case '(': case ')': case '*':
+    case '+': case ',': case '-': case '.': case '/':
+    case ':': case ';': case '<': case '=': case '>':
+    case '?': case '@': case '[': case '\\': case ']':
+    case '^': case '_': case '`': case '{': case '|':
+    case '}': case '~':
+        return 1;
+    }
+    return is_alphabet(c) || is_number(c) || is_space(c);
+}
+
+void lex_space(cursol_t *cur, token_data_t *ret)
+{
+    assert(cur != NULL && ret != NULL);
+    assert(is_space(cursol_first(cur)));
+
+    cursol_next(cur);
+    while (is_space(cursol_first(cur))) {
+        cursol_next(cur);
+    }
+
+    token_data_init(ret, TOKEN_WHITESPACE);
+}
+
+void lex_braces_comment(cursol_t *cur, token_data_t *ret)
+{
+    assert(cur != NULL && ret != NULL);
+    assert(cursol_first(cur) == '{');
+
+    cursol_next(cur);
+    while (cursol_first(cur) != '}') {
+        if (cursol_eof(cur)) {
+            token_data_init(ret, TOKEN_BRACES_COMMENT, /* terminated */ 0);
+            return;
+        }
+        cursol_next(cur);
+    }
+    cursol_next(cur);
+    token_data_init(ret, TOKEN_BRACES_COMMENT, /* terminated */ 1);
+}
+
+void lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
+{
+    assert(cur != NULL && ret != NULL);
+    assert(cursol_first(cur) == '/' && cursol_second(cur) == '*');
+
+    cursol_next(cur);
+    cursol_next(cur);
+    while (cursol_first(cur) != '*' || cursol_second(cur) != '/') {
+        if (cursol_eof(cur)) {
+            token_data_init(ret, TOKEN_CSTYLE_COMMENT, /* terminated */ 0);
+            return;
+        }
+        cursol_next(cur);
+    }
+    cursol_next(cur);
+    cursol_next(cur);
+    token_data_init(ret, TOKEN_CSTYLE_COMMENT, /* terminated */ 1);
+}
+
+void lex_string(cursol_t *cur, token_data_t *ret)
+{
+    assert(cur != NULL && ret != NULL);
+    assert(cursol_first(cur) == '\'');
+
+    cursol_next(cur);
+    while (cursol_first(cur) != '\'') {
+        if (cursol_eof(cur)) {
+            token_data_init(ret, TOKEN_STRING, /* terminated */ 0);
+            return;
+        }
+        cursol_next(cur);
+    }
+    cursol_next(cur);
+    token_data_init(ret, TOKEN_STRING, /* terminated */ 1);
+}
+
+void lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
+{
+    assert(cur != NULL && ret != NULL);
+    assert(is_alphabet(cursol_first(cur)));
+
+    cursol_next(cur);
+    while (is_alphabet(cursol_first(cur)) || is_number(cursol_first(cur))) {
+        cursol_next(cur);
+    }
+    token_data_init(ret, TOKEN_NAME_OR_KEYWORD);
+}
+
+void lex_number(cursol_t *cur, token_data_t *ret)
+{
+    assert(cur != NULL && ret != NULL);
+    assert(is_number(cursol_first(cur)));
+
+    cursol_next(cur);
+    while (is_number(cursol_first(cur))) {
+        cursol_next(cur);
+    }
+    token_data_init(ret, TOKEN_NUMBER);
+}
+
+void lex_symbol(cursol_t *cur, token_data_t *ret)
+{
+    int c;
+    assert(cur != NULL && ret != NULL);
+
+    c = cursol_first(cur);
+    cursol_next(cur);
+    switch (c) {
+    case '+':
+        token_data_init(ret, TOKEN_PLUS);
+        break;
+    case '-':
+        token_data_init(ret, TOKEN_MINUS);
+        break;
+    case '*':
+        token_data_init(ret, TOKEN_STAR);
+        break;
+    case '=':
+        token_data_init(ret, TOKEN_EQUAL);
+        break;
+    case '(':
+        token_data_init(ret, TOKEN_LPAREN);
+        break;
+    case ')':
+        token_data_init(ret, TOKEN_RPAREN);
+        break;
+    case '[':
+        token_data_init(ret, TOKEN_LSQPAREN);
+        break;
+    case ']':
+        token_data_init(ret, TOKEN_RSQPAREN);
+        break;
+    case '.':
+        token_data_init(ret, TOKEN_DOT);
+        break;
+    case ',':
+        token_data_init(ret, TOKEN_COMMA);
+        break;
+    case ';':
+        token_data_init(ret, TOKEN_SEMI);
+        break;
+
+    case '<':
+        switch (cursol_first(cur)) {
+        case '>':
+            cursol_next(cur);
+            token_data_init(ret, TOKEN_NOTEQ);
+            break;
+        case '=':
+            cursol_next(cur);
+            token_data_init(ret, TOKEN_LEEQ);
+            break;
+        default:
+            token_data_init(ret, TOKEN_LE);
+            break;
+        }
+        break;
+
+    case '>':
+        switch (cursol_first(cur)) {
+        case '=':
+            cursol_next(cur);
+            token_data_init(ret, TOKEN_GREQ);
+            break;
+        default:
+            token_data_init(ret, TOKEN_GR);
+            break;
+        }
+        break;
+
+    case ':':
+        switch (cursol_first(cur)) {
+        case '=':
+            cursol_next(cur);
+            token_data_init(ret, TOKEN_ASSIGN);
+            break;
+        default:
+            token_data_init(ret, TOKEN_COLON);
+            break;
+        }
+        break;
+
+    default:
+        token_data_init(ret, TOKEN_UNKNOWN);
+        break;
+    }
+}
+
+void lex_token(cursol_t *cur, token_data_t *ret)
+{
+    assert(cur != NULL && ret != NULL);
+
+    if (is_space(cursol_first(cur))) {
+        lex_space(cur, ret);
         return;
     }
-    le->last_token = lex_token(le);
+
+    if (cursol_first(cur) == '{') {
+        lex_braces_comment(cur, ret);
+        return;
+    }
+
+    if (cursol_first(cur) == '/' && cursol_second(cur) == '*') {
+        lex_cstyle_comment(cur, ret);
+        return;
+    }
+
+    if (cursol_first(cur) == '\'') {
+        lex_string(cur, ret);
+        return;
+    }
+
+    if (is_alphabet(cursol_first(cur))) {
+        lex_name_or_keyword(cur, ret);
+        return;
+    }
+
+    if (is_number(cursol_first(cur))) {
+        lex_number(cur, ret);
+        return;
+    }
+
+    lex_symbol(cur, ret);
 }
 
-const scanner_t *lexer_scanner(const lexer_t *le)
+void lex(const strref_t *strref, token_t *ret)
 {
-    if (le == NULL) {
-        return NULL;
-    }
-    return &le->scanner;
-}
+    cursol_t cursol;
+    assert(strref != NULL && ret != NULL);
 
-int lexer_num_attr(const lexer_t *le)
-{
-    if (le == NULL) {
-        return -1;
-    }
-    return le->num_attr;
-}
-
-const char *lexer_string_attr(const lexer_t *le)
-{
-    if (le == NULL) {
-        return NULL;
-    }
-    return le->string_attr;
+    cursol_init(&cursol, strref);
+    lex_token(&cursol, &ret->data);
+    strref_slice(strref, &ret->strref, STRREF_NPOS, cursol_consumed(&cursol));
 }

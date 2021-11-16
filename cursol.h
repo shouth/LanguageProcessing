@@ -11,7 +11,7 @@ typedef struct {
     strref_t strref;
 } cursol_t;
 
-void cursol_init(cursol_t *cur, strref_t *strref);
+void cursol_init(cursol_t *cur, const strref_t *strref);
 
 int cursol_nth(const cursol_t *cur, size_t index);
 
