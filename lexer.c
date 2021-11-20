@@ -152,44 +152,54 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
     int c;
     assert(cur != NULL && ret != NULL);
 
-    c = cursol_first(cur);
-    cursol_next(cur);
-    switch (c) {
+    switch (cursol_first(cur)) {
     case '+':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_PLUS);
         break;
     case '-':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_MINUS);
         break;
     case '*':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_STAR);
         break;
     case '=':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_EQUAL);
         break;
     case '(':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_LPAREN);
         break;
     case ')':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_RPAREN);
         break;
     case '[':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_LSQPAREN);
         break;
     case ']':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_RSQPAREN);
         break;
     case '.':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_DOT);
         break;
     case ',':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_COMMA);
         break;
     case ';':
+        cursol_next(cur);
         token_data_init(ret, TOKEN_SEMI);
         break;
 
     case '<':
+        cursol_next(cur);
         switch (cursol_first(cur)) {
         case '>':
             cursol_next(cur);
@@ -206,6 +216,7 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
         break;
 
     case '>':
+        cursol_next(cur);
         switch (cursol_first(cur)) {
         case '=':
             cursol_next(cur);
@@ -218,6 +229,7 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
         break;
 
     case ':':
+        cursol_next(cur);
         switch (cursol_first(cur)) {
         case '=':
             cursol_next(cur);
