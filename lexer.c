@@ -66,7 +66,6 @@ void lex_space(cursol_t *cur, token_data_t *ret)
     while (is_space(cursol_first(cur))) {
         cursol_next(cur);
     }
-
     token_data_init(ret, TOKEN_WHITESPACE);
 }
 
