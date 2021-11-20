@@ -1,7 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include "strref.h"
+#include <stddef.h>
 
 typedef enum {
     TOKEN_NAME_OR_KEYWORD,
@@ -48,7 +48,8 @@ typedef union {
 } token_data_t;
 
 typedef struct {
-    strref_t strref;
+    const char *ptr;
+    size_t len;
     token_data_t data;
 } token_t;
 

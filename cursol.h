@@ -4,14 +4,13 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#include "strref.h"
-
 typedef struct {
-    size_t initial_size;
-    strref_t strref;
+    size_t init_len;
+    const char *ptr;
+    size_t len;
 } cursol_t;
 
-void cursol_init(cursol_t *cur, const strref_t *strref);
+void cursol_init(cursol_t *cur, const char *src, size_t len);
 
 int cursol_nth(const cursol_t *cur, size_t index);
 
