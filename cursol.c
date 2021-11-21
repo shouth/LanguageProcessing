@@ -46,7 +46,7 @@ void cursol_next(cursol_t *cur)
     }
 }
 
-size_t cursol_consumed(const cursol_t *cur)
+size_t cursol_position(const cursol_t *cur)
 {
     assert(cur != NULL);
     return cur->init_len - cur->len;

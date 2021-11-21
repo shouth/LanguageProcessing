@@ -288,24 +288,13 @@ void lex_token(cursol_t *cur, token_data_t *ret)
     lex_symbol(cur, ret);
 }
 
-void lexer_init(lexer_t *lexer, source_t *src)
+void lex(cursol_t *cursol, token_t *ret)
 {
-    lexer->src = src;
-    lexer->pos = src->src_size;
-}
+    assert(cursol != NULL && ret != NULL);
+    ret->ptr = cursol->ptr;
+    ret->pos = cursol_position(cursol);
+    ret->src = cursol->src;
 
-void lexer_next(lexer_t *lexer, token_t *ret)
-{
-    cursol_t cursol;
-    const char *ptr = lexer->src->src_ptr + lexer->pos;
-    size_t len = lexer->src->src_size - lexer->pos;
-    assert(lexer != NULL && ret != NULL);
-
-    cursol_init(&cursol, ptr, len);
     lex_token(&cursol, &ret->data);
-    ret->ptr = ptr;
-    ret->len = cursol_consumed(&cursol);
-    ret->src = lexer->src;
-    ret->pos = lexer->pos;
-    lexer->pos += ret->len;
+    ret->len = cursol_position(cursol) - ret->pos;
 }
