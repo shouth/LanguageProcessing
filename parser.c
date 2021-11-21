@@ -1459,6 +1459,8 @@ rule_stream_t *parse_empty_statement(parser_t *parser)
 rule_stream_t *parse(const source_t *src)
 {
     parser_t parser;
+
+    assert(src != NULL);
     parser.src = src;
     parser.expected_terminals = 0;
     cursol_init(&parser.cursol, src->src_ptr, src->src_size);
