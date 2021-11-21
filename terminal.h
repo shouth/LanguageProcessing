@@ -78,6 +78,9 @@ typedef struct {
     const char *ptr;
     size_t len;
     terminal_data_t data;
+
+    const source_t *src;
+    size_t pos;
 } terminal_t;
 
 void terminal_from_token(const token_t *token, terminal_t *terminal);

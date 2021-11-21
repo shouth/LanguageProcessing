@@ -52,6 +52,8 @@ void terminal_from_token(const token_t *token, terminal_t *terminal)
 
     terminal->ptr = token->ptr;
     terminal->len = token->len;
+    terminal->src = token->src;
+    terminal->pos = token->pos;
 
     switch (token->data.type) {
     case TOKEN_NAME_OR_KEYWORD:
