@@ -7,12 +7,10 @@
 #include "terminal.h"
 #include "token.h"
 
-typedef struct {
+const struct {
     terminal_type_t terminal;
     const char *string;
-} keyword_map_t;
-
-const keyword_map_t keyword_map[] = {
+} keyword_map[] = {
     { TERMINAL_PROGRAM,   "program"   },
     { TERMINAL_VAR,       "var"       },
     { TERMINAL_ARRAY,     "array"     },
@@ -43,7 +41,7 @@ const keyword_map_t keyword_map[] = {
     { TERMINAL_BREAK,     "break"     },
 };
 
-const size_t keyword_map_size = sizeof(keyword_map) / sizeof(keyword_map_t);
+const size_t keyword_map_size = sizeof(keyword_map) / sizeof(*keyword_map);
 
 void terminal_from_token(const token_t *token, terminal_t *terminal)
 {
