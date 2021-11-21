@@ -48,8 +48,6 @@ const size_t keyword_map_size = sizeof(keyword_map) / sizeof(keyword_map_t);
 void terminal_from_token(const token_t *token, terminal_t *terminal)
 {
     size_t i;
-    int32_t value;
-
     assert(token != NULL && terminal != NULL);
 
     terminal->ptr = token->ptr;
@@ -68,8 +66,8 @@ void terminal_from_token(const token_t *token, terminal_t *terminal)
         return;
 
     case TOKEN_NUMBER:
-        value = strtol(token->ptr, NULL, 10);
-        if (errno == ERANGE || value > 32767) {
+        terminal->data.number.value = strtol(token->ptr, NULL, 10);
+        if (errno == ERANGE || terminal->data.number.value > 32767) {
             /* error */
         }
 
