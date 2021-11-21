@@ -1043,13 +1043,13 @@ rule_stream_t *parse_factor(parser_t *parser)
     assert(parser != NULL);
 
     stream = parse_variable(parser);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_constant(parser);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
@@ -1138,25 +1138,25 @@ rule_stream_t *parse_constant(parser_t *parser)
     assert(parser != NULL);
 
     stream = parse_terminal(parser, TERMINAL_NUMBER);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_FALSE);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_TRUE);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_STRING);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
@@ -1173,19 +1173,19 @@ rule_stream_t *parse_multiplicative_operator(parser_t *parser)
     assert(parser != NULL);
 
     stream = parse_terminal(parser, TERMINAL_STAR);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_DIV);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_AND);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
@@ -1202,19 +1202,19 @@ rule_stream_t *parse_additive_operator(parser_t *parser)
     assert(parser != NULL);
 
     stream = parse_terminal(parser, TERMINAL_PLUS);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_MINUS);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_OR);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
@@ -1231,37 +1231,37 @@ rule_stream_t *parse_relational_operator(parser_t *parser)
     assert(parser != NULL);
 
     stream = parse_terminal(parser, TERMINAL_EQUAL);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_NOTEQ);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_LE);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_LEEQ);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_GR);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
 
     stream = parse_terminal(parser, TERMINAL_GREQ);
-    if (stream == NULL) {
+    if (stream != NULL) {
         rule_stream_push(ret, stream);
         return ret;
     }
