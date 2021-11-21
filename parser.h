@@ -1,15 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <stdint.h>
+#include "source.h"
 
-#include "cursol.h"
-
-typedef struct {
-    const source_t *src;
-    cursol_t cursol;
-
-    uint64_t expected_terminals;
-} parser_t;
+rule_stream_t *parse(const source_t *src);
 
 #endif /* PARSER_H */
