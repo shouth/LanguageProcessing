@@ -58,7 +58,7 @@ void next_terminal(cursol_t *cursol, terminal_t *terminal)
     assert(cursol != NULL && terminal != NULL);
     while (1) {
         lex(cursol, &token);
-        terminal_from_token(&token, terminal);
+        terminal_from_token(terminal, &token);
         if (terminal->data.type != TERMINAL_NONE) {
             return;
         }

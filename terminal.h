@@ -83,6 +83,6 @@ typedef struct {
     size_t pos;
 } terminal_t;
 
-void terminal_from_token(const token_t *token, terminal_t *terminal);
+void terminal_from_token(terminal_t *terminal, const token_t *token);
 
 #endif /* TERMINAL_H */

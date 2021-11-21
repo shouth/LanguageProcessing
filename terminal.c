@@ -43,7 +43,7 @@ const struct {
 
 const size_t keyword_map_size = sizeof(keyword_map) / sizeof(*keyword_map);
 
-void terminal_from_token(const token_t *token, terminal_t *terminal)
+void terminal_from_token(terminal_t *terminal, const token_t *token)
 {
     size_t i;
     assert(token != NULL && terminal != NULL);
