@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "source.h"
+
 typedef enum {
     TOKEN_NAME_OR_KEYWORD,
     TOKEN_NUMBER,
@@ -54,6 +56,9 @@ typedef struct {
     const char *ptr;
     size_t len;
     token_data_t data;
+
+    const source_t *src;
+    size_t pos;
 } token_t;
 
 void token_data_init(token_data_t *data, token_type_t type, ...);
