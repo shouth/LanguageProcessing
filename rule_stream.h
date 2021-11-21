@@ -59,9 +59,11 @@ struct rule_stream {
     };
 };
 
-rule_stream_t *rule_stream_new(rule_stream_t *parent, rule_stream_type_t type);
+rule_stream_t *rule_stream_new(rule_stream_type_t type);
 
-rule_stream_t *rule_stream_new_terminal(rule_stream_t *parent, const terminal_t *terminal);
+rule_stream_t *rule_stream_new_terminal(const terminal_t *terminal);
+
+void rule_stream_free(rule_stream_t *stream);
 
 void rule_stream_push(rule_stream_t *stream, rule_stream_t *child);
 
