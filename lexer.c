@@ -295,6 +295,6 @@ void lex(cursol_t *cursol, token_t *ret)
     ret->pos = cursol_position(cursol);
     ret->src = cursol->src;
 
-    lex_token(&cursol, &ret->data);
+    lex_token(cursol, &ret->data);
     ret->len = cursol_position(cursol) - ret->pos;
 }
