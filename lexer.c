@@ -250,6 +250,11 @@ void lex_token(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
 
+    if (cursol_eof(cur)) {
+        token_data_init(ret, TOKEN_EOF);
+        return;
+    }
+
     if (is_space(cursol_first(cur))) {
         lex_space(cur, ret);
         return;

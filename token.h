@@ -29,6 +29,7 @@ typedef enum {
     TOKEN_CSTYLE_COMMENT,
     TOKEN_WHITESPACE,
     TOKEN_UNKNOWN,
+    TOKEN_EOF,
 } token_type_t;
 
 typedef union {
