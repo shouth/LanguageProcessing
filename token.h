@@ -32,20 +32,22 @@ typedef enum {
     TOKEN_EOF,
 } token_type_t;
 
-typedef union {
+typedef struct {
     token_type_t type : 8;
 
-    struct {
-        int terminated : 1;
-    } string;
+    union {
+        struct {
+            int terminated : 1;
+        } string;
 
-    struct {
-        int terminated : 1;
-    } braces_comment;
+        struct {
+            int terminated : 1;
+        } braces_comment;
 
-    struct {
-        int terminated : 1;
-    } cstyle_comment;
+        struct {
+            int terminated : 1;
+        } cstyle_comment;
+    };
 } token_data_t;
 
 typedef struct {

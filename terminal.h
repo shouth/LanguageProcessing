@@ -1,6 +1,8 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
 
+#include <stdint.h>
+
 #include "token.h"
 
 typedef enum {
@@ -53,13 +55,31 @@ typedef enum {
     TERMINAL_READ,
     TERMINAL_WRITE,
     TERMINAL_BREAK,
-    TERMINAL_UNKNOWN,
+    TERMINAL_NONE,
+    TERMINAL_EOF,
 } terminal_type_t;
 
 typedef struct {
+    terminal_type_t type;
 
+    union {
+        struct {
+            int32_t value;
+        } number;
+
+        struct {
+            const char *ptr;
+            size_t len;
+        } string;
+    };
+} terminal_data_t;
+
+typedef struct {
+    const char *ptr;
+    size_t len;
+    terminal_data_t data;
 } terminal_t;
 
-void terminal_from_token(const token_t *token);
+void terminal_from_token(const token_t *token, terminal_t *terminal);
 
 #endif /* TERMINAL_H */
