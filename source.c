@@ -168,7 +168,7 @@ void source_free(source_t *src)
     }
 }
 
-size_t source_line_at(source_t *src, size_t index)
+void source_location(source_t *src, size_t index, size_t *line, size_t *col)
 {
     size_t left = 0, right = src->lines_size, middle;
 
@@ -185,5 +185,6 @@ size_t source_line_at(source_t *src, size_t index)
         }
     }
 
-    return left;
+    *line = left;
+    *col = index - src->lines_ptr[left];
 }

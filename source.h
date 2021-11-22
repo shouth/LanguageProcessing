@@ -15,6 +15,6 @@ source_t *source_new(const char *filename);
 
 void source_free(source_t *src);
 
-size_t source_line_at(source_t *src, size_t index);
+void source_location(source_t *src, size_t index, size_t *line, size_t *col);
 
 #endif /* SOURCE_H */
