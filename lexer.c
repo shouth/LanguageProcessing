@@ -75,15 +75,20 @@ void lex_braces_comment(cursol_t *cur, token_data_t *ret)
     assert(cursol_first(cur) == '{');
 
     cursol_next(cur);
-    while (cursol_first(cur) != '}') {
-        if (cursol_eof(cur)) {
+    while (1) {
+        if (cursol_first(cur) == '}') {
+            cursol_next(cur);
+            token_data_init(ret, TOKEN_BRACES_COMMENT, /* terminated */ 1);
+            return;
+        }
+
+        if (cursol_eof(cur) || !is_graphical(cursol_first(cur))) {
             token_data_init(ret, TOKEN_BRACES_COMMENT, /* terminated */ 0);
             return;
         }
+
         cursol_next(cur);
     }
-    cursol_next(cur);
-    token_data_init(ret, TOKEN_BRACES_COMMENT, /* terminated */ 1);
 }
 
 void lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
@@ -93,16 +98,21 @@ void lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
 
     cursol_next(cur);
     cursol_next(cur);
-    while (cursol_first(cur) != '*' || cursol_second(cur) != '/') {
-        if (cursol_eof(cur)) {
+    while (1) {
+        if (cursol_first(cur) == '*' && cursol_second(cur) == '/') {
+            cursol_next(cur);
+            cursol_next(cur);
+            token_data_init(ret, TOKEN_CSTYLE_COMMENT, /* terminated */ 1);
+            return;
+        }
+
+        if (cursol_eof(cur) || !is_graphical(cursol_second(cur))) {
             token_data_init(ret, TOKEN_CSTYLE_COMMENT, /* terminated */ 0);
             return;
         }
+
         cursol_next(cur);
     }
-    cursol_next(cur);
-    cursol_next(cur);
-    token_data_init(ret, TOKEN_CSTYLE_COMMENT, /* terminated */ 1);
 }
 
 void lex_string(cursol_t *cur, token_data_t *ret)
