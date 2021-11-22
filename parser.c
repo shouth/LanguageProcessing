@@ -11,7 +11,7 @@ typedef struct {
     const source_t *src;
     cursol_t cursol;
 
-    terminal_type_t last_terminal;
+    terminal_t last_terminal;
     uint64_t expected_terminals;
 } parser_t;
 
@@ -67,16 +67,13 @@ void next_terminal(cursol_t *cursol, terminal_t *terminal)
 
 parse_tree_t *parse_terminal(parser_t *parser, terminal_type_t type)
 {
-    terminal_t terminal;
-
     assert(parser != NULL);
-    next_terminal(&parser->cursol, &terminal);
-    parser->last_terminal = terminal.data.type;
-    if (terminal.data.type != type) {
+    if (parser->last_terminal.data.type != type) {
         parser->expected_terminals |= (uint64_t) 1 << type;
         return NULL;
     }
-    return parse_tree_new_terminal(&terminal);
+    next_terminal(&parser->cursol, &parser->last_terminal);
+    return parse_tree_new_terminal(&parser->last_terminal);
 }
 
 parse_tree_t *parse_program(parser_t *parser)
@@ -652,6 +649,18 @@ parse_tree_t *parse_statement(parser_t *parser)
     }
 
     stream = parse_output_statement(parser);
+    if (stream != NULL) {
+        parse_tree_push(ret, stream);
+        return ret;
+    }
+
+    stream = parse_compound_statement(parser);
+    if (stream != NULL) {
+        parse_tree_push(ret, stream);
+        return ret;
+    }
+
+    stream = parse_empty_statement(parser);
     if (stream != NULL) {
         parse_tree_push(ret, stream);
         return ret;
@@ -1343,13 +1352,13 @@ parse_tree_t *parse_input_statement(parser_t *parser)
 
     do {
         stream = parse_terminal(parser, TERMINAL_READ);
-        if (stream == NULL) {
+        if (stream != NULL) {
             parse_tree_push(ret, stream);
             break;
         }
 
         stream = parse_terminal(parser, TERMINAL_READLN);
-        if (stream == NULL) {
+        if (stream != NULL) {
             parse_tree_push(ret, stream);
             break;
         }
@@ -1409,13 +1418,13 @@ parse_tree_t *parse_output_statement(parser_t *parser)
 
     do {
         stream = parse_terminal(parser, TERMINAL_WRITE);
-        if (stream == NULL) {
+        if (stream != NULL) {
             parse_tree_push(ret, stream);
             break;
         }
 
         stream = parse_terminal(parser, TERMINAL_WRITELN);
-        if (stream == NULL) {
+        if (stream != NULL) {
             parse_tree_push(ret, stream);
             break;
         }
@@ -1533,5 +1542,6 @@ parse_tree_t *parse(const source_t *src)
     parser.src = src;
     parser.expected_terminals = 0;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
+    next_terminal(&parser.cursol, &parser.last_terminal);
     return parse_program(&parser);
 }
