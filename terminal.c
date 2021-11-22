@@ -45,6 +45,10 @@ const struct {
 
 const size_t keyword_map_size = sizeof(keyword_map) / sizeof(*keyword_map);
 
+/*
+ * Instead of using strncmp, I implemented comparator function
+ * because token_t's string is not null-terminated.
+ */
 int is_token_keyword(const token_t *token, const char *keyword)
 {
     size_t i;
