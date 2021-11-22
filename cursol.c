@@ -2,12 +2,13 @@
 
 #include "cursol.h"
 
-void cursol_init(cursol_t *cur, const char *src, size_t len)
+void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, size_t len)
 {
     assert(cur != NULL && src != NULL);
     cur->init_len = len;
-    cur->ptr = src;
+    cur->ptr = ptr;
     cur->len = len;
+    cur->src = src;
 }
 
 int cursol_nth(const cursol_t *cur, size_t index)

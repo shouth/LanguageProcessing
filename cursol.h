@@ -14,7 +14,7 @@ typedef struct {
     const source_t *src;
 } cursol_t;
 
-void cursol_init(cursol_t *cur, const char *src, size_t len);
+void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, size_t len);
 
 int cursol_nth(const cursol_t *cur, size_t index);
 

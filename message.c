@@ -138,7 +138,7 @@ void msg_emit(msg_t *msg)
 {
     msg_inline_entry_t **cur0;
     msg_entry_t **cur1;
-    size_t left_margin;
+    int left_margin;
     size_t tmp;
     size_t line, col;
     size_t offset;
@@ -180,10 +180,9 @@ void msg_emit(msg_t *msg)
         printf("%*.s |\n", left_margin, "");
 
         offset = msg->src->lines_ptr[line];
-        printf("%*.d | ", left_margin, line + 1);
-        tmp = col;
-        printf("%*.s", tmp, msg->src->src_ptr + offset);
-        offset += tmp;
+        printf("%*.ld | ", left_margin, line + 1);
+        printf("%*.s", (int) col, msg->src->src_ptr + offset);
+        offset += col;
 
         has_primary = (*cur0)->pos == msg->pos && (*cur0)->len == msg->len;
         if (has_primary) {
@@ -191,15 +190,13 @@ void msg_emit(msg_t *msg)
         } else {
             set_level_color(MSG_NOTE);
         }
-        tmp = (*cur0)->len;
-        printf("%*.s", tmp, msg->src->src_ptr + offset);
-        offset += tmp;
+        printf("%*.s", (int) (*cur0)->len, msg->src->src_ptr + offset);
+        offset += (*cur0)->len;
         reset_color();
-        tmp = msg->src->lines_ptr[line + 1] - offset;
-        printf("%*.s\n", tmp, msg->src->src_ptr + offset);
+        printf("%*.s\n", (int) (msg->src->lines_ptr[line + 1] - offset), msg->src->src_ptr + offset);
 
         printf("%*.s | ", left_margin, "");
-        printf("%*.s", col, "");
+        printf("%*.s", (int) col, "");
         if (has_primary) {
             set_level_color(msg->level);
             for (i = 0; i < (*cur0)->len; i++) {

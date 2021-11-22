@@ -1,11 +1,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "rule_stream.h"
+#include "parse_tree.h"
 
-rule_stream_t *rule_stream_new(rule_stream_type_t type)
+parse_tree_t *parse_tree_new(rule_type_t type)
 {
-    rule_stream_t *ret = (rule_stream_t *) malloc(sizeof(rule_stream_t));
+    parse_tree_t *ret = (parse_tree_t *) malloc(sizeof(parse_tree_t));
     assert(ret != NULL);
     ret->parent = NULL;
     ret->type = type;
@@ -15,17 +15,17 @@ rule_stream_t *rule_stream_new(rule_stream_type_t type)
     return ret;
 }
 
-rule_stream_t *rule_stream_new_terminal(const terminal_t *terminal)
+parse_tree_t *parse_tree_new_terminal(const terminal_t *terminal)
 {
-    rule_stream_t *ret = (rule_stream_t *) malloc(sizeof(rule_stream_t));
+    parse_tree_t *ret = (parse_tree_t *) malloc(sizeof(parse_tree_t));
     assert(terminal != NULL && ret != NULL);
     ret->parent = NULL;
-    ret->type = RULE_STREAM_TERMINAL;
+    ret->type = RULE_TERMINAL;
     ret->terminal = *terminal;
     return ret;
 }
 
-void rule_stream_push(rule_stream_t *stream, rule_stream_t *child)
+void parse_tree_push(parse_tree_t *stream, parse_tree_t *child)
 {
     assert(stream != NULL && child != NULL);
     *stream->stream.child.back = child;
@@ -33,14 +33,14 @@ void rule_stream_push(rule_stream_t *stream, rule_stream_t *child)
     child->parent = stream;
 }
 
-void rule_stream_free(rule_stream_t *stream)
+void parse_tree_free(parse_tree_t *stream)
 {
-    if (stream->type != RULE_STREAM_TERMINAL) {
+    if (stream->type != RULE_TERMINAL) {
         if (stream->stream.next != NULL) {
-            rule_stream_free(stream->stream.next);
+            parse_tree_free(stream->stream.next);
         }
         if (stream->stream.child.front != NULL) {
-            rule_stream_free(stream->stream.child.front);
+            parse_tree_free(stream->stream.child.front);
         }
     }
     free(stream);
