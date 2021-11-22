@@ -275,8 +275,8 @@ void msg_emit(msg_t *msg)
                 putchar(c);
             }
         }
-        reset();
         printf(" %s\n", (*cur0)->msg);
+        reset();
     }
 
     for (cur1 = &msg->entries; *cur1 != NULL; cur1 = &(*cur1)->next) {
