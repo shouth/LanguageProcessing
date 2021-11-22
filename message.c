@@ -92,7 +92,7 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, msg_level_t level,
     *precur = entry;
 }
 
-void set_color(msg_level_t level)
+void set_level_color(msg_level_t level)
 {
     switch (level) {
     case MSG_NOTE:
@@ -134,10 +134,92 @@ const char *level_str(msg_level_t level)
     return "";
 }
 
-void msg_emit(const msg_t *msg)
+void msg_emit(msg_t *msg)
 {
-    set_color(msg->level);
+    msg_inline_entry_t **cur0;
+    msg_entry_t **cur1;
+    size_t left_margin;
+    size_t tmp;
+    size_t line, col;
+    size_t offset;
+    size_t i;
+    int has_primary;
+
+    has_primary = 0;
+    for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
+        if ((*cur0)->pos == msg->pos && (*cur0)->len == msg->len) {
+            has_primary = 1;
+        }
+    }
+    if (!has_primary) {
+        msg_add_inline_entry(msg, msg->pos, msg->len, msg->level, "");
+    }
+
+    for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
+        if ((*cur0)->next == NULL) {
+            source_location(msg->src, msg->pos, &tmp, NULL);
+            left_margin = 0;
+            while (tmp > 0) {
+                left_margin++;
+                tmp /= 10;
+            }
+        }
+    }
+
+    set_level_color(msg->level);
     printf("%s", level_str(msg->level));
     reset_color();
-    printf(": %s", msg->msg);
+    printf(": %s\n", msg->msg);
+
+    source_location(msg->src, msg->pos, &line, &col);
+    printf("%*.s", left_margin, "");
+    printf("--> %s:%ld:%ld\n", msg->src->filename, line + 1, col);
+
+    for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
+        source_location(msg->src, (*cur0)->pos, &line, &col);
+        printf("%*.s |\n", left_margin, "");
+
+        offset = msg->src->lines_ptr[line];
+        printf("%*.d | ", left_margin, line + 1);
+        tmp = col;
+        printf("%*.s", tmp, msg->src->src_ptr + offset);
+        offset += tmp;
+
+        has_primary = (*cur0)->pos == msg->pos && (*cur0)->len == msg->len;
+        if (has_primary) {
+            set_level_color(msg->level);
+        } else {
+            set_level_color(MSG_NOTE);
+        }
+        tmp = (*cur0)->len;
+        printf("%*.s", tmp, msg->src->src_ptr + offset);
+        offset += tmp;
+        reset_color();
+        tmp = msg->src->lines_ptr[line + 1] - offset;
+        printf("%*.s\n", tmp, msg->src->src_ptr + offset);
+
+        printf("%*.s | ", left_margin, "");
+        printf("%*.s", col, "");
+        if (has_primary) {
+            set_level_color(msg->level);
+            for (i = 0; i < (*cur0)->len; i++) {
+                printf("^");
+            }
+        } else {
+            set_level_color(MSG_NOTE);
+            for (i = 0; i < (*cur0)->len; i++) {
+                printf("-");
+            }
+        }
+        reset_color();
+        printf(" %s", (*cur0)->msg);
+    }
+
+    for (cur1 = &msg->entries; *cur1 != NULL; cur1 = &(*cur1)->next) {
+        printf("%*.s = ", left_margin, "");
+        set_level_color((*cur1)->level);
+        printf("%s", level_str((*cur1)->level));
+        reset_color();
+        printf(": %s\n", (*cur1)->msg);
+    }
 }

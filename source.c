@@ -185,6 +185,10 @@ void source_location(source_t *src, size_t index, size_t *line, size_t *col)
         }
     }
 
-    *line = left;
-    *col = index - src->lines_ptr[left];
+    if (line != NULL) {
+        *line = left;
+    }
+    if (col != NULL) {
+        *col = index - src->lines_ptr[left];
+    }
 }
