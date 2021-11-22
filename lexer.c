@@ -111,15 +111,25 @@ void lex_string(cursol_t *cur, token_data_t *ret)
     assert(cursol_first(cur) == '\'');
 
     cursol_next(cur);
-    while (cursol_first(cur) != '\'') {
+    while (1) {
+        if (cursol_first(cur) == '\'') {
+            cursol_next(cur);
+
+            if (cursol_first(cur) == '\'') {
+                cursol_next(cur);
+            } else {
+                token_data_init(ret, TOKEN_STRING, /* terminated */ 1);
+                return;
+            }
+        }
+
         if (cursol_eof(cur)) {
             token_data_init(ret, TOKEN_STRING, /* terminated */ 0);
             return;
         }
+
         cursol_next(cur);
     }
-    cursol_next(cur);
-    token_data_init(ret, TOKEN_STRING, /* terminated */ 1);
 }
 
 void lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
