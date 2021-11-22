@@ -191,6 +191,6 @@ void source_location(const source_t *src, size_t index, location_t *loc)
     }
 
     loc->line = left + 1;
-    loc->col = index - src->lines_ptr[left];
+    loc->col = index - src->lines_ptr[left] + 1;
     loc->src = src;
 }

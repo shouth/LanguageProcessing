@@ -210,14 +210,14 @@ void msg_emit(msg_t *msg)
         set_bold();
         printf("%*.ld | ", left_margin, loc.line);
         reset();
-        for (i = 0; i < loc.col; i++) {
+        for (i = 0; i < loc.col - 1; i++) {
             if (msg->src->src_ptr[offset + i] == '\t') {
                 printf("    ");
             } else {
                 putchar(msg->src->src_ptr[offset + i]);
             }
         }
-        offset += loc.col;
+        offset += loc.col - 1;
 
         has_primary = (*cur0)->pos == msg->pos && (*cur0)->len == msg->len;
         if (has_primary) {
@@ -251,14 +251,14 @@ void msg_emit(msg_t *msg)
         set_bold();
         printf("%*.s | ", left_margin, "");
         reset();
-        for (i = 0; i < loc.col; i++) {
+        for (i = 0; i < loc.col - 1; i++) {
             if (msg->src->src_ptr[offset + i] == '\t') {
                 printf("    ");
             } else {
                 putchar(' ');
             }
         }
-        offset += loc.col;
+        offset += loc.col - 1;
 
         set_bold();
         if (has_primary) {
