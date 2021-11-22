@@ -59,7 +59,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
     switch (token->data.type) {
     case TOKEN_NAME_OR_KEYWORD:
         for (i = 0; i < keyword_map_size; i++) {
-            if (strcmp(token->ptr, keyword_map[i].string) == 0) {
+            if (strncmp(token->ptr, keyword_map[i].string, token->len) == 0) {
                 terminal->data.type = keyword_map[i].terminal;
                 return;
             }
