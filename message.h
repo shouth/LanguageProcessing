@@ -9,7 +9,7 @@ typedef enum {
     MSG_NOTE,
     MSG_WARN,
     MSG_ERROR,
-    MSG_FATAL,
+    MSG_FATAL
 } msg_level_t;
 
 typedef struct msg_entry msg_entry_t;

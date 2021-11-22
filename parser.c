@@ -73,7 +73,7 @@ parse_tree_t *parse_terminal(parser_t *parser, terminal_type_t type)
     next_terminal(&parser->cursol, &terminal);
     parser->last_terminal = terminal.data.type;
     if (terminal.data.type != type) {
-        parser->expected_terminals |= 1ull << type;
+        parser->expected_terminals |= (uint64_t) 1 << type;
         return NULL;
     }
     return parse_tree_new_terminal(&terminal);
@@ -1480,8 +1480,8 @@ parse_tree_t *parse_output_format(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_STRING);
     if (stream != NULL) {
-        len = stream->terminal.data.string.len;
-        ptr = stream->terminal.data.string.ptr;
+        len = stream->data.terminal.data.data.string.len;
+        ptr = stream->data.terminal.data.data.string.ptr;
         if (len == 1 || (len == 2 && ptr[0] == '\'' && ptr[1] == '\'')) {
             parser->cursol = cursol;
         } else {

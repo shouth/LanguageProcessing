@@ -56,13 +56,13 @@ typedef enum {
     TERMINAL_WRITE,
     TERMINAL_BREAK,
     TERMINAL_NONE,
-    TERMINAL_EOF,
+    TERMINAL_EOF
 } terminal_type_t;
 
 typedef struct {
     terminal_type_t type;
 
-    union {
+    union terminal_data {
         struct {
             int32_t value;
         } number;
@@ -71,7 +71,7 @@ typedef struct {
             const char *ptr;
             size_t len;
         } string;
-    };
+    } data;
 } terminal_data_t;
 
 typedef struct {

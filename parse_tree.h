@@ -39,7 +39,7 @@ typedef enum {
     RULE_OUTPUT_FORMAT,
     RULE_EMPTY_STATEMENT,
 
-    RULE_TERMINAL,
+    RULE_TERMINAL
 } rule_type_t;
 
 typedef struct parse_tree parse_tree_t;
@@ -47,7 +47,7 @@ struct parse_tree {
     parse_tree_t *parent;
     rule_type_t type;
 
-    union {
+    union parse_tree_data {
         struct {
             parse_tree_t *next;
             struct {
@@ -57,7 +57,7 @@ struct parse_tree {
         } stream;
 
         terminal_t terminal;
-    };
+    } data;
 };
 
 parse_tree_t *parse_tree_new(rule_type_t type);

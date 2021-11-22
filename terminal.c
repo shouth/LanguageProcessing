@@ -69,8 +69,8 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         return;
 
     case TOKEN_NUMBER:
-        terminal->data.number.value = strtol(token->ptr, NULL, 10);
-        if (errno == ERANGE || terminal->data.number.value > 32767) {
+        terminal->data.data.number.value = strtol(token->ptr, NULL, 10);
+        if (errno == ERANGE || terminal->data.data.number.value > 32767) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "number is too large");
             msg_add_inline_entry(msg, token->pos, token->len, "number needs to be less than 32768");
             msg_emit(msg);
@@ -80,18 +80,18 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         return;
 
     case TOKEN_STRING:
-        if (!token->data.string.terminated) {
+        if (!token->data.data.string.terminated) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "string is unterminated");
             msg_emit(msg);
         }
 
         terminal->data.type = TERMINAL_STRING;
-        terminal->data.string.ptr = terminal->ptr + 1;
-        terminal->data.string.len = terminal->len - 2;
+        terminal->data.data.string.ptr = terminal->ptr + 1;
+        terminal->data.data.string.len = terminal->len - 2;
         return;
 
     case TOKEN_BRACES_COMMENT:
-        if (!token->data.braces_comment.terminated) {
+        if (!token->data.data.braces_comment.terminated) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
         }
@@ -100,7 +100,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         return;
 
     case TOKEN_CSTYLE_COMMENT:
-        if (!token->data.cstyle_comment.terminated) {
+        if (!token->data.data.cstyle_comment.terminated) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
         }

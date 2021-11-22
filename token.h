@@ -31,13 +31,13 @@ typedef enum {
     TOKEN_CSTYLE_COMMENT,
     TOKEN_WHITESPACE,
     TOKEN_UNKNOWN,
-    TOKEN_EOF,
+    TOKEN_EOF
 } token_type_t;
 
 typedef struct {
-    token_type_t type : 8;
+    token_type_t type;
 
-    union {
+    union token_data {
         struct {
             int terminated : 1;
         } string;
@@ -49,7 +49,7 @@ typedef struct {
         struct {
             int terminated : 1;
         } cstyle_comment;
-    };
+    } data;
 } token_data_t;
 
 typedef struct {
