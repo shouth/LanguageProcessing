@@ -81,10 +81,12 @@ parse_tree_t *parse_terminal(parser_t *parser, terminal_type_t type)
 
 parse_tree_t *parse_program(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_PROGRAM);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_PROGRAM);
 
     stream = parse_terminal(parser, TERMINAL_PROGRAM);
     if (stream == NULL) {
@@ -126,10 +128,12 @@ parse_tree_t *parse_program(parser_t *parser)
 
 parse_tree_t *parse_block(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_BLOCK);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_BLOCK);
 
     while (1) {
         stream = parse_variable_declaration(parser);
@@ -159,10 +163,12 @@ parse_tree_t *parse_block(parser_t *parser)
 
 parse_tree_t *parse_variable_declaration(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_VARIABLE_DECLARATION);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_VARIABLE_DECLARATION);
 
     stream = parse_terminal(parser, TERMINAL_VAR);
     if (stream == NULL) {
@@ -233,10 +239,12 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
 parse_tree_t *parse_variable_names(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_VARIABLE_NAMES);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_VARIABLE_NAMES);
 
     stream = parse_variable_name(parser);
     if (stream == NULL) {
@@ -265,10 +273,12 @@ parse_tree_t *parse_variable_names(parser_t *parser)
 
 parse_tree_t *parse_variable_name(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_VARIABLE_NAME);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_VARIABLE_NAME);
 
     stream = parse_terminal(parser, TERMINAL_NAME);
     if (stream == NULL) {
@@ -282,10 +292,12 @@ parse_tree_t *parse_variable_name(parser_t *parser)
 
 parse_tree_t *parse_type(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_TYPE);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_TYPE);
 
     stream = parse_standard_type(parser);
     if (stream != NULL) {
@@ -305,10 +317,12 @@ parse_tree_t *parse_type(parser_t *parser)
 
 parse_tree_t *parse_standard_type(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_STANDARD_TYPE);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_STANDARD_TYPE);
 
     stream = parse_terminal(parser, TERMINAL_INTEGER);
     if (stream != NULL) {
@@ -334,10 +348,12 @@ parse_tree_t *parse_standard_type(parser_t *parser)
 
 parse_tree_t *parse_array_type(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_ARRAY_TYPE);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_ARRAY_TYPE);
 
     stream = parse_terminal(parser, TERMINAL_ARRAY);
     if (stream == NULL) {
@@ -386,10 +402,12 @@ parse_tree_t *parse_array_type(parser_t *parser)
 
 parse_tree_t *parse_subprogram_declaration(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_SUBPROGRAM_DECLARATION);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_SUBPROGRAM_DECLARATION);
 
     stream = parse_terminal(parser, TERMINAL_PROCEDURE);
     if (stream == NULL) {
@@ -441,10 +459,12 @@ parse_tree_t *parse_subprogram_declaration(parser_t *parser)
 
 parse_tree_t *parse_procedure_name(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_PROCEDURE_NAME);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_PROCEDURE_NAME);
 
     stream = parse_terminal(parser, TERMINAL_NAME);
     if (stream == NULL) {
@@ -458,10 +478,12 @@ parse_tree_t *parse_procedure_name(parser_t *parser)
 
 parse_tree_t *parse_formal_parameters(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_FORMAL_PARAMETERS);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_FORMAL_PARAMETERS);
 
     stream = parse_terminal(parser, TERMINAL_LPAREN);
     if (stream == NULL) {
@@ -532,10 +554,12 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
 parse_tree_t *parse_compound_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_COMPOUND_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_COMPOUND_STATEMENT);
 
     stream = parse_terminal(parser, TERMINAL_BEGIN);
     if (stream == NULL) {
@@ -578,10 +602,12 @@ parse_tree_t *parse_compound_statement(parser_t *parser)
 
 parse_tree_t *parse_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_STATEMENT);
 
     stream = parse_assignment_statement(parser);
     if (stream != NULL) {
@@ -637,10 +663,12 @@ parse_tree_t *parse_statement(parser_t *parser)
 
 parse_tree_t *parse_condition_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_CONDITION_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_CONDITION_STATEMENT);
 
     stream = parse_terminal(parser, TERMINAL_IF);
     if (stream == NULL) {
@@ -690,10 +718,12 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
 
 parse_tree_t *parse_iteration_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_ITERATION_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_ITERATION_STATEMENT);
 
     stream = parse_terminal(parser, TERMINAL_WHILE);
     if (stream == NULL) {
@@ -728,10 +758,12 @@ parse_tree_t *parse_iteration_statement(parser_t *parser)
 
 parse_tree_t *parse_exit_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_EXIT_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_EXIT_STATEMENT);
 
     stream = parse_terminal(parser, TERMINAL_BREAK);
     if (stream == NULL) {
@@ -745,10 +777,12 @@ parse_tree_t *parse_exit_statement(parser_t *parser)
 
 parse_tree_t *parse_call_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_CALL_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_CALL_STATEMENT);
 
     stream = parse_terminal(parser, TERMINAL_CALL);
     if (stream == NULL) {
@@ -791,10 +825,12 @@ parse_tree_t *parse_call_statement(parser_t *parser)
 
 parse_tree_t *parse_expressions(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_EXPRESSIONS);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_EXPRESSIONS);
 
     stream = parse_expression(parser);
     if (stream == NULL) {
@@ -823,10 +859,12 @@ parse_tree_t *parse_expressions(parser_t *parser)
 
 parse_tree_t *parse_return_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_RETURN_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_RETURN_STATEMENT);
 
     stream = parse_terminal(parser, TERMINAL_RETURN);
     if (stream == NULL) {
@@ -840,10 +878,12 @@ parse_tree_t *parse_return_statement(parser_t *parser)
 
 parse_tree_t *parse_assignment_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_ASSIGNMENT_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_ASSIGNMENT_STATEMENT);
 
     stream = parse_left_part(parser);
     if (stream == NULL) {
@@ -871,10 +911,12 @@ parse_tree_t *parse_assignment_statement(parser_t *parser)
 
 parse_tree_t *parse_left_part(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_LEFT_PART);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_LEFT_PART);
 
     stream = parse_variable(parser);
     if (stream == NULL) {
@@ -888,10 +930,12 @@ parse_tree_t *parse_left_part(parser_t *parser)
 
 parse_tree_t *parse_variable(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_VARIABLE);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_VARIABLE);
 
     stream = parse_variable_name(parser);
     if (stream == NULL) {
@@ -927,10 +971,12 @@ parse_tree_t *parse_variable(parser_t *parser)
 
 parse_tree_t *parse_expression(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_EXPRESSION);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_EXPRESSION);
 
     stream = parse_simple_expression(parser);
     if (stream == NULL) {
@@ -959,10 +1005,12 @@ parse_tree_t *parse_expression(parser_t *parser)
 
 parse_tree_t *parse_simple_expression(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_SIMPLE_EXPRESSION);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_SIMPLE_EXPRESSION);
 
     do {
         stream = parse_terminal(parser, TERMINAL_PLUS);
@@ -1005,10 +1053,12 @@ parse_tree_t *parse_simple_expression(parser_t *parser)
 
 parse_tree_t *parse_term(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_TERM);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_TERM);
 
     stream = parse_factor(parser);
     if (stream == NULL) {
@@ -1037,8 +1087,12 @@ parse_tree_t *parse_term(parser_t *parser)
 
 parse_tree_t *parse_factor(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_FACTOR);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
+
+    assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_FACTOR);
 
     assert(parser != NULL);
 
@@ -1132,10 +1186,12 @@ parse_tree_t *parse_factor(parser_t *parser)
 
 parse_tree_t *parse_constant(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_CONSTANT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_CONSTANT);
 
     stream = parse_terminal(parser, TERMINAL_NUMBER);
     if (stream != NULL) {
@@ -1167,10 +1223,12 @@ parse_tree_t *parse_constant(parser_t *parser)
 
 parse_tree_t *parse_multiplicative_operator(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_MULTIPLICATIVE_OPERATOR);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_MULTIPLICATIVE_OPERATOR);
 
     stream = parse_terminal(parser, TERMINAL_STAR);
     if (stream != NULL) {
@@ -1196,10 +1254,12 @@ parse_tree_t *parse_multiplicative_operator(parser_t *parser)
 
 parse_tree_t *parse_additive_operator(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_ADDITIVE_OPERATOR);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_ADDITIVE_OPERATOR);
 
     stream = parse_terminal(parser, TERMINAL_PLUS);
     if (stream != NULL) {
@@ -1225,10 +1285,12 @@ parse_tree_t *parse_additive_operator(parser_t *parser)
 
 parse_tree_t *parse_relational_operator(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_RELATIONAL_OPERATOR);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_RELATIONAL_OPERATOR);
 
     stream = parse_terminal(parser, TERMINAL_EQUAL);
     if (stream != NULL) {
@@ -1272,10 +1334,12 @@ parse_tree_t *parse_relational_operator(parser_t *parser)
 
 parse_tree_t *parse_input_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_INPUT_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_INPUT_STATEMENT);
 
     do {
         stream = parse_terminal(parser, TERMINAL_READ);
@@ -1336,10 +1400,12 @@ parse_tree_t *parse_input_statement(parser_t *parser)
 
 parse_tree_t *parse_output_statement(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_OUTPUT_STATEMENT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
     assert(parser != NULL);
+
+    ret = parse_tree_new(RULE_OUTPUT_STATEMENT);
 
     do {
         stream = parse_terminal(parser, TERMINAL_WRITE);
@@ -1400,14 +1466,17 @@ parse_tree_t *parse_output_statement(parser_t *parser)
 
 parse_tree_t *parse_output_format(parser_t *parser)
 {
-    parse_tree_t *stream = NULL;
-    parse_tree_t *ret = parse_tree_new(RULE_OUTPUT_FORMAT);
+    parse_tree_t *stream;
+    parse_tree_t *ret;
 
-    cursol_t cursol = parser->cursol;
+    cursol_t cursol;
     size_t len;
     const char *ptr;
 
     assert(parser != NULL);
+
+    cursol = parser->cursol;
+    ret = parse_tree_new(RULE_OUTPUT_FORMAT);
 
     stream = parse_terminal(parser, TERMINAL_STRING);
     if (stream != NULL) {

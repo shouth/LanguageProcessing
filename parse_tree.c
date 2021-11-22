@@ -5,8 +5,8 @@
 
 parse_tree_t *parse_tree_new(rule_type_t type)
 {
-    parse_tree_t *ret = (parse_tree_t *) malloc(sizeof(parse_tree_t));
-    assert(ret != NULL);
+    parse_tree_t *ret;
+    ret = (parse_tree_t *) malloc(sizeof(parse_tree_t));
     ret->parent = NULL;
     ret->type = type;
     ret->stream.next = NULL;
@@ -17,8 +17,9 @@ parse_tree_t *parse_tree_new(rule_type_t type)
 
 parse_tree_t *parse_tree_new_terminal(const terminal_t *terminal)
 {
-    parse_tree_t *ret = (parse_tree_t *) malloc(sizeof(parse_tree_t));
-    assert(terminal != NULL && ret != NULL);
+    parse_tree_t *ret;
+    assert(terminal != NULL);
+    ret = (parse_tree_t *) malloc(sizeof(parse_tree_t));
     ret->parent = NULL;
     ret->type = RULE_TERMINAL;
     ret->terminal = *terminal;
@@ -35,6 +36,10 @@ void parse_tree_push(parse_tree_t *stream, parse_tree_t *child)
 
 void parse_tree_free(parse_tree_t *stream)
 {
+    if (stream == NULL) {
+        return;
+    }
+
     if (stream->type != RULE_TERMINAL) {
         if (stream->stream.next != NULL) {
             parse_tree_free(stream->stream.next);

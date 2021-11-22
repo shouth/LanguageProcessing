@@ -154,26 +154,31 @@ source_t *source_new(const char *filename)
 
 void source_free(source_t *src)
 {
-    if (src != NULL) {
-        if (src->filename != NULL) {
-            free(src->filename);
-        }
-        if (src->src_ptr != NULL) {
-            free(src->src_ptr);
-        }
-        if (src->lines_ptr != NULL) {
-            free(src->lines_ptr);
-        }
-        free(src);
+    if (src == NULL) {
+        return;
     }
+
+    if (src->filename != NULL) {
+        free(src->filename);
+    }
+    if (src->src_ptr != NULL) {
+        free(src->src_ptr);
+    }
+    if (src->lines_ptr != NULL) {
+        free(src->lines_ptr);
+    }
+    free(src);
 }
 
 void source_location(const source_t *src, size_t index, size_t *line, size_t *col)
 {
-    size_t left = 0, right = src->lines_size, middle;
+    size_t left, right, middle;
 
     assert(src != NULL && src->lines_ptr != NULL);
     assert(index < src->src_size);
+
+    left = 0;
+    right = src->lines_size;
 
     while (right - left > 1) {
         middle = (right - left) / 2 + left;

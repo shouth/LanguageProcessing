@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -6,18 +7,19 @@
 
 msg_t *msg_new(const source_t *src, size_t pos, size_t len, const char *fmt, ...)
 {
-    msg_t *ret = (msg_t *) malloc(sizeof(msg_t));
+    msg_t *ret;
     va_list args;
 
+    assert(src != NULL && fmt != NULL);
+
+    ret = (msg_t *) malloc(sizeof(msg_t));
     ret->src = src;
     va_start(args, fmt);
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(ret->msg, fmt, args);
     va_end(args);
-
     ret->pos = pos;
     ret->len = len;
-
     ret->inline_entries = NULL;
     ret->entries = NULL;
 }
@@ -26,6 +28,10 @@ void msg_free(msg_t *msg)
 {
     msg_entry_t **cur0, **precur0;
     msg_inline_entry_t **cur1, **precur1;
+
+    if (msg == NULL) {
+        return;
+    }
 
     precur0 = &msg->entries;
     for (cur0 = precur0; *cur0 != NULL; cur0 = &(*cur0)->next) {
@@ -48,32 +54,35 @@ void msg_free(msg_t *msg)
 
 void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
 {
-    msg_entry_t *entry = (msg_entry_t *) malloc(sizeof(msg_entry_t));
+    msg_entry_t *entry;
     msg_entry_t **cur;
     va_list args;
 
+    assert(msg != NULL && fmt != NULL);
+
+    entry = (msg_entry_t *) malloc(sizeof(msg_entry_t));
     va_start(args, fmt);
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(entry->msg, fmt, args);
     va_end(args);
-
     entry->next = NULL;
-
     for (cur = &entry->next; *cur != NULL; cur = &(*cur)->next);
     *cur = entry;
 }
 
 void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
 {
-    msg_inline_entry_t *entry = (msg_inline_entry_t *) malloc(sizeof(msg_inline_entry_t));
+    msg_inline_entry_t *entry;
     msg_inline_entry_t **cur, **precur;
     va_list args;
 
+    assert(msg != NULL && fmt != NULL);
+
+    entry = (msg_inline_entry_t *) malloc(sizeof(msg_inline_entry_t));
     va_start(args, fmt);
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(entry->msg, fmt, args);
     va_end(args);
-
     entry->pos = pos;
     entry->len = len;
     entry->next = NULL;
@@ -144,6 +153,8 @@ void msg_emit(msg_t *msg)
     size_t offset;
     size_t i;
     int has_primary;
+
+    assert(msg != NULL);
 
     has_primary = 0;
     for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
