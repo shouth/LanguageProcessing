@@ -5,7 +5,7 @@
 
 #include "message.h"
 
-msg_t *msg_new(const source_t *src, size_t pos, size_t len, const char *fmt, ...)
+msg_t *msg_new(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
 {
     msg_t *ret;
     va_list args;
@@ -20,6 +20,7 @@ msg_t *msg_new(const source_t *src, size_t pos, size_t len, const char *fmt, ...
     va_end(args);
     ret->pos = pos;
     ret->len = len;
+    ret->level = level;
     ret->inline_entries = NULL;
     ret->entries = NULL;
 }
@@ -70,7 +71,7 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
     *cur = entry;
 }
 
-void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
+void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, ...)
 {
     msg_inline_entry_t *entry;
     msg_inline_entry_t **cur, **precur;
@@ -105,26 +106,26 @@ void set_level_color(msg_level_t level)
 {
     switch (level) {
     case MSG_NOTE:
-        printf("\031[94m"); /* bright blue */
+        printf("\033[94m"); /* bright blue */
         break;
 
     case MSG_WARN:
-        printf("\031[93m"); /* bright yellow */
+        printf("\033[93m"); /* bright yellow */
         break;
 
     case MSG_ERROR:
-        printf("\031[91m"); /* bright red */
+        printf("\033[91m"); /* bright red */
         break;
 
     case MSG_FATAL:
-        printf("\031[95m"); /* bright magenta */
+        printf("\033[95m"); /* bright magenta */
         break;
     }
 }
 
 void reset_color()
 {
-    printf("\031[0m");
+    printf("\033[0m");
 }
 
 const char *level_str(msg_level_t level)
@@ -163,7 +164,7 @@ void msg_emit(msg_t *msg)
         }
     }
     if (!has_primary) {
-        msg_add_inline_entry(msg, msg->pos, msg->len, msg->level, "");
+        msg_add_inline_entry(msg, msg->pos, msg->len, "");
     }
 
     for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
@@ -211,16 +212,16 @@ void msg_emit(msg_t *msg)
         if (has_primary) {
             set_level_color(msg->level);
             for (i = 0; i < (*cur0)->len; i++) {
-                printf("^");
+                putchar('^');
             }
         } else {
             set_level_color(MSG_NOTE);
             for (i = 0; i < (*cur0)->len; i++) {
-                printf("-");
+                putchar('-');
             }
         }
         reset_color();
-        printf(" %s", (*cur0)->msg);
+        printf(" %s\n", (*cur0)->msg);
     }
 
     for (cur1 = &msg->entries; *cur1 != NULL; cur1 = &(*cur1)->next) {
@@ -230,4 +231,6 @@ void msg_emit(msg_t *msg)
         reset_color();
         printf(": %s\n", (*cur1)->msg);
     }
+
+    msg_free(msg);
 }

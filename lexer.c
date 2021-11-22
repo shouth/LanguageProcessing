@@ -241,6 +241,7 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
         break;
 
     default:
+        cursol_next(cur);
         token_data_init(ret, TOKEN_UNKNOWN);
         break;
     }

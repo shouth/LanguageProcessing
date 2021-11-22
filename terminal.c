@@ -3,7 +3,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <ctype.h>
 
+#include "message.h"
 #include "terminal.h"
 #include "token.h"
 
@@ -46,6 +48,7 @@ const size_t keyword_map_size = sizeof(keyword_map) / sizeof(*keyword_map);
 void terminal_from_token(terminal_t *terminal, const token_t *token)
 {
     size_t i;
+    msg_t *msg;
     assert(token != NULL && terminal != NULL);
 
     terminal->ptr = token->ptr;
@@ -68,7 +71,9 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
     case TOKEN_NUMBER:
         terminal->data.number.value = strtol(token->ptr, NULL, 10);
         if (errno == ERANGE || terminal->data.number.value > 32767) {
-            /* error */
+            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "number is too large");
+            msg_add_inline_entry(msg, token->pos, token->len, "number needs to be less than 32768");
+            msg_emit(msg);
         }
 
         terminal->data.type = TERMINAL_NUMBER;
@@ -76,7 +81,8 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_STRING:
         if (!token->data.string.terminated) {
-            /* error */
+            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "string is unterminated");
+            msg_emit(msg);
         }
 
         terminal->data.type = TERMINAL_STRING;
@@ -86,7 +92,8 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_BRACES_COMMENT:
         if (!token->data.braces_comment.terminated) {
-            /* error */
+            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
+            msg_emit(msg);
         }
 
         terminal->data.type = TERMINAL_NONE;
@@ -94,7 +101,8 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_CSTYLE_COMMENT:
         if (!token->data.cstyle_comment.terminated) {
-            /* error */
+            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
+            msg_emit(msg);
         }
 
         terminal->data.type = TERMINAL_NONE;
@@ -181,6 +189,12 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         return;
 
     case TOKEN_UNKNOWN:
-        /* error */
+        if (iscntrl(token->ptr[0])) {
+            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray \\%d in program", (int) token->ptr[0]);
+        } else {
+            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray `%c` in program", token->ptr[0]);
+        }
+        msg_emit(msg);
+        return;
     }
 }
