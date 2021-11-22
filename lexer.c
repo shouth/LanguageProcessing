@@ -133,7 +133,9 @@ void lex_string(cursol_t *cur, token_data_t *ret)
             }
         }
 
-        if (cursol_eof(cur)) {
+        if (cursol_eof(cur) || !is_graphical(cursol_first(cur))
+            || cursol_first(cur) == '\r' || cursol_first(cur) == '\n')
+        {
             token_data_init(ret, TOKEN_STRING, /* terminated */ 0);
             return;
         }
