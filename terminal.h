@@ -64,7 +64,7 @@ typedef struct {
 
     union terminal_data {
         struct {
-            int32_t value;
+            unsigned long value;
         } number;
 
         struct {

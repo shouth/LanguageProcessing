@@ -69,7 +69,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         return;
 
     case TOKEN_NUMBER:
-        terminal->data.data.number.value = strtol(token->ptr, NULL, 10);
+        terminal->data.data.number.value = strtoul(token->ptr, NULL, 10);
         if (errno == ERANGE || terminal->data.data.number.value > 32767) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "number is too large");
             msg_add_inline_entry(msg, token->pos, token->len, "number needs to be less than 32768");
