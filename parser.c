@@ -1489,14 +1489,8 @@ parse_tree_t *parse_output_format(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_STRING);
     if (stream != NULL) {
-        len = stream->data.terminal.data.data.string.len;
-        ptr = stream->data.terminal.data.data.string.ptr;
-        if (len == 1 || (len == 2 && ptr[0] == '\'' && ptr[1] == '\'')) {
-            parser->cursol = cursol;
-        } else {
-            parse_tree_push(ret, stream);
-            return ret;
-        }
+        parse_tree_push(ret, stream);
+        return ret;
     }
 
     do {
