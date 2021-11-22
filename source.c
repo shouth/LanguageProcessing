@@ -170,11 +170,11 @@ void source_free(source_t *src)
     free(src);
 }
 
-void source_location(const source_t *src, size_t index, size_t *line, size_t *col)
+void source_location(const source_t *src, size_t index, location_t *loc)
 {
-    size_t left, right, middle;
+    size_t left, right, middle, i;
 
-    assert(src != NULL && src->lines_ptr != NULL);
+    assert(src != NULL && src->lines_ptr != NULL && loc != NULL);
     assert(index < src->src_size);
 
     left = 0;
@@ -190,10 +190,7 @@ void source_location(const source_t *src, size_t index, size_t *line, size_t *co
         }
     }
 
-    if (line != NULL) {
-        *line = left;
-    }
-    if (col != NULL) {
-        *col = index - src->lines_ptr[left];
-    }
+    loc->line = left + 1;
+    loc->col = index - src->lines_ptr[left];
+    loc->src = src;
 }

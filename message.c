@@ -123,7 +123,12 @@ void set_level_color(msg_level_t level)
     }
 }
 
-void reset_color()
+void set_bold()
+{
+    printf("\033[1m");
+}
+
+void reset()
 {
     printf("\033[0m");
 }
@@ -150,10 +155,11 @@ void msg_emit(msg_t *msg)
     msg_entry_t **cur1;
     int left_margin;
     size_t tmp;
-    size_t line, col;
     size_t offset;
     size_t i;
     int has_primary;
+    location_t loc;
+    int c;
 
     assert(msg != NULL);
 
@@ -169,7 +175,8 @@ void msg_emit(msg_t *msg)
 
     for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
         if ((*cur0)->next == NULL) {
-            source_location(msg->src, msg->pos, &tmp, NULL);
+            source_location(msg->src, msg->pos, &loc);
+            tmp = loc.line;
             left_margin = 0;
             while (tmp > 0) {
                 left_margin++;
@@ -179,22 +186,38 @@ void msg_emit(msg_t *msg)
     }
 
     set_level_color(msg->level);
+    set_bold();
     printf("%s", level_str(msg->level));
-    reset_color();
+    reset();
+    set_bold();
     printf(": %s\n", msg->msg);
+    reset();
 
-    source_location(msg->src, msg->pos, &line, &col);
+    source_location(msg->src, msg->pos, &loc);
     printf("%*.s", left_margin, "");
-    printf("--> %s:%ld:%ld\n", msg->src->filename, line + 1, col);
+    set_bold();
+    printf("--> ");
+    reset();
+    printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
 
     for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
-        source_location(msg->src, (*cur0)->pos, &line, &col);
+        source_location(msg->src, (*cur0)->pos, &loc);
+        set_bold();
         printf("%*.s |\n", left_margin, "");
+        reset();
 
-        offset = msg->src->lines_ptr[line];
-        printf("%*.ld | ", left_margin, line + 1);
-        printf("%*.s", (int) col, msg->src->src_ptr + offset);
-        offset += col;
+        offset = msg->src->lines_ptr[loc.line - 1];
+        set_bold();
+        printf("%*.ld | ", left_margin, loc.line);
+        reset();
+        for (i = 0; i < loc.col; i++) {
+            if (msg->src->src_ptr[offset + i] == '\t') {
+                printf("    ");
+            } else {
+                putchar(msg->src->src_ptr[offset + i]);
+            }
+        }
+        offset += loc.col;
 
         has_primary = (*cur0)->pos == msg->pos && (*cur0)->len == msg->len;
         if (has_primary) {
@@ -202,25 +225,57 @@ void msg_emit(msg_t *msg)
         } else {
             set_level_color(MSG_NOTE);
         }
-        printf("%*.s", (int) (*cur0)->len, msg->src->src_ptr + offset);
-        offset += (*cur0)->len;
-        reset_color();
-        printf("%*.s\n", (int) (msg->src->lines_ptr[line + 1] - offset), msg->src->src_ptr + offset);
-
-        printf("%*.s | ", left_margin, "");
-        printf("%*.s", (int) col, "");
-        if (has_primary) {
-            set_level_color(msg->level);
-            for (i = 0; i < (*cur0)->len; i++) {
-                putchar('^');
-            }
-        } else {
-            set_level_color(MSG_NOTE);
-            for (i = 0; i < (*cur0)->len; i++) {
-                putchar('-');
+        for (i = 0; i < (*cur0)->len; i++) {
+            if (msg->src->src_ptr[offset + i] == '\t') {
+                printf("    ");
+            } else {
+                putchar(msg->src->src_ptr[offset + i]);
             }
         }
-        reset_color();
+        offset += (*cur0)->len;
+        reset();
+        for (i = 0; 1; i++) {
+            c = msg->src->src_ptr[offset + i];
+            if (c == '\r' || c == '\n') {
+                break;
+            }
+            if (c == '\t') {
+                printf("    ");
+            } else {
+                putchar(c);
+            }
+        }
+        putchar('\n');
+
+        offset = msg->src->lines_ptr[loc.line - 1];
+        set_bold();
+        printf("%*.s | ", left_margin, "");
+        reset();
+        for (i = 0; i < loc.col; i++) {
+            if (msg->src->src_ptr[offset + i] == '\t') {
+                printf("    ");
+            } else {
+                putchar(' ');
+            }
+        }
+        offset += loc.col;
+
+        set_bold();
+        if (has_primary) {
+            set_level_color(msg->level);
+            c = '^';
+        } else {
+            set_level_color(MSG_NOTE);
+            c = '-';
+        }
+        for (i = 0; i < (*cur0)->len; i++) {
+            if (msg->src->src_ptr[offset + i] == '\t') {
+                printf("    ");
+            } else {
+                putchar(c);
+            }
+        }
+        reset();
         printf(" %s\n", (*cur0)->msg);
     }
 
@@ -228,7 +283,7 @@ void msg_emit(msg_t *msg)
         printf("%*.s = ", left_margin, "");
         set_level_color((*cur1)->level);
         printf("%s", level_str((*cur1)->level));
-        reset_color();
+        reset();
         printf(": %s\n", (*cur1)->msg);
     }
 
