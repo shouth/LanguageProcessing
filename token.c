@@ -1,6 +1,5 @@
 #include <stdarg.h>
 #include <assert.h>
-#include <stdio.h>
 
 #include "token.h"
 
