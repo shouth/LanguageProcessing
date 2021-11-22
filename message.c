@@ -37,7 +37,7 @@ void msg_free(msg_t *msg)
     precur0 = &msg->entries;
     for (cur0 = precur0; *cur0 != NULL; cur0 = &(*cur0)->next) {
         if (cur0 != precur0) {
-            free(precur0);
+            free(*precur0);
         }
         precur0 = cur0;
     }
@@ -45,7 +45,7 @@ void msg_free(msg_t *msg)
     precur1 = &msg->inline_entries;
     for (cur1 = precur1; *cur1 != NULL; cur1 = &(*cur1)->next) {
         if (cur1 != precur1) {
-            free(precur1);
+            free(*precur1);
         }
         precur1 = cur1;
     }
@@ -66,15 +66,15 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(entry->msg, fmt, args);
     va_end(args);
-    entry->next = NULL;
-    for (cur = &entry->next; *cur != NULL; cur = &(*cur)->next);
+    for (cur = &msg->entries; *cur != NULL; cur = &(*cur)->next);
+    entry->next = *cur;
     *cur = entry;
 }
 
 void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, ...)
 {
     msg_inline_entry_t *entry;
-    msg_inline_entry_t **cur, **precur;
+    msg_inline_entry_t **cur;
     va_list args;
 
     assert(msg != NULL && fmt != NULL);
@@ -88,18 +88,13 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, .
     entry->len = len;
     entry->next = NULL;
 
-    precur = &msg->inline_entries;
-    for (cur = precur; *cur != NULL; cur = &(*cur)->next) {
-        if ((*cur)->pos >= pos && (*cur)->len <= len) {
+    for (cur = &msg->inline_entries; *cur != NULL; cur = &(*cur)->next) {
+        if ((*cur)->pos > pos || ((*cur)->pos == pos || (*cur)->len <= len)) {
             break;
         }
-        precur = cur;
     }
-
-    if (*precur != NULL) {
-        entry->next = (*precur)->next;
-    }
-    *precur = entry;
+    entry->next = *cur;
+    *cur = entry;
 }
 
 void set_level_color(msg_level_t level)
@@ -201,6 +196,12 @@ void msg_emit(msg_t *msg)
     printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
 
     for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
+        if (cur0 != &msg->inline_entries) {
+            set_bold();
+            printf("...\n");
+            reset();
+        }
+
         source_location(msg->src, (*cur0)->pos, &loc);
         set_bold();
         printf("%*.s |\n", left_margin, "");
