@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include <stdio.h>
+
 #include "message.h"
 #include "terminal.h"
 #include "token.h"
@@ -45,6 +47,17 @@ const struct {
 
 const size_t keyword_map_size = sizeof(keyword_map) / sizeof(*keyword_map);
 
+int is_token_keyword(const token_t *token, const char *keyword)
+{
+    size_t i;
+    for (i = 0; i < token->len; i++) {
+        if (token->ptr[i] != keyword[i]) {
+            return 0;
+        }
+    }
+    return keyword[i] == '\0';
+}
+
 void terminal_from_token(terminal_t *terminal, const token_t *token)
 {
     size_t i;
@@ -59,7 +72,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
     switch (token->data.type) {
     case TOKEN_NAME_OR_KEYWORD:
         for (i = 0; i < keyword_map_size; i++) {
-            if (strncmp(token->ptr, keyword_map[i].string, token->len) == 0) {
+            if (is_token_keyword(token, keyword_map[i].string)) {
                 terminal->data.type = keyword_map[i].terminal;
                 return;
             }
