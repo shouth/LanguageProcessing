@@ -287,5 +287,6 @@ void msg_emit(msg_t *msg)
         printf(": %s\n", (*cur1)->msg);
     }
 
+    putchar('\n');
     msg_free(msg);
 }
