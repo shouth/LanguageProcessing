@@ -89,6 +89,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "number is too large");
             msg_add_inline_entry(msg, token->pos, token->len, "number needs to be less than 32768");
             msg_emit(msg);
+            exit(1);
         }
 
         terminal->data.type = TERMINAL_NUMBER;
@@ -98,6 +99,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         if (!token->data.data.string.terminated) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "string is unterminated");
             msg_emit(msg);
+            exit(1);
         }
 
         terminal->data.type = TERMINAL_STRING;
@@ -109,6 +111,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         if (!token->data.data.braces_comment.terminated) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
+            exit(1);
         }
 
         terminal->data.type = TERMINAL_NONE;
@@ -118,6 +121,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         if (!token->data.data.cstyle_comment.terminated) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
+            exit(1);
         }
 
         terminal->data.type = TERMINAL_NONE;
@@ -210,6 +214,116 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray `%c` in program", token->ptr[0]);
         }
         msg_emit(msg);
-        return;
+        exit(1);
     }
+}
+
+const char *terminal_to_str(terminal_type_t type)
+{
+    switch (type) {
+    case TERMINAL_NAME:
+        return "NAME";
+    case TERMINAL_PROGRAM:
+        return "program";
+    case TERMINAL_VAR:
+        return "var";
+    case TERMINAL_ARRAY:
+        return "array";
+    case TERMINAL_OF:
+        return "of";
+    case TERMINAL_BEGIN:
+        return "begin";
+    case TERMINAL_END:
+        return "end";
+    case TERMINAL_IF:
+        return "if";
+    case TERMINAL_THEN:
+        return "then";
+    case TERMINAL_ELSE:
+        return "else";
+    case TERMINAL_PROCEDURE:
+        return "procedure";
+    case TERMINAL_RETURN:
+        return "return";
+    case TERMINAL_CALL:
+        return "call";
+    case TERMINAL_WHILE:
+        return "while";
+    case TERMINAL_DO:
+        return "do";
+    case TERMINAL_NOT:
+        return "not";
+    case TERMINAL_OR:
+        return "or";
+    case TERMINAL_DIV:
+        return "div";
+    case TERMINAL_AND:
+        return "and";
+    case TERMINAL_CHAR:
+        return "char";
+    case TERMINAL_INTEGER:
+        return "integer";
+    case TERMINAL_BOOLEAN:
+        return "boolean";
+    case TERMINAL_READLN:
+        return "readln";
+    case TERMINAL_WRITELN:
+        return "writeln";
+    case TERMINAL_TRUE:
+        return "true";
+    case TERMINAL_FALSE:
+        return "false";
+    case TERMINAL_NUMBER:
+        return "number";
+    case TERMINAL_STRING:
+        return "STRING";
+    case TERMINAL_PLUS:
+        return "+";
+    case TERMINAL_MINUS:
+        return "-";
+    case TERMINAL_STAR:
+        return "*";
+    case TERMINAL_EQUAL:
+        return "=";
+    case TERMINAL_NOTEQ:
+        return "<>";
+    case TERMINAL_LE:
+        return "<";
+    case TERMINAL_LEEQ:
+        return "<=";
+    case TERMINAL_GR:
+        return ">";
+    case TERMINAL_GREQ:
+        return ">=";
+    case TERMINAL_LPAREN:
+        return "(";
+    case TERMINAL_RPAREN:
+        return ")";
+    case TERMINAL_LSQPAREN:
+        return "[";
+    case TERMINAL_RSQPAREN:
+        return "]";
+    case TERMINAL_ASSIGN:
+        return ":=";
+    case TERMINAL_DOT:
+        return ".";
+    case TERMINAL_COMMA:
+        return ",";
+    case TERMINAL_COLON:
+        return ":";
+    case TERMINAL_SEMI:
+        return ";";
+    case TERMINAL_READ:
+        return "read";
+    case TERMINAL_WRITE:
+        return "write";
+    case TERMINAL_BREAK:
+        return "break";
+    case TERMINAL_NONE:
+        return "";
+    case TERMINAL_EOF:
+        return "EOF";
+    }
+
+    return "";
 }

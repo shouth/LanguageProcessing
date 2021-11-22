@@ -3,6 +3,8 @@
 #include "source.h"
 #include "token.h"
 #include "terminal.h"
+#include "parse_tree.h"
+#include "parser.h"
 
 int main(int argc, char **argv)
 {
@@ -10,6 +12,7 @@ int main(int argc, char **argv)
     cursol_t cursol;
     token_t token;
     terminal_t terminal;
+    parse_tree_t *tree;
 
     if (argc < 2) {
         return -1;
@@ -18,6 +21,10 @@ int main(int argc, char **argv)
     src = source_new(argv[1]);
     cursol_init(&cursol, src, src->src_ptr, src->src_size);
 
+    tree = parse(src);
+
+    printf("%d", tree != NULL);
+/*
     while (1) {
         lex(&cursol, &token);
         terminal_from_token(&terminal, &token);
@@ -27,4 +34,6 @@ int main(int argc, char **argv)
             break;
         }
     }
+*/
+    return 0;
 }

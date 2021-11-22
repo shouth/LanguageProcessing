@@ -85,4 +85,6 @@ typedef struct {
 
 void terminal_from_token(terminal_t *terminal, const token_t *token);
 
+const char *terminal_to_str(terminal_type_t type);
+
 #endif /* TERMINAL_H */
