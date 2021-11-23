@@ -1,5 +1,5 @@
 program sample11
-に var n, sum, data : integer;
+var n, sum, data : integer;
 begin
 	writeln('input the number of data');
 	readln(n);
