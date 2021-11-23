@@ -128,6 +128,24 @@ void reset()
     printf("\033[0m");
 }
 
+void put_normalized(int c)
+{
+    switch (c) {
+    case '\t':
+        putchar(' ');
+        putchar(' ');
+        putchar(' ');
+        putchar(' ');
+        break;
+    case '\r':
+    case '\n':
+        putchar(' ');
+        break;
+    default:
+        putchar(c);
+    }
+}
+
 const char *level_str(msg_level_t level)
 {
     switch (level) {
@@ -212,11 +230,7 @@ void msg_emit(msg_t *msg)
         printf("%*.ld | ", left_margin, loc.line);
         reset();
         for (i = 0; i < loc.col - 1; i++) {
-            if (msg->src->src_ptr[offset + i] == '\t') {
-                printf("    ");
-            } else {
-                putchar(msg->src->src_ptr[offset + i]);
-            }
+            put_normalized(msg->src->src_ptr[offset + i]);
         }
         offset += loc.col - 1;
 
@@ -227,11 +241,7 @@ void msg_emit(msg_t *msg)
             set_level_color(MSG_NOTE);
         }
         for (i = 0; i < (*cur0)->len; i++) {
-            if (msg->src->src_ptr[offset + i] == '\t') {
-                printf("    ");
-            } else {
-                putchar(msg->src->src_ptr[offset + i]);
-            }
+            put_normalized(msg->src->src_ptr[offset + i]);
         }
         offset += (*cur0)->len;
         reset();
@@ -240,11 +250,7 @@ void msg_emit(msg_t *msg)
             if (c == '\r' || c == '\n') {
                 break;
             }
-            if (c == '\t') {
-                printf("    ");
-            } else {
-                putchar(c);
-            }
+            put_normalized(c);
         }
         putchar('\n');
 
@@ -253,11 +259,8 @@ void msg_emit(msg_t *msg)
         printf("%*.s | ", left_margin, "");
         reset();
         for (i = 0; i < loc.col - 1; i++) {
-            if (msg->src->src_ptr[offset + i] == '\t') {
-                printf("    ");
-            } else {
-                putchar(' ');
-            }
+            c = msg->src->src_ptr[offset + i];
+            put_normalized(c == '\t' ? c : ' ');
         }
         offset += loc.col - 1;
 
@@ -270,9 +273,10 @@ void msg_emit(msg_t *msg)
             c = '-';
         }
         for (i = 0; i < (*cur0)->len; i++) {
+            putchar(c);
             if (msg->src->src_ptr[offset + i] == '\t') {
-                printf("    ");
-            } else {
+                putchar(c);
+                putchar(c);
                 putchar(c);
             }
         }

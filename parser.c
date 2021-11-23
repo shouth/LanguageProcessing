@@ -70,7 +70,7 @@ void next_terminal(cursol_t *cursol, terminal_t *terminal)
 void error_unexpected_terminal(parser_t *parser, terminal_type_t type)
 {
     msg_t *msg = msg_new(parser->src, parser->last_terminal.pos, parser->last_terminal.len,
-        MSG_ERROR, "expected `%s`, got `%.*s`.", terminal_to_str(type),
+        MSG_ERROR, "expected `%s`, got `%.*s`", terminal_to_str(type),
         (int) parser->last_terminal.len, parser->last_terminal.ptr);
     msg_emit(msg);
     exit(1);
@@ -91,7 +91,6 @@ parse_tree_t *parse_program(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -143,7 +142,6 @@ parse_tree_t *parse_block(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -179,7 +177,6 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -260,7 +257,6 @@ parse_tree_t *parse_variable_names(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -295,7 +291,6 @@ parse_tree_t *parse_variable_name(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -315,7 +310,6 @@ parse_tree_t *parse_type(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -341,7 +335,6 @@ parse_tree_t *parse_standard_type(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -373,7 +366,6 @@ parse_tree_t *parse_array_type(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -381,7 +373,6 @@ parse_tree_t *parse_array_type(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_ARRAY);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_ARRAY);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -433,7 +424,6 @@ parse_tree_t *parse_subprogram_declaration(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -493,7 +483,6 @@ parse_tree_t *parse_procedure_name(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -513,7 +502,6 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -593,7 +581,6 @@ parse_tree_t *parse_compound_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -643,7 +630,6 @@ parse_tree_t *parse_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -717,7 +703,6 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -774,7 +759,6 @@ parse_tree_t *parse_iteration_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -816,7 +800,6 @@ parse_tree_t *parse_exit_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -836,7 +819,6 @@ parse_tree_t *parse_call_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -886,7 +868,6 @@ parse_tree_t *parse_expressions(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -921,7 +902,6 @@ parse_tree_t *parse_return_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -941,7 +921,6 @@ parse_tree_t *parse_assignment_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -976,7 +955,6 @@ parse_tree_t *parse_left_part(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -996,7 +974,6 @@ parse_tree_t *parse_variable(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1039,7 +1016,6 @@ parse_tree_t *parse_expression(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1074,7 +1050,6 @@ parse_tree_t *parse_simple_expression(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1123,7 +1098,6 @@ parse_tree_t *parse_term(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1158,7 +1132,6 @@ parse_tree_t *parse_factor(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1261,7 +1234,6 @@ parse_tree_t *parse_constant(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1299,7 +1271,6 @@ parse_tree_t *parse_multiplicative_operator(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1331,7 +1302,6 @@ parse_tree_t *parse_additive_operator(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1363,7 +1333,6 @@ parse_tree_t *parse_relational_operator(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1413,7 +1382,6 @@ parse_tree_t *parse_input_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1481,7 +1449,6 @@ parse_tree_t *parse_output_statement(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     assert(parser != NULL);
 
@@ -1549,7 +1516,6 @@ parse_tree_t *parse_output_format(parser_t *parser)
 {
     parse_tree_t *stream;
     parse_tree_t *ret;
-    msg_t *msg;
 
     cursol_t cursol;
     size_t len;
