@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -128,22 +129,27 @@ void reset()
     printf("\033[0m");
 }
 
-void put_normalized(int c)
+void put_sanitized(int c)
 {
-    switch (c) {
-    case '\t':
+    if (c == '\t') {
         putchar(' ');
         putchar(' ');
         putchar(' ');
         putchar(' ');
-        break;
-    case '\r':
-    case '\n':
-        putchar(' ');
-        break;
-    default:
-        putchar(c);
+        return;
     }
+
+    if (c == '\r' || c == '\n') {
+        putchar(' ');
+        return;
+    }
+
+    if (iscntrl(c)) {
+        printf("\033[101m\\%03o\033[0m", (int) c);
+        return;
+    }
+
+    putchar(c);
 }
 
 const char *level_str(msg_level_t level)
@@ -230,7 +236,7 @@ void msg_emit(msg_t *msg)
         printf("%*.ld | ", left_margin, loc.line);
         reset();
         for (i = 0; i < loc.col - 1; i++) {
-            put_normalized(msg->src->src_ptr[offset + i]);
+            put_sanitized(msg->src->src_ptr[offset + i]);
         }
         offset += loc.col - 1;
 
@@ -241,7 +247,7 @@ void msg_emit(msg_t *msg)
             set_level_color(MSG_NOTE);
         }
         for (i = 0; i < (*cur0)->len; i++) {
-            put_normalized(msg->src->src_ptr[offset + i]);
+            put_sanitized(msg->src->src_ptr[offset + i]);
         }
         offset += (*cur0)->len;
         reset();
@@ -250,7 +256,7 @@ void msg_emit(msg_t *msg)
             if (c == '\r' || c == '\n') {
                 break;
             }
-            put_normalized(c);
+            put_sanitized(c);
         }
         putchar('\n');
 
@@ -260,7 +266,7 @@ void msg_emit(msg_t *msg)
         reset();
         for (i = 0; i < loc.col - 1; i++) {
             c = msg->src->src_ptr[offset + i];
-            put_normalized(c == '\t' ? c : ' ');
+            put_sanitized(c == '\t' ? c : ' ');
         }
         offset += loc.col - 1;
 
