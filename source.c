@@ -137,7 +137,7 @@ source_t *source_new(const char *filename)
     }
 
     src->lines_size = linecnt;
-    src->lines_ptr = (size_t *) malloc(sizeof(size_t) * src->lines_size);
+    src->lines_ptr = (size_t *) malloc(sizeof(size_t) * (src->lines_size + 1));
     if (src->lines_ptr == NULL) {
         source_free(src);
         return NULL;
@@ -148,6 +148,7 @@ source_t *source_new(const char *filename)
         src->lines_ptr[linecnt] = cur - src->src_ptr;
         linecnt++;
     }
+    src->lines_ptr[linecnt] = cur - src->src_ptr;
 
     return src;
 }
@@ -175,7 +176,6 @@ void source_location(const source_t *src, size_t index, location_t *loc)
     size_t left, right, middle, i;
 
     assert(src != NULL && src->lines_ptr != NULL && loc != NULL);
-    assert(index < src->src_size);
 
     left = 0;
     right = src->lines_size;

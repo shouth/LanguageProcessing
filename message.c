@@ -251,12 +251,8 @@ void msg_emit(msg_t *msg)
         }
         offset += (*cur0)->len;
         reset();
-        for (i = 0; 1; i++) {
-            c = msg->src->src_ptr[offset + i];
-            if (c == '\r' || c == '\n') {
-                break;
-            }
-            put_sanitized(c);
+        for (; offset < msg->src->lines_ptr[loc.line]; offset++) {
+            put_sanitized(msg->src->src_ptr[offset]);
         }
         putchar('\n');
 
