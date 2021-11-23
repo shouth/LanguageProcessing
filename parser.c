@@ -70,9 +70,10 @@ void next_terminal(parser_t *parser)
 
 void error_unexpected_terminal(parser_t *parser, terminal_type_t expected)
 {
-    assert(parser != NULL);
     msg_t *msg;
     size_t pos, len;
+
+    assert(parser != NULL);
     if (expected == TERMINAL_SEMI) {
         pos = parser->last_terminal.pos + parser->last_terminal.len;
         len = 1;
