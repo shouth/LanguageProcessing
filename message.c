@@ -145,9 +145,7 @@ void put_sanitized(int c)
     }
 
     if (!is_graphical(c)) {
-        reset();
-        printf("\033[101m\\%03o", (unsigned char) c);
-        reset();
+        printf("\033[1m\\%03o\033[22m", (unsigned char) c);
         return;
     }
 
@@ -180,7 +178,7 @@ void msg_emit(msg_t *msg)
     size_t i;
     int has_primary;
     location_t loc, preloc;
-    int c;
+    int c, m;
 
     assert(msg != NULL);
 
@@ -280,17 +278,18 @@ void msg_emit(msg_t *msg)
         set_bold();
         if (has_primary) {
             set_level_color(msg->level);
-            c = '^';
+            m = '^';
         } else {
             set_level_color(MSG_NOTE);
-            c = '-';
+            m = '-';
         }
         for (i = 0; i < (*cur0)->len; i++) {
-            putchar(c);
-            if (msg->src->src_ptr[offset + i] == '\t') {
-                putchar(c);
-                putchar(c);
-                putchar(c);
+            putchar(m);
+            c = msg->src->src_ptr[offset + i];
+            if (c == '\t' || !is_graphical(c)) {
+                putchar(m);
+                putchar(m);
+                putchar(m);
             }
         }
         printf(" %s\n", (*cur0)->msg);
