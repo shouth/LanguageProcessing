@@ -3,11 +3,11 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <ctype.h>
 
 #include "message.h"
 #include "terminal.h"
 #include "token.h"
+#include "util.h"
 
 const struct {
     terminal_type_t terminal;
@@ -208,10 +208,10 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         return;
 
     case TOKEN_UNKNOWN:
-        if (iscntrl(token->ptr[0])) {
-            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray \\%d in program", (int) token->ptr[0]);
-        } else {
+        if (is_graphical(token->ptr[0])) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray `%c` in program", token->ptr[0]);
+        } else {
+            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]);
         }
         msg_emit(msg);
         exit(1);

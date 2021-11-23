@@ -1,10 +1,10 @@
 #include <assert.h>
-#include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 #include "message.h"
+#include "util.h"
 
 msg_t *msg_new(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
 {
@@ -144,8 +144,10 @@ void put_sanitized(int c)
         return;
     }
 
-    if (iscntrl(c)) {
-        printf("\033[101m\\%03o\033[0m", (int) c);
+    if (!is_graphical(c)) {
+        reset();
+        printf("\033[101m\\%03o", (unsigned char) c);
+        reset();
         return;
     }
 
