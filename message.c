@@ -231,8 +231,10 @@ void msg_emit(msg_t *msg)
         } else if (loc.line - preloc.line > 1) {
             set_bold();
             printf("\033[94m");
-            printf("~~~\n");
-            printf("%*.s |\n", left_margin, "");
+            for (i = 0; i < left_margin + 2; i++) {
+                putchar('~');
+            }
+            putchar('\n');
             reset();
         }
 
