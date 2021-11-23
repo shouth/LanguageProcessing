@@ -145,7 +145,7 @@ void put_sanitized(int c)
     }
 
     if (!is_graphical(c)) {
-        printf("\033[1m\\%03o\033[22m", (unsigned char) c);
+        printf("\033[2m\\%03o\033[22m", (unsigned char) c);
         return;
     }
 

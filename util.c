@@ -1,3 +1,6 @@
+#include <stddef.h>
+#include <stdint.h>
+
 #include "util.h"
 
 int is_alphabet(int c)
@@ -52,4 +55,26 @@ int is_graphical(int c)
         return 1;
     }
     return is_alphabet(c) || is_number(c) || is_space(c);
+}
+
+uint64_t msb64(uint64_t n)
+{
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+    return n & ~(n >> 1);
+}
+
+size_t popcount64(uint64_t n)
+{
+    n -= (n >> 1) & 0x5555555555555555;
+    n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
+    n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
+    n += n >> 8;
+    n += n >> 16;
+    n += n >> 32;
+    return n & 0x000000000000007f;
 }

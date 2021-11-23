@@ -8,6 +8,7 @@
 #include "parse_tree.h"
 #include "terminal.h"
 #include "message.h"
+#include "util.h"
 
 typedef struct {
     const source_t *src;
@@ -59,6 +60,7 @@ void next_terminal(parser_t *parser)
 
     assert(parser != NULL);
     parser->last_terminal = parser->current_terminal;
+    parser->expected_terminals = 0;
     while (1) {
         lex(&parser->cursol, &token);
         terminal_from_token(&parser->current_terminal, &token);
@@ -68,23 +70,40 @@ void next_terminal(parser_t *parser)
     }
 }
 
-void error_unexpected_terminal(parser_t *parser, terminal_type_t expected)
+void error_unexpected_terminal(parser_t *parser)
 {
     msg_t *msg;
     size_t pos, len;
+    terminal_type_t i;
+    char buf[256], *ptr;
+    uint64_t msb, bit;
 
     assert(parser != NULL);
-    if (expected == TERMINAL_SEMI) {
+    assert(parser->expected_terminals != 0);
+
+    if (parser->expected_terminals == (uint64_t) 1 << TERMINAL_SEMI) {
         pos = parser->last_terminal.pos + parser->last_terminal.len;
         len = 1;
     } else {
         pos = parser->current_terminal.pos;
         len = parser->current_terminal.len;
     }
+
+    ptr = buf;
+    msb = msb64(parser->expected_terminals);
+    for (i = 0; i <= TERMINAL_EOF; i++) {
+        if (bit = ((uint64_t) 1 << i) & parser->expected_terminals) {
+            if (ptr != buf) {
+                ptr += sprintf(ptr, bit != msb ? ", " : " or ");
+            }
+            ptr += sprintf(ptr, "`%s`", terminal_to_str(i));
+        }
+    }
+
     msg = msg_new(parser->src, pos, len,
-        MSG_ERROR, "expected `%s`, got `%.*s`", terminal_to_str(expected),
+        MSG_ERROR, "expected %s, got `%.*s`", buf,
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
-    if (expected == TERMINAL_SEMI) {
+    if (parser->expected_terminals == (uint64_t) 1 << TERMINAL_SEMI) {
         msg_add_inline_entry(msg, pos, len, "insert `;` here");
         msg_add_inline_entry(msg, parser->current_terminal.pos, parser->current_terminal.len, "unexpected token");
     }
@@ -114,7 +133,7 @@ parse_tree_t *parse_program(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_PROGRAM);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_PROGRAM);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -122,7 +141,7 @@ parse_tree_t *parse_program(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_NAME);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_NAME);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -130,7 +149,7 @@ parse_tree_t *parse_program(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_SEMI);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_SEMI);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -138,6 +157,7 @@ parse_tree_t *parse_program(parser_t *parser)
 
     stream = parse_block(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -145,7 +165,7 @@ parse_tree_t *parse_program(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_DOT);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_DOT);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -207,6 +227,7 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
     stream = parse_variable_names(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -214,7 +235,7 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_COLON);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_COLON);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -222,6 +243,7 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
     stream = parse_type(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -229,7 +251,7 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_SEMI);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_SEMI);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -244,7 +266,7 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_COLON);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_COLON);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -252,6 +274,7 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
         stream = parse_type(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -259,7 +282,7 @@ parse_tree_t *parse_variable_declaration(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_SEMI);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_SEMI);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -294,6 +317,7 @@ parse_tree_t *parse_variable_names(parser_t *parser)
 
         stream = parse_variable_name(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -396,7 +420,7 @@ parse_tree_t *parse_array_type(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_LSQPAREN);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_LSQPAREN);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -404,7 +428,7 @@ parse_tree_t *parse_array_type(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_NUMBER);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_NUMBER);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -412,7 +436,7 @@ parse_tree_t *parse_array_type(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_RSQPAREN);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_RSQPAREN);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -420,7 +444,7 @@ parse_tree_t *parse_array_type(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_OF);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_OF);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -428,6 +452,7 @@ parse_tree_t *parse_array_type(parser_t *parser)
 
     stream = parse_standard_type(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -454,6 +479,7 @@ parse_tree_t *parse_subprogram_declaration(parser_t *parser)
 
     stream = parse_procedure_name(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -466,7 +492,7 @@ parse_tree_t *parse_subprogram_declaration(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_SEMI);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_SEMI);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -479,6 +505,7 @@ parse_tree_t *parse_subprogram_declaration(parser_t *parser)
 
     stream = parse_compound_statement(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -486,7 +513,7 @@ parse_tree_t *parse_subprogram_declaration(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_SEMI);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_SEMI);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -532,6 +559,7 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
     stream = parse_variable_names(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -539,7 +567,7 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_COLON);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_COLON);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -547,6 +575,7 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
     stream = parse_type(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -561,6 +590,7 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
         stream = parse_variable_names(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -568,7 +598,7 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_COLON);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_COLON);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -576,6 +606,7 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
         stream = parse_type(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -584,7 +615,7 @@ parse_tree_t *parse_formal_parameters(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_RPAREN);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_RPAREN);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -611,6 +642,7 @@ parse_tree_t *parse_compound_statement(parser_t *parser)
 
     stream = parse_statement(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -625,6 +657,7 @@ parse_tree_t *parse_compound_statement(parser_t *parser)
 
         stream = parse_statement(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -633,7 +666,7 @@ parse_tree_t *parse_compound_statement(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_END);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_END);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -733,6 +766,7 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
 
     stream = parse_expression(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -740,7 +774,7 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_THEN);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_THEN);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -748,6 +782,7 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
 
     stream = parse_statement(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -762,6 +797,7 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
 
         stream = parse_statement(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -789,6 +825,7 @@ parse_tree_t *parse_iteration_statement(parser_t *parser)
 
     stream = parse_expression(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -796,7 +833,7 @@ parse_tree_t *parse_iteration_statement(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_DO);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_DO);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -804,6 +841,7 @@ parse_tree_t *parse_iteration_statement(parser_t *parser)
 
     stream = parse_statement(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -849,6 +887,7 @@ parse_tree_t *parse_call_statement(parser_t *parser)
 
     stream = parse_procedure_name(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -863,6 +902,7 @@ parse_tree_t *parse_call_statement(parser_t *parser)
 
         stream = parse_expressions(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -870,7 +910,7 @@ parse_tree_t *parse_call_statement(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_RPAREN);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_RPAREN);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -905,6 +945,7 @@ parse_tree_t *parse_expressions(parser_t *parser)
 
         stream = parse_expression(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -951,7 +992,7 @@ parse_tree_t *parse_assignment_statement(parser_t *parser)
 
     stream = parse_terminal(parser, TERMINAL_ASSIGN);
     if (stream == NULL) {
-        error_unexpected_terminal(parser, TERMINAL_ASSIGN);
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -959,6 +1000,7 @@ parse_tree_t *parse_assignment_statement(parser_t *parser)
 
     stream = parse_expression(parser);
     if (stream == NULL) {
+        error_unexpected_terminal(parser);
         parse_tree_free(ret);
         return NULL; /* error */
     }
@@ -1011,6 +1053,7 @@ parse_tree_t *parse_variable(parser_t *parser)
 
         stream = parse_expression(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1018,7 +1061,7 @@ parse_tree_t *parse_variable(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_RSQPAREN);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_RSQPAREN);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1053,6 +1096,7 @@ parse_tree_t *parse_expression(parser_t *parser)
 
         stream = parse_simple_expression(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1101,6 +1145,7 @@ parse_tree_t *parse_simple_expression(parser_t *parser)
 
         stream = parse_term(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1135,6 +1180,7 @@ parse_tree_t *parse_term(parser_t *parser)
 
         stream = parse_factor(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1176,6 +1222,7 @@ parse_tree_t *parse_factor(parser_t *parser)
 
         stream = parse_expression(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL;
         }
@@ -1183,7 +1230,7 @@ parse_tree_t *parse_factor(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_RPAREN);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_RPAREN);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL;
         }
@@ -1201,6 +1248,7 @@ parse_tree_t *parse_factor(parser_t *parser)
 
         stream = parse_factor(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL;
         }
@@ -1218,7 +1266,7 @@ parse_tree_t *parse_factor(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_LPAREN);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_LPAREN);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL;
         }
@@ -1226,6 +1274,7 @@ parse_tree_t *parse_factor(parser_t *parser)
 
         stream = parse_expression(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL;
         }
@@ -1233,7 +1282,7 @@ parse_tree_t *parse_factor(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_RPAREN);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_RPAREN);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL;
         }
@@ -1429,6 +1478,7 @@ parse_tree_t *parse_input_statement(parser_t *parser)
 
         stream = parse_variable(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1443,6 +1493,7 @@ parse_tree_t *parse_input_statement(parser_t *parser)
 
             stream = parse_variable(parser);
             if (stream == NULL) {
+                error_unexpected_terminal(parser);
                 parse_tree_free(ret);
                 return NULL; /* error */
             }
@@ -1451,7 +1502,7 @@ parse_tree_t *parse_input_statement(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_RPAREN);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_RPAREN);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1496,6 +1547,7 @@ parse_tree_t *parse_output_statement(parser_t *parser)
 
         stream = parse_output_format(parser);
         if (stream == NULL) {
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1510,6 +1562,7 @@ parse_tree_t *parse_output_statement(parser_t *parser)
 
             stream = parse_output_format(parser);
             if (stream == NULL) {
+                error_unexpected_terminal(parser);
                 parse_tree_free(ret);
                 return NULL; /* error */
             }
@@ -1518,7 +1571,7 @@ parse_tree_t *parse_output_statement(parser_t *parser)
 
         stream = parse_terminal(parser, TERMINAL_RPAREN);
         if (stream == NULL) {
-            error_unexpected_terminal(parser, TERMINAL_RPAREN);
+            error_unexpected_terminal(parser);
             parse_tree_free(ret);
             return NULL; /* error */
         }
@@ -1564,7 +1617,7 @@ parse_tree_t *parse_output_format(parser_t *parser)
 
             stream = parse_terminal(parser, TERMINAL_NUMBER);
             if (stream == NULL) {
-                error_unexpected_terminal(parser, TERMINAL_NUMBER);
+                error_unexpected_terminal(parser);
                 parse_tree_free(ret);
                 return NULL; /* error */
             }
@@ -1590,7 +1643,6 @@ parse_tree_t *parse(const source_t *src)
 
     assert(src != NULL);
     parser.src = src;
-    parser.expected_terminals = 0;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
     next_terminal(&parser);
     return parse_program(&parser);
