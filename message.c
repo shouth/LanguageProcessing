@@ -90,7 +90,7 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, .
     entry->next = NULL;
 
     for (cur = &msg->inline_entries; *cur != NULL; cur = &(*cur)->next) {
-        if ((*cur)->pos > pos || ((*cur)->pos == pos || (*cur)->len <= len)) {
+        if ((*cur)->pos > pos || ((*cur)->pos == pos && (*cur)->len <= len)) {
             break;
         }
     }
@@ -177,7 +177,7 @@ void msg_emit(msg_t *msg)
     size_t offset;
     size_t i;
     int has_primary;
-    location_t loc;
+    location_t loc, preloc;
     int c;
 
     assert(msg != NULL);
@@ -215,24 +215,30 @@ void msg_emit(msg_t *msg)
     source_location(msg->src, msg->pos, &loc);
     printf("%*.s", left_margin, "");
     set_bold();
+    printf("\033[94m");
     printf("--> ");
     reset();
     printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
 
     for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
-        if (cur0 != &msg->inline_entries) {
+        preloc = loc;
+        source_location(msg->src, (*cur0)->pos, &loc);
+        if (cur0 == &msg->inline_entries) {
             set_bold();
-            printf("...\n");
+            printf("\033[94m");
+            printf("%*.s |\n", left_margin, "");
+            reset();
+        } else if (loc.line - preloc.line > 1) {
+            set_bold();
+            printf("\033[94m");
+            printf("~~~\n");
+            printf("%*.s |\n", left_margin, "");
             reset();
         }
 
-        source_location(msg->src, (*cur0)->pos, &loc);
-        set_bold();
-        printf("%*.s |\n", left_margin, "");
-        reset();
-
         offset = msg->src->lines_ptr[loc.line - 1];
         set_bold();
+        printf("\033[94m");
         printf("%*.ld | ", left_margin, loc.line);
         reset();
         for (i = 0; i < loc.col - 1; i++) {
@@ -258,6 +264,7 @@ void msg_emit(msg_t *msg)
 
         offset = msg->src->lines_ptr[loc.line - 1];
         set_bold();
+        printf("\033[94m");
         printf("%*.s | ", left_margin, "");
         reset();
         for (i = 0; i < loc.col - 1; i++) {

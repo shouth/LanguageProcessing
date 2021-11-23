@@ -13,7 +13,7 @@ typedef struct {
     const source_t *src;
     cursol_t cursol;
 
-    terminal_t last_terminal;
+    terminal_t last_terminal, current_terminal;
     uint64_t expected_terminals;
 } parser_t;
 
@@ -53,25 +53,40 @@ parse_tree_t *parse_output_statement(parser_t *parser);
 parse_tree_t *parse_output_format(parser_t *parser);
 parse_tree_t *parse_empty_statement(parser_t *parser);
 
-void next_terminal(cursol_t *cursol, terminal_t *terminal)
+void next_terminal(parser_t *parser)
 {
     token_t token;
 
-    assert(cursol != NULL && terminal != NULL);
+    assert(parser != NULL);
+    parser->last_terminal = parser->current_terminal;
     while (1) {
-        lex(cursol, &token);
-        terminal_from_token(terminal, &token);
-        if (terminal->data.type != TERMINAL_NONE) {
+        lex(&parser->cursol, &token);
+        terminal_from_token(&parser->current_terminal, &token);
+        if (parser->current_terminal.data.type != TERMINAL_NONE) {
             return;
         }
     }
 }
 
-void error_unexpected_terminal(parser_t *parser, terminal_type_t type)
+void error_unexpected_terminal(parser_t *parser, terminal_type_t expected)
 {
-    msg_t *msg = msg_new(parser->src, parser->last_terminal.pos, parser->last_terminal.len,
-        MSG_ERROR, "expected `%s`, got `%.*s`", terminal_to_str(type),
-        (int) parser->last_terminal.len, parser->last_terminal.ptr);
+    assert(parser != NULL);
+    msg_t *msg;
+    size_t pos, len;
+    if (expected == TERMINAL_SEMI) {
+        pos = parser->last_terminal.pos + parser->last_terminal.len;
+        len = 1;
+    } else {
+        pos = parser->current_terminal.pos;
+        len = parser->current_terminal.len;
+    }
+    msg = msg_new(parser->src, pos, len,
+        MSG_ERROR, "expected `%s`, got `%.*s`", terminal_to_str(expected),
+        (int) parser->current_terminal.len, parser->current_terminal.ptr);
+    if (expected == TERMINAL_SEMI) {
+        msg_add_inline_entry(msg, pos, len, "insert `;` here");
+        msg_add_inline_entry(msg, parser->current_terminal.pos, parser->current_terminal.len, "unexpected token");
+    }
     msg_emit(msg);
     exit(1);
 }
@@ -79,12 +94,12 @@ void error_unexpected_terminal(parser_t *parser, terminal_type_t type)
 parse_tree_t *parse_terminal(parser_t *parser, terminal_type_t type)
 {
     assert(parser != NULL);
-    if (parser->last_terminal.data.type != type) {
+    if (parser->current_terminal.data.type != type) {
         parser->expected_terminals |= (uint64_t) 1 << type;
         return NULL;
     }
-    next_terminal(&parser->cursol, &parser->last_terminal);
-    return parse_tree_new_terminal(&parser->last_terminal);
+    next_terminal(parser);
+    return parse_tree_new_terminal(&parser->current_terminal);
 }
 
 parse_tree_t *parse_program(parser_t *parser)
@@ -1576,6 +1591,6 @@ parse_tree_t *parse(const source_t *src)
     parser.src = src;
     parser.expected_terminals = 0;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
-    next_terminal(&parser.cursol, &parser.last_terminal);
+    next_terminal(&parser);
     return parse_program(&parser);
 }
