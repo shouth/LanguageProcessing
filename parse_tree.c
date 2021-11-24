@@ -12,8 +12,8 @@ parse_tree_t *parse_tree_new(rule_type_t type)
     ret->parent = NULL;
     ret->type = type;
     ret->next = NULL;
-    ret->data.stream.child.front = NULL;
-    ret->data.stream.child.back = &ret->data.stream.child.front;
+    ret->data.child.front = NULL;
+    ret->data.child.back = &ret->data.child.front;
     return ret;
 }
 
@@ -32,8 +32,8 @@ void parse_tree_push(parse_tree_t *stream, parse_tree_t *child)
 {
     assert(stream != NULL && child != NULL);
     assert(stream->type != RULE_TERMINAL);
-    *stream->data.stream.child.back = child;
-    stream->data.stream.child.back = &child->next;
+    *stream->data.child.back = child;
+    stream->data.child.back = &child->next;
     child->parent = stream;
 }
 
@@ -47,8 +47,8 @@ void parse_tree_free(parse_tree_t *stream)
         if (stream->next != NULL) {
             parse_tree_free(stream->next);
         }
-        if (stream->data.stream.child.front != NULL) {
-            parse_tree_free(stream->data.stream.child.front);
+        if (stream->data.child.front != NULL) {
+            parse_tree_free(stream->data.child.front);
         }
     }
     free(stream);

@@ -20,7 +20,7 @@ void enter_rule(pretty_printer_t *printer)
 {
     assert(printer != NULL);
     assert(printer->current != NULL);
-    printer->current = printer->current->data.stream.child.front;
+    printer->current = printer->current->data.child.front;
 }
 
 void exit_rule(pretty_printer_t *printer)

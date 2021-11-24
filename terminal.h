@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "token.h"
+#include "lexer.h"
 
 typedef enum {
     TERMINAL_NAME,
@@ -59,28 +59,24 @@ typedef enum {
     TERMINAL_EOF
 } terminal_type_t;
 
-typedef struct {
-    terminal_type_t type;
+typedef union {
+    struct {
+        unsigned long value;
+    } number;
 
-    union {
-        struct {
-            unsigned long value;
-        } number;
-
-        struct {
-            const char *ptr;
-            size_t len;
-        } string;
-    } data;
+    struct {
+        const char *ptr;
+        size_t len;
+    } string;
 } terminal_data_t;
 
 typedef struct {
     const char *ptr;
     size_t len;
-    terminal_data_t data;
-
     const source_t *src;
     size_t pos;
+    terminal_type_t type;
+    terminal_data_t data;
 } terminal_t;
 
 void terminal_from_token(terminal_t *terminal, const token_t *token);

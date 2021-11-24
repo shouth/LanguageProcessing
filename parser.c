@@ -64,7 +64,7 @@ void next_terminal(parser_t *parser)
     while (1) {
         lex(&parser->cursol, &token);
         terminal_from_token(&parser->current_terminal, &token);
-        if (parser->current_terminal.data.type != TERMINAL_NONE) {
+        if (parser->current_terminal.type != TERMINAL_NONE) {
             return;
         }
     }
@@ -114,7 +114,7 @@ void error_unexpected_terminal(parser_t *parser)
 parse_tree_t *parse_terminal(parser_t *parser, terminal_type_t type)
 {
     assert(parser != NULL);
-    if (parser->current_terminal.data.type != type) {
+    if (parser->current_terminal.type != type) {
         parser->expected_terminals |= (uint64_t) 1 << type;
         return NULL;
     }

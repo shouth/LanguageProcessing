@@ -2,10 +2,9 @@
 
 #include "lexer.h"
 #include "cursol.h"
-#include "token.h"
 #include "util.h"
 
-void lex_space(cursol_t *cur, token_data_t *ret)
+token_type_t lex_space(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_space(cursol_first(cur)));
@@ -14,10 +13,10 @@ void lex_space(cursol_t *cur, token_data_t *ret)
     while (is_space(cursol_first(cur))) {
         cursol_next(cur);
     }
-    token_data_init(ret, TOKEN_WHITESPACE);
+    return TOKEN_WHITESPACE;
 }
 
-void lex_braces_comment(cursol_t *cur, token_data_t *ret)
+token_type_t lex_braces_comment(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '{');
@@ -26,20 +25,20 @@ void lex_braces_comment(cursol_t *cur, token_data_t *ret)
     while (1) {
         if (cursol_first(cur) == '}') {
             cursol_next(cur);
-            token_data_init(ret, TOKEN_BRACES_COMMENT, /* terminated */ 1);
-            return;
+            ret->braces_comment.terminated = 1;
+            return TOKEN_BRACES_COMMENT;
         }
 
         if (cursol_eof(cur) || !is_graphical(cursol_first(cur))) {
-            token_data_init(ret, TOKEN_BRACES_COMMENT, /* terminated */ 0);
-            return;
+            ret->braces_comment.terminated = 0;
+            return TOKEN_BRACES_COMMENT;
         }
 
         cursol_next(cur);
     }
 }
 
-void lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
+token_type_t lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '/' && cursol_second(cur) == '*');
@@ -50,20 +49,20 @@ void lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
         if (cursol_first(cur) == '*' && cursol_second(cur) == '/') {
             cursol_next(cur);
             cursol_next(cur);
-            token_data_init(ret, TOKEN_CSTYLE_COMMENT, /* terminated */ 1);
-            return;
+            ret->cstyle_comment.terminated = 1;
+            return TOKEN_CSTYLE_COMMENT;
         }
 
         if (cursol_eof(cur) || !is_graphical(cursol_second(cur))) {
-            token_data_init(ret, TOKEN_CSTYLE_COMMENT, /* terminated */ 0);
-            return;
+            ret->cstyle_comment.terminated = 0;
+            return TOKEN_CSTYLE_COMMENT;
         }
 
         cursol_next(cur);
     }
 }
 
-void lex_string(cursol_t *cur, token_data_t *ret)
+token_type_t lex_string(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '\'');
@@ -76,23 +75,23 @@ void lex_string(cursol_t *cur, token_data_t *ret)
             if (cursol_first(cur) == '\'') {
                 cursol_next(cur);
             } else {
-                token_data_init(ret, TOKEN_STRING, /* terminated */ 1);
-                return;
+                ret->string.terminated = 1;
+                return TOKEN_STRING;
             }
         }
 
         if (cursol_eof(cur) || !is_graphical(cursol_first(cur))
             || cursol_first(cur) == '\r' || cursol_first(cur) == '\n')
         {
-            token_data_init(ret, TOKEN_STRING, /* terminated */ 0);
-            return;
+            ret->string.terminated = 0;
+            return TOKEN_STRING;
         }
 
         cursol_next(cur);
     }
 }
 
-void lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
+token_type_t lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_alphabet(cursol_first(cur)));
@@ -101,10 +100,10 @@ void lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
     while (is_alphabet(cursol_first(cur)) || is_number(cursol_first(cur))) {
         cursol_next(cur);
     }
-    token_data_init(ret, TOKEN_NAME_OR_KEYWORD);
+    return TOKEN_NAME_OR_KEYWORD;;
 }
 
-void lex_number(cursol_t *cur, token_data_t *ret)
+token_type_t lex_number(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_number(cursol_first(cur)));
@@ -113,10 +112,10 @@ void lex_number(cursol_t *cur, token_data_t *ret)
     while (is_number(cursol_first(cur))) {
         cursol_next(cur);
     }
-    token_data_init(ret, TOKEN_NUMBER);
+    return TOKEN_NUMBER;;
 }
 
-void lex_symbol(cursol_t *cur, token_data_t *ret)
+token_type_t lex_symbol(cursol_t *cur, token_data_t *ret)
 {
     int c;
     assert(cur != NULL && ret != NULL);
@@ -124,47 +123,47 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
     switch (cursol_first(cur)) {
     case '+':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_PLUS);
+        return TOKEN_PLUS;;
         break;
     case '-':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_MINUS);
+        return TOKEN_MINUS;;
         break;
     case '*':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_STAR);
+        return TOKEN_STAR;;
         break;
     case '=':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_EQUAL);
+        return TOKEN_EQUAL;;
         break;
     case '(':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_LPAREN);
+        return TOKEN_LPAREN;;
         break;
     case ')':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_RPAREN);
+        return TOKEN_RPAREN;;
         break;
     case '[':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_LSQPAREN);
+        return TOKEN_LSQPAREN;;
         break;
     case ']':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_RSQPAREN);
+        return TOKEN_RSQPAREN;;
         break;
     case '.':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_DOT);
+        return TOKEN_DOT;;
         break;
     case ',':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_COMMA);
+        return TOKEN_COMMA;;
         break;
     case ';':
         cursol_next(cur);
-        token_data_init(ret, TOKEN_SEMI);
+        return TOKEN_SEMI;;
         break;
 
     case '<':
@@ -172,14 +171,14 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
         switch (cursol_first(cur)) {
         case '>':
             cursol_next(cur);
-            token_data_init(ret, TOKEN_NOTEQ);
+            return TOKEN_NOTEQ;;
             break;
         case '=':
             cursol_next(cur);
-            token_data_init(ret, TOKEN_LEEQ);
+            return TOKEN_LEEQ;;
             break;
         default:
-            token_data_init(ret, TOKEN_LE);
+            return TOKEN_LE;;
             break;
         }
         break;
@@ -189,10 +188,10 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
         switch (cursol_first(cur)) {
         case '=':
             cursol_next(cur);
-            token_data_init(ret, TOKEN_GREQ);
+            return TOKEN_GREQ;;
             break;
         default:
-            token_data_init(ret, TOKEN_GR);
+            return TOKEN_GR;;
             break;
         }
         break;
@@ -202,27 +201,27 @@ void lex_symbol(cursol_t *cur, token_data_t *ret)
         switch (cursol_first(cur)) {
         case '=':
             cursol_next(cur);
-            token_data_init(ret, TOKEN_ASSIGN);
+            return TOKEN_ASSIGN;;
             break;
         default:
-            token_data_init(ret, TOKEN_COLON);
+            return TOKEN_COLON;;
             break;
         }
         break;
 
     default:
         cursol_next(cur);
-        token_data_init(ret, TOKEN_UNKNOWN);
+        return TOKEN_UNKNOWN;;
         break;
     }
 }
 
-void lex_token(cursol_t *cur, token_data_t *ret)
+token_type_t lex_token(cursol_t *cur, token_data_t *ret)
 {
     assert(cur != NULL && ret != NULL);
 
     if (cursol_eof(cur)) {
-        token_data_init(ret, TOKEN_EOF);
+        return TOKEN_EOF;;
         return;
     }
 
@@ -265,7 +264,6 @@ void lex(cursol_t *cursol, token_t *ret)
     ret->ptr = cursol->ptr;
     ret->pos = cursol_position(cursol);
     ret->src = cursol->src;
-
-    lex_token(cursol, &ret->data);
+    ret->type = lex_token(cursol, &ret->data);
     ret->len = cursol_position(cursol) - ret->pos;
 }

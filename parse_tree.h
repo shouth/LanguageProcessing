@@ -49,11 +49,9 @@ struct parse_tree {
 
     union {
         struct {
-            struct {
-                parse_tree_t *front;
-                parse_tree_t **back;
-            } child;
-        } stream;
+            parse_tree_t *front;
+            parse_tree_t **back;
+        } child;
 
         terminal_t terminal;
     } data;

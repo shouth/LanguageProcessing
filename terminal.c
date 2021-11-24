@@ -6,7 +6,7 @@
 
 #include "message.h"
 #include "terminal.h"
-#include "token.h"
+#include "lexer.h"
 #include "util.h"
 
 const struct {
@@ -71,140 +71,140 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
     terminal->src = token->src;
     terminal->pos = token->pos;
 
-    switch (token->data.type) {
+    switch (token->type) {
     case TOKEN_NAME_OR_KEYWORD:
         for (i = 0; i < keyword_map_size; i++) {
             if (is_token_keyword(token, keyword_map[i].string)) {
-                terminal->data.type = keyword_map[i].terminal;
+                terminal->type = keyword_map[i].terminal;
                 return;
             }
         }
 
-        terminal->data.type = TERMINAL_NAME;
+        terminal->type = TERMINAL_NAME;
         return;
 
     case TOKEN_NUMBER:
-        terminal->data.data.number.value = strtoul(token->ptr, NULL, 10);
-        if (errno == ERANGE || terminal->data.data.number.value > 32767) {
+        terminal->data.number.value = strtoul(token->ptr, NULL, 10);
+        if (errno == ERANGE || terminal->data.number.value > 32767) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "number is too large");
             msg_add_inline_entry(msg, token->pos, token->len, "number needs to be less than 32768");
             msg_emit(msg);
             exit(1);
         }
 
-        terminal->data.type = TERMINAL_NUMBER;
+        terminal->type = TERMINAL_NUMBER;
         return;
 
     case TOKEN_STRING:
-        if (!token->data.data.string.terminated) {
+        if (!token->data.string.terminated) {
             msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "string is unterminated");
             msg_emit(msg);
             exit(1);
         }
 
-        terminal->data.type = TERMINAL_STRING;
-        terminal->data.data.string.ptr = terminal->ptr + 1;
-        terminal->data.data.string.len = terminal->len - 2;
+        terminal->type = TERMINAL_STRING;
+        terminal->data.string.ptr = terminal->ptr + 1;
+        terminal->data.string.len = terminal->len - 2;
         return;
 
     case TOKEN_BRACES_COMMENT:
-        if (!token->data.data.braces_comment.terminated) {
+        if (!token->data.braces_comment.terminated) {
             msg = msg_new(token->src, token->pos, 1, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
             exit(1);
         }
 
-        terminal->data.type = TERMINAL_NONE;
+        terminal->type = TERMINAL_NONE;
         return;
 
     case TOKEN_CSTYLE_COMMENT:
-        if (!token->data.data.cstyle_comment.terminated) {
+        if (!token->data.cstyle_comment.terminated) {
             msg = msg_new(token->src, token->pos, 2, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
             exit(1);
         }
 
-        terminal->data.type = TERMINAL_NONE;
+        terminal->type = TERMINAL_NONE;
         return;
 
     case TOKEN_WHITESPACE:
-        terminal->data.type = TERMINAL_NONE;
+        terminal->type = TERMINAL_NONE;
         return;
 
     case TOKEN_PLUS:
-        terminal->data.type = TERMINAL_PLUS;
+        terminal->type = TERMINAL_PLUS;
         return;
 
     case TOKEN_MINUS:
-        terminal->data.type = TERMINAL_MINUS;
+        terminal->type = TERMINAL_MINUS;
         return;
 
     case TOKEN_STAR:
-        terminal->data.type = TERMINAL_STAR;
+        terminal->type = TERMINAL_STAR;
         return;
 
     case TOKEN_EQUAL:
-        terminal->data.type = TERMINAL_EQUAL;
+        terminal->type = TERMINAL_EQUAL;
         return;
 
     case TOKEN_NOTEQ:
-        terminal->data.type = TERMINAL_NOTEQ;
+        terminal->type = TERMINAL_NOTEQ;
         return;
 
     case TOKEN_LE:
-        terminal->data.type = TERMINAL_LE;
+        terminal->type = TERMINAL_LE;
         return;
 
     case TOKEN_LEEQ:
-        terminal->data.type = TERMINAL_LEEQ;
+        terminal->type = TERMINAL_LEEQ;
         return;
 
     case TOKEN_GR:
-        terminal->data.type = TERMINAL_GR;
+        terminal->type = TERMINAL_GR;
         return;
 
     case TOKEN_GREQ:
-        terminal->data.type = TERMINAL_GREQ;
+        terminal->type = TERMINAL_GREQ;
         return;
 
     case TOKEN_LPAREN:
-        terminal->data.type = TERMINAL_LPAREN;
+        terminal->type = TERMINAL_LPAREN;
         return;
 
     case TOKEN_RPAREN:
-        terminal->data.type = TERMINAL_RPAREN;
+        terminal->type = TERMINAL_RPAREN;
         return;
 
     case TOKEN_LSQPAREN:
-        terminal->data.type = TERMINAL_LSQPAREN;
+        terminal->type = TERMINAL_LSQPAREN;
         return;
 
     case TOKEN_RSQPAREN:
-        terminal->data.type = TERMINAL_RSQPAREN;
+        terminal->type = TERMINAL_RSQPAREN;
         return;
 
     case TOKEN_ASSIGN:
-        terminal->data.type = TERMINAL_ASSIGN;
+        terminal->type = TERMINAL_ASSIGN;
         return;
 
     case TOKEN_DOT:
-        terminal->data.type = TERMINAL_DOT;
+        terminal->type = TERMINAL_DOT;
         return;
 
     case TOKEN_COMMA:
-        terminal->data.type = TERMINAL_COMMA;
+        terminal->type = TERMINAL_COMMA;
         return;
 
     case TOKEN_COLON:
-        terminal->data.type = TERMINAL_COLON;
+        terminal->type = TERMINAL_COLON;
         return;
 
     case TOKEN_SEMI:
-        terminal->data.type = TERMINAL_SEMI;
+        terminal->type = TERMINAL_SEMI;
         return;
 
     case TOKEN_EOF:
-        terminal->data.type = TERMINAL_EOF;
+        terminal->type = TERMINAL_EOF;
         return;
 
     case TOKEN_UNKNOWN:
