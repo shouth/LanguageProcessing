@@ -13,4 +13,6 @@ int is_graphical(int c);
 
 uint64_t msb64(uint64_t n);
 
+size_t popcount64(uint64_t n);
+
 #endif /* UTIL_H */
