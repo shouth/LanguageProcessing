@@ -109,7 +109,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_BRACES_COMMENT:
         if (!token->data.data.braces_comment.terminated) {
-            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
+            msg = msg_new(token->src, token->pos, 1, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
             exit(1);
         }
@@ -119,7 +119,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_CSTYLE_COMMENT:
         if (!token->data.data.cstyle_comment.terminated) {
-            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "comment is unterminated");
+            msg = msg_new(token->src, token->pos, 2, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
             exit(1);
         }
