@@ -1,4 +1,4 @@
-program sample11
+program sample11;
 var n, sum, data : integer;
 begin
 	writeln('input the number of data');
