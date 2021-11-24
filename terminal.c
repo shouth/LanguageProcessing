@@ -9,60 +9,43 @@
 #include "lexer.h"
 #include "util.h"
 
-const struct {
-    terminal_type_t terminal;
-    const char *string;
-} keyword_map[] = {
-    { TERMINAL_PROGRAM,   "program"   },
-    { TERMINAL_VAR,       "var"       },
-    { TERMINAL_ARRAY,     "array"     },
-    { TERMINAL_OF,        "of"        },
-    { TERMINAL_BEGIN,     "begin"     },
-    { TERMINAL_END,       "end"       },
-    { TERMINAL_IF,        "if"        },
-    { TERMINAL_THEN,      "then"      },
-    { TERMINAL_ELSE,      "else"      },
-    { TERMINAL_PROCEDURE, "procedure" },
-    { TERMINAL_RETURN,    "return"    },
-    { TERMINAL_CALL,      "call"      },
-    { TERMINAL_WHILE,     "while"     },
-    { TERMINAL_DO,        "do"        },
-    { TERMINAL_NOT,       "not"       },
-    { TERMINAL_OR,        "or"        },
-    { TERMINAL_DIV,       "div"       },
-    { TERMINAL_AND,       "and"       },
-    { TERMINAL_CHAR,      "char"      },
-    { TERMINAL_INTEGER,   "integer"   },
-    { TERMINAL_BOOLEAN,   "boolean"   },
-    { TERMINAL_READ,      "read"      },
-    { TERMINAL_WRITE,     "write"     },
-    { TERMINAL_READLN,    "readln"    },
-    { TERMINAL_WRITELN,   "writeln"   },
-    { TERMINAL_TRUE,      "true"      },
-    { TERMINAL_FALSE,     "false"     },
-    { TERMINAL_BREAK,     "break"     },
+terminal_type_t keywords[] = {
+    TERMINAL_PROGRAM,
+    TERMINAL_VAR,
+    TERMINAL_ARRAY,
+    TERMINAL_OF,
+    TERMINAL_BEGIN,
+    TERMINAL_END,
+    TERMINAL_IF,
+    TERMINAL_THEN,
+    TERMINAL_ELSE,
+    TERMINAL_PROCEDURE,
+    TERMINAL_RETURN,
+    TERMINAL_CALL,
+    TERMINAL_WHILE,
+    TERMINAL_DO,
+    TERMINAL_NOT,
+    TERMINAL_OR,
+    TERMINAL_DIV,
+    TERMINAL_AND,
+    TERMINAL_CHAR,
+    TERMINAL_INTEGER,
+    TERMINAL_BOOLEAN,
+    TERMINAL_READ,
+    TERMINAL_WRITE,
+    TERMINAL_READLN,
+    TERMINAL_WRITELN,
+    TERMINAL_TRUE,
+    TERMINAL_FALSE,
+    TERMINAL_BREAK,
 };
 
-const size_t keyword_map_size = sizeof(keyword_map) / sizeof(*keyword_map);
-
-/*
- * Instead of using strncmp, I implemented comparator function
- * because token_t's string is not null-terminated.
- */
-int is_token_keyword(const token_t *token, const char *keyword)
-{
-    size_t i;
-    for (i = 0; i < token->len; i++) {
-        if (token->ptr[i] != keyword[i]) {
-            return 0;
-        }
-    }
-    return keyword[i] == '\0';
-}
+const size_t keywords_size = sizeof(keywords) / sizeof(*keywords);
 
 void terminal_from_token(terminal_t *terminal, const token_t *token)
 {
-    size_t i;
+    size_t i, j;
+    const char *ptr;
     msg_t *msg;
     assert(token != NULL && terminal != NULL);
 
@@ -73,14 +56,19 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     switch (token->type) {
     case TOKEN_NAME_OR_KEYWORD:
-        for (i = 0; i < keyword_map_size; i++) {
-            if (is_token_keyword(token, keyword_map[i].string)) {
-                terminal->type = keyword_map[i].terminal;
-                return;
+        terminal->type = TERMINAL_NAME;
+        for (i = 0; i < keywords_size; i++) {
+            ptr = terminal_to_str(keywords[i]);
+            for (j = 0; j < token->len; j++) {
+                if (token->ptr[j] != ptr[j]) {
+                    break;
+                }
+            }
+            if (j == token->len && ptr[j] == '\0') {
+                terminal->type = keywords[i];
+                break;
             }
         }
-
-        terminal->type = TERMINAL_NAME;
         return;
 
     case TOKEN_NUMBER:
@@ -91,7 +79,6 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
             msg_emit(msg);
             exit(1);
         }
-
         terminal->type = TERMINAL_NUMBER;
         return;
 
@@ -101,7 +88,6 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
             msg_emit(msg);
             exit(1);
         }
-
         terminal->type = TERMINAL_STRING;
         terminal->data.string.ptr = terminal->ptr + 1;
         terminal->data.string.len = terminal->len - 2;
@@ -113,7 +99,6 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
             msg_emit(msg);
             exit(1);
         }
-
         terminal->type = TERMINAL_NONE;
         return;
 
@@ -123,7 +108,6 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
             msg_emit(msg);
             exit(1);
         }
-
         terminal->type = TERMINAL_NONE;
         return;
 
@@ -209,9 +193,11 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_UNKNOWN:
         if (is_graphical(token->ptr[0])) {
-            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray `%c` in program", token->ptr[0]);
+            msg = msg_new(token->src, token->pos, token->len,
+                MSG_ERROR, "stray `%c` in program", token->ptr[0]);
         } else {
-            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]);
+            msg = msg_new(token->src, token->pos, token->len,
+                MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]);
         }
         msg_emit(msg);
         exit(1);
