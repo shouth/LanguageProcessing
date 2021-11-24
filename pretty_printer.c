@@ -82,6 +82,7 @@ void pretty_print_empty_statement(pretty_printer_t *printer);
 
 void pretty_print_program(pretty_printer_t *printer)
 {
+    assert(printer->current->type == RULE_PROGRAM);
     enter_rule(printer);
     pretty_print_terminal(printer);
     print_space();
@@ -94,6 +95,7 @@ void pretty_print_program(pretty_printer_t *printer)
 
 void pretty_print_block(pretty_printer_t *printer)
 {
+    assert(printer->current->type == RULE_BLOCK);
     enter_rule(printer);
     while (1) {
         if (printer->current->type == RULE_VARIABLE_DECLARATION) {
@@ -112,6 +114,7 @@ void pretty_print_block(pretty_printer_t *printer)
 
 void pretty_print_variable_declaration(pretty_printer_t *printer)
 {
+    assert(printer->current->type == RULE_VARIABLE_DECLARATION);
     next_rule(printer);
 }
 
@@ -123,6 +126,7 @@ void pretty_print_array_type(pretty_printer_t *printer);
 
 void pretty_print_subprogram_declaration(pretty_printer_t *printer)
 {
+    assert(printer->current->type == RULE_SUBPROGRAM_DECLARATION);
     next_rule(printer);
 }
 
@@ -131,6 +135,7 @@ void pretty_print_formal_parameters(pretty_printer_t *printer);
 
 void pretty_print_compound_statement(pretty_printer_t *printer)
 {
+    assert(printer->current->type == RULE_COMPOUND_STATEMENT);
     enter_rule(printer);
     pretty_print_terminal(printer);
 
