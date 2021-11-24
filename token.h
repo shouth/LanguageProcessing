@@ -37,7 +37,7 @@ typedef enum {
 typedef struct {
     token_type_t type;
 
-    union token_data {
+    union {
         struct {
             int terminated : 1;
         } string;

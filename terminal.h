@@ -62,7 +62,7 @@ typedef enum {
 typedef struct {
     terminal_type_t type;
 
-    union terminal_data {
+    union {
         struct {
             unsigned long value;
         } number;

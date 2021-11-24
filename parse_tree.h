@@ -47,7 +47,7 @@ struct parse_tree {
     parse_tree_t *parent, *next;
     rule_type_t type;
 
-    union parse_tree_data {
+    union {
         struct {
             struct {
                 parse_tree_t *front;
