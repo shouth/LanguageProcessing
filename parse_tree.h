@@ -44,12 +44,11 @@ typedef enum {
 
 typedef struct parse_tree parse_tree_t;
 struct parse_tree {
-    parse_tree_t *parent;
+    parse_tree_t *parent, *next;
     rule_type_t type;
 
     union parse_tree_data {
         struct {
-            parse_tree_t *next;
             struct {
                 parse_tree_t *front;
                 parse_tree_t **back;

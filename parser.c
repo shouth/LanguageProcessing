@@ -119,7 +119,7 @@ parse_tree_t *parse_terminal(parser_t *parser, terminal_type_t type)
         return NULL;
     }
     next_terminal(parser);
-    return parse_tree_new_terminal(&parser->current_terminal);
+    return parse_tree_new_terminal(&parser->last_terminal);
 }
 
 parse_tree_t *parse_program(parser_t *parser)
