@@ -100,7 +100,7 @@ token_type_t lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
     while (is_alphabet(cursol_first(cur)) || is_number(cursol_first(cur))) {
         cursol_next(cur);
     }
-    return TOKEN_NAME_OR_KEYWORD;;
+    return TOKEN_NAME_OR_KEYWORD;
 }
 
 token_type_t lex_number(cursol_t *cur, token_data_t *ret)
@@ -112,7 +112,7 @@ token_type_t lex_number(cursol_t *cur, token_data_t *ret)
     while (is_number(cursol_first(cur))) {
         cursol_next(cur);
     }
-    return TOKEN_NUMBER;;
+    return TOKEN_NUMBER;
 }
 
 token_type_t lex_symbol(cursol_t *cur, token_data_t *ret)
@@ -123,96 +123,75 @@ token_type_t lex_symbol(cursol_t *cur, token_data_t *ret)
     switch (cursol_first(cur)) {
     case '+':
         cursol_next(cur);
-        return TOKEN_PLUS;;
-        break;
+        return TOKEN_PLUS;
     case '-':
         cursol_next(cur);
-        return TOKEN_MINUS;;
-        break;
+        return TOKEN_MINUS;
     case '*':
         cursol_next(cur);
-        return TOKEN_STAR;;
-        break;
+        return TOKEN_STAR;
     case '=':
         cursol_next(cur);
-        return TOKEN_EQUAL;;
-        break;
+        return TOKEN_EQUAL;
     case '(':
         cursol_next(cur);
-        return TOKEN_LPAREN;;
+        return TOKEN_LPAREN;
         break;
     case ')':
         cursol_next(cur);
-        return TOKEN_RPAREN;;
-        break;
+        return TOKEN_RPAREN;
     case '[':
         cursol_next(cur);
-        return TOKEN_LSQPAREN;;
-        break;
+        return TOKEN_LSQPAREN;
     case ']':
         cursol_next(cur);
-        return TOKEN_RSQPAREN;;
-        break;
+        return TOKEN_RSQPAREN;
     case '.':
         cursol_next(cur);
-        return TOKEN_DOT;;
-        break;
+        return TOKEN_DOT;
     case ',':
         cursol_next(cur);
-        return TOKEN_COMMA;;
-        break;
+        return TOKEN_COMMA;
     case ';':
         cursol_next(cur);
-        return TOKEN_SEMI;;
-        break;
+        return TOKEN_SEMI;
 
     case '<':
         cursol_next(cur);
         switch (cursol_first(cur)) {
         case '>':
             cursol_next(cur);
-            return TOKEN_NOTEQ;;
-            break;
+            return TOKEN_NOTEQ;
         case '=':
             cursol_next(cur);
-            return TOKEN_LEEQ;;
-            break;
+            return TOKEN_LEEQ;
         default:
-            return TOKEN_LE;;
-            break;
+            return TOKEN_LE;
         }
-        break;
 
     case '>':
         cursol_next(cur);
         switch (cursol_first(cur)) {
         case '=':
             cursol_next(cur);
-            return TOKEN_GREQ;;
-            break;
+            return TOKEN_GREQ;
         default:
-            return TOKEN_GR;;
-            break;
+            return TOKEN_GR;
         }
-        break;
 
     case ':':
         cursol_next(cur);
         switch (cursol_first(cur)) {
         case '=':
             cursol_next(cur);
-            return TOKEN_ASSIGN;;
-            break;
+            return TOKEN_ASSIGN;
         default:
-            return TOKEN_COLON;;
-            break;
+            return TOKEN_COLON;
         }
-        break;
 
     default:
         cursol_next(cur);
-        return TOKEN_UNKNOWN;;
-        break;
+        return TOKEN_UNKNOWN;
     }
 }
 
@@ -221,41 +200,34 @@ token_type_t lex_token(cursol_t *cur, token_data_t *ret)
     assert(cur != NULL && ret != NULL);
 
     if (cursol_eof(cur)) {
-        return TOKEN_EOF;;
-        return;
+        return TOKEN_EOF;
     }
 
     if (is_space(cursol_first(cur))) {
-        lex_space(cur, ret);
-        return;
+        return lex_space(cur, ret);
     }
 
     if (cursol_first(cur) == '{') {
-        lex_braces_comment(cur, ret);
-        return;
+        return lex_braces_comment(cur, ret);
     }
 
     if (cursol_first(cur) == '/' && cursol_second(cur) == '*') {
-        lex_cstyle_comment(cur, ret);
-        return;
+        return lex_cstyle_comment(cur, ret);
     }
 
     if (cursol_first(cur) == '\'') {
-        lex_string(cur, ret);
-        return;
+        return lex_string(cur, ret);
     }
 
     if (is_alphabet(cursol_first(cur))) {
-        lex_name_or_keyword(cur, ret);
-        return;
+        return lex_name_or_keyword(cur, ret);
     }
 
     if (is_number(cursol_first(cur))) {
-        lex_number(cur, ret);
-        return;
+        return lex_number(cur, ret);
     }
 
-    lex_symbol(cur, ret);
+    return lex_symbol(cur, ret);
 }
 
 void lex(cursol_t *cursol, token_t *ret)
