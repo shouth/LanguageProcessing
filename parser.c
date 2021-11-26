@@ -788,11 +788,8 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
     }
     parse_tree_push(ret, stream);
 
-    do {
-        stream = parse_terminal(parser, TERMINAL_ELSE);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_terminal(parser, TERMINAL_ELSE);
+    if (stream == NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_statement(parser);
@@ -802,7 +799,7 @@ parse_tree_t *parse_condition_statement(parser_t *parser)
             return NULL; /* error */
         }
         parse_tree_push(ret, stream);
-    } while (0);
+    }
 
     return ret;
 }
@@ -893,11 +890,8 @@ parse_tree_t *parse_call_statement(parser_t *parser)
     }
     parse_tree_push(ret, stream);
 
-    do {
-        stream = parse_terminal(parser, TERMINAL_LPAREN);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_terminal(parser, TERMINAL_LPAREN);
+    if (stream == NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_expressions(parser);
@@ -915,7 +909,7 @@ parse_tree_t *parse_call_statement(parser_t *parser)
             return NULL; /* error */
         }
         parse_tree_push(ret, stream);
-    } while (0);
+    }
 
     return ret;
 }
@@ -1044,11 +1038,8 @@ parse_tree_t *parse_variable(parser_t *parser)
     }
     parse_tree_push(ret, stream);
 
-    do {
-        stream = parse_terminal(parser, TERMINAL_LSQPAREN);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_terminal(parser, TERMINAL_LSQPAREN);
+    if (stream != NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_expression(parser);
@@ -1066,7 +1057,7 @@ parse_tree_t *parse_variable(parser_t *parser)
             return NULL; /* error */
         }
         parse_tree_push(ret, stream);
-    } while (0);
+    }
 
     return ret;
 }
@@ -1213,11 +1204,8 @@ parse_tree_t *parse_factor(parser_t *parser)
         return ret;
     }
 
-    do {
-        stream = parse_terminal(parser, TERMINAL_LPAREN);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_terminal(parser, TERMINAL_LPAREN);
+    if (stream != NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_expression(parser);
@@ -1237,13 +1225,10 @@ parse_tree_t *parse_factor(parser_t *parser)
         parse_tree_push(ret, stream);
 
         return ret;
-    } while (0);
+    }
 
-    do {
-        stream = parse_terminal(parser, TERMINAL_NOT);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_terminal(parser, TERMINAL_NOT);
+    if (stream != NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_factor(parser);
@@ -1255,13 +1240,10 @@ parse_tree_t *parse_factor(parser_t *parser)
         parse_tree_push(ret, stream);
 
         return ret;
-    } while (0);
+    }
 
-    do {
-        stream = parse_standard_type(parser);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_standard_type(parser);
+    if (stream != NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_terminal(parser, TERMINAL_LPAREN);
@@ -1289,7 +1271,7 @@ parse_tree_t *parse_factor(parser_t *parser)
         parse_tree_push(ret, stream);
 
         return ret;
-    } while (0);
+    }
 
     parse_tree_free(ret);
     return NULL;
@@ -1469,11 +1451,8 @@ parse_tree_t *parse_input_statement(parser_t *parser)
         return NULL;
     } while (0);
 
-    do {
-        stream = parse_terminal(parser, TERMINAL_LPAREN);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_terminal(parser, TERMINAL_LPAREN);
+    if (stream != NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_variable(parser);
@@ -1507,7 +1486,7 @@ parse_tree_t *parse_input_statement(parser_t *parser)
             return NULL; /* error */
         }
         parse_tree_push(ret, stream);
-    } while (0);
+    }
 
     return ret;
 }
@@ -1538,11 +1517,8 @@ parse_tree_t *parse_output_statement(parser_t *parser)
         return NULL;
     } while (0);
 
-    do {
-        stream = parse_terminal(parser, TERMINAL_LPAREN);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_terminal(parser, TERMINAL_LPAREN);
+    if (stream != NULL) {
         parse_tree_push(ret, stream);
 
         stream = parse_output_format(parser);
@@ -1576,7 +1552,7 @@ parse_tree_t *parse_output_statement(parser_t *parser)
             return NULL; /* error */
         }
         parse_tree_push(ret, stream);
-    } while (0);
+    }
 
     return ret;
 }
@@ -1601,18 +1577,12 @@ parse_tree_t *parse_output_format(parser_t *parser)
         return ret;
     }
 
-    do {
-        stream = parse_expression(parser);
-        if (stream == NULL) {
-            break;
-        }
+    stream = parse_expression(parser);
+    if (stream != NULL) {
         parse_tree_push(ret, stream);
 
-        do {
-            stream = parse_terminal(parser, TERMINAL_COLON);
-            if (stream == NULL) {
-                break;
-            }
+        stream = parse_terminal(parser, TERMINAL_COLON);
+        if (stream != NULL) {
             parse_tree_push(ret, stream);
 
             stream = parse_terminal(parser, TERMINAL_NUMBER);
@@ -1622,10 +1592,10 @@ parse_tree_t *parse_output_format(parser_t *parser)
                 return NULL; /* error */
             }
             parse_tree_push(ret, stream);
-        } while (0);
+        }
 
         return ret;
-    } while (0);
+    }
 
     parse_tree_free(ret);
     return NULL;
