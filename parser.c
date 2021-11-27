@@ -349,7 +349,7 @@ expr_t *parse_factor(parser_t *parser)
         ret->kind = EXPR_UNARY_OP;
         ret->u.unary_expr.kind = EXPR_UNARY_OP;
         ret->u.unary_expr.expr = parse_factor(parser);
-    } else if (check(parser, TERMINAL_INTEGER) || check(parser, TERMINAL_BOOLEAN) || check(parser, TERMINAL_STRING)) {
+    } else if (check(parser, TERMINAL_INTEGER) || check(parser, TERMINAL_BOOLEAN) || check(parser, TERMINAL_CHAR)) {
         ret = (expr_t *) xmalloc(sizeof(expr_t));
         ret->kind = EXPR_CAST;
         ret->u.cast_expr.type = parse_standard_type(parser);
