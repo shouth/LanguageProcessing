@@ -478,6 +478,7 @@ stmt_t *parse_assign_stmt(parser_t *parser)
     stmt = &ret->u.assign_stmt;
 
     stmt->lhs = parse_lvalue(parser);
+    expect(parser, TERMINAL_ASSIGN);
     stmt->rhs = parse_expr(parser);
     return ret;
 }
