@@ -715,8 +715,8 @@ decl_part_t *parse_variable_decl(parser_t *parser)
 
     expect(parser, TERMINAL_VAR);
     decl->names = parse_ident_seq(parser);
-    decl->type = parse_type(parser);
     expect(parser, TERMINAL_COLON);
+    decl->type = parse_type(parser);
     expect(parser, TERMINAL_SEMI);
     while (check(parser, TERMINAL_NAME)) {
         decl = decl->next = (variable_decl_t *) xmalloc(sizeof(variable_decl_t));
