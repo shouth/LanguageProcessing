@@ -220,8 +220,8 @@ struct impl_variable_decl {
     type_t *type;
 };
 
-typedef struct impl_parameter_decl params_t;
-struct impl_parameter_decl {
+typedef struct impl_params params_t;
+struct impl_params {
     params_t *next;
     ident_t *names;
     type_t *type;
