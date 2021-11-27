@@ -172,7 +172,7 @@ type_t *parse_standard_type(parser_t *parser)
         ret->kind = TYPE_INTEGER;
     } else if (eat(parser, TERMINAL_BOOLEAN)) {
         ret->kind = TYPE_BOOLEAN;
-    } else if (eat(parser, TERMINAL_STRING)) {
+    } else if (eat(parser, TERMINAL_CHAR)) {
         ret->kind = TYPE_STRING;
     } else {
         error_unexpected(parser);
