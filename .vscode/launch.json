@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/${fileBasenameNoExtension}",
-            "args": [ "./task1_sample/sample11.mpl" ],
+            "args": [ "./task1_sample/sample19p.mpl" ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
