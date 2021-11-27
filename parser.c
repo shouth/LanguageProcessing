@@ -815,6 +815,7 @@ ast_t *parse(const source_t *src)
     parser.alive = 1;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
     bump(&parser);
+    ret = (ast_t *) xmalloc(sizeof(ast_t));
     ret->program = parse_program(&parser);
     ret->source = src;
     return ret;
