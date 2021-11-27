@@ -339,15 +339,15 @@ expr_t *parse_factor(parser_t *parser)
         ret = (expr_t *) xmalloc(sizeof(expr_t));
         ret->kind = EXPR_CONSTANT;
         ret->u.constant_expr.lit = parse_lit(parser);
-    } else if (check(parser, TERMINAL_LPAREN)) {
+    } else if (eat(parser, TERMINAL_LPAREN)) {
         ret = (expr_t *) xmalloc(sizeof(expr_t));
         ret->kind = EXPR_PAREN;
         ret->u.paren_expr.expr = parse_expr(parser);
         expect(parser, TERMINAL_RPAREN);
-    } else if (check(parser, TERMINAL_NOT)) {
+    } else if (eat(parser, TERMINAL_NOT)) {
         ret = (expr_t *) xmalloc(sizeof(expr_t));
         ret->kind = EXPR_UNARY_OP;
-        ret->u.unary_expr.kind = EXPR_UNARY_OP;
+        ret->u.unary_expr.kind = UNARY_OP_NOT;
         ret->u.unary_expr.expr = parse_factor(parser);
     } else if (check(parser, TERMINAL_INTEGER) || check(parser, TERMINAL_BOOLEAN) || check(parser, TERMINAL_CHAR)) {
         ret = (expr_t *) xmalloc(sizeof(expr_t));
