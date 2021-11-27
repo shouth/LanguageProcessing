@@ -410,8 +410,16 @@ expr_t *parse_simple_expr(parser_t *parser)
     }
 
     ret = parse_term(parser);
-    expr = &ret->u.binary_expr;
-    expr->sign = sign;
+    if (sign != 0) {
+        tmp = (expr_t *) xmalloc(sizeof(expr_t));
+        tmp->kind = EXPR_BINARY_OP;
+        expr = &ret->u.binary_expr;
+        expr->kind = sign > 0 ? BINARY_OP_PLUS : BINARY_OP_MINUS;
+        expr->lhs = (expr_t *) xmalloc(sizeof(expr_t));
+        expr->lhs->kind = EXPR_EMPTY;
+        expr->rhs = ret;
+        ret = tmp;
+    }
     while (1) {
         if (eat(parser, TERMINAL_PLUS)) {
             kind = BINARY_OP_PLUS;
