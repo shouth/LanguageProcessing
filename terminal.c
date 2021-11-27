@@ -44,7 +44,7 @@ const size_t keywords_size = sizeof(keywords) / sizeof(*keywords);
 
 void terminal_from_token(terminal_t *terminal, const token_t *token)
 {
-    size_t i, j;
+    size_t i, j, cnt;
     const char *ptr;
     msg_t *msg;
     assert(token != NULL && terminal != NULL);
@@ -90,7 +90,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
         }
         terminal->type = TERMINAL_STRING;
         terminal->data.string.ptr = terminal->ptr + 1;
-        terminal->data.string.len = terminal->len - 2;
+        terminal->data.string.len = token->data.string.len;
         return;
 
     case TOKEN_BRACES_COMMENT:

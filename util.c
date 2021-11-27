@@ -1,5 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "util.h"
 
@@ -77,4 +79,21 @@ size_t popcount64(uint64_t n)
     n += n >> 16;
     n += n >> 32;
     return n & 0x000000000000007f;
+}
+
+void *xmalloc(size_t size)
+{
+    void *ret = malloc(size);
+    if (ret == NULL) {
+        fprintf(stderr, "memory allocation failed!");
+        exit(1);
+    }
+    return ret;
+}
+
+void xfree(void *ptr)
+{
+    if (ptr != NULL) {
+        free(ptr);
+    }
 }

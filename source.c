@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include "source.h"
+#include "util.h"
 
 #if defined(_WIN32)
 
@@ -96,11 +97,11 @@ source_t *source_new(const char *filename)
 
     assert(filename != NULL);
 
-    src = (source_t *) malloc(sizeof(source_t));
+    src = (source_t *) xmalloc(sizeof(source_t));
     if (src == NULL) {
         return NULL;
     }
-    src->filename = (char *) malloc(sizeof(char) * (strlen(filename) + 1));
+    src->filename = (char *) xmalloc(sizeof(char) * (strlen(filename) + 1));
     if (src->filename == NULL) {
         source_free(src);
         return NULL;
@@ -113,7 +114,7 @@ source_t *source_new(const char *filename)
         return NULL;
     }
 
-    src->src_ptr = (char *) malloc(sizeof(char) * (src->src_size + 1));
+    src->src_ptr = (char *) xmalloc(sizeof(char) * (src->src_size + 1));
     if (src->src_ptr == NULL) {
         source_free(src);
         return NULL;
@@ -137,7 +138,7 @@ source_t *source_new(const char *filename)
     }
 
     src->lines_size = linecnt;
-    src->lines_ptr = (size_t *) malloc(sizeof(size_t) * (src->lines_size + 1));
+    src->lines_ptr = (size_t *) xmalloc(sizeof(size_t) * (src->lines_size + 1));
     if (src->lines_ptr == NULL) {
         source_free(src);
         return NULL;

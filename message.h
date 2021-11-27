@@ -6,6 +6,7 @@
 #include "source.h"
 
 typedef enum {
+    MSG_HELP,
     MSG_NOTE,
     MSG_WARN,
     MSG_ERROR,

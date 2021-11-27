@@ -67,14 +67,13 @@ token_type_t lex_string(cursol_t *cur, token_data_t *ret)
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '\'');
 
+    ret->string.len = 0;
     cursol_next(cur);
     while (1) {
         if (cursol_first(cur) == '\'') {
             cursol_next(cur);
 
-            if (cursol_first(cur) == '\'') {
-                cursol_next(cur);
-            } else {
+            if (cursol_first(cur) != '\'') {
                 ret->string.terminated = 1;
                 return TOKEN_STRING;
             }
@@ -87,6 +86,7 @@ token_type_t lex_string(cursol_t *cur, token_data_t *ret)
             return TOKEN_STRING;
         }
 
+        ret->string.len++;
         cursol_next(cur);
     }
 }

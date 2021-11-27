@@ -13,7 +13,7 @@ msg_t *msg_new(const source_t *src, size_t pos, size_t len, msg_level_t level, c
 
     assert(src != NULL && fmt != NULL);
 
-    ret = (msg_t *) malloc(sizeof(msg_t));
+    ret = (msg_t *) xmalloc(sizeof(msg_t));
     ret->src = src;
     va_start(args, fmt);
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
@@ -62,7 +62,7 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
 
     assert(msg != NULL && fmt != NULL);
 
-    entry = (msg_entry_t *) malloc(sizeof(msg_entry_t));
+    entry = (msg_entry_t *) xmalloc(sizeof(msg_entry_t));
     va_start(args, fmt);
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(entry->msg, fmt, args);
@@ -80,7 +80,7 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, .
 
     assert(msg != NULL && fmt != NULL);
 
-    entry = (msg_inline_entry_t *) malloc(sizeof(msg_inline_entry_t));
+    entry = (msg_inline_entry_t *) xmalloc(sizeof(msg_inline_entry_t));
     va_start(args, fmt);
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(entry->msg, fmt, args);
@@ -101,18 +101,18 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, .
 void set_level_color(msg_level_t level)
 {
     switch (level) {
+    case MSG_HELP:
+        printf("\033[97m"); /* bright white */
+        break;
     case MSG_NOTE:
         printf("\033[94m"); /* bright blue */
         break;
-
     case MSG_WARN:
         printf("\033[93m"); /* bright yellow */
         break;
-
     case MSG_ERROR:
         printf("\033[91m"); /* bright red */
         break;
-
     case MSG_FATAL:
         printf("\033[95m"); /* bright magenta */
         break;
@@ -155,6 +155,8 @@ void put_sanitized(int c)
 const char *level_str(msg_level_t level)
 {
     switch (level) {
+    case MSG_HELP:
+        return "help";
     case MSG_NOTE:
         return "note";
     case MSG_WARN:
@@ -299,6 +301,7 @@ void msg_emit(msg_t *msg)
     for (cur1 = &msg->entries; *cur1 != NULL; cur1 = &(*cur1)->next) {
         printf("%*.s = ", left_margin, "");
         set_level_color((*cur1)->level);
+        set_bold();
         printf("%s", level_str((*cur1)->level));
         reset();
         printf(": %s\n", (*cur1)->msg);

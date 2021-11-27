@@ -36,6 +36,7 @@ typedef enum {
 typedef union {
     struct {
         int terminated;
+        size_t len;
     } string;
 
     struct {

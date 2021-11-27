@@ -15,4 +15,8 @@ uint64_t msb64(uint64_t n);
 
 size_t popcount64(uint64_t n);
 
+void *xmalloc(size_t size);
+
+void xfree(void *ptr);
+
 #endif /* UTIL_H */
