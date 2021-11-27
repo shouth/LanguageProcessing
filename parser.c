@@ -125,13 +125,12 @@ size_t parse_number(parser_t *parser)
     size_t ret;
     assert(parser != NULL);
 
-    if (!check(parser, TERMINAL_NUMBER)) {
+    if (eat(parser, TERMINAL_NUMBER)) {
+        ret = parser->last_terminal.data.number.value;
+    } else {
         error_unexpected(parser);
         return SIZE_MAX;
     }
-
-    ret = parser->current_terminal.data.number.value;
-    bump(parser);
     return ret;
 }
 
@@ -140,15 +139,14 @@ ident_t *parse_ident(parser_t *parser)
     ident_t *ret;
     assert(parser != NULL);
 
-    if (!check(parser, TERMINAL_NAME)) {
+    if (eat(parser, TERMINAL_NAME)) {
+        ret = (ident_t *) xmalloc(sizeof(ident_t));
+        ret->ptr = parser->last_terminal.ptr;
+        ret->len = parser->last_terminal.len;
+    } else {
         error_unexpected(parser);
         return NULL;
     }
-
-    ret = (ident_t *) xmalloc(sizeof(ident_t));
-    ret->ptr = parser->current_terminal.ptr;
-    ret->len = parser->current_terminal.len;
-    bump(parser);
     return ret;
 }
 
@@ -157,9 +155,95 @@ ident_t *parse_ident_seq(parser_t *parser)
     ident_t *ret, *ident;
     assert(parser != NULL);
 
-    ret = ident = parse_ident(parser);
-    while (eat(parser, TERMINAL_COMMA)) {
-        ident = ident->next = parse_ident(parser);
+    ret = parse_ident(parser);
+    for (ident = ret; eat(parser, TERMINAL_COMMA); ident = ident->next) {
+        ident->next = parse_ident(parser);
+    }
+    return ret;
+}
+
+type_t *parse_standard_type(parser_t *parser)
+{
+    type_t *ret;
+    assert(parser != NULL);
+
+    ret = (type_t *) xmalloc(sizeof(type_t));
+    if (eat(parser, TERMINAL_INTEGER)) {
+        ret->kind = TYPE_INTEGER;
+    } else if (eat(parser, TERMINAL_BOOLEAN)) {
+        ret->kind = TYPE_BOOLEAN;
+    } else if (eat(parser, TERMINAL_STRING)) {
+        ret->kind = TYPE_STRING;
+    } else {
+        error_unexpected(parser);
+        return NULL;
+    }
+    return ret;
+}
+
+type_t *parse_array_type(parser_t *parser)
+{
+    type_t *ret;
+    assert(parser != NULL);
+
+    ret = (type_t *) xmalloc(sizeof(type_t));
+    ret->kind = TYPE_ARRAY;
+    expect(parser, TERMINAL_ARRAY);
+    expect(parser, TERMINAL_LSQPAREN);
+    ret->array.len = parse_number(parser);
+    expect(parser, TERMINAL_RSQPAREN);
+    expect(parser, TERMINAL_OF);
+    ret->array.base = parse_standard_type(parser);
+    return ret;
+}
+
+type_t *parse_type(parser_t *parser)
+{
+    assert(parser != NULL);
+
+    if (check(parser, TERMINAL_ARRAY)) {
+        return parse_array_type(parser);
+    } else {
+        return parse_standard_type(parser);
+    }
+}
+
+lit_t *parse_number_lit(parser_t *parser)
+{
+    lit_t *ret;
+    number_lit_t *lit;
+    assert(parser != NULL);
+
+    ret = (lit_t *) xmalloc(sizeof(lit_t));
+    ret->kind = LIT_NUMBER;
+    lit = &ret->u.number_lit;
+
+    if (eat(parser, TERMINAL_NUMBER)) {
+        lit->value = parser->last_terminal.data.number.value;
+    } else {
+        error_unexpected(parser);
+        return NULL;
+    }
+    return ret;
+}
+
+lit_t *parse_boolean_lit(parser_t *parser)
+{
+    lit_t *ret;
+    boolean_lit_t *lit;
+    assert(parser != NULL);
+
+    ret = (lit_t *) xmalloc(sizeof(lit_t));
+    ret->kind = LIT_BOOLEAN;
+    lit = &ret->u.boolean_lit;
+
+    if (eat(parser, TERMINAL_TRUE)) {
+        lit->value = 1;
+    } else if (eat(parser, TERMINAL_FALSE)) {
+        lit->value = 0;
+    } else {
+        error_unexpected(parser);
+        return NULL;
     }
     return ret;
 }
@@ -171,19 +255,36 @@ lit_t *parse_string_lit(parser_t *parser)
     assert(parser != NULL);
 
     ret = (lit_t *) xmalloc(sizeof(lit_t));
+    ret->kind = LIT_STRING;
     lit = &ret->u.string_lit;
 
-    if (check(parser, TERMINAL_STRING)) {
-        lit->ptr = parser->current_terminal.data.string.ptr;
-        lit->len = parser->current_terminal.data.string.len;
-        return ret;
+    if (eat(parser, TERMINAL_STRING)) {
+        lit->ptr = parser->last_terminal.data.string.ptr;
+        lit->len = parser->last_terminal.data.string.len;
+    } else {
+        error_unexpected(parser);
+        return NULL;
     }
-
-    error_unexpected(parser);
-    return NULL;
+    return ret;
 }
 
-lit_t *parse_lit(parser_t *parser);
+lit_t *parse_lit(parser_t *parser)
+{
+    lit_t *ret;
+    assert(parser != NULL);
+
+    if (check(parser, TERMINAL_NUMBER)) {
+        ret = parse_number_lit(parser);
+    } else if (check(parser, TERMINAL_TRUE) || check(parser, TERMINAL_FALSE)) {
+        ret = parse_boolean_lit(parser);
+    } else if (check(parser, TERMINAL_STRING)) {
+        ret = parse_string_lit(parser);
+    } else {
+        error_unexpected(parser);
+        return NULL;
+    }
+    return ret;
+}
 
 expr_t *parse_expr(parser_t *parser);
 
@@ -192,9 +293,9 @@ expr_t *parse_expr_seq(parser_t *parser)
     expr_t *ret, *expr;
     assert(parser != NULL);
 
-    ret = expr = parse_expr(parser);
-    while (eat(parser, TERMINAL_COLON)) {
-        expr = expr->next = parse_expr(parser);
+    ret = parse_expr(parser);
+    for (expr = ret; eat(parser, TERMINAL_COLON); expr = expr->next) {
+        expr->next = parse_expr(parser);
     }
     return ret;
 }
@@ -209,8 +310,7 @@ expr_t *parse_lvalue(parser_t *parser)
     if (check(parser, TERMINAL_NAME)) {
         ident = parse_ident(parser);
 
-        if (check(parser, TERMINAL_LSQPAREN)) {
-            bump(parser);
+        if (eat(parser, TERMINAL_LSQPAREN)) {
             ret->kind = EXPR_ARRAY_SUBSCRIPT;
             ret->u.array_subscript_expr.name = ident;
             ret->u.array_subscript_expr.index_expr = parse_expr(parser);
@@ -219,14 +319,138 @@ expr_t *parse_lvalue(parser_t *parser)
             ret->kind = EXPR_REF;
             ret->u.ref_expr.name = ident;
         }
+    } else {
+        error_unexpected(parser);
+        return NULL;
     }
-    error_unexpected(parser);
-    return NULL;
+    return ret;
+}
+
+expr_t *parse_factor(parser_t *parser)
+{
+    expr_t *ret;
+    assert(parser != NULL);
+
+    if (check(parser, TERMINAL_NAME)) {
+        ret = parse_lvalue(parser);
+    } else if (check(parser, TERMINAL_NUMBER) || check(parser, TERMINAL_TRUE)
+        || check(parser, TERMINAL_FALSE) || check(parser, TERMINAL_STRING))
+    {
+        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret->kind = EXPR_CONSTANT;
+        ret->u.constant_expr.lit = parse_lit(parser);
+    } else if (check(parser, TERMINAL_LPAREN)) {
+        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret->kind = EXPR_PAREN;
+        ret->u.paren_expr.expr = parse_expr(parser);
+        expect(parser, TERMINAL_RPAREN);
+    } else if (check(parser, TERMINAL_NOT)) {
+        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret->kind = EXPR_UNARY_OP;
+        ret->u.unary_expr.kind = EXPR_UNARY_OP;
+        ret->u.unary_expr.expr = parse_factor(parser);
+    } else if (check(parser, TERMINAL_INTEGER) || check(parser, TERMINAL_BOOLEAN) || check(parser, TERMINAL_STRING)) {
+        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret->kind = EXPR_CAST;
+        ret->u.cast_expr.type = parse_standard_type(parser);
+        expect(parser, TERMINAL_LPAREN);
+        ret->u.cast_expr.expr = parse_expr(parser);
+        expect(parser, TERMINAL_RPAREN);
+    } else {
+        error_unexpected(parser);
+        return NULL;
+    }
+    return ret;
+}
+
+expr_t *parse_term(parser_t *parser)
+{
+    expr_t *ret, *tmp;
+    binary_op_kind_t kind;
+    binary_expr_t *expr;
+    assert(parser != NULL);
+
+    for (ret = parse_factor(parser); ; ret = tmp) {
+        if (eat(parser, TERMINAL_STAR)) {
+            kind = BINARY_OP_STAR;
+        } else if (eat(parser, TERMINAL_DIV)) {
+            kind = BINARY_OP_DIV;
+        } else if (eat(parser, TERMINAL_AND)) {
+            kind = BINARY_OP_AND;
+        } else {
+            break;
+        }
+
+        tmp = (expr_t *) xmalloc(sizeof(expr_t));
+        tmp->kind = EXPR_BINARY_OP;
+        expr = &tmp->u.binary_expr;
+        expr->kind = kind;
+        expr->lhs = ret;
+        expr->rhs = parse_factor(parser);
+    }
+    return ret;
+}
+
+expr_t *parse_simple_expr(parser_t *parser)
+{
+    expr_t *ret, *tmp;
+    binary_op_kind_t kind;
+    binary_expr_t *expr;
+    assert(parser != NULL);
+
+    for (ret = parse_term(parser); ; ret = tmp) {
+        if (eat(parser, TERMINAL_PLUS)) {
+            kind = BINARY_OP_PLUS;
+        } else if (eat(parser, TERMINAL_MINUS)) {
+            kind = BINARY_OP_MINUS;
+        } else if (eat(parser, TERMINAL_OR)) {
+            kind = BINARY_OP_OR;
+        } else {
+            break;
+        }
+
+        tmp = (expr_t *) xmalloc(sizeof(expr_t));
+        tmp->kind = EXPR_BINARY_OP;
+        expr = &tmp->u.binary_expr;
+        expr->kind = kind;
+        expr->lhs = ret;
+        expr->rhs = parse_term(parser);
+    }
+    return ret;
 }
 
 expr_t *parse_expr(parser_t *parser)
 {
+    expr_t *ret, *tmp;
+    binary_op_kind_t kind;
+    binary_expr_t *expr;
+    assert(parser != NULL);
 
+    for (ret = parse_simple_expr(parser); ; ret = tmp) {
+        if (eat(parser, TERMINAL_EQUAL)) {
+            kind = BINARY_OP_EQUAL;
+        } else if (eat(parser, TERMINAL_NOTEQ)) {
+            kind = BINARY_OP_NOTEQ;
+        } else if (eat(parser, TERMINAL_LE)) {
+            kind = BINARY_OP_LE;
+        } else if (eat(parser, TERMINAL_LEEQ)) {
+            kind = BINARY_OP_LEEQ;
+        } else if (eat(parser, TERMINAL_GR)) {
+            kind = BINARY_OP_GR;
+        } else if (eat(parser, TERMINAL_GREQ)) {
+            kind = BINARY_OP_GREQ;
+        } else {
+            break;
+        }
+
+        tmp = (expr_t *) xmalloc(sizeof(expr_t));
+        tmp->kind = EXPR_BINARY_OP;
+        expr = &tmp->u.binary_expr;
+        expr->kind = kind;
+        expr->lhs = ret;
+        expr->rhs = parse_simple_expr(parser);
+    }
+    return ret;
 }
 
 expr_t *parse_lvalue_seq(parser_t *parser)
@@ -234,10 +458,9 @@ expr_t *parse_lvalue_seq(parser_t *parser)
     expr_t *ret, *expr;
     assert(parser != NULL);
 
-    ret = expr = parse_lvalue(parser);
-    while (check(parser, TERMINAL_COMMA)) {
-        bump(parser);
-        expr = expr->next = parse_lvalue(parser);
+    ret = parse_lvalue(parser);
+    for (expr = ret; eat(parser, TERMINAL_COMMA); expr = expr->next) {
+        expr->next = parse_lvalue(parser);
     }
     return ret;
 }
@@ -287,7 +510,7 @@ stmt_t *parse_while_stmt(parser_t *parser)
 
     ret = (stmt_t *) xmalloc(sizeof(stmt_t));
     ret->kind = STMT_WHILE;
-    stmt = &ret->u.if_stmt;
+    stmt = &ret->u.while_stmt;
 
     expect(parser, TERMINAL_WHILE);
     stmt->cond = parse_expr(parser);
@@ -379,11 +602,12 @@ output_format_t *parse_output_format(parser_t *parser)
     if (eat(parser, TERMINAL_COLON)) {
         ret->len = parse_number(parser);
     }
-    if (ret->expr->kind == EXPR_LITERAL) {
-        lit = &ret->expr->u.lit;
+    if (ret->expr->kind == EXPR_CONSTANT) {
+        lit = ret->expr->u.constant_expr.lit;
         if (lit->kind == LIT_STRING && lit->u.string_lit.len > 1 && ret->len != SIZE_MAX) {
+            msg_t *msg;
             len = cursol_position(&parser->cursol) - init_pos;
-            msg_t *msg = msg_new(parser->src, init_pos, len,
+            msg = msg_new(parser->src, init_pos, len,
                 MSG_ERROR, "wrong output format");
             msg_add_inline_entry(msg, init_pos, len,
                 "the field specifier cannot be used here");
@@ -454,76 +678,29 @@ stmt_t *parse_compound_stmt(parser_t *parser)
 stmt_t *parse_stmt(parser_t *parser)
 {
     stmt_t *ret;
-    assert(parser);
+    assert(parser != NULL);
 
     if (check(parser, TERMINAL_NAME)) {
-        return parse_assign_stmt(parser);
+        ret = parse_assign_stmt(parser);
     } else if (check(parser, TERMINAL_IF)) {
-        return parse_if_stmt(parser);
+        ret = parse_if_stmt(parser);
     } else if (check(parser, TERMINAL_WHILE)) {
-        return parse_while_stmt(parser);
+        ret = parse_while_stmt(parser);
     } else if (check(parser, TERMINAL_BREAK)) {
-        return parse_break_stmt(parser);
+        ret = parse_break_stmt(parser);
     } else if (check(parser, TERMINAL_CALL)) {
-        return parse_call_stmt(parser);
+        ret = parse_call_stmt(parser);
     } else if (check(parser, TERMINAL_RETURN)) {
-        return parse_return_stmt(parser);
+        ret = parse_return_stmt(parser);
     } else if (check(parser, TERMINAL_READ) || check(parser, TERMINAL_READLN)) {
-        return parse_read_stmt(parser);
+        ret = parse_read_stmt(parser);
     } else if (check(parser, TERMINAL_WRITE) || check(parser, TERMINAL_WRITELN)) {
-        return parse_write_stmt(parser);
-    }
-
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
-    ret->kind = STMT_EMPTY;
-    return ret;
-}
-
-type_t *parse_standard_type(parser_t *parser)
-{
-    type_t *ret;
-    assert(parser != NULL);
-
-    ret = (type_t *) xmalloc(sizeof(type_t));
-    if (eat(parser, TERMINAL_INTEGER)) {
-        ret->kind = TYPE_INTEGER;
-    } else if (eat(parser, TERMINAL_BOOLEAN)) {
-        ret->kind = TYPE_BOOLEAN;
-    } else if (eat(parser, TERMINAL_STRING)) {
-        ret->kind = TYPE_STRING;
+        ret = parse_write_stmt(parser);
     } else {
-        error_unexpected(parser);
-        return NULL;
+        ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+        ret->kind = STMT_EMPTY;
     }
-
     return ret;
-}
-
-type_t *parse_array_type(parser_t *parser)
-{
-    type_t *ret;
-    assert(parser != NULL);
-
-    ret = (type_t *) xmalloc(sizeof(type_t));
-    ret->kind = TYPE_ARRAY;
-    expect(parser, TERMINAL_ARRAY);
-    expect(parser, TERMINAL_LSQPAREN);
-    ret->array.len = parse_number(parser);
-    expect(parser, TERMINAL_RSQPAREN);
-    expect(parser, TERMINAL_OF);
-    ret->array.base = parse_standard_type(parser);
-    return ret;
-}
-
-type_t *parse_type(parser_t *parser)
-{
-    assert(parser != NULL);
-
-    if (check(parser, TERMINAL_ARRAY)) {
-        return parse_array_type(parser);
-    } else {
-        return parse_standard_type(parser);
-    }
 }
 
 decl_part_t *parse_variable_decl(parser_t *parser)
@@ -598,21 +775,16 @@ decl_part_t *parse_decl_part(parser_t *parser)
     decl_part_t *ret, **decl;
     assert(parser != NULL);
 
-    ret = NULL, decl = &ret;
-    while (1) {
+    ret = NULL;
+    for (decl = &ret; ; decl = &(*decl)->next) {
         if (check(parser, TERMINAL_VAR)) {
             *decl = parse_variable_decl(parser);
-            decl = &(*decl)->next;
-            continue;
-        }
-        if (check(parser, TERMINAL_PROCEDURE)) {
+        } else if (check(parser, TERMINAL_PROCEDURE)) {
             *decl = parse_procedure_decl(parser);
-            decl = &(*decl)->next;
-            continue;
+        } else {
+            break;
         }
-        break;
     }
-
     return ret;
 }
 

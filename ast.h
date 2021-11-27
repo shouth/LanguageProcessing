@@ -29,6 +29,35 @@ struct impl_ident {
     size_t len;
 };
 
+typedef enum {
+    LIT_NUMBER,
+    LIT_BOOLEAN,
+    LIT_STRING
+} lit_kind_t;
+
+typedef struct {
+    const char *ptr;
+    size_t len;
+} string_lit_t;
+
+typedef struct {
+    int value;
+} boolean_lit_t;
+
+typedef struct {
+    unsigned long value;
+} number_lit_t;
+
+typedef struct {
+    lit_kind_t kind;
+
+    union {
+        string_lit_t string_lit;
+        boolean_lit_t boolean_lit;
+        number_lit_t number_lit;
+    } u;
+} lit_t;
+
 typedef struct impl_expr expr_t;
 
 typedef enum {
@@ -80,34 +109,9 @@ typedef struct {
     expr_t *index_expr;
 } array_subscript_expr_t;
 
-typedef enum {
-    LIT_NUMBER,
-    LIT_BOOLEAN,
-    LIT_STRING
-} lit_kind_t;
-
 typedef struct {
-    const char *ptr;
-    size_t len;
-} string_lit_t;
-
-typedef struct {
-    int value;
-} boolean_lit_t;
-
-typedef struct {
-    unsigned long value;
-} number_lit_t;
-
-typedef struct {
-    lit_kind_t kind;
-
-    union {
-        string_lit_t string_lit;
-        boolean_lit_t boolean_lit;
-        number_lit_t number_lit;
-    } u;
-} lit_t;
+    lit_t *lit;
+} constant_expr_t;
 
 typedef enum {
     EXPR_BINARY_OP,
@@ -116,7 +120,7 @@ typedef enum {
     EXPR_CAST,
     EXPR_REF,
     EXPR_ARRAY_SUBSCRIPT,
-    EXPR_LITERAL
+    EXPR_CONSTANT
 } expr_kind_t;
 
 struct impl_expr {
@@ -130,7 +134,7 @@ struct impl_expr {
         cast_expr_t cast_expr;
         ref_expr_t ref_expr;
         array_subscript_expr_t array_subscript_expr;
-        lit_t lit;
+        constant_expr_t constant_expr;
     } u;
 };
 
