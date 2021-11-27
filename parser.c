@@ -829,7 +829,7 @@ program_t *parse_program(parser_t *parser)
     ret->decl_part = parse_decl_part(parser);
     ret->stmt = parse_compound_stmt(parser);
     expect(parser, TERMINAL_DOT);
-    expect(&parser, TERMINAL_EOF);
+    expect(parser, TERMINAL_EOF);
 }
 
 ast_t *parse(const source_t *src)
