@@ -697,6 +697,8 @@ stmt_t *parse_stmt(parser_t *parser)
         ret = parse_read_stmt(parser);
     } else if (check(parser, TERMINAL_WRITE) || check(parser, TERMINAL_WRITELN)) {
         ret = parse_write_stmt(parser);
+    } else if (check(parser, TERMINAL_BEGIN)) {
+        ret = parse_compound_stmt(parser);
     } else {
         ret = (stmt_t *) xmalloc(sizeof(stmt_t));
         ret->kind = STMT_EMPTY;
