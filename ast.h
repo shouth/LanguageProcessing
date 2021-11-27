@@ -6,7 +6,7 @@
 #include "source.h"
 
 typedef enum {
-    TYPE_STRING,
+    TYPE_CHAR,
     TYPE_INTEGER,
     TYPE_BOOLEAN,
     TYPE_ARRAY
