@@ -293,9 +293,9 @@ expr_t *parse_expr_seq(parser_t *parser)
     expr_t *ret, *expr;
     assert(parser != NULL);
 
-    ret = parse_expr(parser);
-    for (expr = ret; eat(parser, TERMINAL_COLON); expr = expr->next) {
-        expr->next = parse_expr(parser);
+    ret = expr = parse_expr(parser);
+    while (eat(parser, TERMINAL_COLON)) {
+        expr = expr->next = parse_expr(parser);
     }
     return ret;
 }
@@ -370,7 +370,8 @@ expr_t *parse_term(parser_t *parser)
     binary_expr_t *expr;
     assert(parser != NULL);
 
-    for (ret = parse_factor(parser); ; ret = tmp) {
+    ret = parse_factor(parser);
+    while (1) {
         if (eat(parser, TERMINAL_STAR)) {
             kind = BINARY_OP_STAR;
         } else if (eat(parser, TERMINAL_DIV)) {
@@ -387,6 +388,7 @@ expr_t *parse_term(parser_t *parser)
         expr->kind = kind;
         expr->lhs = ret;
         expr->rhs = parse_factor(parser);
+        ret = tmp;
     }
     return ret;
 }
@@ -396,18 +398,20 @@ expr_t *parse_simple_expr(parser_t *parser)
     expr_t *ret, *tmp;
     binary_op_kind_t kind;
     binary_expr_t *expr;
+    int sign;
     assert(parser != NULL);
+
+    if (eat(parser, TERMINAL_PLUS)) {
+        sign = 1;
+    } else if (eat(parser, TERMINAL_MINUS)) {
+        sign = -1;
+    } else {
+        sign = 0;
+    }
 
     ret = parse_term(parser);
     expr = &ret->u.binary_expr;
-    if (eat(parser, TERMINAL_PLUS)) {
-        expr->sign = 1;
-    } else if (eat(parser, TERMINAL_MINUS)) {
-        expr->sign = -1;
-    } else {
-        expr->sign = 0;
-    }
-
+    expr->sign = sign;
     while (1) {
         if (eat(parser, TERMINAL_PLUS)) {
             kind = BINARY_OP_PLUS;
