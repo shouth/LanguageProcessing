@@ -398,7 +398,17 @@ expr_t *parse_simple_expr(parser_t *parser)
     binary_expr_t *expr;
     assert(parser != NULL);
 
-    for (ret = parse_term(parser); ; ret = tmp) {
+    ret = parse_term(parser);
+    expr = &ret->u.binary_expr;
+    if (eat(parser, TERMINAL_PLUS)) {
+        expr->sign = 1;
+    } else if (eat(parser, TERMINAL_MINUS)) {
+        expr->sign = -1;
+    } else {
+        expr->sign = 0;
+    }
+
+    while (1) {
         if (eat(parser, TERMINAL_PLUS)) {
             kind = BINARY_OP_PLUS;
         } else if (eat(parser, TERMINAL_MINUS)) {
@@ -415,6 +425,7 @@ expr_t *parse_simple_expr(parser_t *parser)
         expr->kind = kind;
         expr->lhs = ret;
         expr->rhs = parse_term(parser);
+        ret = tmp;
     }
     return ret;
 }
@@ -426,7 +437,8 @@ expr_t *parse_expr(parser_t *parser)
     binary_expr_t *expr;
     assert(parser != NULL);
 
-    for (ret = parse_simple_expr(parser); ; ret = tmp) {
+    ret = parse_simple_expr(parser);
+    while (1) {
         if (eat(parser, TERMINAL_EQUAL)) {
             kind = BINARY_OP_EQUAL;
         } else if (eat(parser, TERMINAL_NOTEQ)) {
@@ -449,6 +461,7 @@ expr_t *parse_expr(parser_t *parser)
         expr->kind = kind;
         expr->lhs = ret;
         expr->rhs = parse_simple_expr(parser);
+        ret = tmp;
     }
     return ret;
 }
@@ -458,9 +471,9 @@ expr_t *parse_lvalue_seq(parser_t *parser)
     expr_t *ret, *expr;
     assert(parser != NULL);
 
-    ret = parse_lvalue(parser);
-    for (expr = ret; eat(parser, TERMINAL_COMMA); expr = expr->next) {
-        expr->next = parse_lvalue(parser);
+    ret = expr = parse_lvalue(parser);
+    while (eat(parser, TERMINAL_COMMA)) {
+        expr = expr->next = parse_lvalue(parser);
     }
     return ret;
 }
@@ -778,8 +791,8 @@ decl_part_t *parse_decl_part(parser_t *parser)
     decl_part_t *ret, **decl;
     assert(parser != NULL);
 
-    ret = NULL;
-    for (decl = &ret; ; decl = &(*decl)->next) {
+    ret = NULL, decl = &ret;
+    while (1) {
         if (check(parser, TERMINAL_VAR)) {
             *decl = parse_variable_decl(parser);
         } else if (check(parser, TERMINAL_PROCEDURE)) {
@@ -787,6 +800,7 @@ decl_part_t *parse_decl_part(parser_t *parser)
         } else {
             break;
         }
+        decl = &(*decl)->next;
     }
     return ret;
 }
