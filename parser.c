@@ -294,7 +294,7 @@ expr_t *parse_expr_seq(parser_t *parser)
     assert(parser != NULL);
 
     ret = expr = parse_expr(parser);
-    while (eat(parser, TERMINAL_COLON)) {
+    while (eat(parser, TERMINAL_COMMA)) {
         expr = expr->next = parse_expr(parser);
     }
     return ret;
