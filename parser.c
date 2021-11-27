@@ -769,7 +769,7 @@ decl_part_t *parse_procedure_decl(parser_t *parser)
     decl->variables = check(parser, TERMINAL_VAR)
         ? parse_variable_decl(parser) : NULL;
     decl->stmt = parse_compound_stmt(parser);
-
+    expect(parser, TERMINAL_SEMI);
     return ret;
 }
 
