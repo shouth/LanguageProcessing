@@ -77,7 +77,6 @@ typedef enum {
 
 typedef struct {
     binary_op_kind_t kind;
-    int sign;
     expr_t *lhs;
     expr_t *rhs;
 } binary_expr_t;
@@ -120,7 +119,8 @@ typedef enum {
     EXPR_CAST,
     EXPR_REF,
     EXPR_ARRAY_SUBSCRIPT,
-    EXPR_CONSTANT
+    EXPR_CONSTANT,
+    EXPR_EMPTY
 } expr_kind_t;
 
 struct impl_expr {
