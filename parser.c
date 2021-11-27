@@ -622,17 +622,17 @@ output_format_t *parse_output_format(parser_t *parser)
 
     ret = (output_format_t *) xmalloc(sizeof(output_format_t));
     ret->len = SIZE_MAX;
-    init_pos = cursol_position(&parser->cursol);
 
     ret->expr = parse_expr(parser);
     if (eat(parser, TERMINAL_COLON)) {
+        init_pos = parser->last_terminal.pos;
         ret->len = parse_number(parser);
     }
     if (ret->expr->kind == EXPR_CONSTANT) {
         lit = ret->expr->u.constant_expr.lit;
         if (lit->kind == LIT_STRING && lit->u.string_lit.len > 1 && ret->len != SIZE_MAX) {
             msg_t *msg;
-            len = cursol_position(&parser->cursol) - init_pos;
+            len = parser->last_terminal.pos + parser->last_terminal.len - init_pos;
             msg = msg_new(parser->src, init_pos, len,
                 MSG_ERROR, "wrong output format");
             msg_add_inline_entry(msg, init_pos, len,
