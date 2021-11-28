@@ -401,24 +401,11 @@ expr_t *parse_simple_expr(parser_t *parser)
     int sign;
     assert(parser != NULL);
 
-    if (eat(parser, TERMINAL_PLUS)) {
-        sign = 1;
-    } else if (eat(parser, TERMINAL_MINUS)) {
-        sign = -1;
+    if (check(parser, TERMINAL_PLUS) || check(parser, TERMINAL_MINUS)) {
+        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret->kind = EXPR_EMPTY;
     } else {
-        sign = 0;
-    }
-
-    ret = parse_term(parser);
-    if (sign != 0) {
-        tmp = (expr_t *) xmalloc(sizeof(expr_t));
-        tmp->kind = EXPR_BINARY_OP;
-        expr = &ret->u.binary_expr;
-        expr->kind = sign > 0 ? BINARY_OP_PLUS : BINARY_OP_MINUS;
-        expr->lhs = (expr_t *) xmalloc(sizeof(expr_t));
-        expr->lhs->kind = EXPR_EMPTY;
-        expr->rhs = ret;
-        ret = tmp;
+        ret = parse_term(parser);
     }
     while (1) {
         if (eat(parser, TERMINAL_PLUS)) {
