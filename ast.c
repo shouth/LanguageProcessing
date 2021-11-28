@@ -34,7 +34,7 @@ lit_t *new_string_lit(const char *ptr, size_t len)
     lit_t *ret = new_lit(LIT_STRING);
     ret->u.string_lit.ptr = ptr;
     ret->u.string_lit.len = len;
-    if (!ptr) {
+    if (!ptr || len == SIZE_MAX) {
         delete_lit(ret);
         return NULL;
     }
@@ -43,6 +43,9 @@ lit_t *new_string_lit(const char *ptr, size_t len)
 
 void delete_lit(lit_t *lit)
 {
+    if (!lit) {
+        return;
+    }
     free(lit);
 }
 
@@ -63,7 +66,7 @@ type_t *new_array_type(type_t *base, size_t len)
     ret->kind = TYPE_ARRAY;
     ret->array.base = base;
     ret->array.len = len;
-    if (!base || base->kind == TYPE_ARRAY) {
+    if (!base || base->kind == TYPE_ARRAY || len == SIZE_MAX) {
         delete_type(ret);
         return NULL;
     }
@@ -72,7 +75,10 @@ type_t *new_array_type(type_t *base, size_t len)
 
 void delete_type(type_t *type)
 {
-    if (type->kind == TYPE_ARRAY && type->array.base) {
+    if (!type) {
+        return;
+    }
+    if (type->kind == TYPE_ARRAY) {
         delete_type(type->array.base);
     }
     free(type);
@@ -93,9 +99,10 @@ ident_t *new_ident(const char *ptr, size_t len)
 
 void delete_ident(ident_t *ident)
 {
-    if (ident->next) {
-        delete_ident(ident->next);
+    if (!ident) {
+        return;
     }
+    delete_ident(ident->next);
     free(ident);
 }
 
@@ -113,10 +120,6 @@ expr_t *new_binary_expr(binary_op_kind_t kind, expr_t *lhs, expr_t *rhs)
     ret->u.binary_expr.kind = kind;
     ret->u.binary_expr.lhs = lhs;
     ret->u.binary_expr.rhs = rhs;
-    if (!lhs || !rhs) {
-        delete_expr(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -125,10 +128,6 @@ expr_t *new_unary_expr(unary_op_kind_t kind, expr_t *expr)
     expr_t *ret = new_expr(EXPR_UNARY_OP);
     ret->u.unary_expr.kind = kind;
     ret->u.unary_expr.expr = expr;
-    if (!expr) {
-        delete_expr(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -136,10 +135,6 @@ expr_t *new_paren_expr(expr_t *expr)
 {
     expr_t *ret = new_expr(EXPR_PAREN);
     ret->u.paren_expr.expr = expr;
-    if (!expr) {
-        delete_expr(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -148,10 +143,6 @@ expr_t *new_cast_expr(type_t *type, expr_t *expr)
     expr_t *ret = new_expr(EXPR_CAST);
     ret->u.cast_expr.type = type;
     ret->u.cast_expr.expr = expr;
-    if (!type || !expr) {
-        delete_expr(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -159,10 +150,6 @@ expr_t *new_ref_expr(ident_t *ident)
 {
     expr_t *ret = new_expr(EXPR_REF);
     ret->u.ref_expr.name = ident;
-    if (!ident) {
-        delete_expr(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -171,10 +158,6 @@ expr_t *new_array_subscript_expr(ident_t *name, expr_t *index_expr)
     expr_t *ret = new_expr(EXPR_ARRAY_SUBSCRIPT);
     ret->u.array_subscript_expr.name = name;
     ret->u.array_subscript_expr.index_expr = index_expr;
-    if (!name || !index_expr) {
-        delete_expr(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -182,10 +165,6 @@ expr_t *new_constant_expr(lit_t *lit)
 {
     expr_t *ret = new_expr(EXPR_CONSTANT);
     ret->u.constant_expr.lit = lit;
-    if (!lit) {
-        delete_expr(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -196,6 +175,9 @@ expr_t *new_empty_expr()
 
 void delete_expr(expr_t *expr)
 {
+    if (!expr) {
+        return;
+    }
     switch (expr->kind) {
     case EXPR_BINARY_OP:
         delete_expr(expr->u.binary_expr.lhs);
@@ -222,9 +204,7 @@ void delete_expr(expr_t *expr)
         delete_lit(expr->u.constant_expr.lit);
         break;
     }
-    if (expr->next) {
-        delete_expr(expr->next);
-    }
+    delete_expr(expr->next);
     free(expr);
 }
 
@@ -241,10 +221,6 @@ stmt_t *new_assign_stmt(expr_t *lhs, expr_t *rhs)
     stmt_t *ret = new_stmt(STMT_ASSIGN);
     ret->u.assign_stmt.lhs = lhs;
     ret->u.assign_stmt.rhs = rhs;
-    if (!lhs || !rhs) {
-        delete_stmt(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -254,10 +230,6 @@ stmt_t *new_if_stmt(expr_t *cond, stmt_t *then_stmt, stmt_t *else_stmt)
     ret->u.if_stmt.cond = cond;
     ret->u.if_stmt.then_stmt = then_stmt;
     ret->u.if_stmt.else_stmt = else_stmt;
-    if (!cond || !then_stmt) {
-        delete_stmt(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -266,10 +238,6 @@ stmt_t *new_while_stmt(expr_t *cond, stmt_t *do_stmt)
     stmt_t *ret = new_stmt(STMT_WHILE);
     ret->u.while_stmt.cond = cond;
     ret->u.while_stmt.do_stmt = do_stmt;
-    if (!cond || !do_stmt) {
-        delete_stmt(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -283,10 +251,6 @@ stmt_t *new_call_stmt(ident_t *name, expr_t *args)
     stmt_t *ret = new_stmt(STMT_CALL);
     ret->u.call_stmt.name = name;
     ret->u.call_stmt.args = args;
-    if (!name) {
-        delete_stmt(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -300,10 +264,6 @@ stmt_t *new_read_stmt(int newline, expr_t *args)
     stmt_t *ret = new_stmt(STMT_READ);
     ret->u.read_stmt.newline = newline;
     ret->u.read_stmt.args = args;
-    if (!args) {
-        delete_stmt(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -312,10 +272,6 @@ stmt_t *new_write_stmt(int newline, output_format_t *formats)
     stmt_t *ret = new_stmt(STMT_WRITE);
     ret->u.write_stmt.newline = newline;
     ret->u.write_stmt.formats = formats;
-    if (!formats) {
-        delete_stmt(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -323,10 +279,6 @@ stmt_t *new_compound_stmt(stmt_t *stmts)
 {
     stmt_t *ret = new_stmt(STMT_COMPOUND);
     ret->u.compound_stmt.stmts = stmts;
-    if (!stmts) {
-        delete_stmt(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -337,6 +289,9 @@ stmt_t *new_empty_stmt()
 
 void delete_stmt(stmt_t *stmt)
 {
+    if (!stmt) {
+        return;
+    }
     switch (stmt->kind) {
     case STMT_ASSIGN:
         delete_expr(stmt->u.assign_stmt.lhs);
@@ -365,9 +320,7 @@ void delete_stmt(stmt_t *stmt)
         delete_stmt(stmt->u.compound_stmt.stmts);
         break;
     }
-    if (stmt->next) {
-        delete_stmt(stmt->next);
-    }
+    delete_stmt(stmt->next);
     free(stmt);
 }
 
@@ -376,19 +329,16 @@ output_format_t *new_output_format(expr_t *expr, size_t len)
     output_format_t *ret = new(output_format_t);
     ret->expr = expr;
     ret->len = len;
-    if (!expr) {
-        delete_output_format(ret);
-        return NULL;
-    }
     return ret;
 }
 
 void delete_output_format(output_format_t *format)
 {
-    delete_expr(format->expr);
-    if (format->next) {
-        delete_output_format(format->next);
+    if (!format) {
+        return;
     }
+    delete_expr(format->expr);
+    delete_output_format(format->next);
     free(format);
 }
 
@@ -398,20 +348,17 @@ params_t *new_params(ident_t *names, type_t *type)
     ret->names = names;
     ret->type = type;
     ret->next = NULL;
-    if (!names || !type) {
-        delete_params(ret);
-        return NULL;
-    }
     return ret;
 }
 
 void delete_params(params_t *params)
 {
+    if (!params) {
+        return;
+    }
     delete_ident(params->names);
     delete_type(params->type);
-    if (params->next) {
-        delete_params(params->next);
-    }
+    delete_params(params->next);
     free(params);
 }
 
@@ -429,20 +376,17 @@ variable_decl_t *new_variable_decl(ident_t *names, type_t *type)
     ret->names = names;
     ret->type = type;
     ret->next = NULL;
-    if (!names || !type) {
-        delete_variable_decl(ret);
-        return NULL;
-    }
     return ret;
 }
 
 void delete_variable_decl(variable_decl_t *decl)
 {
+    if (!decl) {
+        return;
+    }
     delete_ident(decl->names);
     delete_type(decl->type);
-    if (decl->next) {
-        delete_variable_decl(decl->next);
-    }
+    delete_variable_decl(decl->next);
     free(decl);
 }
 
@@ -464,15 +408,14 @@ decl_part_t *new_procedure_decl_part(ident_t *name, params_t *params, decl_part_
     ret->u.procedure_decl_part.params = params;
     ret->u.procedure_decl_part.variables = variables;
     ret->u.procedure_decl_part.stmt = stmt;
-    if (!name || !stmt) {
-        delete_decl_part(ret);
-        return NULL;
-    }
     return ret;
 }
 
 void delete_decl_part(decl_part_t *decl)
 {
+    if (!decl) {
+        return;
+    }
     switch (decl->kind) {
     case DECL_PART_VARIABLE:
         delete_variable_decl(decl->u.variable_decl_part.decls);
@@ -481,9 +424,7 @@ void delete_decl_part(decl_part_t *decl)
         delete_ident(decl->u.procedure_decl_part.name);
         delete_params(decl->u.procedure_decl_part.params);
         delete_stmt(decl->u.procedure_decl_part.stmt);
-        if (decl->u.procedure_decl_part.variables) {
-            delete_decl_part(decl->u.procedure_decl_part.variables);
-        }
+        delete_decl_part(decl->u.procedure_decl_part.variables);
         break;
     }
     free(decl);
@@ -495,17 +436,32 @@ program_t *new_program(ident_t *name, decl_part_t *decl_part, stmt_t *stmt)
     ret->name = name;
     ret->decl_part = decl_part;
     ret->stmt = stmt;
-    if (!name || !decl_part || !stmt) {
-        delete_program(ret);
-        return NULL;
-    }
     return ret;
 }
 
 void delete_program(program_t *program)
 {
+    if (!program) {
+        return;
+    }
     delete_ident(program->name);
     delete_decl_part(program->decl_part);
     delete_stmt(program->stmt);
     free(program);
+}
+
+ast_t *new_ast(program_t *program, const source_t *source)
+{
+    ast_t *ret = new(ast_t);
+    ret->program = program;
+    ret->source = source;
+}
+
+void delete_ast(ast_t *ast)
+{
+    if (!ast) {
+        return;
+    }
+    delete_program(ast->program);
+    free(ast);
 }

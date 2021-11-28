@@ -58,7 +58,6 @@ void error_unexpected(parser_t *parser)
         msg_add_inline_entry(msg, parser->current_terminal.pos, parser->current_terminal.len, "unexpected token");
     }
     msg_emit(msg);
-    exit(1);
 }
 
 void error_expression_expected(parser_t *parser)
@@ -70,7 +69,6 @@ void error_expression_expected(parser_t *parser)
         MSG_ERROR, "expected expression, got `%.*s`",
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
     msg_emit(msg);
-    exit(1);
 }
 
 void bump(parser_t *parser)
@@ -107,7 +105,6 @@ int eat(parser_t *parser, terminal_type_t type)
 {
     int ret;
     assert(parser != NULL);
-    assert(parser->alive);
 
     if (!parser->alive) {
         return 0;
@@ -536,7 +533,6 @@ output_format_t *parse_output_format(parser_t *parser)
             msg_add_inline_entry(msg, init_pos, len,
                 "the field specifier cannot be used here");
             msg_emit(msg);
-            exit(1);
             return NULL;
         }
     }
@@ -720,7 +716,7 @@ program_t *parse_program(parser_t *parser)
 
 ast_t *parse(const source_t *src)
 {
-    ast_t *ret;
+    program_t *program;
     parser_t parser;
     assert(src != NULL);
 
@@ -728,8 +724,10 @@ ast_t *parse(const source_t *src)
     parser.alive = 1;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
     bump(&parser);
-    ret = new(ast_t);
-    ret->program = parse_program(&parser);
-    ret->source = src;
-    return ret;
+    program = parse_program(&parser);
+    if (!parser.alive) {
+        delete_program(program);
+        return NULL;
+    }
+    return new_ast(program, src);
 }

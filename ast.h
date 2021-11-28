@@ -324,8 +324,12 @@ program_t *new_program(ident_t *name, decl_part_t *decl_part, stmt_t *stmt);
 void delete_program(program_t *program);
 
 typedef struct {
-    const program_t *program;
+    program_t *program;
     const source_t *source;
 } ast_t;
+
+ast_t *new_ast(program_t *program, const source_t *source);
+
+void delete_ast(ast_t *ast);
 
 #endif
