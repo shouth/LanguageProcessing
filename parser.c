@@ -401,8 +401,7 @@ expr_t *parse_simple_expr(parser_t *parser)
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_PLUS) || check(parser, TERMINAL_MINUS)) {
-        ret = new(expr_t);
-        ret->kind = EXPR_EMPTY;
+        ret = NULL;
     } else {
         ret = parse_term(parser);
     }

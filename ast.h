@@ -119,8 +119,7 @@ typedef enum {
     EXPR_CAST,
     EXPR_REF,
     EXPR_ARRAY_SUBSCRIPT,
-    EXPR_CONSTANT,
-    EXPR_EMPTY
+    EXPR_CONSTANT
 } expr_kind_t;
 
 struct impl_expr {
