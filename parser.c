@@ -465,6 +465,7 @@ stmt_t *parse_break_stmt(parser_t *parser)
     stmt_t *ret;
     assert(parser != NULL);
 
+    expect(parser, TERMINAL_BREAK);
     return new_break_stmt();
 }
 
