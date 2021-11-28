@@ -816,6 +816,7 @@ program_t *parse_program(parser_t *parser)
     ret->stmt = parse_compound_stmt(parser);
     expect(parser, TERMINAL_DOT);
     expect(parser, TERMINAL_EOF);
+    return ret;
 }
 
 ast_t *parse(const source_t *src)
