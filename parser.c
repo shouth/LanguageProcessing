@@ -398,7 +398,6 @@ expr_t *parse_simple_expr(parser_t *parser)
     expr_t *ret, *tmp;
     binary_op_kind_t kind;
     binary_expr_t *expr;
-    int sign;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_PLUS) || check(parser, TERMINAL_MINUS)) {
