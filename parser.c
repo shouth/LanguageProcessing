@@ -808,7 +808,7 @@ program_t *parse_program(parser_t *parser)
     program_t *ret;
     assert(parser != NULL);
 
-    ret = (program_t *) xmalloc(sizeof (program_t));
+    ret = new(program_t);
     expect(parser, TERMINAL_PROGRAM);
     ret->name = parse_ident(parser);
     expect(parser, TERMINAL_SEMI);
