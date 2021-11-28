@@ -140,7 +140,7 @@ ident_t *parse_ident(parser_t *parser)
     assert(parser != NULL);
 
     if (eat(parser, TERMINAL_NAME)) {
-        ret = (ident_t *) xmalloc(sizeof(ident_t));
+        ret = new(ident_t);
         ret->ptr = parser->last_terminal.ptr;
         ret->len = parser->last_terminal.len;
     } else {
@@ -167,7 +167,7 @@ type_t *parse_standard_type(parser_t *parser)
     type_t *ret;
     assert(parser != NULL);
 
-    ret = (type_t *) xmalloc(sizeof(type_t));
+    ret = new(type_t);
     if (eat(parser, TERMINAL_INTEGER)) {
         ret->kind = TYPE_INTEGER;
     } else if (eat(parser, TERMINAL_BOOLEAN)) {
@@ -186,7 +186,7 @@ type_t *parse_array_type(parser_t *parser)
     type_t *ret;
     assert(parser != NULL);
 
-    ret = (type_t *) xmalloc(sizeof(type_t));
+    ret = new(type_t);
     ret->kind = TYPE_ARRAY;
     expect(parser, TERMINAL_ARRAY);
     expect(parser, TERMINAL_LSQPAREN);
@@ -214,7 +214,7 @@ lit_t *parse_number_lit(parser_t *parser)
     number_lit_t *lit;
     assert(parser != NULL);
 
-    ret = (lit_t *) xmalloc(sizeof(lit_t));
+    ret = new(lit_t);
     ret->kind = LIT_NUMBER;
     lit = &ret->u.number_lit;
 
@@ -233,7 +233,7 @@ lit_t *parse_boolean_lit(parser_t *parser)
     boolean_lit_t *lit;
     assert(parser != NULL);
 
-    ret = (lit_t *) xmalloc(sizeof(lit_t));
+    ret = new(lit_t);
     ret->kind = LIT_BOOLEAN;
     lit = &ret->u.boolean_lit;
 
@@ -254,7 +254,7 @@ lit_t *parse_string_lit(parser_t *parser)
     string_lit_t *lit;
     assert(parser != NULL);
 
-    ret = (lit_t *) xmalloc(sizeof(lit_t));
+    ret = new(lit_t);
     ret->kind = LIT_STRING;
     lit = &ret->u.string_lit;
 
@@ -306,7 +306,7 @@ expr_t *parse_lvalue(parser_t *parser)
     ident_t *ident;
     assert(parser != NULL);
 
-    ret = (expr_t *) xmalloc(sizeof(expr_t));
+    ret = new(expr_t);
     if (check(parser, TERMINAL_NAME)) {
         ident = parse_ident(parser);
 
@@ -336,21 +336,21 @@ expr_t *parse_factor(parser_t *parser)
     } else if (check(parser, TERMINAL_NUMBER) || check(parser, TERMINAL_TRUE)
         || check(parser, TERMINAL_FALSE) || check(parser, TERMINAL_STRING))
     {
-        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret = new(expr_t);
         ret->kind = EXPR_CONSTANT;
         ret->u.constant_expr.lit = parse_lit(parser);
     } else if (eat(parser, TERMINAL_LPAREN)) {
-        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret = new(expr_t);
         ret->kind = EXPR_PAREN;
         ret->u.paren_expr.expr = parse_expr(parser);
         expect(parser, TERMINAL_RPAREN);
     } else if (eat(parser, TERMINAL_NOT)) {
-        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret = new(expr_t);
         ret->kind = EXPR_UNARY_OP;
         ret->u.unary_expr.kind = UNARY_OP_NOT;
         ret->u.unary_expr.expr = parse_factor(parser);
     } else if (check(parser, TERMINAL_INTEGER) || check(parser, TERMINAL_BOOLEAN) || check(parser, TERMINAL_CHAR)) {
-        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret = new(expr_t);
         ret->kind = EXPR_CAST;
         ret->u.cast_expr.type = parse_standard_type(parser);
         expect(parser, TERMINAL_LPAREN);
@@ -382,7 +382,7 @@ expr_t *parse_term(parser_t *parser)
             break;
         }
 
-        tmp = (expr_t *) xmalloc(sizeof(expr_t));
+        tmp = new(expr_t);
         tmp->kind = EXPR_BINARY_OP;
         expr = &tmp->u.binary_expr;
         expr->kind = kind;
@@ -401,7 +401,7 @@ expr_t *parse_simple_expr(parser_t *parser)
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_PLUS) || check(parser, TERMINAL_MINUS)) {
-        ret = (expr_t *) xmalloc(sizeof(expr_t));
+        ret = new(expr_t);
         ret->kind = EXPR_EMPTY;
     } else {
         ret = parse_term(parser);
@@ -417,7 +417,7 @@ expr_t *parse_simple_expr(parser_t *parser)
             break;
         }
 
-        tmp = (expr_t *) xmalloc(sizeof(expr_t));
+        tmp = new(expr_t);
         tmp->kind = EXPR_BINARY_OP;
         expr = &tmp->u.binary_expr;
         expr->kind = kind;
@@ -453,7 +453,7 @@ expr_t *parse_expr(parser_t *parser)
             break;
         }
 
-        tmp = (expr_t *) xmalloc(sizeof(expr_t));
+        tmp = new(expr_t);
         tmp->kind = EXPR_BINARY_OP;
         expr = &tmp->u.binary_expr;
         expr->kind = kind;
@@ -484,7 +484,7 @@ stmt_t *parse_assign_stmt(parser_t *parser)
     assign_stmt_t *stmt;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_ASSIGN;
     stmt = &ret->u.assign_stmt;
 
@@ -500,7 +500,7 @@ stmt_t *parse_if_stmt(parser_t *parser)
     if_stmt_t *stmt;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_IF;
     stmt = &ret->u.if_stmt;
 
@@ -520,7 +520,7 @@ stmt_t *parse_while_stmt(parser_t *parser)
     while_stmt_t *stmt;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_WHILE;
     stmt = &ret->u.while_stmt;
 
@@ -536,7 +536,7 @@ stmt_t *parse_break_stmt(parser_t *parser)
     stmt_t *ret;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_BREAK;
 
     expect(parser, TERMINAL_BREAK);
@@ -549,7 +549,7 @@ stmt_t *parse_call_stmt(parser_t *parser)
     call_stmt_t *stmt;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_CALL;
     stmt = &ret->u.call_stmt;
 
@@ -567,7 +567,7 @@ stmt_t *parse_return_stmt(parser_t *parser)
     stmt_t *ret;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_RETURN;
 
     expect(parser, TERMINAL_RETURN);
@@ -580,7 +580,7 @@ stmt_t *parse_read_stmt(parser_t *parser)
     read_stmt_t *read;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_READ;
     read = &ret->u.read_stmt;
 
@@ -606,7 +606,7 @@ output_format_t *parse_output_format(parser_t *parser)
     size_t init_pos, len;
     assert(parser != NULL);
 
-    ret = (output_format_t *) xmalloc(sizeof(output_format_t));
+    ret = new(output_format_t);
     ret->len = SIZE_MAX;
 
     ret->expr = parse_expr(parser);
@@ -649,7 +649,7 @@ stmt_t *parse_write_stmt(parser_t *parser)
     write_stmt_t *write;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_WRITE;
     write = &ret->u.write_stmt;
 
@@ -674,7 +674,7 @@ stmt_t *parse_compound_stmt(parser_t *parser)
     compound_stmt_t *stmt;
     assert(parser != NULL);
 
-    ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+    ret = new(stmt_t);
     ret->kind = STMT_COMPOUND;
     stmt = &ret->u.compound_stmt;
 
@@ -711,7 +711,7 @@ stmt_t *parse_stmt(parser_t *parser)
     } else if (check(parser, TERMINAL_BEGIN)) {
         ret = parse_compound_stmt(parser);
     } else {
-        ret = (stmt_t *) xmalloc(sizeof(stmt_t));
+        ret = new(stmt_t);
         ret->kind = STMT_EMPTY;
     }
     return ret;
@@ -723,7 +723,7 @@ decl_part_t *parse_variable_decl(parser_t *parser)
     variable_decl_t *decl;
     assert(parser != NULL);
 
-    ret = (decl_part_t *) xmalloc(sizeof(decl_part_t));
+    ret = new(decl_part_t);
     ret->kind = DECL_PART_VARIABLE;
     decl = &ret->u.variable_decl;
 
@@ -733,7 +733,7 @@ decl_part_t *parse_variable_decl(parser_t *parser)
     decl->type = parse_type(parser);
     expect(parser, TERMINAL_SEMI);
     while (check(parser, TERMINAL_NAME)) {
-        decl = decl->next = (variable_decl_t *) xmalloc(sizeof(variable_decl_t));
+        decl = decl->next = new(variable_decl_t);
         decl->names = parse_ident_seq(parser);
         expect(parser, TERMINAL_COLON);
         decl->type = parse_type(parser);
@@ -748,12 +748,12 @@ params_t *parse_params(parser_t *parser)
     assert(parser != NULL);
 
     expect(parser, TERMINAL_LPAREN);
-    ret = param = (params_t *) xmalloc(sizeof(params_t));
+    ret = param = new(params_t);
     param->names = parse_ident_seq(parser);
     expect(parser, TERMINAL_COLON);
     param->type = parse_type(parser);
     while (eat(parser, TERMINAL_SEMI)) {
-        param = param->next = (params_t *) xmalloc(sizeof(params_t));
+        param = param->next = new(params_t);
         param->names = parse_ident_seq(parser);
         expect(parser, TERMINAL_COLON);
         param->type = parse_type(parser);
@@ -768,7 +768,7 @@ decl_part_t *parse_procedure_decl(parser_t *parser)
     procedure_decl_t *decl;
     assert(parser != NULL);
 
-    ret = (decl_part_t *) xmalloc(sizeof(decl_part_t));
+    ret = new(decl_part_t);
     ret->kind = DECL_PART_PROCEDURE;
     decl = &ret->u.procedure_decl;
 
@@ -828,7 +828,7 @@ ast_t *parse(const source_t *src)
     parser.alive = 1;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
     bump(&parser);
-    ret = (ast_t *) xmalloc(sizeof(ast_t));
+    ret = new(ast_t);
     ret->program = parse_program(&parser);
     ret->source = src;
     return ret;
