@@ -90,10 +90,3 @@ void *xmalloc(size_t size)
     }
     return ret;
 }
-
-void xfree(void *ptr)
-{
-    if (ptr != NULL) {
-        free(ptr);
-    }
-}

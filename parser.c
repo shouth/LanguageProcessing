@@ -61,6 +61,18 @@ void error_unexpected(parser_t *parser)
     exit(1);
 }
 
+void error_expression_expected(parser_t *parser)
+{
+    msg_t *msg;
+    assert(parser != NULL);
+
+    msg = msg_new(parser->src, parser->current_terminal.pos, parser->current_terminal.len,
+        MSG_ERROR, "expected expression, got `%.*s`",
+        (int) parser->current_terminal.len, parser->current_terminal.ptr);
+    msg_emit(msg);
+    exit(1);
+}
+
 void bump(parser_t *parser)
 {
     token_t token;
@@ -122,32 +134,24 @@ int expect(parser_t *parser, terminal_type_t type)
 
 size_t parse_number(parser_t *parser)
 {
-    size_t ret;
     assert(parser != NULL);
 
     if (eat(parser, TERMINAL_NUMBER)) {
-        ret = parser->last_terminal.data.number.value;
-    } else {
-        error_unexpected(parser);
-        return SIZE_MAX;
+        return parser->last_terminal.data.number.value;
     }
-    return ret;
+    error_unexpected(parser);
+    return SIZE_MAX;
 }
 
 ident_t *parse_ident(parser_t *parser)
 {
-    ident_t *ret;
     assert(parser != NULL);
 
     if (eat(parser, TERMINAL_NAME)) {
-        ret = new(ident_t);
-        ret->ptr = parser->last_terminal.ptr;
-        ret->len = parser->last_terminal.len;
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return new_ident(parser->last_terminal.ptr, parser->last_terminal.len);
     }
-    return ret;
+    error_unexpected(parser);
+    return NULL;
 }
 
 ident_t *parse_ident_seq(parser_t *parser)
@@ -162,39 +166,34 @@ ident_t *parse_ident_seq(parser_t *parser)
     return ret;
 }
 
-type_t *parse_standard_type(parser_t *parser)
+type_t *parse_std_type(parser_t *parser)
 {
-    type_t *ret;
     assert(parser != NULL);
 
-    ret = new(type_t);
     if (eat(parser, TERMINAL_INTEGER)) {
-        ret->kind = TYPE_INTEGER;
+        return new_std_type(TYPE_INTEGER);
     } else if (eat(parser, TERMINAL_BOOLEAN)) {
-        ret->kind = TYPE_BOOLEAN;
+        return new_std_type(TYPE_BOOLEAN);
     } else if (eat(parser, TERMINAL_CHAR)) {
-        ret->kind = TYPE_CHAR;
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return new_std_type(TYPE_CHAR);
     }
-    return ret;
+    error_unexpected(parser);
+    return NULL;
 }
 
 type_t *parse_array_type(parser_t *parser)
 {
-    type_t *ret;
+    size_t len;
+    type_t *base;
     assert(parser != NULL);
 
-    ret = new(type_t);
-    ret->kind = TYPE_ARRAY;
     expect(parser, TERMINAL_ARRAY);
     expect(parser, TERMINAL_LSQPAREN);
-    ret->array.len = parse_number(parser);
+    len = parse_number(parser);
     expect(parser, TERMINAL_RSQPAREN);
     expect(parser, TERMINAL_OF);
-    ret->array.base = parse_standard_type(parser);
-    return ret;
+    base = parse_std_type(parser);
+    return new_array_type(base, len);
 }
 
 type_t *parse_type(parser_t *parser)
@@ -204,86 +203,60 @@ type_t *parse_type(parser_t *parser)
     if (check(parser, TERMINAL_ARRAY)) {
         return parse_array_type(parser);
     } else {
-        return parse_standard_type(parser);
+        return parse_std_type(parser);
     }
 }
 
 lit_t *parse_number_lit(parser_t *parser)
 {
-    lit_t *ret;
-    number_lit_t *lit;
     assert(parser != NULL);
 
-    ret = new(lit_t);
-    ret->kind = LIT_NUMBER;
-    lit = &ret->u.number_lit;
-
     if (eat(parser, TERMINAL_NUMBER)) {
-        lit->value = parser->last_terminal.data.number.value;
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return new_number_lit(parser->last_terminal.data.number.value);
     }
-    return ret;
+    error_unexpected(parser);
+    return NULL;
 }
 
 lit_t *parse_boolean_lit(parser_t *parser)
 {
-    lit_t *ret;
-    boolean_lit_t *lit;
     assert(parser != NULL);
 
-    ret = new(lit_t);
-    ret->kind = LIT_BOOLEAN;
-    lit = &ret->u.boolean_lit;
-
     if (eat(parser, TERMINAL_TRUE)) {
-        lit->value = 1;
+        return new_boolean_lit(1);
     } else if (eat(parser, TERMINAL_FALSE)) {
-        lit->value = 0;
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return new_boolean_lit(0);
     }
-    return ret;
+    error_unexpected(parser);
+    return NULL;
 }
 
 lit_t *parse_string_lit(parser_t *parser)
 {
-    lit_t *ret;
-    string_lit_t *lit;
     assert(parser != NULL);
 
-    ret = new(lit_t);
-    ret->kind = LIT_STRING;
-    lit = &ret->u.string_lit;
-
     if (eat(parser, TERMINAL_STRING)) {
-        lit->ptr = parser->last_terminal.data.string.ptr;
-        lit->len = parser->last_terminal.data.string.len;
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return new_string_lit(
+            parser->last_terminal.data.string.ptr,
+            parser->last_terminal.data.string.len);
     }
-    return ret;
+    error_unexpected(parser);
+    return NULL;
 }
 
 lit_t *parse_lit(parser_t *parser)
 {
-    lit_t *ret;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_NUMBER)) {
-        ret = parse_number_lit(parser);
+        return parse_number_lit(parser);
     } else if (check(parser, TERMINAL_TRUE) || check(parser, TERMINAL_FALSE)) {
-        ret = parse_boolean_lit(parser);
+        return parse_boolean_lit(parser);
     } else if (check(parser, TERMINAL_STRING)) {
-        ret = parse_string_lit(parser);
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return parse_string_lit(parser);
     }
-    return ret;
+    error_unexpected(parser);
+    return NULL;
 }
 
 expr_t *parse_expr(parser_t *parser);
@@ -302,163 +275,141 @@ expr_t *parse_expr_seq(parser_t *parser)
 
 expr_t *parse_lvalue(parser_t *parser)
 {
-    expr_t *ret;
-    ident_t *ident;
     assert(parser != NULL);
 
-    ret = new(expr_t);
     if (check(parser, TERMINAL_NAME)) {
-        ident = parse_ident(parser);
-
+        ident_t *ident = parse_ident(parser);
         if (eat(parser, TERMINAL_LSQPAREN)) {
-            ret->kind = EXPR_ARRAY_SUBSCRIPT;
-            ret->u.array_subscript_expr.name = ident;
-            ret->u.array_subscript_expr.index_expr = parse_expr(parser);
-            expect(parser, TERMINAL_RPAREN);
-        } else {
-            ret->kind = EXPR_REF;
-            ret->u.ref_expr.name = ident;
+            expr_t *expr = parse_expr(parser);
+            expect(parser, TERMINAL_RSQPAREN);
+            return new_array_subscript_expr(ident, expr);
         }
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return new_ref_expr(ident);
     }
-    return ret;
+    error_unexpected(parser);
+    return NULL;
 }
 
 expr_t *parse_factor(parser_t *parser)
 {
-    expr_t *ret;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_NAME)) {
-        ret = parse_lvalue(parser);
+        return parse_lvalue(parser);
     } else if (check(parser, TERMINAL_NUMBER) || check(parser, TERMINAL_TRUE)
         || check(parser, TERMINAL_FALSE) || check(parser, TERMINAL_STRING))
     {
-        ret = new(expr_t);
-        ret->kind = EXPR_CONSTANT;
-        ret->u.constant_expr.lit = parse_lit(parser);
+        lit_t *lit = parse_lit(parser);
+        return new_constant_expr(lit);
     } else if (eat(parser, TERMINAL_LPAREN)) {
-        ret = new(expr_t);
-        ret->kind = EXPR_PAREN;
-        ret->u.paren_expr.expr = parse_expr(parser);
+        expr_t *expr = parse_expr(parser);
         expect(parser, TERMINAL_RPAREN);
+        return new_paren_expr(expr);
     } else if (eat(parser, TERMINAL_NOT)) {
-        ret = new(expr_t);
-        ret->kind = EXPR_UNARY_OP;
-        ret->u.unary_expr.kind = UNARY_OP_NOT;
-        ret->u.unary_expr.expr = parse_factor(parser);
+        expr_t *expr = parse_factor(parser);
+        return new_unary_expr(UNARY_OP_NOT, expr);
     } else if (check(parser, TERMINAL_INTEGER) || check(parser, TERMINAL_BOOLEAN) || check(parser, TERMINAL_CHAR)) {
-        ret = new(expr_t);
-        ret->kind = EXPR_CAST;
-        ret->u.cast_expr.type = parse_standard_type(parser);
+        type_t *type;
+        expr_t *expr;
+        type = parse_std_type(parser);
         expect(parser, TERMINAL_LPAREN);
-        ret->u.cast_expr.expr = parse_expr(parser);
+        expr = parse_expr(parser);
         expect(parser, TERMINAL_RPAREN);
-    } else {
-        error_unexpected(parser);
-        return NULL;
+        return new_cast_expr(type, expr);
     }
-    return ret;
+    return NULL;
 }
 
 expr_t *parse_term(parser_t *parser)
 {
-    expr_t *ret, *tmp;
-    binary_op_kind_t kind;
-    binary_expr_t *expr;
+    expr_t *ret;
     assert(parser != NULL);
 
     ret = parse_factor(parser);
-    while (1) {
+    while (ret) {
         if (eat(parser, TERMINAL_STAR)) {
-            kind = BINARY_OP_STAR;
+            expr_t *factor = parse_factor(parser);
+            ret = new_binary_expr(BINARY_OP_STAR, ret, factor);
         } else if (eat(parser, TERMINAL_DIV)) {
-            kind = BINARY_OP_DIV;
+            expr_t *factor = parse_factor(parser);
+            ret = new_binary_expr(BINARY_OP_DIV, ret, factor);
         } else if (eat(parser, TERMINAL_AND)) {
-            kind = BINARY_OP_AND;
+            expr_t *factor = parse_factor(parser);
+            ret = new_binary_expr(BINARY_OP_AND, ret, factor);
         } else {
             break;
         }
-
-        tmp = new(expr_t);
-        tmp->kind = EXPR_BINARY_OP;
-        expr = &tmp->u.binary_expr;
-        expr->kind = kind;
-        expr->lhs = ret;
-        expr->rhs = parse_factor(parser);
-        ret = tmp;
+    }
+    if (!ret) {
+        error_expression_expected(parser);
+        return NULL;
     }
     return ret;
 }
 
 expr_t *parse_simple_expr(parser_t *parser)
 {
-    expr_t *ret, *tmp;
-    binary_op_kind_t kind;
-    binary_expr_t *expr;
+    expr_t *ret;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_PLUS) || check(parser, TERMINAL_MINUS)) {
-        ret = NULL;
+        ret = new_empty_expr();
     } else {
         ret = parse_term(parser);
     }
-    while (1) {
+    while (ret) {
         if (eat(parser, TERMINAL_PLUS)) {
-            kind = BINARY_OP_PLUS;
+            expr_t *term = parse_term(parser);
+            ret = new_binary_expr(BINARY_OP_PLUS, ret, term);
         } else if (eat(parser, TERMINAL_MINUS)) {
-            kind = BINARY_OP_MINUS;
+            expr_t *term = parse_term(parser);
+            ret = new_binary_expr(BINARY_OP_MINUS, ret, term);
         } else if (eat(parser, TERMINAL_OR)) {
-            kind = BINARY_OP_OR;
+            expr_t *term = parse_term(parser);
+            ret = new_binary_expr(BINARY_OP_OR, ret, term);
         } else {
             break;
         }
-
-        tmp = new(expr_t);
-        tmp->kind = EXPR_BINARY_OP;
-        expr = &tmp->u.binary_expr;
-        expr->kind = kind;
-        expr->lhs = ret;
-        expr->rhs = parse_term(parser);
-        ret = tmp;
+    }
+    if (!ret) {
+        error_expression_expected(parser);
+        return NULL;
     }
     return ret;
 }
 
 expr_t *parse_expr(parser_t *parser)
 {
-    expr_t *ret, *tmp;
-    binary_op_kind_t kind;
-    binary_expr_t *expr;
+    expr_t *ret;
     assert(parser != NULL);
 
     ret = parse_simple_expr(parser);
-    while (1) {
+    while (ret) {
         if (eat(parser, TERMINAL_EQUAL)) {
-            kind = BINARY_OP_EQUAL;
+            expr_t *simple = parse_simple_expr(parser);
+            ret = new_binary_expr(BINARY_OP_EQUAL, ret, simple);
         } else if (eat(parser, TERMINAL_NOTEQ)) {
-            kind = BINARY_OP_NOTEQ;
+            expr_t *simple = parse_simple_expr(parser);
+            ret = new_binary_expr(BINARY_OP_NOTEQ, ret, simple);
         } else if (eat(parser, TERMINAL_LE)) {
-            kind = BINARY_OP_LE;
+            expr_t *simple = parse_simple_expr(parser);
+            ret = new_binary_expr(BINARY_OP_LE, ret, simple);
         } else if (eat(parser, TERMINAL_LEEQ)) {
-            kind = BINARY_OP_LEEQ;
+            expr_t *simple = parse_simple_expr(parser);
+            ret = new_binary_expr(BINARY_OP_LEEQ, ret, simple);
         } else if (eat(parser, TERMINAL_GR)) {
-            kind = BINARY_OP_GR;
+            expr_t *simple = parse_simple_expr(parser);
+            ret = new_binary_expr(BINARY_OP_GR, ret, simple);
         } else if (eat(parser, TERMINAL_GREQ)) {
-            kind = BINARY_OP_GREQ;
+            expr_t *simple = parse_simple_expr(parser);
+            ret = new_binary_expr(BINARY_OP_GREQ, ret, simple);
         } else {
             break;
         }
-
-        tmp = new(expr_t);
-        tmp->kind = EXPR_BINARY_OP;
-        expr = &tmp->u.binary_expr;
-        expr->kind = kind;
-        expr->lhs = ret;
-        expr->rhs = parse_simple_expr(parser);
-        ret = tmp;
+    }
+    if (!ret) {
+        error_expression_expected(parser);
+        return NULL;
     }
     return ret;
 }

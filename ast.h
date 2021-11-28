@@ -6,6 +6,41 @@
 #include "source.h"
 
 typedef enum {
+    LIT_NUMBER,
+    LIT_BOOLEAN,
+    LIT_STRING
+} lit_kind_t;
+
+typedef struct {
+    unsigned long value;
+} number_lit_t;
+
+typedef struct {
+    int value;
+} boolean_lit_t;
+
+typedef struct {
+    const char *ptr;
+    size_t len;
+} string_lit_t;
+
+typedef struct {
+    lit_kind_t kind;
+
+    union {
+        number_lit_t number_lit;
+        boolean_lit_t boolean_lit;
+        string_lit_t string_lit;
+    } u;
+} lit_t;
+
+lit_t *new_number_lit(unsigned long value);
+lit_t *new_boolean_lit(int value);
+lit_t *new_string_lit(const char *ptr, size_t len);
+
+void delete_lit(lit_t *lit);
+
+typedef enum {
     TYPE_CHAR,
     TYPE_INTEGER,
     TYPE_BOOLEAN,
@@ -22,6 +57,11 @@ struct impl_type {
     } array;
 };
 
+type_t *new_std_type(type_kind_t kind);
+type_t *new_array_type(type_t *base, size_t len);
+
+void delete_type(type_t *type);
+
 typedef struct impl_ident ident_t;
 struct impl_ident {
     ident_t *next;
@@ -29,34 +69,9 @@ struct impl_ident {
     size_t len;
 };
 
-typedef enum {
-    LIT_NUMBER,
-    LIT_BOOLEAN,
-    LIT_STRING
-} lit_kind_t;
+ident_t *new_ident(const char *ptr, size_t len);
 
-typedef struct {
-    const char *ptr;
-    size_t len;
-} string_lit_t;
-
-typedef struct {
-    int value;
-} boolean_lit_t;
-
-typedef struct {
-    unsigned long value;
-} number_lit_t;
-
-typedef struct {
-    lit_kind_t kind;
-
-    union {
-        string_lit_t string_lit;
-        boolean_lit_t boolean_lit;
-        number_lit_t number_lit;
-    } u;
-} lit_t;
+void delete_ident(ident_t *ident);
 
 typedef struct impl_expr expr_t;
 
@@ -119,8 +134,11 @@ typedef enum {
     EXPR_CAST,
     EXPR_REF,
     EXPR_ARRAY_SUBSCRIPT,
-    EXPR_CONSTANT
+    EXPR_CONSTANT,
+    EXPR_EMPTY
 } expr_kind_t;
+
+void delete_expr(expr_t *expr);
 
 struct impl_expr {
     expr_kind_t kind;
@@ -136,6 +154,15 @@ struct impl_expr {
         constant_expr_t constant_expr;
     } u;
 };
+
+expr_t *new_binary_expr(binary_op_kind_t kind, expr_t *lhs, expr_t *rhs);
+expr_t *new_unary_expr(unary_op_kind_t kind, expr_t *expr);
+expr_t *new_paren_expr(expr_t *expr);
+expr_t *new_cast_expr(type_t *type, expr_t *expr);
+expr_t *new_ref_expr(ident_t *ident);
+expr_t *new_array_subscript_expr(ident_t *name, expr_t *index_expr);
+expr_t *new_constant_expr(lit_t *lit);
+expr_t *new_empty_expr();
 
 typedef struct impl_stmt stmt_t;
 
