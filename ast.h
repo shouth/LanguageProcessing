@@ -164,6 +164,8 @@ expr_t *new_array_subscript_expr(ident_t *name, expr_t *index_expr);
 expr_t *new_constant_expr(lit_t *lit);
 expr_t *new_empty_expr();
 
+void delete_expr(expr_t *expr);
+
 typedef struct impl_stmt stmt_t;
 
 typedef struct {
@@ -198,6 +200,10 @@ struct impl_output_format {
     expr_t *expr;
     size_t len;
 };
+
+output_format_t *new_output_format(expr_t *expr, size_t len);
+
+void delete_output_format(output_format_t *format);
 
 typedef struct {
     int newline;
@@ -237,6 +243,19 @@ struct impl_stmt {
     } u;
 };
 
+stmt_t *new_assign_stmt(expr_t *lhs, expr_t *rhs);
+stmt_t *new_if_stmt(expr_t *cond, stmt_t *then_stmt, stmt_t *else_stmt);
+stmt_t *new_while_stmt(expr_t *cond, stmt_t *do_stmt);
+stmt_t *new_break_stmt();
+stmt_t *new_call_stmt(ident_t *name, expr_t *args);
+stmt_t *new_return_stmt();
+stmt_t *new_read_stmt(int newline, expr_t *args);
+stmt_t *new_write_stmt(int newline, output_format_t *formats);
+stmt_t *new_compound_stmt(stmt_t *stmts);
+stmt_t *new_empty_stmt();
+
+void delete_stmt(stmt_t *stmt);
+
 typedef struct impl_decl_part decl_part_t;
 
 typedef struct impl_variable_decl variable_decl_t;
@@ -246,6 +265,15 @@ struct impl_variable_decl {
     type_t *type;
 };
 
+typedef struct impl_variable_decl_part variable_decl_part_t;
+struct impl_variable_decl_part {
+    variable_decl_t *decls;
+};
+
+variable_decl_t *new_variable_decl(ident_t *names, type_t *type);
+
+void delete_variable_decl(variable_decl_t *decl);
+
 typedef struct impl_params params_t;
 struct impl_params {
     params_t *next;
@@ -253,8 +281,12 @@ struct impl_params {
     type_t *type;
 };
 
-typedef struct impl_procedure_decl procedure_decl_t;
-struct impl_procedure_decl {
+params_t *new_params(ident_t *names, type_t *type);
+
+void delete_params(params_t *params);
+
+typedef struct impl_procedure_decl_part procedure_decl_part_t;
+struct impl_procedure_decl_part {
     ident_t *name;
     params_t *params;
     decl_part_t *variables;
@@ -271,16 +303,25 @@ struct impl_decl_part {
     decl_part_t *next;
 
     union {
-        variable_decl_t variable_decl;
-        procedure_decl_t procedure_decl;
+        variable_decl_part_t variable_decl_part;
+        procedure_decl_part_t procedure_decl_part;
     } u;
 };
+
+decl_part_t *new_variable_decl_part(variable_decl_t *decls);
+decl_part_t *new_procedure_decl_part(ident_t *name, params_t *params, decl_part_t *variables, stmt_t *stmt);
+
+void delete_decl_part(decl_part_t *decl);
 
 typedef struct {
     ident_t *name;
     decl_part_t *decl_part;
     stmt_t *stmt;
 } program_t;
+
+program_t *new_program(ident_t *name, decl_part_t *decl_part, stmt_t *stmt);
+
+void delete_program(program_t *program);
 
 typedef struct {
     const program_t *program;

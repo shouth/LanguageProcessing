@@ -340,10 +340,6 @@ expr_t *parse_term(parser_t *parser)
             break;
         }
     }
-    if (!ret) {
-        error_expression_expected(parser);
-        return NULL;
-    }
     return ret;
 }
 
@@ -370,10 +366,6 @@ expr_t *parse_simple_expr(parser_t *parser)
         } else {
             break;
         }
-    }
-    if (!ret) {
-        error_expression_expected(parser);
-        return NULL;
     }
     return ret;
 }
@@ -430,55 +422,42 @@ stmt_t *parse_stmt(parser_t *parser);
 
 stmt_t *parse_assign_stmt(parser_t *parser)
 {
-    stmt_t *ret;
-    assign_stmt_t *stmt;
+    expr_t *lhs, *rhs;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_ASSIGN;
-    stmt = &ret->u.assign_stmt;
-
-    stmt->lhs = parse_lvalue(parser);
+    lhs = parse_lvalue(parser);
     expect(parser, TERMINAL_ASSIGN);
-    stmt->rhs = parse_expr(parser);
-    return ret;
+    rhs = parse_expr(parser);
+    return new_assign_stmt(lhs, rhs);
 }
 
 stmt_t *parse_if_stmt(parser_t *parser)
 {
-    stmt_t *ret;
-    if_stmt_t *stmt;
+    expr_t *cond;
+    stmt_t *then_stmt, *else_stmt = NULL;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_IF;
-    stmt = &ret->u.if_stmt;
-
     expect(parser, TERMINAL_IF);
-    stmt->cond = parse_expr(parser);
+    cond = parse_expr(parser);
     expect(parser, TERMINAL_THEN);
-    stmt->then_stmt = parse_stmt(parser);
+    then_stmt = parse_stmt(parser);
     if (eat(parser, TERMINAL_ELSE)) {
-        stmt->else_stmt = parse_stmt(parser);
+        else_stmt = parse_stmt(parser);
     }
-    return ret;
+    return new_if_stmt(cond, then_stmt, else_stmt);
 }
 
 stmt_t *parse_while_stmt(parser_t *parser)
 {
-    stmt_t *ret;
-    while_stmt_t *stmt;
+    expr_t *cond;
+    stmt_t *do_stmt;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_WHILE;
-    stmt = &ret->u.while_stmt;
-
     expect(parser, TERMINAL_WHILE);
-    stmt->cond = parse_expr(parser);
+    cond = parse_expr(parser);
     expect(parser, TERMINAL_DO);
-    stmt->do_stmt = parse_stmt(parser);
-    return ret;
+    do_stmt = parse_stmt(parser);
+    return new_while_stmt(cond, do_stmt);
 }
 
 stmt_t *parse_break_stmt(parser_t *parser)
@@ -486,30 +465,22 @@ stmt_t *parse_break_stmt(parser_t *parser)
     stmt_t *ret;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_BREAK;
-
-    expect(parser, TERMINAL_BREAK);
-    return ret;
+    return new_break_stmt();
 }
 
 stmt_t *parse_call_stmt(parser_t *parser)
 {
-    stmt_t *ret;
-    call_stmt_t *stmt;
+    ident_t *name;
+    expr_t *args = NULL;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_CALL;
-    stmt = &ret->u.call_stmt;
-
     expect(parser, TERMINAL_CALL);
-    stmt->name = parse_ident(parser);
+    name = parse_ident(parser);
     if (eat(parser, TERMINAL_LPAREN)) {
-        stmt->args = parse_expr_seq(parser);
+        args = parse_expr_seq(parser);
         expect(parser, TERMINAL_RPAREN);
     }
-    return ret;
+    return new_call_stmt(name, args);
 }
 
 stmt_t *parse_return_stmt(parser_t *parser)
@@ -517,56 +488,46 @@ stmt_t *parse_return_stmt(parser_t *parser)
     stmt_t *ret;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_RETURN;
-
     expect(parser, TERMINAL_RETURN);
-    return ret;
+    return new_return_stmt();
 }
 
 stmt_t *parse_read_stmt(parser_t *parser)
 {
-    stmt_t *ret;
-    read_stmt_t *read;
+    int newline;
+    expr_t *args = NULL;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_READ;
-    read = &ret->u.read_stmt;
-
     if (eat(parser, TERMINAL_READ)) {
-        read->newline = 0;
+        newline = 0;
     } else if (eat(parser, TERMINAL_READLN)) {
-        read->newline = 1;
+        newline = 1;
     } else {
         error_unexpected(parser);
         return NULL;
     }
     if (eat(parser, TERMINAL_LPAREN)) {
-        read->args = parse_lvalue_seq(parser);
+        args = parse_lvalue_seq(parser);
         expect(parser, TERMINAL_RPAREN);
     }
-    return ret;
+    return new_read_stmt(newline, args);
 }
 
 output_format_t *parse_output_format(parser_t *parser)
 {
-    output_format_t *ret;
-    lit_t *lit;
+    expr_t *expr;
     size_t init_pos, len;
     assert(parser != NULL);
 
-    ret = new(output_format_t);
-    ret->len = SIZE_MAX;
-
-    ret->expr = parse_expr(parser);
+    len = SIZE_MAX;
+    expr = parse_expr(parser);
     if (eat(parser, TERMINAL_COLON)) {
         init_pos = parser->last_terminal.pos;
-        ret->len = parse_number(parser);
+        len = parse_number(parser);
     }
-    if (ret->expr->kind == EXPR_CONSTANT) {
-        lit = ret->expr->u.constant_expr.lit;
-        if (lit->kind == LIT_STRING && lit->u.string_lit.len > 1 && ret->len != SIZE_MAX) {
+    if (expr->kind == EXPR_CONSTANT) {
+        lit_t *lit = expr->u.constant_expr.lit;
+        if (lit->kind == LIT_STRING && lit->u.string_lit.len > 1 && len != SIZE_MAX) {
             msg_t *msg;
             len = parser->last_terminal.pos + parser->last_terminal.len - init_pos;
             msg = msg_new(parser->src, init_pos, len,
@@ -578,7 +539,7 @@ output_format_t *parse_output_format(parser_t *parser)
             return NULL;
         }
     }
-    return ret;
+    return new_output_format(expr, len);
 }
 
 output_format_t *parse_output_format_seq(parser_t *parser)
@@ -595,143 +556,129 @@ output_format_t *parse_output_format_seq(parser_t *parser)
 
 stmt_t *parse_write_stmt(parser_t *parser)
 {
-    stmt_t *ret;
-    write_stmt_t *write;
+    int newline;
+    output_format_t *formats;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_WRITE;
-    write = &ret->u.write_stmt;
-
     if (eat(parser, TERMINAL_WRITE)) {
-        write->newline = 0;
+        newline = 0;
     } else if (eat(parser, TERMINAL_WRITELN)) {
-        write->newline = 1;
+        newline = 1;
     } else {
         error_unexpected(parser);
         return NULL;
     }
     if (eat(parser, TERMINAL_LPAREN)) {
-        write->formats = parse_output_format_seq(parser);
+        formats = parse_output_format_seq(parser);
         expect(parser, TERMINAL_RPAREN);
     }
-    return ret;
+    return new_write_stmt(newline, formats);
 }
 
 stmt_t *parse_compound_stmt(parser_t *parser)
 {
-    stmt_t *ret, *stmts;
-    compound_stmt_t *stmt;
+    stmt_t *stmts, *cur;
     assert(parser != NULL);
 
-    ret = new(stmt_t);
-    ret->kind = STMT_COMPOUND;
-    stmt = &ret->u.compound_stmt;
-
     expect(parser, TERMINAL_BEGIN);
-    stmts = stmt->stmts = parse_stmt(parser);
+    stmts = cur = parse_stmt(parser);
     while (eat(parser, TERMINAL_SEMI)) {
-        stmts = stmts->next = parse_stmt(parser);
+        cur = cur->next = parse_stmt(parser);
     }
     expect(parser, TERMINAL_END);
-    return ret;
+    return new_compound_stmt(stmts);
 }
 
 stmt_t *parse_stmt(parser_t *parser)
 {
-    stmt_t *ret;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_NAME)) {
-        ret = parse_assign_stmt(parser);
+        return parse_assign_stmt(parser);
     } else if (check(parser, TERMINAL_IF)) {
-        ret = parse_if_stmt(parser);
+        return parse_if_stmt(parser);
     } else if (check(parser, TERMINAL_WHILE)) {
-        ret = parse_while_stmt(parser);
+        return parse_while_stmt(parser);
     } else if (check(parser, TERMINAL_BREAK)) {
-        ret = parse_break_stmt(parser);
+        return parse_break_stmt(parser);
     } else if (check(parser, TERMINAL_CALL)) {
-        ret = parse_call_stmt(parser);
+        return parse_call_stmt(parser);
     } else if (check(parser, TERMINAL_RETURN)) {
-        ret = parse_return_stmt(parser);
+        return parse_return_stmt(parser);
     } else if (check(parser, TERMINAL_READ) || check(parser, TERMINAL_READLN)) {
-        ret = parse_read_stmt(parser);
+        return parse_read_stmt(parser);
     } else if (check(parser, TERMINAL_WRITE) || check(parser, TERMINAL_WRITELN)) {
-        ret = parse_write_stmt(parser);
+        return parse_write_stmt(parser);
     } else if (check(parser, TERMINAL_BEGIN)) {
-        ret = parse_compound_stmt(parser);
-    } else {
-        ret = new(stmt_t);
-        ret->kind = STMT_EMPTY;
+        return parse_compound_stmt(parser);
     }
-    return ret;
+    return new_empty_stmt();
 }
 
-decl_part_t *parse_variable_decl(parser_t *parser)
+decl_part_t *parse_variable_decl_part(parser_t *parser)
 {
-    decl_part_t *ret;
-    variable_decl_t *decl;
+    variable_decl_t *decls, *cur;
+    ident_t *names;
+    type_t *type;
     assert(parser != NULL);
 
-    ret = new(decl_part_t);
-    ret->kind = DECL_PART_VARIABLE;
-    decl = &ret->u.variable_decl;
-
     expect(parser, TERMINAL_VAR);
-    decl->names = parse_ident_seq(parser);
+
+    names = parse_ident_seq(parser);
     expect(parser, TERMINAL_COLON);
-    decl->type = parse_type(parser);
+    type = parse_type(parser);
     expect(parser, TERMINAL_SEMI);
+    decls = cur = new_variable_decl(names, type);
     while (check(parser, TERMINAL_NAME)) {
-        decl = decl->next = new(variable_decl_t);
-        decl->names = parse_ident_seq(parser);
+        names = parse_ident_seq(parser);
         expect(parser, TERMINAL_COLON);
-        decl->type = parse_type(parser);
+        type = parse_type(parser);
         expect(parser, TERMINAL_SEMI);
+        cur = cur->next = new_variable_decl(names, type);
     }
-    return ret;
+    return new_variable_decl_part(decls);
 }
 
 params_t *parse_params(parser_t *parser)
 {
+    ident_t *names;
+    type_t *type;
     params_t *ret, *param;
     assert(parser != NULL);
 
     expect(parser, TERMINAL_LPAREN);
-    ret = param = new(params_t);
-    param->names = parse_ident_seq(parser);
+    names = parse_ident_seq(parser);
     expect(parser, TERMINAL_COLON);
-    param->type = parse_type(parser);
+    type = parse_type(parser);
+    ret = param = new_params(names, type);
     while (eat(parser, TERMINAL_SEMI)) {
-        param = param->next = new(params_t);
-        param->names = parse_ident_seq(parser);
+        names = parse_ident_seq(parser);
         expect(parser, TERMINAL_COLON);
-        param->type = parse_type(parser);
+        type = parse_type(parser);
+        param = param->next = new_params(names, type);
     }
     expect(parser, TERMINAL_RPAREN);
     return ret;
 }
 
-decl_part_t *parse_procedure_decl(parser_t *parser)
+decl_part_t *parse_procedure_decl_part(parser_t *parser)
 {
-    decl_part_t *ret;
-    procedure_decl_t *decl;
+    ident_t *name;
+    params_t *params;
+    decl_part_t *variables;
+    stmt_t *stmt;
     assert(parser != NULL);
 
-    ret = new(decl_part_t);
-    ret->kind = DECL_PART_PROCEDURE;
-    decl = &ret->u.procedure_decl;
-
     expect(parser, TERMINAL_PROCEDURE);
-    decl->name = parse_ident(parser);
-    decl->params = check(parser, TERMINAL_LPAREN)
+    name = parse_ident(parser);
+    params = check(parser, TERMINAL_LPAREN)
         ? parse_params(parser) : NULL;
     expect(parser, TERMINAL_SEMI);
-    decl->variables = check(parser, TERMINAL_VAR)
-        ? parse_variable_decl(parser) : NULL;
-    decl->stmt = parse_compound_stmt(parser);
+    variables = check(parser, TERMINAL_VAR)
+        ? parse_variable_decl_part(parser) : NULL;
+    stmt = parse_compound_stmt(parser);
     expect(parser, TERMINAL_SEMI);
-    return ret;
+    return new_procedure_decl_part(name, params, variables, stmt);
 }
 
 decl_part_t *parse_decl_part(parser_t *parser)
@@ -742,9 +689,9 @@ decl_part_t *parse_decl_part(parser_t *parser)
     ret = NULL, decl = &ret;
     while (1) {
         if (check(parser, TERMINAL_VAR)) {
-            *decl = parse_variable_decl(parser);
+            *decl = parse_variable_decl_part(parser);
         } else if (check(parser, TERMINAL_PROCEDURE)) {
-            *decl = parse_procedure_decl(parser);
+            *decl = parse_procedure_decl_part(parser);
         } else {
             break;
         }
@@ -755,18 +702,19 @@ decl_part_t *parse_decl_part(parser_t *parser)
 
 program_t *parse_program(parser_t *parser)
 {
-    program_t *ret;
+    ident_t *name;
+    decl_part_t *decl_part;
+    stmt_t *stmt;
     assert(parser != NULL);
 
-    ret = new(program_t);
     expect(parser, TERMINAL_PROGRAM);
-    ret->name = parse_ident(parser);
+    name = parse_ident(parser);
     expect(parser, TERMINAL_SEMI);
-    ret->decl_part = parse_decl_part(parser);
-    ret->stmt = parse_compound_stmt(parser);
+    decl_part = parse_decl_part(parser);
+    stmt = parse_compound_stmt(parser);
     expect(parser, TERMINAL_DOT);
     expect(parser, TERMINAL_EOF);
-    return ret;
+    return new_program(name, decl_part, stmt);
 }
 
 ast_t *parse(const source_t *src)
