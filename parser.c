@@ -155,9 +155,9 @@ ident_t *parse_ident_seq(parser_t *parser)
     ident_t *ret, *ident;
     assert(parser != NULL);
 
-    ret = parse_ident(parser);
-    for (ident = ret; eat(parser, TERMINAL_COMMA); ident = ident->next) {
-        ident->next = parse_ident(parser);
+    ret = ident = parse_ident(parser);
+    while (eat(parser, TERMINAL_COMMA)) {
+        ident = ident->next = parse_ident(parser);
     }
     return ret;
 }
