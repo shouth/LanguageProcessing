@@ -309,6 +309,7 @@ output_format_t *new_output_format(expr_t *expr, size_t len)
     output_format_t *ret = new(output_format_t);
     ret->expr = expr;
     ret->len = len;
+    ret->next = NULL;
     return ret;
 }
 
@@ -342,7 +343,7 @@ void delete_params(params_t *params)
     free(params);
 }
 
-static decl_part_t *new_decl(decl_part_kind_t kind)
+static decl_part_t *new_decl_part(decl_part_kind_t kind)
 {
     decl_part_t *ret = new(decl_part_t);
     ret->kind = kind;
@@ -372,7 +373,7 @@ void delete_variable_decl(variable_decl_t *decl)
 
 decl_part_t *new_variable_decl_part(variable_decl_t *decls)
 {
-    decl_part_t *ret = new_decl(DECL_PART_VARIABLE);
+    decl_part_t *ret = new_decl_part(DECL_PART_VARIABLE);
     ret->u.variable_decl_part.decls = decls;
     if (!decls) {
         delete_decl_part(ret);
@@ -383,7 +384,7 @@ decl_part_t *new_variable_decl_part(variable_decl_t *decls)
 
 decl_part_t *new_procedure_decl_part(ident_t *name, params_t *params, decl_part_t *variables, stmt_t *stmt)
 {
-    decl_part_t *ret = new_decl(DECL_PART_PROCEDURE);
+    decl_part_t *ret = new_decl_part(DECL_PART_PROCEDURE);
     ret->u.procedure_decl_part.name = name;
     ret->u.procedure_decl_part.params = params;
     ret->u.procedure_decl_part.variables = variables;

@@ -552,7 +552,7 @@ output_format_t *parse_output_format_seq(parser_t *parser)
 stmt_t *parse_write_stmt(parser_t *parser)
 {
     int newline;
-    output_format_t *formats;
+    output_format_t *formats = NULL;
     assert(parser != NULL);
 
     if (eat(parser, TERMINAL_WRITE)) {
