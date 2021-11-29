@@ -28,102 +28,74 @@ typedef struct {
     const color_scheme_t *color_scheme;
 } printer_t;
 
-void console_set_color(color_t color)
+void console_set_color(printer_t *printer, color_t color)
 {
-    printf("\033[38;2;%ld;%ld;%ldm", (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
+    if (printer->color_scheme) {
+        printf("\033[38;2;%ld;%ld;%ldm", (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
+    }
 }
 
-void console_reset_color()
+void console_reset_color(printer_t *printer)
 {
-    printf("\033[0m");
+    if (printer->color_scheme) {
+        printf("\033[0m");
+    }
 }
 
 void pp_colored_program(printer_t *printer, const ident_t *ident)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->program);
-    }
+    console_set_color(printer, printer->color_scheme->program);
     printf("%.*s", (int) ident->len, ident->ptr);
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_keyword(printer_t *printer, terminal_type_t type)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->keyword);
-    }
+    console_set_color(printer, printer->color_scheme->keyword);
     printf("%s", terminal_to_str(type));
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_operator(printer_t *printer, terminal_type_t type)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->operator);
-    }
+    console_set_color(printer, printer->color_scheme->operator);
     printf("%s", terminal_to_str(type));
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_procedure(printer_t *printer, const ident_t *ident)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->procedure);
-    }
+    console_set_color(printer, printer->color_scheme->procedure);
     printf("%.*s", (int) ident->len, ident->ptr);
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_reserved_function(printer_t *printer, terminal_type_t type)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->procedure);
-    }
+    console_set_color(printer, printer->color_scheme->procedure);
     printf("%s", terminal_to_str(type));
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_parameter(printer_t *printer, const ident_t *ident)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->argument);
-    }
+    console_set_color(printer, printer->color_scheme->argument);
     printf("%.*s", (int) ident->len, ident->ptr);
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_string(printer_t *printer, const string_lit_t *lit)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->string);
-    }
+    console_set_color(printer, printer->color_scheme->string);
     printf("'%.*s'", (int) lit->len, lit->ptr);
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_number(printer_t *printer, unsigned long value)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->literal);
-    }
+    console_set_color(printer, printer->color_scheme->literal);
     printf("%ld", value);
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_colored_number_lit(printer_t *printer, const number_lit_t *lit)
@@ -133,13 +105,9 @@ void pp_colored_number_lit(printer_t *printer, const number_lit_t *lit)
 
 void pp_colored_reserved_lit(printer_t *printer, terminal_type_t type)
 {
-    if (printer->color_scheme) {
-        console_set_color(printer->color_scheme->literal);
-    }
+    console_set_color(printer, printer->color_scheme->literal);
     printf("%s", terminal_to_str(type));
-    if (printer->color_scheme) {
-        console_reset_color();
-    }
+    console_reset_color(printer);
 }
 
 void pp_type(printer_t *printer, const type_t *type)
@@ -613,6 +581,6 @@ void pretty_print(const ast_t *ast)
     assert(ast);
     printer.indent = 0;
     printer.color_scheme = &monokai;
-    console_reset_color();
+    console_reset_color(&printer);
     pp_program(&printer, ast->program);
 }
