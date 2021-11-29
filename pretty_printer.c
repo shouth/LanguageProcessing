@@ -74,44 +74,50 @@ void pp_expr(printer_t *printer, const expr_t *expr);
 void pp_binary_op_expr(printer_t *printer, const binary_expr_t *expr)
 {
     assert(printer && expr);
-    pp_expr(printer, expr->lhs);
+    if (expr->lhs->kind != EXPR_EMPTY) {
+        pp_expr(printer, expr->lhs);
+        printf(" ");
+    }
     switch (expr->kind) {
     case BINARY_OP_STAR:
-        printf(" * ");
+        printf("*");
         break;
     case BINARY_OP_DIV:
-        printf(" div ");
+        printf("div");
         break;
     case BINARY_OP_AND:
-        printf(" and ");
+        printf("and");
         break;
     case BINARY_OP_PLUS:
-        printf(" + ");
+        printf("+");
         break;
     case BINARY_OP_MINUS:
-        printf(" - ");
+        printf("-");
         break;
     case BINARY_OP_OR:
-        printf(" or ");
+        printf("or");
         break;
     case BINARY_OP_EQUAL:
-        printf(" = ");
+        printf("=");
         break;
     case BINARY_OP_NOTEQ:
-        printf(" := ");
+        printf("<>");
         break;
     case BINARY_OP_LE:
-        printf(" < ");
+        printf("<");
         break;
     case BINARY_OP_LEEQ:
-        printf(" <= ");
+        printf("<=");
         break;
     case BINARY_OP_GR:
-        printf(" > ");
+        printf(">");
         break;
     case BINARY_OP_GREQ:
-        printf(" >= ");
+        printf(">=");
         break;
+    }
+    if (expr->lhs->kind != EXPR_EMPTY) {
+        printf(" ");
     }
     pp_expr(printer, expr->rhs);
 }
