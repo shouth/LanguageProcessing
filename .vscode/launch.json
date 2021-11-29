@@ -8,7 +8,7 @@
             "name": "gcc-9 - Build and debug active file",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}/${fileBasenameNoExtension}",
+            "program": "${fileDirname}/mppl",
             "args": [ "./task1_sample/sample19p.mpl" ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

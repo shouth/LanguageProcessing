@@ -8,17 +8,15 @@
                 "-fdiagnostics-color=always",
                 "-g",
                 "*.c",
-                "-o",
                 "-std=c89",
-                "-Wall",
-                "-Wextra",
                 "-pedantic-errors",
                 "-D_GLIBC_DEBUG",
                 "-D_GLIBC_PEDANTIC",
                 "-fsanitize=address,undefined,leak",
                 "-fno-sanitize-recover",
                 "-fstack-protector",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "-o",
+                "mppl"
             ],
             "options": {
                 "cwd": "${fileDirname}"
