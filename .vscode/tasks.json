@@ -6,14 +6,13 @@
             "command": "/usr/bin/gcc-9",
             "args": [
                 "-fdiagnostics-color=always",
-                "-g",
-                "*.c",
                 "-std=c89",
+                "-O0",
+                "*.c",
+                "-g3",
                 "-pedantic-errors",
-                "-D_GLIBC_DEBUG",
-                "-D_GLIBC_PEDANTIC",
                 "-fsanitize=address,undefined,leak",
-                "-fno-sanitize-recover",
+                "-fno-sanitize-recover=all",
                 "-fstack-protector",
                 "-o",
                 "mppl"
