@@ -435,6 +435,7 @@ ast_t *new_ast(program_t *program, const source_t *source)
     ast_t *ret = new(ast_t);
     ret->program = program;
     ret->source = source;
+    return ret;
 }
 
 void delete_ast(ast_t *ast)

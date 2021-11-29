@@ -68,6 +68,7 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
     vsprintf(entry->msg, fmt, args);
     va_end(args);
     for (cur = &msg->entries; *cur != NULL; cur = &(*cur)->next);
+    entry->level = level;
     entry->next = *cur;
     *cur = entry;
 }

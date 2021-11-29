@@ -459,7 +459,6 @@ stmt_t *parse_while_stmt(parser_t *parser)
 
 stmt_t *parse_break_stmt(parser_t *parser)
 {
-    stmt_t *ret;
     assert(parser != NULL);
 
     expect(parser, TERMINAL_BREAK);
@@ -483,7 +482,6 @@ stmt_t *parse_call_stmt(parser_t *parser)
 
 stmt_t *parse_return_stmt(parser_t *parser)
 {
-    stmt_t *ret;
     assert(parser != NULL);
 
     expect(parser, TERMINAL_RETURN);

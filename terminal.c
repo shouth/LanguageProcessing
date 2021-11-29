@@ -44,7 +44,7 @@ const size_t keywords_size = sizeof(keywords) / sizeof(*keywords);
 
 void terminal_from_token(terminal_t *terminal, const token_t *token)
 {
-    size_t i, j, cnt;
+    size_t i, j;
     const char *ptr;
     msg_t *msg;
     assert(token != NULL && terminal != NULL);

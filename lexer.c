@@ -117,7 +117,6 @@ token_type_t lex_number(cursol_t *cur, token_data_t *ret)
 
 token_type_t lex_symbol(cursol_t *cur, token_data_t *ret)
 {
-    int c;
     assert(cur != NULL && ret != NULL);
 
     switch (cursol_first(cur)) {

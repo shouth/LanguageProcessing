@@ -174,7 +174,7 @@ void source_free(source_t *src)
 
 void source_location(const source_t *src, size_t index, location_t *loc)
 {
-    size_t left, right, middle, i;
+    size_t left, right, middle;
 
     assert(src != NULL && src->lines_ptr != NULL && loc != NULL);
 
