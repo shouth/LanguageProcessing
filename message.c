@@ -24,6 +24,7 @@ msg_t *msg_new(const source_t *src, size_t pos, size_t len, msg_level_t level, c
     ret->level = level;
     ret->inline_entries = NULL;
     ret->entries = NULL;
+    return ret;
 }
 
 void msg_free(msg_t *msg)

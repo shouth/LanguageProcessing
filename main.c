@@ -19,5 +19,7 @@ int main(int argc, char **argv)
     if (ast) {
         pretty_print(ast);
     }
+    delete_ast(ast);
+    source_free(src);
     return 0;
 }

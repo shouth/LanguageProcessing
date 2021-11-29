@@ -71,6 +71,78 @@ void pp_lit(printer_t *printer, const lit_t *lit)
 
 void pp_expr(printer_t *printer, const expr_t *expr);
 
+void pp_binary_op_expr(printer_t *printer, const binary_expr_t *expr)
+{
+    assert(printer && expr);
+    pp_expr(printer, expr->lhs);
+    switch (expr->kind) {
+    case BINARY_OP_STAR:
+        printf(" * ");
+        break;
+    case BINARY_OP_DIV:
+        printf(" div ");
+        break;
+    case BINARY_OP_AND:
+        printf(" and ");
+        break;
+    case BINARY_OP_PLUS:
+        printf(" + ");
+        break;
+    case BINARY_OP_MINUS:
+        printf(" - ");
+        break;
+    case BINARY_OP_OR:
+        printf(" or ");
+        break;
+    case BINARY_OP_EQUAL:
+        printf(" = ");
+        break;
+    case BINARY_OP_NOTEQ:
+        printf(" := ");
+        break;
+    case BINARY_OP_LE:
+        printf(" < ");
+        break;
+    case BINARY_OP_LEEQ:
+        printf(" <= ");
+        break;
+    case BINARY_OP_GR:
+        printf(" > ");
+        break;
+    case BINARY_OP_GREQ:
+        printf(" >= ");
+        break;
+    }
+    pp_expr(printer, expr->rhs);
+}
+
+void pp_unary_op_expr(printer_t *printer, const unary_expr_t *expr)
+{
+    switch (expr->kind) {
+    case UNARY_OP_NOT:
+        printf("not ");
+        pp_expr(printer, expr->expr);
+        break;
+    }
+}
+
+void pp_paren_expr(printer_t *printer, const paren_expr_t *expr)
+{
+    assert(printer && expr);
+    printf("(");
+    pp_expr(printer, expr->expr);
+    printf(")");
+}
+
+void pp_cast_expr(printer_t *printer, const cast_expr_t *expr)
+{
+    assert(printer && expr);
+    pp_type(printer, expr->type);
+    printf("(");
+    pp_expr(printer, expr->expr);
+    printf(")");
+}
+
 void pp_ref_expr(printer_t *printer, const ref_expr_t *expr)
 {
     assert(printer && expr);
@@ -103,12 +175,16 @@ void pp_expr(printer_t *printer, const expr_t *expr)
         }
         switch (cur->kind) {
         case EXPR_BINARY_OP:
+            pp_binary_op_expr(printer, &cur->u.binary_expr);
             break;
         case EXPR_UNARY_OP:
+            pp_unary_op_expr(printer, &cur->u.unary_expr);
             break;
         case EXPR_PAREN:
+            pp_paren_expr(printer, &cur->u.paren_expr);
             break;
         case EXPR_CAST:
+            pp_cast_expr(printer, &cur->u.cast_expr);
             break;
         case EXPR_REF:
             pp_ref_expr(printer, &cur->u.ref_expr);
