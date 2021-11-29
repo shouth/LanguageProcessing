@@ -10,6 +10,7 @@
 typedef uint64_t color_t;
 
 typedef struct {
+    color_t program;
     color_t keyword;
     color_t operator;
     color_t procedure;
@@ -19,7 +20,7 @@ typedef struct {
 } color_scheme_t;
 
 const color_scheme_t monokai = {
-    0xf92672, 0xf92672, 0xa6e22e, 0xfd971f, 0xe6db74, 0xae81ff
+    0x66d9ef, 0xf92672, 0xf92672, 0xa6e22e, 0xfd971f, 0xe6db74, 0xae81ff
 };
 
 typedef struct {
@@ -35,6 +36,17 @@ void console_set_color(color_t color)
 void console_reset_color()
 {
     printf("\033[0m");
+}
+
+void pp_colored_program(printer_t *printer, const ident_t *ident)
+{
+    if (printer->color_scheme) {
+        console_set_color(printer->color_scheme->program);
+    }
+    printf("%.*s", (int) ident->len, ident->ptr);
+    if (printer->color_scheme) {
+        console_reset_color();
+    }
 }
 
 void pp_colored_keyword(printer_t *printer, terminal_type_t type)
@@ -59,7 +71,7 @@ void pp_colored_operator(printer_t *printer, terminal_type_t type)
     }
 }
 
-void pp_colored_procedure(printer_t *printer, ident_t *ident)
+void pp_colored_procedure(printer_t *printer, const ident_t *ident)
 {
     if (printer->color_scheme) {
         console_set_color(printer->color_scheme->procedure);
@@ -81,7 +93,7 @@ void pp_colored_reserved_function(printer_t *printer, terminal_type_t type)
     }
 }
 
-void pp_colored_parameter(printer_t *printer, ident_t *ident)
+void pp_colored_parameter(printer_t *printer, const ident_t *ident)
 {
     if (printer->color_scheme) {
         console_set_color(printer->color_scheme->argument);
@@ -103,7 +115,7 @@ void pp_colored_string(printer_t *printer, const string_lit_t *lit)
     }
 }
 
-void pp_colored_number(printer_t *printer, const unsigned long value)
+void pp_colored_number(printer_t *printer, unsigned long value)
 {
     if (printer->color_scheme) {
         console_set_color(printer->color_scheme->literal);
@@ -584,7 +596,7 @@ void pp_program(printer_t *printer, const program_t *program)
     assert(printer && program);
     pp_colored_keyword(printer, TERMINAL_PROGRAM);
     printf(" ");
-    pp_ident(printer, program->name);
+    pp_colored_program(printer, program->name);
     printf(";\n");
     if (program->decl_part) {
         printer->indent++;
