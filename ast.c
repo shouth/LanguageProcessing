@@ -394,6 +394,7 @@ decl_part_t *new_procedure_decl_part(ident_t *name, params_t *params, decl_part_
 
 void delete_decl_part(decl_part_t *decl)
 {
+    decl_part_t *cur;
     if (!decl) {
         return;
     }
@@ -408,6 +409,7 @@ void delete_decl_part(decl_part_t *decl)
         delete_decl_part(decl->u.procedure_decl_part.variables);
         break;
     }
+    delete_decl_part(decl->next);
     free(decl);
 }
 
