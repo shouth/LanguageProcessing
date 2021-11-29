@@ -378,10 +378,11 @@ void pp_variable_decl_part(printer_t *printer, const variable_decl_part_t *decl_
     const variable_decl_t *cur;
     assert(printer && decl_part);
 
+    printf("var\n");
     cur = decl_part->decls;
     while (cur) {
         pp_indent(printer);
-        printf(cur == decl_part->decls ? "var " : "    ");
+        printf("    ");
         pp_ident(printer, cur->names);
         printf(" : ");
         pp_type(printer, cur->type);
@@ -414,6 +415,7 @@ void pp_procedure_decl_part(printer_t *printer, const procedure_decl_part_t *dec
     if (decl_part->variables) {
         pp_decl_part(printer, decl_part->variables);
     }
+    pp_indent(printer);
     pp_stmt(printer, decl_part->stmt);
     printf(";\n\n");
 }
@@ -425,6 +427,7 @@ void pp_decl_part(printer_t *printer, const decl_part_t *decl_part)
 
     cur = decl_part;
     while (cur) {
+        pp_indent(printer);
         switch (cur->kind) {
         case DECL_PART_VARIABLE:
             pp_variable_decl_part(printer, &cur->u.variable_decl_part);
@@ -445,8 +448,9 @@ void pp_program(printer_t *printer, const program_t *program)
     printf("program ");
     pp_ident(printer, program->name);
     printf(";\n");
+    printer->indent++;
     pp_decl_part(printer, program->decl_part);
-    assert(program->stmt->kind == STMT_COMPOUND);
+    printer->indent--;
     pp_stmt(printer, program->stmt);
     printf(".\n");
 }
