@@ -145,13 +145,12 @@ void pp_type(printer_t *printer, const type_t *type)
         break;
     case TYPE_ARRAY:
         pp_colored_keyword(printer, TERMINAL_ARRAY);
-        printf(" [");
+        printf("[");
         pp_colored_number(printer, type->array.len);
         printf("] ");
         pp_colored_keyword(printer, TERMINAL_OF);
         printf(" ");
         pp_type(printer, type->array.base);
-        printf(";");
         break;
     }
 }
