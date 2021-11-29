@@ -22,6 +22,7 @@ typedef struct {
 typedef struct {
     const char *ptr;
     size_t len;
+    size_t str_len;
 } string_lit_t;
 
 typedef struct {
@@ -36,7 +37,7 @@ typedef struct {
 
 lit_t *new_number_lit(unsigned long value);
 lit_t *new_boolean_lit(int value);
-lit_t *new_string_lit(const char *ptr, size_t len);
+lit_t *new_string_lit(const char *ptr, size_t len, size_t str_len);
 
 void delete_lit(lit_t *lit);
 

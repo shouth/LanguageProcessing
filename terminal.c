@@ -89,7 +89,8 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
             exit(1);
         }
         terminal->type = TERMINAL_STRING;
-        terminal->data.string.ptr = terminal->ptr + 1;
+        terminal->data.string.str_len = token->data.string.str_len;
+        terminal->data.string.ptr = token->ptr + 1;
         terminal->data.string.len = token->data.string.len;
         return;
 

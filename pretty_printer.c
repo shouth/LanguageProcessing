@@ -448,9 +448,11 @@ void pp_program(printer_t *printer, const program_t *program)
     printf("program ");
     pp_ident(printer, program->name);
     printf(";\n");
-    printer->indent++;
-    pp_decl_part(printer, program->decl_part);
-    printer->indent--;
+    if (program->decl_part) {
+        printer->indent++;
+        pp_decl_part(printer, program->decl_part);
+        printer->indent--;
+    }
     pp_stmt(printer, program->stmt);
     printf(".\n");
 }

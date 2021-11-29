@@ -67,6 +67,7 @@ typedef union {
     struct {
         const char *ptr;
         size_t len;
+        size_t str_len;
     } string;
 } terminal_data_t;
 

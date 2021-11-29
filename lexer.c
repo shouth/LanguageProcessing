@@ -68,6 +68,7 @@ token_type_t lex_string(cursol_t *cur, token_data_t *ret)
     assert(cursol_first(cur) == '\'');
 
     ret->string.len = 0;
+    ret->string.str_len = 0;
     cursol_next(cur);
     while (1) {
         if (cursol_first(cur) == '\'') {
@@ -76,6 +77,8 @@ token_type_t lex_string(cursol_t *cur, token_data_t *ret)
             if (cursol_first(cur) != '\'') {
                 ret->string.terminated = 1;
                 return TOKEN_STRING;
+            } else {
+                ret->string.len++;
             }
         }
 
@@ -87,6 +90,7 @@ token_type_t lex_string(cursol_t *cur, token_data_t *ret)
         }
 
         ret->string.len++;
+        ret->string.str_len++;
         cursol_next(cur);
     }
 }

@@ -235,7 +235,8 @@ lit_t *parse_string_lit(parser_t *parser)
     if (eat(parser, TERMINAL_STRING)) {
         return new_string_lit(
             parser->last_terminal.data.string.ptr,
-            parser->last_terminal.data.string.len);
+            parser->last_terminal.data.string.len,
+            parser->last_terminal.data.string.str_len);
     }
     error_unexpected(parser);
     return NULL;
@@ -523,7 +524,7 @@ output_format_t *parse_output_format(parser_t *parser)
     }
     if (expr->kind == EXPR_CONSTANT) {
         lit_t *lit = expr->u.constant_expr.lit;
-        if (lit->kind == LIT_STRING && lit->u.string_lit.len > 1 && len != SIZE_MAX) {
+        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len > 1 && len != SIZE_MAX) {
             msg_t *msg;
             len = parser->last_terminal.pos + parser->last_terminal.len - init_pos;
             msg = new_msg(parser->src, init_pos, len,

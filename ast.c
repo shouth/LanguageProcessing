@@ -25,11 +25,12 @@ lit_t *new_boolean_lit(int value)
     return ret;
 }
 
-lit_t *new_string_lit(const char *ptr, size_t len)
+lit_t *new_string_lit(const char *ptr, size_t len, size_t str_len)
 {
     lit_t *ret = new_lit(LIT_STRING);
     ret->u.string_lit.ptr = ptr;
     ret->u.string_lit.len = len;
+    ret->u.string_lit.str_len = str_len;
     return ret;
 }
 

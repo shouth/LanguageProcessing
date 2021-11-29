@@ -37,6 +37,7 @@ typedef union {
     struct {
         int terminated;
         size_t len;
+        size_t str_len;
     } string;
 
     struct {
