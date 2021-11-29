@@ -465,13 +465,13 @@ void pp_stmt(printer_t *printer, const stmt_t *stmt)
         pp_while_stmt(printer, &stmt->u.while_stmt);
         break;
     case STMT_BREAK:
-        printf("break");
+        pp_colored_keyword(printer, TERMINAL_BREAK);
         break;
     case STMT_CALL:
         pp_call_stmt(printer, &stmt->u.call_stmt);
         break;
     case STMT_RETURN:
-        printf("return");
+        pp_colored_keyword(printer, TERMINAL_RETURN);
         break;
     case STMT_READ:
         pp_read_stmt(printer, &stmt->u.read_stmt);
