@@ -15,10 +15,6 @@ lit_t *new_number_lit(unsigned long value)
 {
     lit_t *ret = new_lit(LIT_NUMBER);
     ret->u.number_lit.value = value;
-    if (value > 32767) {
-        delete_lit(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -34,10 +30,6 @@ lit_t *new_string_lit(const char *ptr, size_t len)
     lit_t *ret = new_lit(LIT_STRING);
     ret->u.string_lit.ptr = ptr;
     ret->u.string_lit.len = len;
-    if (!ptr || len == SIZE_MAX) {
-        delete_lit(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -53,10 +45,6 @@ type_t *new_std_type(type_kind_t kind)
 {
     type_t *ret = new(type_t);
     ret->kind = kind;
-    if (kind == TYPE_ARRAY) {
-        delete_type(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -66,10 +54,6 @@ type_t *new_array_type(type_t *base, size_t len)
     ret->kind = TYPE_ARRAY;
     ret->array.base = base;
     ret->array.len = len;
-    if (!base || base->kind == TYPE_ARRAY || len == SIZE_MAX) {
-        delete_type(ret);
-        return NULL;
-    }
     return ret;
 }
 
@@ -90,10 +74,6 @@ ident_t *new_ident(const char *ptr, size_t len)
     ret->next = NULL;
     ret->ptr = ptr;
     ret->len = len;
-    if (!ptr) {
-        delete_ident(ret);
-        return NULL;
-    }
     return ret;
 }
 
