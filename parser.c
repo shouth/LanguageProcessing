@@ -50,7 +50,7 @@ void error_unexpected(parser_t *parser)
         }
     }
 
-    msg = msg_new(parser->src, pos, len,
+    msg = new_msg(parser->src, pos, len,
         MSG_ERROR, "expected %s, got `%.*s`", buf,
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
     if (parser->expected_terminals == (uint64_t) 1 << TERMINAL_SEMI) {
@@ -65,7 +65,7 @@ void error_expression_expected(parser_t *parser)
     msg_t *msg;
     assert(parser != NULL);
 
-    msg = msg_new(parser->src, parser->current_terminal.pos, parser->current_terminal.len,
+    msg = new_msg(parser->src, parser->current_terminal.pos, parser->current_terminal.len,
         MSG_ERROR, "expected expression, got `%.*s`",
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
     msg_emit(msg);
@@ -526,7 +526,7 @@ output_format_t *parse_output_format(parser_t *parser)
         if (lit->kind == LIT_STRING && lit->u.string_lit.len > 1 && len != SIZE_MAX) {
             msg_t *msg;
             len = parser->last_terminal.pos + parser->last_terminal.len - init_pos;
-            msg = msg_new(parser->src, init_pos, len,
+            msg = new_msg(parser->src, init_pos, len,
                 MSG_ERROR, "wrong output format");
             msg_add_inline_entry(msg, init_pos, len,
                 "the field specifier cannot be used here");

@@ -39,9 +39,9 @@ typedef struct {
     msg_entry_t *entries;
 } msg_t;
 
-msg_t *msg_new(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...);
+msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...);
 
-void msg_free(msg_t *msg);
+void delete_msg(msg_t *msg);
 
 void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
 

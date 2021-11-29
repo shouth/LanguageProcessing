@@ -6,7 +6,7 @@
 #include "message.h"
 #include "util.h"
 
-msg_t *msg_new(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
+msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
 {
     msg_t *ret;
     va_list args;
@@ -27,31 +27,31 @@ msg_t *msg_new(const source_t *src, size_t pos, size_t len, msg_level_t level, c
     return ret;
 }
 
-void msg_free(msg_t *msg)
+void delete_msg_entry(msg_entry_t *entry)
 {
-    msg_entry_t **cur0, **precur0;
-    msg_inline_entry_t **cur1, **precur1;
-
-    if (msg == NULL) {
+    if (!entry) {
         return;
     }
+    delete_msg_entry(entry->next);
+    free(entry);
+}
 
-    precur0 = &msg->entries;
-    for (cur0 = precur0; *cur0 != NULL; cur0 = &(*cur0)->next) {
-        if (cur0 != precur0) {
-            free(*precur0);
-        }
-        precur0 = cur0;
+void delete_msg_inline_entry(msg_inline_entry_t *entry)
+{
+    if (!entry) {
+        return;
     }
+    delete_msg_inline_entry(entry->next);
+    free(entry);
+}
 
-    precur1 = &msg->inline_entries;
-    for (cur1 = precur1; *cur1 != NULL; cur1 = &(*cur1)->next) {
-        if (cur1 != precur1) {
-            free(*precur1);
-        }
-        precur1 = cur1;
+void delete_msg(msg_t *msg)
+{
+    if (!msg) {
+        return;
     }
-
+    delete_msg_entry(msg->entries);
+    delete_msg_inline_entry(msg->inline_entries);
     free(msg);
 }
 
@@ -310,5 +310,5 @@ void msg_emit(msg_t *msg)
     }
 
     putchar('\n');
-    msg_free(msg);
+    delete_msg(msg);
 }

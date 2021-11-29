@@ -74,7 +74,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
     case TOKEN_NUMBER:
         terminal->data.number.value = strtoul(token->ptr, NULL, 10);
         if (errno == ERANGE || terminal->data.number.value > 32767) {
-            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "number is too large");
+            msg = new_msg(token->src, token->pos, token->len, MSG_ERROR, "number is too large");
             msg_add_inline_entry(msg, token->pos, token->len, "number needs to be less than 32768");
             msg_emit(msg);
             exit(1);
@@ -84,7 +84,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_STRING:
         if (!token->data.string.terminated) {
-            msg = msg_new(token->src, token->pos, token->len, MSG_ERROR, "string is unterminated");
+            msg = new_msg(token->src, token->pos, token->len, MSG_ERROR, "string is unterminated");
             msg_emit(msg);
             exit(1);
         }
@@ -95,7 +95,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_BRACES_COMMENT:
         if (!token->data.braces_comment.terminated) {
-            msg = msg_new(token->src, token->pos, 1, MSG_ERROR, "comment is unterminated");
+            msg = new_msg(token->src, token->pos, 1, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
             exit(1);
         }
@@ -104,7 +104,7 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_CSTYLE_COMMENT:
         if (!token->data.cstyle_comment.terminated) {
-            msg = msg_new(token->src, token->pos, 2, MSG_ERROR, "comment is unterminated");
+            msg = new_msg(token->src, token->pos, 2, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
             exit(1);
         }
@@ -193,10 +193,10 @@ void terminal_from_token(terminal_t *terminal, const token_t *token)
 
     case TOKEN_UNKNOWN:
         if (is_graphical(token->ptr[0])) {
-            msg = msg_new(token->src, token->pos, token->len,
+            msg = new_msg(token->src, token->pos, token->len,
                 MSG_ERROR, "stray `%c` in program", token->ptr[0]);
         } else {
-            msg = msg_new(token->src, token->pos, token->len,
+            msg = new_msg(token->src, token->pos, token->len,
                 MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]);
         }
         msg_emit(msg);
