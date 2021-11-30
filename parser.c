@@ -16,7 +16,7 @@ typedef struct {
 
     terminal_t last_terminal, current_terminal;
     uint64_t expected_terminals;
-    int alive;
+    int alive, error;
 } parser_t;
 
 #define validate(parser, ret, nil, deleter) \
@@ -38,6 +38,7 @@ void error_unexpected(parser_t *parser)
         return;
     }
     parser->alive = 0;
+    parser->error = 1;
 
     assert(parser->expected_terminals != 0);
     if (parser->expected_terminals == (uint64_t) 1 << TERMINAL_SEMI) {
@@ -55,7 +56,20 @@ void error_unexpected(parser_t *parser)
             if (ptr != buf) {
                 ptr += sprintf(ptr, bit != msb ? ", " : " or ");
             }
-            ptr += sprintf(ptr, "`%s`", terminal_to_str(i));
+            switch (i) {
+            case TERMINAL_NAME:
+                ptr += sprintf(ptr, "identifier");
+                break;
+            case TERMINAL_NUMBER:
+                ptr += sprintf(ptr, "number");
+                break;
+            case TERMINAL_STRING:
+                ptr += sprintf(ptr, "string");
+                break;
+            default:
+                ptr += sprintf(ptr, "`%s`", terminal_to_str(i));
+                break;
+            }
         }
     }
     msg = new_msg(parser->src, pos, len,
@@ -66,9 +80,10 @@ void error_unexpected(parser_t *parser)
         msg_add_inline_entry(msg, parser->current_terminal.pos, parser->current_terminal.len, "unexpected token");
     }
     msg_emit(msg);
+    parser->expected_terminals = 0;
 }
 
-void error_expression_expected(parser_t *parser)
+void error_expected(parser_t *parser, const char *str)
 {
     msg_t *msg;
     assert(parser != NULL);
@@ -77,10 +92,13 @@ void error_expression_expected(parser_t *parser)
         return;
     }
     parser->alive = 0;
+    parser->error = 1;
+
     msg = new_msg(parser->src, parser->current_terminal.pos, parser->current_terminal.len,
-        MSG_ERROR, "expected expression, got `%.*s`",
+        MSG_ERROR, "expected %s, got `%.*s`", str,
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
     msg_emit(msg);
+    parser->expected_terminals = 0;
 }
 
 void bump(parser_t *parser)
@@ -325,7 +343,7 @@ expr_t *parse_factor(parser_t *parser)
         expect(parser, TERMINAL_RPAREN);
         ret = new_cast_expr(type, expr);
     } else {
-        error_expression_expected(parser);
+        error_expected(parser, "expression");
     }
     return validate_expr(parser, ret);
 }
@@ -539,6 +557,7 @@ output_format_t *parse_output_format(parser_t *parser)
             if (parser->alive) {
                 msg_t *msg;
                 parser->alive = 0;
+                parser->error = 1;
                 len = parser->last_terminal.pos + parser->last_terminal.len - init_pos;
                 msg = new_msg(parser->src, init_pos, len,
                     MSG_ERROR, "wrong output format");
@@ -750,7 +769,7 @@ ast_t *parse(const source_t *src)
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
     bump(&parser);
     program = parse_program(&parser);
-    if (!parser.alive) {
+    if (parser.error) {
         delete_program(program);
         return NULL;
     }
