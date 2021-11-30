@@ -19,6 +19,11 @@ typedef struct {
     int alive;
 } parser_t;
 
+#define validate(parser, ret, nil, deleter) \
+    (parser)->alive ? (ret) : (error_unexpected(parser), deleter(ret), (nil));
+
+#define delete_nothing(x) 0
+
 void error_unexpected(parser_t *parser)
 {
     msg_t *msg;
@@ -28,9 +33,13 @@ void error_unexpected(parser_t *parser)
     uint64_t msb, bit;
 
     assert(parser != NULL);
-    assert(parser->expected_terminals != 0);
 
+    if (!parser->alive) {
+        return;
+    }
     parser->alive = 0;
+
+    assert(parser->expected_terminals != 0);
     if (parser->expected_terminals == (uint64_t) 1 << TERMINAL_SEMI) {
         pos = parser->last_terminal.pos + parser->last_terminal.len;
         len = 1;
@@ -49,7 +58,6 @@ void error_unexpected(parser_t *parser)
             ptr += sprintf(ptr, "`%s`", terminal_to_str(i));
         }
     }
-
     msg = new_msg(parser->src, pos, len,
         MSG_ERROR, "expected %s, got `%.*s`", buf,
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
@@ -65,6 +73,10 @@ void error_expression_expected(parser_t *parser)
     msg_t *msg;
     assert(parser != NULL);
 
+    if (!parser->alive) {
+        return;
+    }
+    parser->alive = 0;
     msg = new_msg(parser->src, parser->current_terminal.pos, parser->current_terminal.len,
         MSG_ERROR, "expected expression, got `%.*s`",
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
@@ -106,9 +118,6 @@ int eat(parser_t *parser, terminal_type_t type)
     int ret;
     assert(parser != NULL);
 
-    if (!parser->alive) {
-        return 0;
-    }
     if (ret = check(parser, type)) {
         bump(parser);
     }
@@ -120,62 +129,60 @@ int expect(parser_t *parser, terminal_type_t type)
     int ret;
     assert(parser != NULL);
 
-    if (!parser->alive) {
-        return 0;
-    }
     if (!(ret = eat(parser, type))) {
         error_unexpected(parser);
     }
     return ret;
 }
 
+#define validate_number(parser, ret) validate(parser, ret, SIZE_MAX, delete_nothing)
+
 size_t parse_number(parser_t *parser)
 {
     assert(parser != NULL);
 
-    if (eat(parser, TERMINAL_NUMBER)) {
-        return parser->last_terminal.data.number.value;
-    }
-    error_unexpected(parser);
-    return SIZE_MAX;
+    expect(parser, TERMINAL_NUMBER);
+    return validate_number(parser, parser->last_terminal.data.number.value);
 }
+
+#define validate_ident(parser, ret) validate(parser, ret, NULL, delete_ident)
 
 ident_t *parse_ident(parser_t *parser)
 {
     assert(parser != NULL);
 
-    if (eat(parser, TERMINAL_NAME)) {
-        return new_ident(parser->last_terminal.ptr, parser->last_terminal.len);
-    }
-    error_unexpected(parser);
-    return NULL;
+    expect(parser, TERMINAL_NAME);
+    return validate_ident(parser,
+        new_ident(parser->last_terminal.ptr, parser->last_terminal.len));
 }
 
 ident_t *parse_ident_seq(parser_t *parser)
 {
-    ident_t *ret, *ident;
+    ident_t *ret = NULL, *ident;
     assert(parser != NULL);
 
     ret = ident = parse_ident(parser);
     while (eat(parser, TERMINAL_COMMA)) {
         ident = ident->next = parse_ident(parser);
     }
-    return ret;
+    return validate_ident(parser, ret);
 }
+
+#define validate_type(parser, ret) validate(parser, ret, NULL, delete_type)
 
 type_t *parse_std_type(parser_t *parser)
 {
+    type_t *ret = NULL;
     assert(parser != NULL);
 
     if (eat(parser, TERMINAL_INTEGER)) {
-        return new_std_type(TYPE_INTEGER);
+        ret = new_std_type(TYPE_INTEGER);
     } else if (eat(parser, TERMINAL_BOOLEAN)) {
-        return new_std_type(TYPE_BOOLEAN);
+        ret = new_std_type(TYPE_BOOLEAN);
     } else if (eat(parser, TERMINAL_CHAR)) {
-        return new_std_type(TYPE_CHAR);
+        ret = new_std_type(TYPE_CHAR);
     }
-    error_unexpected(parser);
-    return NULL;
+    return validate_type(parser, ret);
 }
 
 type_t *parse_array_type(parser_t *parser)
@@ -190,89 +197,91 @@ type_t *parse_array_type(parser_t *parser)
     expect(parser, TERMINAL_RSQPAREN);
     expect(parser, TERMINAL_OF);
     base = parse_std_type(parser);
-    return new_array_type(base, len);
+    return validate_type(parser, new_array_type(base, len));
 }
 
 type_t *parse_type(parser_t *parser)
 {
+    type_t *ret = NULL;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_ARRAY)) {
-        return parse_array_type(parser);
+        ret = parse_array_type(parser);
     } else {
-        return parse_std_type(parser);
+        ret = parse_std_type(parser);
     }
+    return validate_type(parser, ret);
 }
+
+#define validate_lit(parser, ret) validate(parser, ret, NULL, delete_lit)
 
 lit_t *parse_number_lit(parser_t *parser)
 {
     assert(parser != NULL);
 
-    if (eat(parser, TERMINAL_NUMBER)) {
-        return new_number_lit(parser->last_terminal.data.number.value);
-    }
-    error_unexpected(parser);
-    return NULL;
+    expect(parser, TERMINAL_NUMBER);
+    return validate_lit(parser,
+        new_number_lit(parser->last_terminal.data.number.value));
 }
 
 lit_t *parse_boolean_lit(parser_t *parser)
 {
+    lit_t *ret = NULL;
     assert(parser != NULL);
 
     if (eat(parser, TERMINAL_TRUE)) {
-        return new_boolean_lit(1);
+        ret = new_boolean_lit(1);
     } else if (eat(parser, TERMINAL_FALSE)) {
-        return new_boolean_lit(0);
+        ret = new_boolean_lit(0);
     }
-    error_unexpected(parser);
-    return NULL;
+    return validate_lit(parser, ret);
 }
 
 lit_t *parse_string_lit(parser_t *parser)
 {
     assert(parser != NULL);
 
-    if (eat(parser, TERMINAL_STRING)) {
-        return new_string_lit(
-            parser->last_terminal.data.string.ptr,
-            parser->last_terminal.data.string.len,
-            parser->last_terminal.data.string.str_len);
-    }
-    error_unexpected(parser);
-    return NULL;
+    expect(parser, TERMINAL_STRING);
+    return validate_lit(parser, new_string_lit(
+        parser->last_terminal.data.string.ptr,
+        parser->last_terminal.data.string.len,
+        parser->last_terminal.data.string.str_len));
 }
 
 lit_t *parse_lit(parser_t *parser)
 {
+    lit_t *ret = NULL;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_NUMBER)) {
-        return parse_number_lit(parser);
+        ret = parse_number_lit(parser);
     } else if (check(parser, TERMINAL_TRUE) || check(parser, TERMINAL_FALSE)) {
-        return parse_boolean_lit(parser);
+        ret = parse_boolean_lit(parser);
     } else if (check(parser, TERMINAL_STRING)) {
-        return parse_string_lit(parser);
+        ret = parse_string_lit(parser);
     }
-    error_unexpected(parser);
-    return NULL;
+    return validate_lit(parser, ret);
 }
+
+#define validate_expr(parser, ret) validate(parser, ret, NULL, delete_expr)
 
 expr_t *parse_expr(parser_t *parser);
 
 expr_t *parse_expr_seq(parser_t *parser)
 {
-    expr_t *ret, *expr;
+    expr_t *ret = NULL, *expr;
     assert(parser != NULL);
 
     ret = expr = parse_expr(parser);
     while (eat(parser, TERMINAL_COMMA)) {
         expr = expr->next = parse_expr(parser);
     }
-    return ret;
+    return validate_expr(parser, ret);
 }
 
 expr_t *parse_lvalue(parser_t *parser)
 {
+    expr_t *ret = NULL;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_NAME)) {
@@ -280,32 +289,33 @@ expr_t *parse_lvalue(parser_t *parser)
         if (eat(parser, TERMINAL_LSQPAREN)) {
             expr_t *expr = parse_expr(parser);
             expect(parser, TERMINAL_RSQPAREN);
-            return new_array_subscript_expr(ident, expr);
+            ret = new_array_subscript_expr(ident, expr);
+        } else {
+            ret = new_ref_expr(ident);
         }
-        return new_ref_expr(ident);
     }
-    error_unexpected(parser);
-    return NULL;
+    return validate_expr(parser, ret);
 }
 
 expr_t *parse_factor(parser_t *parser)
 {
+    expr_t *ret = NULL;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_NAME)) {
-        return parse_lvalue(parser);
+        ret = parse_lvalue(parser);
     } else if (check(parser, TERMINAL_NUMBER) || check(parser, TERMINAL_TRUE)
         || check(parser, TERMINAL_FALSE) || check(parser, TERMINAL_STRING))
     {
         lit_t *lit = parse_lit(parser);
-        return new_constant_expr(lit);
+        ret = new_constant_expr(lit);
     } else if (eat(parser, TERMINAL_LPAREN)) {
         expr_t *expr = parse_expr(parser);
         expect(parser, TERMINAL_RPAREN);
-        return new_paren_expr(expr);
+        ret = new_paren_expr(expr);
     } else if (eat(parser, TERMINAL_NOT)) {
         expr_t *expr = parse_factor(parser);
-        return new_unary_expr(UNARY_OP_NOT, expr);
+        ret = new_unary_expr(UNARY_OP_NOT, expr);
     } else if (check(parser, TERMINAL_INTEGER) || check(parser, TERMINAL_BOOLEAN) || check(parser, TERMINAL_CHAR)) {
         type_t *type;
         expr_t *expr;
@@ -313,14 +323,16 @@ expr_t *parse_factor(parser_t *parser)
         expect(parser, TERMINAL_LPAREN);
         expr = parse_expr(parser);
         expect(parser, TERMINAL_RPAREN);
-        return new_cast_expr(type, expr);
+        ret = new_cast_expr(type, expr);
+    } else {
+        error_expression_expected(parser);
     }
-    return NULL;
+    return validate_expr(parser, ret);
 }
 
 expr_t *parse_term(parser_t *parser)
 {
-    expr_t *ret;
+    expr_t *ret = NULL;
     assert(parser != NULL);
 
     ret = parse_factor(parser);
@@ -338,12 +350,12 @@ expr_t *parse_term(parser_t *parser)
             break;
         }
     }
-    return ret;
+    return validate_expr(parser, ret);
 }
 
 expr_t *parse_simple_expr(parser_t *parser)
 {
-    expr_t *ret;
+    expr_t *ret = NULL;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_PLUS) || check(parser, TERMINAL_MINUS)) {
@@ -365,12 +377,12 @@ expr_t *parse_simple_expr(parser_t *parser)
             break;
         }
     }
-    return ret;
+    return validate_expr(parser, ret);
 }
 
 expr_t *parse_expr(parser_t *parser)
 {
-    expr_t *ret;
+    expr_t *ret = NULL;
     assert(parser != NULL);
 
     ret = parse_simple_expr(parser);
@@ -397,24 +409,22 @@ expr_t *parse_expr(parser_t *parser)
             break;
         }
     }
-    if (!ret) {
-        error_expression_expected(parser);
-        return NULL;
-    }
-    return ret;
+    return validate_expr(parser, ret);
 }
 
 expr_t *parse_lvalue_seq(parser_t *parser)
 {
-    expr_t *ret, *expr;
+    expr_t *ret = NULL, *expr;
     assert(parser != NULL);
 
     ret = expr = parse_lvalue(parser);
     while (eat(parser, TERMINAL_COMMA)) {
         expr = expr->next = parse_lvalue(parser);
     }
-    return ret;
+    return validate_expr(parser, ret);
 }
+
+#define validate_stmt(parser, ret) validate(parser, ret, NULL, delete_stmt)
 
 stmt_t *parse_stmt(parser_t *parser);
 
@@ -426,7 +436,7 @@ stmt_t *parse_assign_stmt(parser_t *parser)
     lhs = parse_lvalue(parser);
     expect(parser, TERMINAL_ASSIGN);
     rhs = parse_expr(parser);
-    return new_assign_stmt(lhs, rhs);
+    return validate_stmt(parser, new_assign_stmt(lhs, rhs));
 }
 
 stmt_t *parse_if_stmt(parser_t *parser)
@@ -442,7 +452,7 @@ stmt_t *parse_if_stmt(parser_t *parser)
     if (eat(parser, TERMINAL_ELSE)) {
         else_stmt = parse_stmt(parser);
     }
-    return new_if_stmt(cond, then_stmt, else_stmt);
+    return validate_stmt(parser, new_if_stmt(cond, then_stmt, else_stmt));
 }
 
 stmt_t *parse_while_stmt(parser_t *parser)
@@ -455,7 +465,7 @@ stmt_t *parse_while_stmt(parser_t *parser)
     cond = parse_expr(parser);
     expect(parser, TERMINAL_DO);
     do_stmt = parse_stmt(parser);
-    return new_while_stmt(cond, do_stmt);
+    return validate_stmt(parser, new_while_stmt(cond, do_stmt));
 }
 
 stmt_t *parse_break_stmt(parser_t *parser)
@@ -463,7 +473,7 @@ stmt_t *parse_break_stmt(parser_t *parser)
     assert(parser != NULL);
 
     expect(parser, TERMINAL_BREAK);
-    return new_break_stmt();
+    return validate_stmt(parser, new_break_stmt());
 }
 
 stmt_t *parse_call_stmt(parser_t *parser)
@@ -478,7 +488,7 @@ stmt_t *parse_call_stmt(parser_t *parser)
         args = parse_expr_seq(parser);
         expect(parser, TERMINAL_RPAREN);
     }
-    return new_call_stmt(name, args);
+    return validate_stmt(parser, new_call_stmt(name, args));
 }
 
 stmt_t *parse_return_stmt(parser_t *parser)
@@ -486,7 +496,7 @@ stmt_t *parse_return_stmt(parser_t *parser)
     assert(parser != NULL);
 
     expect(parser, TERMINAL_RETURN);
-    return new_return_stmt();
+    return validate_stmt(parser, new_return_stmt());
 }
 
 stmt_t *parse_read_stmt(parser_t *parser)
@@ -501,14 +511,15 @@ stmt_t *parse_read_stmt(parser_t *parser)
         newline = 1;
     } else {
         error_unexpected(parser);
-        return NULL;
     }
     if (eat(parser, TERMINAL_LPAREN)) {
         args = parse_lvalue_seq(parser);
         expect(parser, TERMINAL_RPAREN);
     }
-    return new_read_stmt(newline, args);
+    return validate_stmt(parser, new_read_stmt(newline, args));
 }
+
+#define validate_output_format(parser, ret) validate(parser, ret, NULL, delete_output_format)
 
 output_format_t *parse_output_format(parser_t *parser)
 {
@@ -524,30 +535,32 @@ output_format_t *parse_output_format(parser_t *parser)
     }
     if (expr->kind == EXPR_CONSTANT) {
         lit_t *lit = expr->u.constant_expr.lit;
-        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len > 1 && len != SIZE_MAX) {
-            msg_t *msg;
-            len = parser->last_terminal.pos + parser->last_terminal.len - init_pos;
-            msg = new_msg(parser->src, init_pos, len,
-                MSG_ERROR, "wrong output format");
-            msg_add_inline_entry(msg, init_pos, len,
-                "the field specifier cannot be used here");
-            msg_emit(msg);
-            return NULL;
+        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && len != SIZE_MAX) {
+            if (parser->alive) {
+                msg_t *msg;
+                parser->alive = 0;
+                len = parser->last_terminal.pos + parser->last_terminal.len - init_pos;
+                msg = new_msg(parser->src, init_pos, len,
+                    MSG_ERROR, "wrong output format");
+                msg_add_inline_entry(msg, init_pos, len,
+                    "the field specifier cannot be used here");
+                msg_emit(msg);
+            }
         }
     }
-    return new_output_format(expr, len);
+    return validate_output_format(parser, new_output_format(expr, len));
 }
 
 output_format_t *parse_output_format_seq(parser_t *parser)
 {
-    output_format_t *ret, *expr;
+    output_format_t *ret = NULL, *expr;
     assert(parser != NULL);
 
     ret = expr = parse_output_format(parser);
     while (eat(parser, TERMINAL_COMMA)) {
         expr = expr->next = parse_output_format(parser);
     }
-    return ret;
+    return validate_output_format(parser, ret);
 }
 
 stmt_t *parse_write_stmt(parser_t *parser)
@@ -562,13 +575,12 @@ stmt_t *parse_write_stmt(parser_t *parser)
         newline = 1;
     } else {
         error_unexpected(parser);
-        return NULL;
     }
     if (eat(parser, TERMINAL_LPAREN)) {
         formats = parse_output_format_seq(parser);
         expect(parser, TERMINAL_RPAREN);
     }
-    return new_write_stmt(newline, formats);
+    return validate_stmt(parser, new_write_stmt(newline, formats));
 }
 
 stmt_t *parse_compound_stmt(parser_t *parser)
@@ -582,34 +594,39 @@ stmt_t *parse_compound_stmt(parser_t *parser)
         cur = cur->next = parse_stmt(parser);
     }
     expect(parser, TERMINAL_END);
-    return new_compound_stmt(stmts);
+    return validate_stmt(parser, new_compound_stmt(stmts));
 }
 
 stmt_t *parse_stmt(parser_t *parser)
 {
+    stmt_t *ret = NULL;
     assert(parser != NULL);
 
     if (check(parser, TERMINAL_NAME)) {
-        return parse_assign_stmt(parser);
+        ret = parse_assign_stmt(parser);
     } else if (check(parser, TERMINAL_IF)) {
-        return parse_if_stmt(parser);
+        ret = parse_if_stmt(parser);
     } else if (check(parser, TERMINAL_WHILE)) {
-        return parse_while_stmt(parser);
+        ret = parse_while_stmt(parser);
     } else if (check(parser, TERMINAL_BREAK)) {
-        return parse_break_stmt(parser);
+        ret = parse_break_stmt(parser);
     } else if (check(parser, TERMINAL_CALL)) {
-        return parse_call_stmt(parser);
+        ret = parse_call_stmt(parser);
     } else if (check(parser, TERMINAL_RETURN)) {
-        return parse_return_stmt(parser);
+        ret = parse_return_stmt(parser);
     } else if (check(parser, TERMINAL_READ) || check(parser, TERMINAL_READLN)) {
-        return parse_read_stmt(parser);
+        ret = parse_read_stmt(parser);
     } else if (check(parser, TERMINAL_WRITE) || check(parser, TERMINAL_WRITELN)) {
-        return parse_write_stmt(parser);
+        ret = parse_write_stmt(parser);
     } else if (check(parser, TERMINAL_BEGIN)) {
-        return parse_compound_stmt(parser);
+        ret = parse_compound_stmt(parser);
+    } else {
+        ret = new_empty_stmt();
     }
-    return new_empty_stmt();
+    return validate_stmt(parser, ret);
 }
+
+#define validate_decl_part(parser, ret) validate(parser, ret, NULL, delete_decl_part)
 
 decl_part_t *parse_variable_decl_part(parser_t *parser)
 {
@@ -632,14 +649,16 @@ decl_part_t *parse_variable_decl_part(parser_t *parser)
         expect(parser, TERMINAL_SEMI);
         cur = cur->next = new_variable_decl(names, type);
     }
-    return new_variable_decl_part(decls);
+    return validate_decl_part(parser, new_variable_decl_part(decls));
 }
+
+#define validate_params(parser, ret) validate(parser, ret, NULL, delete_params)
 
 params_t *parse_params(parser_t *parser)
 {
     ident_t *names;
     type_t *type;
-    params_t *ret, *param;
+    params_t *ret = NULL, *param;
     assert(parser != NULL);
 
     expect(parser, TERMINAL_LPAREN);
@@ -654,7 +673,7 @@ params_t *parse_params(parser_t *parser)
         param = param->next = new_params(names, type);
     }
     expect(parser, TERMINAL_RPAREN);
-    return ret;
+    return validate_params(parser, ret);
 }
 
 decl_part_t *parse_procedure_decl_part(parser_t *parser)
@@ -674,27 +693,34 @@ decl_part_t *parse_procedure_decl_part(parser_t *parser)
         ? parse_variable_decl_part(parser) : NULL;
     stmt = parse_compound_stmt(parser);
     expect(parser, TERMINAL_SEMI);
-    return new_procedure_decl_part(name, params, variables, stmt);
+    return validate_decl_part(parser,
+        new_procedure_decl_part(name, params, variables, stmt));
 }
 
 decl_part_t *parse_decl_part(parser_t *parser)
 {
-    decl_part_t *ret, **decl;
+    decl_part_t *ret = NULL, *cur;
     assert(parser != NULL);
 
-    ret = NULL, decl = &ret;
-    while (1) {
+    if (check(parser, TERMINAL_VAR)) {
+        ret = parse_variable_decl_part(parser);
+    } else if (check(parser, TERMINAL_PROCEDURE)) {
+        ret = parse_procedure_decl_part(parser);
+    }
+    cur = ret;
+    while (cur) {
         if (check(parser, TERMINAL_VAR)) {
-            *decl = parse_variable_decl_part(parser);
+            cur = cur->next = parse_variable_decl_part(parser);
         } else if (check(parser, TERMINAL_PROCEDURE)) {
-            *decl = parse_procedure_decl_part(parser);
+            cur = cur->next = parse_procedure_decl_part(parser);
         } else {
             break;
         }
-        decl = &(*decl)->next;
     }
-    return ret;
+    return validate_decl_part(parser, ret);
 }
+
+#define validate_program(parser, ret) validate(parser, ret, NULL, delete_program)
 
 program_t *parse_program(parser_t *parser)
 {
@@ -710,7 +736,7 @@ program_t *parse_program(parser_t *parser)
     stmt = parse_compound_stmt(parser);
     expect(parser, TERMINAL_DOT);
     expect(parser, TERMINAL_EOF);
-    return new_program(name, decl_part, stmt);
+    return validate_program(parser, new_program(name, decl_part, stmt));
 }
 
 ast_t *parse(const source_t *src)
