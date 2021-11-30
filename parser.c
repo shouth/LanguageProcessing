@@ -766,6 +766,7 @@ ast_t *parse(const source_t *src)
 
     parser.src = src;
     parser.alive = 1;
+    parser.error = 0;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
     bump(&parser);
     program = parse_program(&parser);
