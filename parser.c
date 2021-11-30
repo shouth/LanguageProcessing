@@ -41,7 +41,7 @@ void error_unexpected(parser_t *parser)
     parser->error = 1;
 
     assert(parser->expected_terminals != 0);
-    if (parser->expected_terminals == (uint64_t) 1 << TERMINAL_SEMI) {
+    if (popcount64(parser->expected_terminals) == 1) {
         pos = parser->last_terminal.pos + parser->last_terminal.len;
         len = 1;
     } else {
@@ -75,8 +75,8 @@ void error_unexpected(parser_t *parser)
     msg = new_msg(parser->src, pos, len,
         MSG_ERROR, "expected %s, got `%.*s`", buf,
         (int) parser->current_terminal.len, parser->current_terminal.ptr);
-    if (parser->expected_terminals == (uint64_t) 1 << TERMINAL_SEMI) {
-        msg_add_inline_entry(msg, pos, len, "insert `;` here");
+    if (popcount64(parser->expected_terminals) == 1) {
+        msg_add_inline_entry(msg, pos, len, "insert %s here", buf);
         msg_add_inline_entry(msg, parser->current_terminal.pos, parser->current_terminal.len, "unexpected token");
     }
     msg_emit(msg);
@@ -551,7 +551,7 @@ output_format_t *parse_output_format(parser_t *parser)
         init_pos = parser->last_terminal.pos;
         len = parse_number(parser);
     }
-    if (expr->kind == EXPR_CONSTANT) {
+    if (expr && expr->kind == EXPR_CONSTANT) {
         lit_t *lit = expr->u.constant_expr.lit;
         if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && len != SIZE_MAX) {
             if (parser->alive) {

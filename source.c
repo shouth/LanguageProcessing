@@ -101,6 +101,9 @@ source_t *source_new(const char *filename)
     if (src == NULL) {
         return NULL;
     }
+    src->lines_ptr = NULL;
+    src->src_ptr = NULL;
+
     src->filename = (char *) xmalloc(sizeof(char) * (strlen(filename) + 1));
     if (src->filename == NULL) {
         source_free(src);
@@ -156,19 +159,9 @@ source_t *source_new(const char *filename)
 
 void source_free(source_t *src)
 {
-    if (src == NULL) {
-        return;
-    }
-
-    if (src->filename != NULL) {
-        free(src->filename);
-    }
-    if (src->src_ptr != NULL) {
-        free(src->src_ptr);
-    }
-    if (src->lines_ptr != NULL) {
-        free(src->lines_ptr);
-    }
+    free(src->filename);
+    free(src->src_ptr);
+    free(src->lines_ptr);
     free(src);
 }
 
