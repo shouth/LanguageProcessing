@@ -12,10 +12,10 @@
 #include "source.h"
 #include "util.h"
 
-#if defined(_WIN32)
 
 static size_t filesize(const char *filename)
 {
+#if defined(_WIN32)
     struct __stat64 s;
 
     assert(filename != NULL);
@@ -28,12 +28,8 @@ static size_t filesize(const char *filename)
             return SIZE_MAX;
         }
     }
-}
 
 #elif defined(__unix__) || defined(__APPLE__)
-
-static size_t filesize(const char *filename)
-{
     struct stat s;
 
     assert(filename != NULL);
@@ -46,12 +42,8 @@ static size_t filesize(const char *filename)
             return SIZE_MAX;
         }
     }
-}
 
 #else
-
-static size_t filesize(const char *filename)
-{
     const size_t block_size = 4096;
     char buf[block_size];
     FILE *file;
@@ -71,9 +63,9 @@ static size_t filesize(const char *filename)
     }
     fclose(file);
     return ret;
-}
 
 #endif
+}
 
 static const char *nextline(const char *str)
 {

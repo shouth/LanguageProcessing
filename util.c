@@ -61,6 +61,9 @@ int is_graphical(int c)
 
 uint64_t msb64(uint64_t n)
 {
+#if defined(__GNUC__) || defined(__clang__)
+    return (uint64_t) 1 << (63 - __builtin_clzll(n));
+#else
     n |= n >> 1;
     n |= n >> 2;
     n |= n >> 4;
@@ -68,10 +71,14 @@ uint64_t msb64(uint64_t n)
     n |= n >> 16;
     n |= n >> 32;
     return n & ~(n >> 1);
+#endif
 }
 
 size_t popcount64(uint64_t n)
 {
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_popcountll(n);
+#else
     n -= (n >> 1) & 0x5555555555555555;
     n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
     n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
@@ -79,6 +86,7 @@ size_t popcount64(uint64_t n)
     n += n >> 16;
     n += n >> 32;
     return n & 0x000000000000007f;
+#endif
 }
 
 void *xmalloc(size_t size)
