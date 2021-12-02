@@ -530,7 +530,7 @@ void pp_procedure_decl_part(printer_t *printer, const procedure_decl_part_t *dec
     }
     pp_indent(printer);
     pp_stmt(printer, decl_part->stmt);
-    printf(";\n\n");
+    printf(";\n");
 }
 
 void pp_decl_part(printer_t *printer, const decl_part_t *decl_part)
@@ -549,7 +549,9 @@ void pp_decl_part(printer_t *printer, const decl_part_t *decl_part)
             pp_procedure_decl_part(printer, &cur->u.procedure_decl_part);
             break;
         }
-        cur = cur->next;
+        if (cur = cur->next) {
+            printf("\n");
+        }
     }
 }
 
@@ -564,6 +566,7 @@ void pp_program(printer_t *printer, const program_t *program)
         printer->indent++;
         pp_decl_part(printer, program->decl_part);
         printer->indent--;
+        printf("\n");
     }
     pp_stmt(printer, program->stmt);
     printf(".\n");
