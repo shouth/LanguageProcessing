@@ -327,6 +327,9 @@ void pp_assign_stmt(printer_t *printer, const assign_stmt_t *stmt)
 
 void pp_structured_stmt(printer_t *printer, const stmt_t *stmt)
 {
+    if (stmt->kind == STMT_EMPTY) {
+        return;
+    }
     if (stmt->kind != STMT_COMPOUND) {
         printer->indent++;
         pp_indent(printer);
@@ -354,10 +357,11 @@ void pp_if_stmt(printer_t *printer, const if_stmt_t *stmt)
         pp_colored_keyword(printer, TERMINAL_ELSE);
         if (stmt->else_stmt->kind == STMT_IF) {
             printf(" ");
+            pp_stmt(printer, stmt->else_stmt);
         } else {
             printf("\n");
+            pp_structured_stmt(printer, stmt->else_stmt);
         }
-        pp_structured_stmt(printer, stmt->else_stmt);
     }
 }
 
