@@ -554,7 +554,7 @@ output_format_t *parse_output_format(parser_t *parser)
                 msg = new_msg(parser->src, init_pos, len,
                     MSG_ERROR, "wrong output format");
                 msg_add_inline_entry(msg, init_pos, len,
-                    "the field specifier cannot be used here");
+                    "the field specifier cannot be used for string");
                 msg_emit(msg);
             }
         }
