@@ -495,7 +495,7 @@ void pp_variable_decl_part(printer_t *printer, const variable_decl_part_t *decl_
     while (cur) {
         pp_indent(printer);
         pp_ident(printer, cur->names);
-        printf(" : ");
+        printf(": ");
         pp_type(printer, cur->type);
         printf(";\n");
         cur = cur->next;
@@ -518,7 +518,7 @@ void pp_procedure_decl_part(printer_t *printer, const procedure_decl_part_t *dec
                 printf("; ");
             }
             pp_colored_parameter(printer, cur->names);
-            printf(" : ");
+            printf(": ");
             pp_type(printer, cur->type);
             cur = cur->next;
         }
