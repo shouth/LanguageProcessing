@@ -438,12 +438,15 @@ void pp_compound_stmt(printer_t *printer, const compound_stmt_t *stmt)
     printer->indent++;
     cur = stmt->stmts;
     while (cur) {
-        if (cur != stmt->stmts) {
-            printf(";\n");
-        }
         pp_indent(printer);
         pp_stmt(printer, cur);
-        cur = cur->next;
+        if (cur = cur->next) {
+            printf(";");
+            if (!cur->next && cur->kind == STMT_EMPTY) {
+                break;
+            }
+            printf("\n");
+        }
     }
     printer->indent--;
     printf("\n");
