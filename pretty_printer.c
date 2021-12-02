@@ -325,6 +325,19 @@ void pp_assign_stmt(printer_t *printer, const assign_stmt_t *stmt)
     pp_expr(printer, stmt->rhs);
 }
 
+void pp_structured_stmt(printer_t *printer, const stmt_t *stmt)
+{
+    if (stmt->kind != STMT_COMPOUND) {
+        printer->indent++;
+        pp_indent(printer);
+        pp_stmt(printer, stmt);
+        printer->indent--;
+    } else {
+        pp_indent(printer);
+        pp_stmt(printer, stmt);
+    }
+}
+
 void pp_if_stmt(printer_t *printer, const if_stmt_t *stmt)
 {
     assert(printer && stmt);
@@ -334,33 +347,17 @@ void pp_if_stmt(printer_t *printer, const if_stmt_t *stmt)
     printf(" ");
     pp_colored_keyword(printer, TERMINAL_THEN);
     printf("\n");
-    if (stmt->then_stmt->kind != STMT_COMPOUND) {
-        printer->indent++;
-        pp_indent(printer);
-        pp_stmt(printer, stmt->then_stmt);
-        printer->indent--;
-    } else {
-        pp_indent(printer);
-        pp_stmt(printer, stmt->then_stmt);
-    }
+    pp_structured_stmt(printer, stmt->then_stmt);
     if (stmt->else_stmt) {
         printf("\n");
         pp_indent(printer);
         pp_colored_keyword(printer, TERMINAL_ELSE);
         if (stmt->else_stmt->kind == STMT_IF) {
             printf(" ");
-            pp_stmt(printer, stmt->else_stmt);
-        } else if (stmt->else_stmt->kind != STMT_COMPOUND) {
-            printf("\n");
-            printer->indent++;
-            pp_indent(printer);
-            pp_stmt(printer, stmt->else_stmt);
-            printer->indent--;
         } else {
             printf("\n");
-            pp_indent(printer);
-            pp_stmt(printer, stmt->else_stmt);
         }
+        pp_structured_stmt(printer, stmt->else_stmt);
     }
 }
 
@@ -373,15 +370,7 @@ void pp_while_stmt(printer_t *printer, const while_stmt_t *stmt)
     printf(" ");
     pp_colored_keyword(printer, TERMINAL_DO);
     printf("\n");
-    if (stmt->do_stmt->kind != STMT_COMPOUND) {
-        printer->indent++;
-        pp_indent(printer);
-        pp_stmt(printer, stmt->do_stmt);
-        printer->indent--;
-    } else {
-        pp_indent(printer);
-        pp_stmt(printer, stmt->do_stmt);
-    }
+    pp_structured_stmt(printer, stmt->do_stmt);
 }
 
 void pp_call_stmt(printer_t *printer, const call_stmt_t *stmt)
