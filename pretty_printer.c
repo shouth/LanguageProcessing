@@ -10,6 +10,7 @@
 typedef uint64_t color_t;
 
 typedef struct {
+    color_t foreground;
     color_t program;
     color_t keyword;
     color_t operator;
@@ -20,7 +21,7 @@ typedef struct {
 } color_scheme_t;
 
 const color_scheme_t monokai = {
-    0x66d9ef, 0xf92672, 0xf92672, 0xa6e22e, 0xfd971f, 0xe6db74, 0xae81ff
+    0xc9d1d9, 0x66d9ef, 0xf92672, 0xf92672, 0xa6e22e, 0xfd971f, 0xe6db74, 0xae81ff
 };
 
 typedef struct {
@@ -38,7 +39,7 @@ void console_set_color(printer_t *printer, color_t color)
 void console_reset_color(printer_t *printer)
 {
     if (printer->color_scheme) {
-        printf("\033[0m");
+        console_set_color(printer, printer->color_scheme->foreground);
     }
 }
 
@@ -586,4 +587,5 @@ void pretty_print(const ast_t *ast)
     printer.color_scheme = &monokai;
     console_reset_color(&printer);
     pp_program(&printer, ast->program);
+    printf("\033[0m");
 }
