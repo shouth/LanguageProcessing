@@ -87,6 +87,47 @@ void delete_ident(ident_t *ident)
     free(ident);
 }
 
+static ref_t *new_decl(ref_kind_t kind)
+{
+    ref_t *ret = new(ref_t);
+    ret->kind = kind;
+    ret->next = NULL;
+    return ret;
+}
+
+ref_t *new_decl_ref(ident_t *decl)
+{
+    ref_t *ret = new_decl(REF_DECL);
+    ret->u.decl_ref.decl = decl;
+    return ret;
+}
+
+ref_t *new_array_subscript(ident_t *decl, expr_t *expr)
+{
+    ref_t *ret = new_decl(REF_ARRAY_SUBSCRIPT);
+    ret->u.array_subscript.decl = decl;
+    ret->u.array_subscript.expr = expr;
+    return ret;
+}
+
+void delete_ref(ref_t *ref)
+{
+    if (!ref) {
+        return;
+    }
+    switch (ref->kind) {
+    case REF_DECL:
+        delete_ident(ref->u.decl_ref.decl);
+        break;
+    case REF_ARRAY_SUBSCRIPT:
+        delete_ident(ref->u.array_subscript.decl);
+        delete_expr(ref->u.array_subscript.expr);
+        break;
+    }
+    delete_ref(ref->next);
+    free(ref);
+}
+
 static expr_t *new_expr(expr_kind_t kind)
 {
     expr_t *ret = new(expr_t);
@@ -127,18 +168,10 @@ expr_t *new_cast_expr(type_t *type, expr_t *expr)
     return ret;
 }
 
-expr_t *new_ref_expr(ident_t *ident)
+expr_t *new_ref_expr(ref_t *ref)
 {
     expr_t *ret = new_expr(EXPR_REF);
-    ret->u.ref_expr.name = ident;
-    return ret;
-}
-
-expr_t *new_array_subscript_expr(ident_t *name, expr_t *index_expr)
-{
-    expr_t *ret = new_expr(EXPR_ARRAY_SUBSCRIPT);
-    ret->u.array_subscript_expr.name = name;
-    ret->u.array_subscript_expr.index_expr = index_expr;
+    ret->u.ref_expr.ref = ref;
     return ret;
 }
 
@@ -175,11 +208,7 @@ void delete_expr(expr_t *expr)
         delete_expr(expr->u.cast_expr.expr);
         break;
     case EXPR_REF:
-        delete_ident(expr->u.ref_expr.name);
-        break;
-    case EXPR_ARRAY_SUBSCRIPT:
-        delete_ident(expr->u.array_subscript_expr.name);
-        delete_expr(expr->u.array_subscript_expr.index_expr);
+        delete_ref(expr->u.ref_expr.ref);
         break;
     case EXPR_CONSTANT:
         delete_lit(expr->u.constant_expr.lit);
@@ -197,7 +226,7 @@ static stmt_t *new_stmt(stmt_kind_t kind)
     return ret;
 }
 
-stmt_t *new_assign_stmt(expr_t *lhs, expr_t *rhs)
+stmt_t *new_assign_stmt(ref_t *lhs, expr_t *rhs)
 {
     stmt_t *ret = new_stmt(STMT_ASSIGN);
     ret->u.assign_stmt.lhs = lhs;
@@ -240,7 +269,7 @@ stmt_t *new_return_stmt()
     return new_stmt(STMT_RETURN);
 }
 
-stmt_t *new_read_stmt(int newline, expr_t *args)
+stmt_t *new_read_stmt(int newline, ref_t *args)
 {
     stmt_t *ret = new_stmt(STMT_READ);
     ret->u.read_stmt.newline = newline;
@@ -275,7 +304,7 @@ void delete_stmt(stmt_t *stmt)
     }
     switch (stmt->kind) {
     case STMT_ASSIGN:
-        delete_expr(stmt->u.assign_stmt.lhs);
+        delete_ref(stmt->u.assign_stmt.lhs);
         delete_expr(stmt->u.assign_stmt.rhs);
         break;
     case STMT_IF:
@@ -292,7 +321,7 @@ void delete_stmt(stmt_t *stmt)
         delete_expr(stmt->u.call_stmt.args);
         break;
     case STMT_READ:
-        delete_expr(stmt->u.read_stmt.args);
+        delete_ref(stmt->u.read_stmt.args);
         break;
     case STMT_WRITE:
         delete_output_format(stmt->u.write_stmt.formats);

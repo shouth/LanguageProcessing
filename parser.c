@@ -273,9 +273,40 @@ lit_t *parse_lit(parser_t *parser)
     return validate_lit(parser, ret);
 }
 
-#define validate_expr(parser, ret) validate(parser, ret, NULL, delete_expr)
+#define validate_ref(parser, ret) validate(parser, ret, NULL, delete_ref)
 
 expr_t *parse_expr(parser_t *parser);
+
+ref_t *parse_ref(parser_t *parser)
+{
+    ident_t *ident;
+    ref_t *ret;
+    assert(parser);
+
+    ident = parse_ident(parser);
+    if (eat(parser, TERMINAL_LSQPAREN)) {
+        expr_t *expr = parse_expr(parser);
+        expect(parser, TERMINAL_RSQPAREN);
+        ret = new_array_subscript(ident, expr);
+    } else {
+        ret = new_decl_ref(ident);
+    }
+    return validate_ref(parser, ret);
+}
+
+ref_t *parse_ref_seq(parser_t *parser)
+{
+    ref_t *ret = NULL, *ref;
+    assert(parser);
+
+    ret = ref = parse_ref(parser);
+    while (eat(parser, TERMINAL_COMMA)) {
+        ref = ref->next = parse_ref(parser);
+    }
+    return validate_ref(parser, ret);
+}
+
+#define validate_expr(parser, ret) validate(parser, ret, NULL, delete_expr)
 
 expr_t *parse_expr_seq(parser_t *parser)
 {
@@ -289,31 +320,14 @@ expr_t *parse_expr_seq(parser_t *parser)
     return validate_expr(parser, ret);
 }
 
-expr_t *parse_lvalue(parser_t *parser)
-{
-    expr_t *ret = NULL;
-    assert(parser);
-
-    if (check(parser, TERMINAL_NAME)) {
-        ident_t *ident = parse_ident(parser);
-        if (eat(parser, TERMINAL_LSQPAREN)) {
-            expr_t *expr = parse_expr(parser);
-            expect(parser, TERMINAL_RSQPAREN);
-            ret = new_array_subscript_expr(ident, expr);
-        } else {
-            ret = new_ref_expr(ident);
-        }
-    }
-    return validate_expr(parser, ret);
-}
-
 expr_t *parse_factor(parser_t *parser)
 {
     expr_t *ret = NULL;
     assert(parser);
 
     if (check(parser, TERMINAL_NAME)) {
-        ret = parse_lvalue(parser);
+        ref_t *ref = parse_ref(parser);
+        ret = new_ref_expr(ref);
     } else if (check(parser, TERMINAL_NUMBER) || check(parser, TERMINAL_TRUE)
         || check(parser, TERMINAL_FALSE) || check(parser, TERMINAL_STRING))
     {
@@ -422,28 +436,17 @@ expr_t *parse_expr(parser_t *parser)
     return validate_expr(parser, ret);
 }
 
-expr_t *parse_lvalue_seq(parser_t *parser)
-{
-    expr_t *ret = NULL, *expr;
-    assert(parser);
-
-    ret = expr = parse_lvalue(parser);
-    while (eat(parser, TERMINAL_COMMA)) {
-        expr = expr->next = parse_lvalue(parser);
-    }
-    return validate_expr(parser, ret);
-}
-
 #define validate_stmt(parser, ret) validate(parser, ret, NULL, delete_stmt)
 
 stmt_t *parse_stmt(parser_t *parser);
 
 stmt_t *parse_assign_stmt(parser_t *parser)
 {
-    expr_t *lhs, *rhs;
+    ref_t *lhs;
+    expr_t *rhs;
     assert(parser);
 
-    lhs = parse_lvalue(parser);
+    lhs = parse_ref(parser);
     expect(parser, TERMINAL_ASSIGN);
     rhs = parse_expr(parser);
     return validate_stmt(parser, new_assign_stmt(lhs, rhs));
@@ -512,7 +515,7 @@ stmt_t *parse_return_stmt(parser_t *parser)
 stmt_t *parse_read_stmt(parser_t *parser)
 {
     int newline;
-    expr_t *args = NULL;
+    ref_t *args = NULL;
     assert(parser);
 
     if (eat(parser, TERMINAL_READ)) {
@@ -523,7 +526,7 @@ stmt_t *parse_read_stmt(parser_t *parser)
         error_unexpected(parser);
     }
     if (eat(parser, TERMINAL_LPAREN)) {
-        args = parse_lvalue_seq(parser);
+        args = parse_ref_seq(parser);
         expect(parser, TERMINAL_RPAREN);
     }
     return validate_stmt(parser, new_read_stmt(newline, args));
