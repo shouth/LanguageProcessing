@@ -139,7 +139,6 @@ token_type_t lex_symbol(cursol_t *cur, token_data_t *ret)
     case '(':
         cursol_next(cur);
         return TOKEN_LPAREN;
-        break;
     case ')':
         cursol_next(cur);
         return TOKEN_RPAREN;
