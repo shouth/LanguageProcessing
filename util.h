@@ -17,6 +17,7 @@ size_t popcount64(uint64_t n);
 
 void *xmalloc(size_t size);
 
-#define new(type) (type *) xmalloc(sizeof(type))
+#define new(type) ((type *) xmalloc(sizeof(type)))
+#define new_arr(type, size) ((type *) xmalloc(sizeof(type) * size))
 
 #endif /* UTIL_H */
