@@ -23,7 +23,7 @@ typedef struct {
 
 #define delete_nothing(x) 0
 
-size_t msg_symbol(char *ptr, token_type_t type)
+size_t msg_token(char *ptr, token_type_t type)
 {
     switch (type) {
     case TOKEN_NAME:
@@ -64,7 +64,7 @@ void error_unexpected(parser_t *parser)
             if (ptr != buf) {
                 ptr += sprintf(ptr, bit != msb ? ", " : " or ");
             }
-            ptr += msg_symbol(ptr, i);
+            ptr += msg_token(ptr, i);
         }
     }
     msg = new_msg(parser->src, pos, len,
