@@ -7,7 +7,7 @@
 #include "util.h"
 #include "message.h"
 
-token_type_t lex_space(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_space(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_space(cursol_first(cur)));
@@ -19,7 +19,7 @@ token_type_t lex_space(cursol_t *cur, token_info_t *ret)
     return TOKEN_WHITESPACE;
 }
 
-token_type_t lex_braces_comment(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_braces_comment(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '{');
@@ -41,7 +41,7 @@ token_type_t lex_braces_comment(cursol_t *cur, token_info_t *ret)
     }
 }
 
-token_type_t lex_cstyle_comment(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_cstyle_comment(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '/' && cursol_second(cur) == '*');
@@ -65,7 +65,7 @@ token_type_t lex_cstyle_comment(cursol_t *cur, token_info_t *ret)
     }
 }
 
-token_type_t lex_string(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_string(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '\'');
@@ -98,7 +98,7 @@ token_type_t lex_string(cursol_t *cur, token_info_t *ret)
     }
 }
 
-token_type_t lex_name_or_keyword(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_name_or_keyword(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_alphabet(cursol_first(cur)));
@@ -110,7 +110,7 @@ token_type_t lex_name_or_keyword(cursol_t *cur, token_info_t *ret)
     return TOKEN_NAME;
 }
 
-token_type_t lex_number(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_number(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_number(cursol_first(cur)));
@@ -122,7 +122,7 @@ token_type_t lex_number(cursol_t *cur, token_info_t *ret)
     return TOKEN_NUMBER;
 }
 
-token_type_t lex_symbol(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_symbol(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
 
@@ -200,7 +200,7 @@ token_type_t lex_symbol(cursol_t *cur, token_info_t *ret)
     }
 }
 
-token_type_t lex_token(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_token(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
 
@@ -235,7 +235,7 @@ token_type_t lex_token(cursol_t *cur, token_info_t *ret)
     return lex_symbol(cur, ret);
 }
 
-token_type_t keywords[] = {
+token_kind_t keywords[] = {
     TOKEN_PROGRAM,
     TOKEN_VAR,
     TOKEN_ARRAY,
@@ -343,7 +343,7 @@ void lex(cursol_t *cursol, token_t *ret)
     }
 }
 
-const char *token_to_str(token_type_t type)
+const char *token_to_str(token_kind_t type)
 {
     switch (type) {
     case TOKEN_NAME:

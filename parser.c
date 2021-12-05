@@ -23,7 +23,7 @@ typedef struct {
 
 #define delete_nothing(x) 0
 
-size_t msg_token(char *ptr, token_type_t type)
+size_t msg_token(char *ptr, token_kind_t type)
 {
     switch (type) {
     case TOKEN_NAME:
@@ -41,7 +41,7 @@ void error_unexpected(parser_t *parser)
 {
     msg_t *msg;
     size_t pos, len;
-    token_type_t i;
+    token_kind_t i;
     char buf[256], *ptr;
     uint64_t msb, bit;
 
@@ -116,7 +116,7 @@ void bump(parser_t *parser)
     }
 }
 
-int check(parser_t *parser, token_type_t type)
+int check(parser_t *parser, token_kind_t type)
 {
     assert(parser);
 
@@ -127,7 +127,7 @@ int check(parser_t *parser, token_type_t type)
     return parser->next_token.type == type;
 }
 
-int eat(parser_t *parser, token_type_t type)
+int eat(parser_t *parser, token_kind_t type)
 {
     int ret;
     assert(parser);
@@ -138,7 +138,7 @@ int eat(parser_t *parser, token_type_t type)
     return ret;
 }
 
-int expect(parser_t *parser, token_type_t type)
+int expect(parser_t *parser, token_kind_t type)
 {
     int ret;
     assert(parser);

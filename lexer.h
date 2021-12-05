@@ -60,7 +60,7 @@ typedef enum {
     TOKEN_EOF,
 
     TOKEN_UNKNOWN
-} token_type_t;
+} token_kind_t;
 
 typedef union {
     struct {
@@ -95,12 +95,12 @@ typedef struct {
     size_t len;
     const source_t *src;
     size_t pos;
-    token_type_t type;
+    token_kind_t type;
     token_data_t data;
 } token_t;
 
 void lex(cursol_t *cursol, token_t *ret);
 
-const char *token_to_str(token_type_t type);
+const char *token_to_str(token_kind_t type);
 
 #endif /* LEXER_H */

@@ -50,14 +50,14 @@ void pp_colored_program(printer_t *printer, const ident_t *ident)
     console_reset_color(printer);
 }
 
-void pp_colored_keyword(printer_t *printer, token_type_t type)
+void pp_colored_keyword(printer_t *printer, token_kind_t type)
 {
     console_set_color(printer, printer->color_scheme->keyword);
     printf("%s", token_to_str(type));
     console_reset_color(printer);
 }
 
-void pp_colored_operator(printer_t *printer, token_type_t type)
+void pp_colored_operator(printer_t *printer, token_kind_t type)
 {
     console_set_color(printer, printer->color_scheme->operator);
     printf("%s", token_to_str(type));
@@ -71,7 +71,7 @@ void pp_colored_procedure(printer_t *printer, const ident_t *ident)
     console_reset_color(printer);
 }
 
-void pp_colored_reserved_function(printer_t *printer, token_type_t type)
+void pp_colored_reserved_function(printer_t *printer, token_kind_t type)
 {
     console_set_color(printer, printer->color_scheme->procedure);
     printf("%s", token_to_str(type));
@@ -104,7 +104,7 @@ void pp_colored_number_lit(printer_t *printer, const number_lit_t *lit)
     pp_colored_number(printer, lit->value);
 }
 
-void pp_colored_reserved_lit(printer_t *printer, token_type_t type)
+void pp_colored_reserved_lit(printer_t *printer, token_kind_t type)
 {
     console_set_color(printer, printer->color_scheme->literal);
     printf("%s", token_to_str(type));
