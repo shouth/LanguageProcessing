@@ -1,10 +1,13 @@
 #include <assert.h>
+#include <errno.h>
+#include <stdlib.h>
 
 #include "lexer.h"
 #include "cursol.h"
 #include "util.h"
+#include "message.h"
 
-token_type_t lex_space(cursol_t *cur, token_data_t *ret)
+token_type_t lex_space(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_space(cursol_first(cur)));
@@ -16,7 +19,7 @@ token_type_t lex_space(cursol_t *cur, token_data_t *ret)
     return TOKEN_WHITESPACE;
 }
 
-token_type_t lex_braces_comment(cursol_t *cur, token_data_t *ret)
+token_type_t lex_braces_comment(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '{');
@@ -38,7 +41,7 @@ token_type_t lex_braces_comment(cursol_t *cur, token_data_t *ret)
     }
 }
 
-token_type_t lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
+token_type_t lex_cstyle_comment(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '/' && cursol_second(cur) == '*');
@@ -62,7 +65,7 @@ token_type_t lex_cstyle_comment(cursol_t *cur, token_data_t *ret)
     }
 }
 
-token_type_t lex_string(cursol_t *cur, token_data_t *ret)
+token_type_t lex_string(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(cursol_first(cur) == '\'');
@@ -95,7 +98,7 @@ token_type_t lex_string(cursol_t *cur, token_data_t *ret)
     }
 }
 
-token_type_t lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
+token_type_t lex_name_or_keyword(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_alphabet(cursol_first(cur)));
@@ -104,10 +107,10 @@ token_type_t lex_name_or_keyword(cursol_t *cur, token_data_t *ret)
     while (is_alphabet(cursol_first(cur)) || is_number(cursol_first(cur))) {
         cursol_next(cur);
     }
-    return TOKEN_NAME_OR_KEYWORD;
+    return TOKEN_NAME;
 }
 
-token_type_t lex_number(cursol_t *cur, token_data_t *ret)
+token_type_t lex_number(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
     assert(is_number(cursol_first(cur)));
@@ -119,7 +122,7 @@ token_type_t lex_number(cursol_t *cur, token_data_t *ret)
     return TOKEN_NUMBER;
 }
 
-token_type_t lex_symbol(cursol_t *cur, token_data_t *ret)
+token_type_t lex_symbol(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
 
@@ -197,7 +200,7 @@ token_type_t lex_symbol(cursol_t *cur, token_data_t *ret)
     }
 }
 
-token_type_t lex_token(cursol_t *cur, token_data_t *ret)
+token_type_t lex_token(cursol_t *cur, token_info_t *ret)
 {
     assert(cur != NULL && ret != NULL);
 
@@ -232,12 +235,220 @@ token_type_t lex_token(cursol_t *cur, token_data_t *ret)
     return lex_symbol(cur, ret);
 }
 
+token_type_t keywords[] = {
+    TOKEN_PROGRAM,
+    TOKEN_VAR,
+    TOKEN_ARRAY,
+    TOKEN_OF,
+    TOKEN_BEGIN,
+    TOKEN_END,
+    TOKEN_IF,
+    TOKEN_THEN,
+    TOKEN_ELSE,
+    TOKEN_PROCEDURE,
+    TOKEN_RETURN,
+    TOKEN_CALL,
+    TOKEN_WHILE,
+    TOKEN_DO,
+    TOKEN_NOT,
+    TOKEN_OR,
+    TOKEN_DIV,
+    TOKEN_AND,
+    TOKEN_CHAR,
+    TOKEN_INTEGER,
+    TOKEN_BOOLEAN,
+    TOKEN_READ,
+    TOKEN_WRITE,
+    TOKEN_READLN,
+    TOKEN_WRITELN,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
+    TOKEN_BREAK,
+};
+
+const size_t keywords_size = sizeof(keywords) / sizeof(*keywords);
+
 void lex(cursol_t *cursol, token_t *ret)
 {
+    token_info_t info;
+    msg_t *msg;
+    size_t i, j;
     assert(cursol != NULL && ret != NULL);
+
     ret->ptr = cursol->ptr;
     ret->pos = cursol_position(cursol);
     ret->src = cursol->src;
-    ret->type = lex_token(cursol, &ret->data);
+    ret->type = lex_token(cursol, &info);
     ret->len = cursol_position(cursol) - ret->pos;
+
+    switch (ret->type) {
+    case TOKEN_NAME:
+        for (i = 0; i < keywords_size; i++) {
+            const char *ptr = token_to_str(keywords[i]);
+            for (j = 0; j < ret->len; j++) {
+                if (ret->ptr[j] != ptr[j]) {
+                    break;
+                }
+            }
+            if (j == ret->len && ptr[j] == '\0') {
+                ret->type = keywords[i];
+                break;
+            }
+        }
+        return;
+
+    case TOKEN_NUMBER:
+        ret->data.number.value = strtoul(ret->ptr, NULL, 10);
+        if (errno == ERANGE || ret->data.number.value > 32767) {
+            msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "number is too large");
+            msg_add_inline_entry(msg, ret->pos, ret->len, "number needs to be less than 32768");
+            msg_emit(msg);
+        }
+        return;
+
+    case TOKEN_STRING:
+        if (!info.string.terminated) {
+            msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "string is unterminated");
+            msg_emit(msg);
+        }
+        ret->data.string.str_len = info.string.str_len;
+        ret->data.string.ptr = ret->ptr + 1;
+        ret->data.string.len = info.string.len;
+        return;
+
+    case TOKEN_BRACES_COMMENT:
+        if (!info.braces_comment.terminated) {
+            msg = new_msg(ret->src, ret->pos, 1, MSG_ERROR, "comment is unterminated");
+            msg_emit(msg);
+        }
+        return;
+
+    case TOKEN_CSTYLE_COMMENT:
+        if (!info.cstyle_comment.terminated) {
+            msg = new_msg(ret->src, ret->pos, 2, MSG_ERROR, "comment is unterminated");
+            msg_emit(msg);
+        }
+        return;
+
+    case TOKEN_UNKNOWN:
+        if (is_graphical(ret->ptr[0])) {
+            msg = new_msg(ret->src, ret->pos, ret->len,
+                MSG_ERROR, "stray `%c` in program", ret->ptr[0]);
+        } else {
+            msg = new_msg(ret->src, ret->pos, ret->len,
+                MSG_ERROR, "stray \\%03o in program", (unsigned char) ret->ptr[0]);
+        }
+        msg_emit(msg);
+        return;
+    }
+}
+
+const char *token_to_str(token_type_t type)
+{
+    switch (type) {
+    case TOKEN_NAME:
+        return "NAME";
+    case TOKEN_PROGRAM:
+        return "program";
+    case TOKEN_VAR:
+        return "var";
+    case TOKEN_ARRAY:
+        return "array";
+    case TOKEN_OF:
+        return "of";
+    case TOKEN_BEGIN:
+        return "begin";
+    case TOKEN_END:
+        return "end";
+    case TOKEN_IF:
+        return "if";
+    case TOKEN_THEN:
+        return "then";
+    case TOKEN_ELSE:
+        return "else";
+    case TOKEN_PROCEDURE:
+        return "procedure";
+    case TOKEN_RETURN:
+        return "return";
+    case TOKEN_CALL:
+        return "call";
+    case TOKEN_WHILE:
+        return "while";
+    case TOKEN_DO:
+        return "do";
+    case TOKEN_NOT:
+        return "not";
+    case TOKEN_OR:
+        return "or";
+    case TOKEN_DIV:
+        return "div";
+    case TOKEN_AND:
+        return "and";
+    case TOKEN_CHAR:
+        return "char";
+    case TOKEN_INTEGER:
+        return "integer";
+    case TOKEN_BOOLEAN:
+        return "boolean";
+    case TOKEN_READLN:
+        return "readln";
+    case TOKEN_WRITELN:
+        return "writeln";
+    case TOKEN_TRUE:
+        return "true";
+    case TOKEN_FALSE:
+        return "false";
+    case TOKEN_NUMBER:
+        return "number";
+    case TOKEN_STRING:
+        return "STRING";
+    case TOKEN_PLUS:
+        return "+";
+    case TOKEN_MINUS:
+        return "-";
+    case TOKEN_STAR:
+        return "*";
+    case TOKEN_EQUAL:
+        return "=";
+    case TOKEN_NOTEQ:
+        return "<>";
+    case TOKEN_LE:
+        return "<";
+    case TOKEN_LEEQ:
+        return "<=";
+    case TOKEN_GR:
+        return ">";
+    case TOKEN_GREQ:
+        return ">=";
+    case TOKEN_LPAREN:
+        return "(";
+    case TOKEN_RPAREN:
+        return ")";
+    case TOKEN_LSQPAREN:
+        return "[";
+    case TOKEN_RSQPAREN:
+        return "]";
+    case TOKEN_ASSIGN:
+        return ":=";
+    case TOKEN_DOT:
+        return ".";
+    case TOKEN_COMMA:
+        return ",";
+    case TOKEN_COLON:
+        return ":";
+    case TOKEN_SEMI:
+        return ";";
+    case TOKEN_READ:
+        return "read";
+    case TOKEN_WRITE:
+        return "write";
+    case TOKEN_BREAK:
+        return "break";
+    case TOKEN_UNKNOWN:
+        return "";
+    case TOKEN_EOF:
+        return "EOF";
+    }
+
+    return "";
 }

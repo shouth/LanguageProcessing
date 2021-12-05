@@ -5,7 +5,32 @@
 #include "source.h"
 
 typedef enum {
-    TOKEN_NAME_OR_KEYWORD,
+    TOKEN_NAME,
+    TOKEN_PROGRAM,
+    TOKEN_VAR,
+    TOKEN_ARRAY,
+    TOKEN_OF,
+    TOKEN_BEGIN,
+    TOKEN_END,
+    TOKEN_IF,
+    TOKEN_THEN,
+    TOKEN_ELSE,
+    TOKEN_PROCEDURE,
+    TOKEN_RETURN,
+    TOKEN_CALL,
+    TOKEN_WHILE,
+    TOKEN_DO,
+    TOKEN_NOT,
+    TOKEN_OR,
+    TOKEN_DIV,
+    TOKEN_AND,
+    TOKEN_CHAR,
+    TOKEN_INTEGER,
+    TOKEN_BOOLEAN,
+    TOKEN_READLN,
+    TOKEN_WRITELN,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
     TOKEN_NUMBER,
     TOKEN_STRING,
     TOKEN_PLUS,
@@ -26,11 +51,15 @@ typedef enum {
     TOKEN_COMMA,
     TOKEN_COLON,
     TOKEN_SEMI,
+    TOKEN_READ,
+    TOKEN_WRITE,
+    TOKEN_BREAK,
+    TOKEN_WHITESPACE,
     TOKEN_BRACES_COMMENT,
     TOKEN_CSTYLE_COMMENT,
-    TOKEN_WHITESPACE,
-    TOKEN_UNKNOWN,
-    TOKEN_EOF
+    TOKEN_EOF,
+
+    TOKEN_UNKNOWN
 } token_type_t;
 
 typedef union {
@@ -47,6 +76,18 @@ typedef union {
     struct {
         int terminated;
     } cstyle_comment;
+} token_info_t;
+
+typedef union {
+    struct {
+        unsigned long value;
+    } number;
+
+    struct {
+        const char *ptr;
+        size_t len;
+        size_t str_len;
+    } string;
 } token_data_t;
 
 typedef struct {
@@ -59,5 +100,7 @@ typedef struct {
 } token_t;
 
 void lex(cursol_t *cursol, token_t *ret);
+
+const char *token_to_str(token_type_t type);
 
 #endif /* LEXER_H */
