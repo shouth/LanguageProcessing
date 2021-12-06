@@ -52,38 +52,6 @@ ident_t *new_ident(const char *ptr, size_t len);
 
 void delete_ident(ident_t *ident);
 
-typedef struct impl_expr expr_t;
-
-typedef enum {
-    REF_DECL,
-    REF_ARRAY_SUBSCRIPT
-} ref_kind_t;
-
-typedef struct {
-    ident_t *decl;
-} decl_ref_t;
-
-typedef struct {
-    ident_t *decl;
-    expr_t *expr;
-} array_subscript_t;
-
-typedef struct impl_ref ref_t;
-struct impl_ref {
-    ref_kind_t kind;
-    ref_t *next;
-
-    union {
-        decl_ref_t decl_ref;
-        array_subscript_t array_subscript;
-    } u;
-};
-
-ref_t *new_decl_ref(ident_t *decl);
-ref_t *new_array_subscript(ident_t *decl, expr_t *expr);
-
-void delete_ref(ref_t *ref);
-
 typedef enum {
     TYPE_CHAR,
     TYPE_INTEGER,
@@ -105,6 +73,8 @@ type_t *new_std_type(type_kind_t kind);
 type_t *new_array_type(type_t *base, size_t len);
 
 void delete_type(type_t *type);
+
+typedef struct impl_expr expr_t;
 
 typedef enum {
     BINARY_OP_STAR,
@@ -146,25 +116,30 @@ typedef struct {
 } cast_expr_t;
 
 typedef struct {
-    ref_t *ref;
-} ref_expr_t;
-
-typedef struct {
     lit_t *lit;
 } constant_expr_t;
 
+typedef struct {
+    ident_t *decl;
+} decl_ref_expr_t;
+
+typedef struct {
+    ident_t *decl;
+    expr_t *expr;
+} array_subscript_expr_t;
+
 typedef enum {
+    EXPR_DECL_REF,
+    EXPR_ARRAY_SUBSCRIPT,
     EXPR_BINARY_OP,
     EXPR_UNARY_OP,
     EXPR_PAREN,
     EXPR_CAST,
-    EXPR_REF,
     EXPR_CONSTANT,
     EXPR_EMPTY
 } expr_kind_t;
 
 void delete_expr(expr_t *expr);
-
 struct impl_expr {
     expr_kind_t kind;
     expr_t *next;
@@ -174,7 +149,8 @@ struct impl_expr {
         unary_expr_t unary_expr;
         paren_expr_t paren_expr;
         cast_expr_t cast_expr;
-        ref_expr_t ref_expr;
+        decl_ref_expr_t decl_ref_expr;
+        array_subscript_expr_t array_subscript_expr;
         constant_expr_t constant_expr;
     } u;
 };
@@ -183,7 +159,8 @@ expr_t *new_binary_expr(binary_op_kind_t kind, expr_t *lhs, expr_t *rhs);
 expr_t *new_unary_expr(unary_op_kind_t kind, expr_t *expr);
 expr_t *new_paren_expr(expr_t *expr);
 expr_t *new_cast_expr(type_t *type, expr_t *expr);
-expr_t *new_ref_expr(ref_t *ref);
+expr_t *new_decl_ref(ident_t *decl);
+expr_t *new_array_subscript(ident_t *decl, expr_t *expr);
 expr_t *new_constant_expr(lit_t *lit);
 expr_t *new_empty_expr();
 
@@ -192,7 +169,7 @@ void delete_expr(expr_t *expr);
 typedef struct impl_stmt stmt_t;
 
 typedef struct {
-    ref_t *lhs;
+    expr_t *lhs;
     expr_t *rhs;
 } assign_stmt_t;
 
@@ -214,7 +191,7 @@ typedef struct {
 
 typedef struct {
     int newline;
-    ref_t *args;
+    expr_t *args;
 } read_stmt_t;
 
 typedef struct impl_output_format output_format_t;
@@ -266,13 +243,13 @@ struct impl_stmt {
     } u;
 };
 
-stmt_t *new_assign_stmt(ref_t *lhs, expr_t *rhs);
+stmt_t *new_assign_stmt(expr_t *lhs, expr_t *rhs);
 stmt_t *new_if_stmt(expr_t *cond, stmt_t *then_stmt, stmt_t *else_stmt);
 stmt_t *new_while_stmt(expr_t *cond, stmt_t *do_stmt);
 stmt_t *new_break_stmt();
 stmt_t *new_call_stmt(ident_t *name, expr_t *args);
 stmt_t *new_return_stmt();
-stmt_t *new_read_stmt(int newline, ref_t *args);
+stmt_t *new_read_stmt(int newline, expr_t *args);
 stmt_t *new_write_stmt(int newline, output_format_t *formats);
 stmt_t *new_compound_stmt(stmt_t *stmts);
 stmt_t *new_empty_stmt();

@@ -176,29 +176,6 @@ void pp_lit(printer_t *printer, const lit_t *lit)
 
 void pp_expr(printer_t *printer, const expr_t *expr);
 
-void pp_ref(printer_t *printer, const ref_t *ref)
-{
-    const ref_t *cur;
-    assert(printer);
-    cur = ref;
-    while (cur) {
-        switch (cur->kind) {
-        case REF_DECL:
-            pp_ident(printer, cur->u.decl_ref.decl);
-            break;
-        case REF_ARRAY_SUBSCRIPT:
-            pp_ident(printer, cur->u.array_subscript.decl);
-            printf("[");
-            pp_expr(printer, cur->u.array_subscript.expr);
-            printf("]");
-            break;
-        }
-        if (cur = cur->next) {
-            printf(", ");
-        }
-    }
-}
-
 void pp_binary_op_expr(printer_t *printer, const binary_expr_t *expr)
 {
     assert(printer && expr);
@@ -278,10 +255,19 @@ void pp_cast_expr(printer_t *printer, const cast_expr_t *expr)
     printf(")");
 }
 
-void pp_ref_expr(printer_t *printer, const ref_expr_t *expr)
+void pp_decl_ref_expr(printer_t *printer, const decl_ref_expr_t *expr)
 {
     assert(printer && expr);
-    pp_ref(printer, expr->ref);
+    pp_ident(printer, expr->decl);
+}
+
+void pp_array_subscript_expr(printer_t *printer, const array_subscript_expr_t *expr)
+{
+    assert(printer && expr);
+    pp_ident(printer, expr->decl);
+    printf("[");
+    pp_expr(printer, expr->expr);
+    printf("]");
 }
 
 void pp_constant_expr(printer_t *printer, const constant_expr_t *expr)
@@ -309,8 +295,11 @@ void pp_expr(printer_t *printer, const expr_t *expr)
         case EXPR_CAST:
             pp_cast_expr(printer, &cur->u.cast_expr);
             break;
-        case EXPR_REF:
-            pp_ref_expr(printer, &cur->u.ref_expr);
+        case EXPR_DECL_REF:
+            pp_decl_ref_expr(printer, &cur->u.decl_ref_expr);
+            break;
+        case EXPR_ARRAY_SUBSCRIPT:
+            pp_array_subscript_expr(printer, &cur->u.array_subscript_expr);
             break;
         case EXPR_CONSTANT:
             pp_constant_expr(printer, &cur->u.constant_expr);
@@ -328,7 +317,7 @@ void pp_stmt(printer_t *printer, const stmt_t *stmt);
 
 void pp_assign_stmt(printer_t *printer, const assign_stmt_t *stmt)
 {
-    pp_ref(printer, stmt->lhs);
+    pp_expr(printer, stmt->lhs);
     printf(" ");
     pp_colored_operator(printer, TOKEN_ASSIGN);
     printf(" ");
@@ -403,7 +392,7 @@ void pp_read_stmt(printer_t *printer, const read_stmt_t *stmt)
     pp_colored_reserved_function(printer, stmt->newline ? TOKEN_READLN : TOKEN_READ);
     if (stmt->args) {
         printf("(");
-        pp_ref(printer, stmt->args);
+        pp_expr(printer, stmt->args);
         printf(")");
     }
 }

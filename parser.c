@@ -277,14 +277,14 @@ lit_t *parse_lit(parser_t *parser)
     return validate_lit(parser, ret);
 }
 
-#define validate_ref(parser, ret) validate(parser, ret, NULL, delete_ref)
+#define validate_expr(parser, ret) validate(parser, ret, NULL, delete_expr)
 
 expr_t *parse_expr(parser_t *parser);
 
-ref_t *parse_ref(parser_t *parser)
+expr_t *parse_ref(parser_t *parser)
 {
     ident_t *ident;
-    ref_t *ret;
+    expr_t *ret;
     assert(parser);
 
     ident = parse_ident(parser);
@@ -295,23 +295,20 @@ ref_t *parse_ref(parser_t *parser)
     } else {
         ret = new_decl_ref(ident);
     }
-    return validate_ref(parser, ret);
+    return validate_expr(parser, ret);
 }
 
-ref_t *parse_ref_seq(parser_t *parser)
+expr_t *parse_ref_seq(parser_t *parser)
 {
-    ref_t *ret = NULL, *ref;
+    expr_t *ret = NULL, *ref;
     assert(parser);
 
     ret = ref = parse_ref(parser);
     while (eat(parser, TOKEN_COMMA)) {
         ref = ref->next = parse_ref(parser);
     }
-    return validate_ref(parser, ret);
+    return validate_expr(parser, ret);
 }
-
-#define validate_expr(parser, ret) validate(parser, ret, NULL, delete_expr)
-
 expr_t *parse_expr_seq(parser_t *parser)
 {
     expr_t *ret = NULL, *expr;
@@ -330,8 +327,7 @@ expr_t *parse_factor(parser_t *parser)
     assert(parser);
 
     if (check(parser, TOKEN_NAME)) {
-        ref_t *ref = parse_ref(parser);
-        ret = new_ref_expr(ref);
+        ret = parse_ref(parser);
     } else if (check(parser, TOKEN_NUMBER) || check(parser, TOKEN_TRUE)
         || check(parser, TOKEN_FALSE) || check(parser, TOKEN_STRING))
     {
@@ -446,8 +442,7 @@ stmt_t *parse_stmt(parser_t *parser);
 
 stmt_t *parse_assign_stmt(parser_t *parser)
 {
-    ref_t *lhs;
-    expr_t *rhs;
+    expr_t *lhs, *rhs;
     assert(parser);
 
     lhs = parse_ref(parser);
@@ -519,7 +514,7 @@ stmt_t *parse_return_stmt(parser_t *parser)
 stmt_t *parse_read_stmt(parser_t *parser)
 {
     int newline;
-    ref_t *args = NULL;
+    expr_t *args = NULL;
     assert(parser);
 
     if (eat(parser, TOKEN_READ)) {
