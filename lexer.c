@@ -56,7 +56,7 @@ token_kind_t lex_cstyle_comment(cursol_t *cur, token_info_t *ret)
             return TOKEN_CSTYLE_COMMENT;
         }
 
-        if (cursol_eof(cur) || !is_graphical(cursol_second(cur))) {
+        if (cursol_eof(cur) || !is_graphical(cursol_first(cur))) {
             ret->cstyle_comment.terminated = 0;
             return TOKEN_CSTYLE_COMMENT;
         }
