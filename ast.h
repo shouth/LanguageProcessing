@@ -141,7 +141,6 @@ typedef enum {
     EXPR_EMPTY
 } expr_kind_t;
 
-void delete_expr(expr_t *expr);
 struct impl_expr {
     expr_kind_t kind;
     expr_t *next;
