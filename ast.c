@@ -11,9 +11,11 @@ static lit_t *new_lit(lit_kind_t kind)
     return ret;
 }
 
-lit_t *new_number_lit(unsigned long value)
+lit_t *new_number_lit(const char *ptr, size_t len, unsigned long value)
 {
     lit_t *ret = new_lit(LIT_NUMBER);
+    ret->u.number_lit.ptr = ptr;
+    ret->u.number_lit.len = len;
     ret->u.number_lit.value = value;
     return ret;
 }
@@ -49,12 +51,12 @@ type_t *new_std_type(type_kind_t kind)
     return ret;
 }
 
-type_t *new_array_type(type_t *base, size_t len)
+type_t *new_array_type(type_t *base, lit_t *size)
 {
     type_t *ret = new(type_t);
     ret->kind = TYPE_ARRAY;
     ret->array.base = base;
-    ret->array.len = len;
+    ret->array.size = size;
     return ret;
 }
 
@@ -65,6 +67,7 @@ void delete_type(type_t *type)
     }
     if (type->kind == TYPE_ARRAY) {
         delete_type(type->array.base);
+        delete_lit(type->array.size);
     }
     free(type);
 }
@@ -305,7 +308,7 @@ void delete_stmt(stmt_t *stmt)
     free(stmt);
 }
 
-output_format_t *new_output_format(expr_t *expr, size_t len)
+output_format_t *new_output_format(expr_t *expr, lit_t *len)
 {
     output_format_t *ret = new(output_format_t);
     ret->expr = expr;
@@ -320,6 +323,7 @@ void delete_output_format(output_format_t *format)
         return;
     }
     delete_expr(format->expr);
+    delete_lit(format->len);
     delete_output_format(format->next);
     free(format);
 }

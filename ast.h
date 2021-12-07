@@ -12,6 +12,8 @@ typedef enum {
 } lit_kind_t;
 
 typedef struct {
+    const char *ptr;
+    size_t len;
     unsigned long value;
 } number_lit_t;
 
@@ -35,7 +37,7 @@ typedef struct {
     } u;
 } lit_t;
 
-lit_t *new_number_lit(unsigned long value);
+lit_t *new_number_lit(const char *ptr, size_t len, unsigned long value);
 lit_t *new_boolean_lit(int value);
 lit_t *new_string_lit(const char *ptr, size_t len, size_t str_len);
 
@@ -65,12 +67,12 @@ struct impl_type {
 
     struct {
         type_t *base;
-        size_t len;
+        lit_t *size;
     } array;
 };
 
 type_t *new_std_type(type_kind_t kind);
-type_t *new_array_type(type_t *base, size_t len);
+type_t *new_array_type(type_t *base, lit_t *size);
 
 void delete_type(type_t *type);
 
@@ -198,10 +200,10 @@ typedef struct impl_output_format output_format_t;
 struct impl_output_format {
     output_format_t *next;
     expr_t *expr;
-    size_t len;
+    lit_t *len;
 };
 
-output_format_t *new_output_format(expr_t *expr, size_t len);
+output_format_t *new_output_format(expr_t *expr, lit_t *len);
 
 void delete_output_format(output_format_t *format);
 

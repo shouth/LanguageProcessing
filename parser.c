@@ -150,16 +150,6 @@ int expect(parser_t *parser, token_kind_t type)
     return ret;
 }
 
-#define validate_number(parser, ret) validate(parser, ret, SIZE_MAX, delete_nothing)
-
-size_t parse_number(parser_t *parser)
-{
-    assert(parser);
-
-    expect(parser, TOKEN_NUMBER);
-    return validate_number(parser, parser->current_token.data.number.value);
-}
-
 #define validate_ident(parser, ret) validate(parser, ret, NULL, delete_ident)
 
 ident_t *parse_ident(parser_t *parser)
@@ -183,51 +173,6 @@ ident_t *parse_ident_seq(parser_t *parser)
     return validate_ident(parser, ret);
 }
 
-#define validate_type(parser, ret) validate(parser, ret, NULL, delete_type)
-
-type_t *parse_std_type(parser_t *parser)
-{
-    type_t *ret = NULL;
-    assert(parser);
-
-    if (eat(parser, TOKEN_INTEGER)) {
-        ret = new_std_type(TYPE_INTEGER);
-    } else if (eat(parser, TOKEN_BOOLEAN)) {
-        ret = new_std_type(TYPE_BOOLEAN);
-    } else if (eat(parser, TOKEN_CHAR)) {
-        ret = new_std_type(TYPE_CHAR);
-    }
-    return validate_type(parser, ret);
-}
-
-type_t *parse_array_type(parser_t *parser)
-{
-    size_t len;
-    type_t *base;
-    assert(parser);
-
-    expect(parser, TOKEN_ARRAY);
-    expect(parser, TOKEN_LSQPAREN);
-    len = parse_number(parser);
-    expect(parser, TOKEN_RSQPAREN);
-    expect(parser, TOKEN_OF);
-    base = parse_std_type(parser);
-    return validate_type(parser, new_array_type(base, len));
-}
-
-type_t *parse_type(parser_t *parser)
-{
-    type_t *ret = NULL;
-    assert(parser);
-
-    if (check(parser, TOKEN_ARRAY)) {
-        ret = parse_array_type(parser);
-    } else {
-        ret = parse_std_type(parser);
-    }
-    return validate_type(parser, ret);
-}
-
 #define validate_lit(parser, ret) validate(parser, ret, NULL, delete_lit)
 
 lit_t *parse_number_lit(parser_t *parser)
@@ -235,8 +180,10 @@ lit_t *parse_number_lit(parser_t *parser)
     assert(parser);
 
     expect(parser, TOKEN_NUMBER);
-    return validate_lit(parser,
-        new_number_lit(parser->current_token.data.number.value));
+    return validate_lit(parser, new_number_lit(
+        parser->current_token.ptr,
+        parser->current_token.len,
+        parser->current_token.data.number.value));
 }
 
 lit_t *parse_boolean_lit(parser_t *parser)
@@ -276,6 +223,51 @@ lit_t *parse_lit(parser_t *parser)
         ret = parse_string_lit(parser);
     }
     return validate_lit(parser, ret);
+}
+
+#define validate_type(parser, ret) validate(parser, ret, NULL, delete_type)
+
+type_t *parse_std_type(parser_t *parser)
+{
+    type_t *ret = NULL;
+    assert(parser);
+
+    if (eat(parser, TOKEN_INTEGER)) {
+        ret = new_std_type(TYPE_INTEGER);
+    } else if (eat(parser, TOKEN_BOOLEAN)) {
+        ret = new_std_type(TYPE_BOOLEAN);
+    } else if (eat(parser, TOKEN_CHAR)) {
+        ret = new_std_type(TYPE_CHAR);
+    }
+    return validate_type(parser, ret);
+}
+
+type_t *parse_array_type(parser_t *parser)
+{
+    lit_t *size;
+    type_t *base;
+    assert(parser);
+
+    expect(parser, TOKEN_ARRAY);
+    expect(parser, TOKEN_LSQPAREN);
+    size = parse_number_lit(parser);
+    expect(parser, TOKEN_RSQPAREN);
+    expect(parser, TOKEN_OF);
+    base = parse_std_type(parser);
+    return validate_type(parser, new_array_type(base, size));
+}
+
+type_t *parse_type(parser_t *parser)
+{
+    type_t *ret = NULL;
+    assert(parser);
+
+    if (check(parser, TOKEN_ARRAY)) {
+        ret = parse_array_type(parser);
+    } else {
+        ret = parse_std_type(parser);
+    }
+    return validate_type(parser, ret);
 }
 
 #define validate_expr(parser, ret) validate(parser, ret, NULL, delete_expr)
@@ -538,26 +530,27 @@ stmt_t *parse_read_stmt(parser_t *parser)
 output_format_t *parse_output_format(parser_t *parser)
 {
     expr_t *expr;
-    size_t init_pos, len;
+    lit_t *len = NULL;
+    size_t init_pos;
     assert(parser);
 
-    len = SIZE_MAX;
     expr = parse_expr(parser);
     if (eat(parser, TOKEN_COLON)) {
         init_pos = parser->current_token.pos;
-        len = parse_number(parser);
+        len = parse_number_lit(parser);
     }
     if (expr && expr->kind == EXPR_CONSTANT) {
         lit_t *lit = expr->u.constant_expr.lit;
-        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && len != SIZE_MAX) {
+        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && len) {
             if (parser->alive) {
                 msg_t *msg;
+                size_t msg_len;
                 parser->alive = 0;
                 parser->error = 1;
-                len = parser->current_token.pos + parser->current_token.len - init_pos;
-                msg = new_msg(parser->src, init_pos, len,
+                msg_len = parser->current_token.pos + parser->current_token.len - init_pos;
+                msg = new_msg(parser->src, init_pos, msg_len,
                     MSG_ERROR, "wrong output format");
-                msg_add_inline_entry(msg, init_pos, len,
+                msg_add_inline_entry(msg, init_pos, msg_len,
                     "the field specifier cannot be used for string");
                 msg_emit(msg);
             }

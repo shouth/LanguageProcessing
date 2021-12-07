@@ -92,16 +92,11 @@ void pp_colored_string(printer_t *printer, const string_lit_t *lit)
     console_reset_color(printer);
 }
 
-void pp_colored_number(printer_t *printer, unsigned long value)
+void pp_colored_number(printer_t *printer, const number_lit_t *lit)
 {
     console_set_color(printer, printer->color_scheme->literal);
-    printf("%ld", value);
+    printf("%.*s", (int) lit->len, lit->ptr);
     console_reset_color(printer);
-}
-
-void pp_colored_number_lit(printer_t *printer, const number_lit_t *lit)
-{
-    pp_colored_number(printer, lit->value);
 }
 
 void pp_colored_reserved_lit(printer_t *printer, token_kind_t type)
@@ -127,7 +122,7 @@ void pp_type(printer_t *printer, const type_t *type)
     case TYPE_ARRAY:
         pp_colored_keyword(printer, TOKEN_ARRAY);
         printf("[");
-        pp_colored_number(printer, type->array.len);
+        pp_colored_number(printer, &type->array.size->u.number_lit);
         printf("] ");
         pp_colored_keyword(printer, TOKEN_OF);
         printf(" ");
@@ -163,7 +158,7 @@ void pp_lit(printer_t *printer, const lit_t *lit)
     assert(printer && lit);
     switch (lit->kind) {
     case LIT_NUMBER:
-        pp_colored_number_lit(printer, &lit->u.number_lit);
+        pp_colored_number(printer, &lit->u.number_lit);
         break;
     case LIT_BOOLEAN:
         pp_colored_reserved_lit(printer, lit->u.boolean_lit.value ? TOKEN_TRUE : TOKEN_FALSE);
@@ -409,8 +404,8 @@ void pp_write_stmt(printer_t *printer, const write_stmt_t *stmt)
                 printf(", ");
             }
             pp_expr(printer, cur->expr);
-            if (cur->len != SIZE_MAX) {
-                printf(" : %ld", cur->len);
+            if (cur->len) {
+                pp_colored_number(printer, &cur->len->u.number_lit);
             }
             cur = cur->next;
         }
