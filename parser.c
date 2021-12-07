@@ -109,6 +109,7 @@ void bump(parser_t *parser)
         case TOKEN_CSTYLE_COMMENT:
             continue;
         case TOKEN_UNKNOWN:
+        case TOKEN_ERROR:
             exit(1);
         default:
             return;

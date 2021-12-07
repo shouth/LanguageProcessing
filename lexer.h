@@ -59,7 +59,8 @@ typedef enum {
     TOKEN_CSTYLE_COMMENT,
     TOKEN_EOF,
 
-    TOKEN_UNKNOWN
+    TOKEN_UNKNOWN,
+    TOKEN_ERROR
 } token_kind_t;
 
 typedef union {

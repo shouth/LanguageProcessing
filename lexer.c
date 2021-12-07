@@ -298,11 +298,13 @@ void lex(cursol_t *cursol, token_t *ret)
         return;
 
     case TOKEN_NUMBER:
+        errno = 0;
         ret->data.number.value = strtoul(ret->ptr, NULL, 10);
         if (errno == ERANGE || ret->data.number.value > 32767) {
             msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "number is too large");
             msg_add_inline_entry(msg, ret->pos, ret->len, "number needs to be less than 32768");
             msg_emit(msg);
+            ret->type = TOKEN_ERROR;
         }
         return;
 
@@ -310,16 +312,19 @@ void lex(cursol_t *cursol, token_t *ret)
         if (!info.string.terminated) {
             msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "string is unterminated");
             msg_emit(msg);
+            ret->type = TOKEN_ERROR;
+        } else {
+            ret->data.string.str_len = info.string.str_len;
+            ret->data.string.ptr = ret->ptr + 1;
+            ret->data.string.len = info.string.len;
         }
-        ret->data.string.str_len = info.string.str_len;
-        ret->data.string.ptr = ret->ptr + 1;
-        ret->data.string.len = info.string.len;
         return;
 
     case TOKEN_BRACES_COMMENT:
         if (!info.braces_comment.terminated) {
             msg = new_msg(ret->src, ret->pos, 1, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
+            ret->type = TOKEN_ERROR;
         }
         return;
 
@@ -327,6 +332,7 @@ void lex(cursol_t *cursol, token_t *ret)
         if (!info.cstyle_comment.terminated) {
             msg = new_msg(ret->src, ret->pos, 2, MSG_ERROR, "comment is unterminated");
             msg_emit(msg);
+            ret->type = TOKEN_ERROR;
         }
         return;
 
