@@ -161,8 +161,8 @@ expr_t *new_binary_expr(binary_op_kind_t kind, expr_t *lhs, expr_t *rhs);
 expr_t *new_unary_expr(unary_op_kind_t kind, expr_t *expr);
 expr_t *new_paren_expr(expr_t *expr);
 expr_t *new_cast_expr(type_t *type, expr_t *expr);
-expr_t *new_decl_ref(ident_t *decl);
-expr_t *new_array_subscript(ident_t *decl, expr_t *expr);
+expr_t *new_decl_ref_expr(ident_t *decl);
+expr_t *new_array_subscript_expr(ident_t *decl, expr_t *expr);
 expr_t *new_constant_expr(lit_t *lit);
 expr_t *new_empty_expr();
 

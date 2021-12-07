@@ -284,9 +284,9 @@ expr_t *parse_ref(parser_t *parser)
     if (eat(parser, TOKEN_LSQPAREN)) {
         expr_t *expr = parse_expr(parser);
         expect(parser, TOKEN_RSQPAREN);
-        ret = new_array_subscript(ident, expr);
+        ret = new_array_subscript_expr(ident, expr);
     } else {
-        ret = new_decl_ref(ident);
+        ret = new_decl_ref_expr(ident);
     }
     return validate_expr(parser, ret);
 }

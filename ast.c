@@ -130,14 +130,14 @@ expr_t *new_cast_expr(type_t *type, expr_t *expr)
     return ret;
 }
 
-expr_t *new_decl_ref(ident_t *decl)
+expr_t *new_decl_ref_expr(ident_t *decl)
 {
     expr_t *ret = new_expr(EXPR_DECL_REF);
     ret->u.decl_ref_expr.decl = decl;
     return ret;
 }
 
-expr_t *new_array_subscript(ident_t *decl, expr_t *expr)
+expr_t *new_array_subscript_expr(ident_t *decl, expr_t *expr)
 {
     expr_t *ret = new_expr(EXPR_ARRAY_SUBSCRIPT);
     ret->u.array_subscript_expr.decl = decl;
