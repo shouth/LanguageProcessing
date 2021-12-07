@@ -309,6 +309,7 @@ expr_t *parse_ref_seq(parser_t *parser)
     }
     return validate_expr(parser, ret);
 }
+
 expr_t *parse_expr_seq(parser_t *parser)
 {
     expr_t *ret = NULL, *expr;
@@ -758,7 +759,7 @@ ast_t *parse(const source_t *src)
 {
     program_t *program;
     parser_t parser;
-    assert(src != NULL);
+    assert(src);
 
     parser.src = src;
     parser.alive = 1;

@@ -9,7 +9,7 @@
 
 token_kind_t lex_space(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
     assert(is_space(cursol_first(cur)));
 
     cursol_next(cur);
@@ -21,7 +21,7 @@ token_kind_t lex_space(cursol_t *cur, token_info_t *ret)
 
 token_kind_t lex_braces_comment(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
     assert(cursol_first(cur) == '{');
 
     cursol_next(cur);
@@ -43,7 +43,7 @@ token_kind_t lex_braces_comment(cursol_t *cur, token_info_t *ret)
 
 token_kind_t lex_cstyle_comment(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
     assert(cursol_first(cur) == '/' && cursol_second(cur) == '*');
 
     cursol_next(cur);
@@ -67,7 +67,7 @@ token_kind_t lex_cstyle_comment(cursol_t *cur, token_info_t *ret)
 
 token_kind_t lex_string(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
     assert(cursol_first(cur) == '\'');
 
     ret->string.len = 0;
@@ -100,7 +100,7 @@ token_kind_t lex_string(cursol_t *cur, token_info_t *ret)
 
 token_kind_t lex_name_or_keyword(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
     assert(is_alphabet(cursol_first(cur)));
 
     cursol_next(cur);
@@ -112,7 +112,7 @@ token_kind_t lex_name_or_keyword(cursol_t *cur, token_info_t *ret)
 
 token_kind_t lex_number(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
     assert(is_number(cursol_first(cur)));
 
     cursol_next(cur);
@@ -124,7 +124,7 @@ token_kind_t lex_number(cursol_t *cur, token_info_t *ret)
 
 token_kind_t lex_symbol(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
 
     switch (cursol_first(cur)) {
     case '+':
@@ -202,7 +202,7 @@ token_kind_t lex_symbol(cursol_t *cur, token_info_t *ret)
 
 token_kind_t lex_token(cursol_t *cur, token_info_t *ret)
 {
-    assert(cur != NULL && ret != NULL);
+    assert(cur && ret);
 
     if (cursol_eof(cur)) {
         return TOKEN_EOF;
@@ -273,7 +273,7 @@ void lex(cursol_t *cursol, token_t *ret)
     token_info_t info;
     msg_t *msg;
     size_t i, j;
-    assert(cursol != NULL && ret != NULL);
+    assert(cursol && ret);
 
     ret->ptr = cursol->ptr;
     ret->pos = cursol_position(cursol);

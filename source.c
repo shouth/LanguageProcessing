@@ -18,7 +18,7 @@ static size_t filesize(const char *filename)
 #if defined(_WIN32)
     struct __stat64 s;
 
-    assert(filename != NULL);
+    assert(filename);
     if (_stat64(filename, &s) < 0) {
         return SIZE_MAX;
     } else {
@@ -32,7 +32,7 @@ static size_t filesize(const char *filename)
 #elif defined(__unix__) || defined(__APPLE__)
     struct stat s;
 
-    assert(filename != NULL);
+    assert(filename);
     if (stat(filename, &s) < 0) {
         return SIZE_MAX;
     } else {
@@ -50,7 +50,7 @@ static size_t filesize(const char *filename)
     size_t size;
     size_t ret = 0;
 
-    assert(filename != NULL);
+    assert(filename);
     file = fopen(filename, "r");
     setvbuf(file, NULL, _IOFBF, block_size);
     do {
@@ -69,7 +69,7 @@ static size_t filesize(const char *filename)
 
 static const char *nextline(const char *str)
 {
-    assert(str != NULL);
+    assert(str);
     str += strcspn(str, "\r\n");
     if (str[0] == '\0') {
         return str;
@@ -87,7 +87,7 @@ source_t *source_new(const char *filename)
     size_t linecnt;
     const char *cur;
 
-    assert(filename != NULL);
+    assert(filename);
 
     src = (source_t *) xmalloc(sizeof(source_t));
     if (src == NULL) {
@@ -161,7 +161,7 @@ void source_location(const source_t *src, size_t index, location_t *loc)
 {
     size_t left, right, middle;
 
-    assert(src != NULL && src->lines_ptr != NULL && loc != NULL);
+    assert(src && src->lines_ptr && loc);
 
     left = 0;
     right = src->lines_size;

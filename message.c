@@ -11,7 +11,7 @@ msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, c
     msg_t *ret;
     va_list args;
 
-    assert(src != NULL && fmt != NULL);
+    assert(src && fmt);
 
     ret = (msg_t *) xmalloc(sizeof(msg_t));
     ret->src = src;
@@ -61,14 +61,14 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
     msg_entry_t **cur;
     va_list args;
 
-    assert(msg != NULL && fmt != NULL);
+    assert(msg && fmt);
 
     entry = (msg_entry_t *) xmalloc(sizeof(msg_entry_t));
     va_start(args, fmt);
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(entry->msg, fmt, args);
     va_end(args);
-    for (cur = &msg->entries; *cur != NULL; cur = &(*cur)->next);
+    for (cur = &msg->entries; *cur; cur = &(*cur)->next);
     entry->level = level;
     entry->next = *cur;
     *cur = entry;
@@ -80,7 +80,7 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, .
     msg_inline_entry_t **cur;
     va_list args;
 
-    assert(msg != NULL && fmt != NULL);
+    assert(msg && fmt);
 
     entry = (msg_inline_entry_t *) xmalloc(sizeof(msg_inline_entry_t));
     va_start(args, fmt);
@@ -91,7 +91,7 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, .
     entry->len = len;
     entry->next = NULL;
 
-    for (cur = &msg->inline_entries; *cur != NULL; cur = &(*cur)->next) {
+    for (cur = &msg->inline_entries; *cur; cur = &(*cur)->next) {
         if ((*cur)->pos > pos || ((*cur)->pos == pos && (*cur)->len <= len)) {
             break;
         }
@@ -184,10 +184,10 @@ void msg_emit(msg_t *msg)
     location_t loc, preloc;
     int c, m;
 
-    assert(msg != NULL);
+    assert(msg);
 
     has_primary = 0;
-    for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
+    for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
         if ((*cur0)->pos == msg->pos && (*cur0)->len == msg->len) {
             has_primary = 1;
         }
@@ -196,7 +196,7 @@ void msg_emit(msg_t *msg)
         msg_add_inline_entry(msg, msg->pos, msg->len, "");
     }
 
-    for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
+    for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
         if ((*cur0)->next == NULL) {
             source_location(msg->src, msg->pos, &loc);
             tmp = loc.line;
@@ -224,7 +224,7 @@ void msg_emit(msg_t *msg)
     reset();
     printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
 
-    for (cur0 = &msg->inline_entries; *cur0 != NULL; cur0 = &(*cur0)->next) {
+    for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
         preloc = loc;
         source_location(msg->src, (*cur0)->pos, &loc);
         if (cur0 == &msg->inline_entries) {
@@ -300,7 +300,7 @@ void msg_emit(msg_t *msg)
         reset();
     }
 
-    for (cur1 = &msg->entries; *cur1 != NULL; cur1 = &(*cur1)->next) {
+    for (cur1 = &msg->entries; *cur1; cur1 = &(*cur1)->next) {
         printf("%*.s = ", left_margin, "");
         set_level_color((*cur1)->level);
         set_bold();
