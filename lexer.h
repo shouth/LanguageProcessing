@@ -94,7 +94,6 @@ typedef union {
 typedef struct {
     const char *ptr;
     size_t len;
-    const source_t *src;
     size_t pos;
     token_kind_t type;
     token_data_t data;

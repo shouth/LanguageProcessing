@@ -277,7 +277,6 @@ void lex(cursol_t *cursol, token_t *ret)
 
     ret->ptr = cursol->ptr;
     ret->pos = cursol_position(cursol);
-    ret->src = cursol->src;
     ret->type = lex_token(cursol, &info);
     ret->len = cursol_position(cursol) - ret->pos;
 
@@ -301,7 +300,7 @@ void lex(cursol_t *cursol, token_t *ret)
         errno = 0;
         ret->data.number.value = strtoul(ret->ptr, NULL, 10);
         if (errno == ERANGE || ret->data.number.value > 32767) {
-            msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "number is too large");
+            msg = new_msg(cursol->src, ret->pos, ret->len, MSG_ERROR, "number is too large");
             msg_add_inline_entry(msg, ret->pos, ret->len, "number needs to be less than 32768");
             msg_emit(msg);
             ret->type = TOKEN_ERROR;
@@ -311,9 +310,9 @@ void lex(cursol_t *cursol, token_t *ret)
     case TOKEN_STRING:
         if (!info.string.terminated) {
             if (cursol_eof(cursol)) {
-                msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "string is unterminated");
+                msg = new_msg(cursol->src, ret->pos, ret->len, MSG_ERROR, "string is unterminated");
             } else {
-                msg = new_msg(ret->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
+                msg = new_msg(cursol->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
             }
             msg_emit(msg);
             ret->type = TOKEN_ERROR;
@@ -327,9 +326,9 @@ void lex(cursol_t *cursol, token_t *ret)
     case TOKEN_BRACES_COMMENT:
         if (!info.braces_comment.terminated) {
             if (cursol_eof(cursol)) {
-                msg = new_msg(ret->src, ret->pos, 1, MSG_ERROR, "comment is unterminated");
+                msg = new_msg(cursol->src, ret->pos, 1, MSG_ERROR, "comment is unterminated");
             } else {
-                msg = new_msg(ret->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
+                msg = new_msg(cursol->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
             }
             msg_emit(msg);
             ret->type = TOKEN_ERROR;
@@ -339,9 +338,9 @@ void lex(cursol_t *cursol, token_t *ret)
     case TOKEN_CSTYLE_COMMENT:
         if (!info.cstyle_comment.terminated) {
             if (cursol_eof(cursol)) {
-                msg = new_msg(ret->src, ret->pos, 2, MSG_ERROR, "comment is unterminated");
+                msg = new_msg(cursol->src, ret->pos, 2, MSG_ERROR, "comment is unterminated");
             } else {
-                msg = new_msg(ret->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
+                msg = new_msg(cursol->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
             }
             msg_emit(msg);
             ret->type = TOKEN_ERROR;
@@ -350,10 +349,10 @@ void lex(cursol_t *cursol, token_t *ret)
 
     case TOKEN_UNKNOWN:
         if (is_graphical(ret->ptr[0])) {
-            msg = new_msg(ret->src, ret->pos, ret->len,
+            msg = new_msg(cursol->src, ret->pos, ret->len,
                 MSG_ERROR, "stray `%c` in program", ret->ptr[0]);
         } else {
-            msg = new_msg(ret->src, ret->pos, ret->len,
+            msg = new_msg(cursol->src, ret->pos, ret->len,
                 MSG_ERROR, "stray \\%03o in program", (unsigned char) ret->ptr[0]);
         }
         msg_emit(msg);
