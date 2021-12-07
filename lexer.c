@@ -310,7 +310,11 @@ void lex(cursol_t *cursol, token_t *ret)
 
     case TOKEN_STRING:
         if (!info.string.terminated) {
-            msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "string is unterminated");
+            if (cursol_eof(cursol)) {
+                msg = new_msg(ret->src, ret->pos, ret->len, MSG_ERROR, "string is unterminated");
+            } else {
+                msg = new_msg(ret->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
+            }
             msg_emit(msg);
             ret->type = TOKEN_ERROR;
         } else {
@@ -322,7 +326,11 @@ void lex(cursol_t *cursol, token_t *ret)
 
     case TOKEN_BRACES_COMMENT:
         if (!info.braces_comment.terminated) {
-            msg = new_msg(ret->src, ret->pos, 1, MSG_ERROR, "comment is unterminated");
+            if (cursol_eof(cursol)) {
+                msg = new_msg(ret->src, ret->pos, 1, MSG_ERROR, "comment is unterminated");
+            } else {
+                msg = new_msg(ret->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
+            }
             msg_emit(msg);
             ret->type = TOKEN_ERROR;
         }
@@ -330,7 +338,11 @@ void lex(cursol_t *cursol, token_t *ret)
 
     case TOKEN_CSTYLE_COMMENT:
         if (!info.cstyle_comment.terminated) {
-            msg = new_msg(ret->src, ret->pos, 2, MSG_ERROR, "comment is unterminated");
+            if (cursol_eof(cursol)) {
+                msg = new_msg(ret->src, ret->pos, 2, MSG_ERROR, "comment is unterminated");
+            } else {
+                msg = new_msg(ret->src, cursol_position(cursol), 1, MSG_ERROR, "nongraphical character");
+            }
             msg_emit(msg);
             ret->type = TOKEN_ERROR;
         }
