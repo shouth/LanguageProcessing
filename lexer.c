@@ -450,10 +450,13 @@ const char *token_to_str(token_kind_t type)
         return "write";
     case TOKEN_BREAK:
         return "break";
-    case TOKEN_UNKNOWN:
-        return "";
     case TOKEN_EOF:
         return "EOF";
+
+    case TOKEN_UNKNOWN:
+        return "UNKNOWN";
+    case TOKEN_ERROR:
+        return "ERROR";
     }
 
     return "";
