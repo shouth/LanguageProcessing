@@ -399,7 +399,7 @@ const char *token_to_str(token_kind_t type)
     case TOKEN_FALSE:
         return "false";
     case TOKEN_NUMBER:
-        return "number";
+        return "NUMBER";
     case TOKEN_STRING:
         return "STRING";
     case TOKEN_PLUS:
