@@ -601,9 +601,7 @@ stmt_t *parse_compound_stmt(parser_t *parser)
     while (eat(parser, TOKEN_SEMI)) {
         cur = cur->next = parse_stmt(parser);
     }
-    if (!eat(parser, TOKEN_END)) {
-        error_expected(parser, "statement");
-    }
+    expect(parser, TOKEN_END);
     return validate_stmt(parser, new_compound_stmt(stmts));
 }
 
