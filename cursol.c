@@ -1,6 +1,7 @@
 #include <assert.h>
+#include <stdio.h>
 
-#include "cursol.h"
+#include "mppl.h"
 
 void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, size_t len)
 {

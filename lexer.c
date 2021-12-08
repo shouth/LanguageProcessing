@@ -2,10 +2,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "lexer.h"
-#include "cursol.h"
-#include "util.h"
-#include "message.h"
+#include "mppl.h"
 
 token_kind_t lex_space(cursol_t *cur, token_info_t *ret)
 {

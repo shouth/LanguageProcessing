@@ -1,8 +1,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "ast.h"
-#include "util.h"
+#include "mppl.h"
 
 static lit_t *new_lit(lit_kind_t kind)
 {

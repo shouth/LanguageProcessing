@@ -2,12 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "ast.h"
-#include "cursol.h"
-#include "lexer.h"
-#include "parser.h"
-#include "message.h"
-#include "util.h"
+#include "mppl.h"
 
 typedef struct {
     const source_t *src;

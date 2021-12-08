@@ -3,8 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "message.h"
-#include "util.h"
+#include "mppl.h"
 
 msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
 {

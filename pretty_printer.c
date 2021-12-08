@@ -3,9 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "pretty_printer.h"
-#include "ast.h"
-#include "lexer.h"
+#include "mppl.h"
 
 typedef uint64_t color_t;
 

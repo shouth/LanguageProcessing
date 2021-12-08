@@ -1,9 +1,27 @@
-#ifndef AST_H
-#define AST_H
-
 #include <stddef.h>
+#include <stdint.h>
 
-#include "source.h"
+/* source.c */
+
+typedef struct {
+    char *filename;
+    char *src_ptr;
+    size_t src_size;
+    size_t *lines_ptr;
+    size_t lines_size;
+} source_t;
+
+typedef struct {
+    size_t line;
+    size_t col;
+    const source_t *src;
+} location_t;
+
+source_t *source_new(const char *filename);
+void source_free(source_t *src);
+void source_location(const source_t *src, size_t index, location_t *loc);
+
+/* ast.c */
 
 typedef enum {
     LIT_NUMBER,
@@ -40,7 +58,6 @@ typedef struct {
 lit_t *new_number_lit(const char *ptr, size_t len, unsigned long value);
 lit_t *new_boolean_lit(int value);
 lit_t *new_string_lit(const char *ptr, size_t len, size_t str_len);
-
 void delete_lit(lit_t *lit);
 
 typedef struct impl_ident ident_t;
@@ -51,7 +68,6 @@ struct impl_ident {
 };
 
 ident_t *new_ident(const char *ptr, size_t len);
-
 void delete_ident(ident_t *ident);
 
 typedef enum {
@@ -73,7 +89,6 @@ struct impl_type {
 
 type_t *new_std_type(type_kind_t kind);
 type_t *new_array_type(type_t *base, lit_t *size);
-
 void delete_type(type_t *type);
 
 typedef struct impl_expr expr_t;
@@ -164,7 +179,6 @@ expr_t *new_decl_ref_expr(ident_t *decl);
 expr_t *new_array_subscript_expr(ident_t *decl, expr_t *expr);
 expr_t *new_constant_expr(lit_t *lit);
 expr_t *new_empty_expr();
-
 void delete_expr(expr_t *expr);
 
 typedef struct impl_stmt stmt_t;
@@ -203,7 +217,6 @@ struct impl_output_format {
 };
 
 output_format_t *new_output_format(expr_t *expr, lit_t *len);
-
 void delete_output_format(output_format_t *format);
 
 typedef struct {
@@ -254,7 +267,6 @@ stmt_t *new_read_stmt(int newline, expr_t *args);
 stmt_t *new_write_stmt(int newline, output_format_t *formats);
 stmt_t *new_compound_stmt(stmt_t *stmts);
 stmt_t *new_empty_stmt();
-
 void delete_stmt(stmt_t *stmt);
 
 typedef struct impl_decl_part decl_part_t;
@@ -272,7 +284,6 @@ struct impl_variable_decl_part {
 };
 
 variable_decl_t *new_variable_decl(ident_t *names, type_t *type);
-
 void delete_variable_decl(variable_decl_t *decl);
 
 typedef struct impl_param_decl param_decl_t;
@@ -283,7 +294,6 @@ struct impl_param_decl {
 };
 
 param_decl_t *new_param_decl(ident_t *names, type_t *type);
-
 void delete_param_decl(param_decl_t *params);
 
 typedef struct impl_procedure_decl_part procedure_decl_part_t;
@@ -311,7 +321,6 @@ struct impl_decl_part {
 
 decl_part_t *new_variable_decl_part(variable_decl_t *decls);
 decl_part_t *new_procedure_decl_part(ident_t *name, param_decl_t *params, decl_part_t *variables, stmt_t *stmt);
-
 void delete_decl_part(decl_part_t *decl);
 
 typedef struct {
@@ -321,7 +330,6 @@ typedef struct {
 } program_t;
 
 program_t *new_program(ident_t *name, decl_part_t *decl_part, stmt_t *stmt);
-
 void delete_program(program_t *program);
 
 typedef struct {
@@ -330,7 +338,181 @@ typedef struct {
 } ast_t;
 
 ast_t *new_ast(program_t *program, const source_t *source);
-
 void delete_ast(ast_t *ast);
 
-#endif
+/* cursol.c */
+
+typedef struct {
+    size_t init_len;
+    const char *ptr;
+    size_t len;
+    const source_t *src;
+} cursol_t;
+
+void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, size_t len);
+int cursol_nth(const cursol_t *cur, size_t index);
+int cursol_first(const cursol_t *cur);
+int cursol_second(const cursol_t *cur);
+int cursol_eof(const cursol_t *cur);
+void cursol_next(cursol_t *cur);
+size_t cursol_position(const cursol_t *cur);
+
+/* lexer.c */
+
+typedef enum {
+    TOKEN_NAME,
+    TOKEN_PROGRAM,
+    TOKEN_VAR,
+    TOKEN_ARRAY,
+    TOKEN_OF,
+    TOKEN_BEGIN,
+    TOKEN_END,
+    TOKEN_IF,
+    TOKEN_THEN,
+    TOKEN_ELSE,
+    TOKEN_PROCEDURE,
+    TOKEN_RETURN,
+    TOKEN_CALL,
+    TOKEN_WHILE,
+    TOKEN_DO,
+    TOKEN_NOT,
+    TOKEN_OR,
+    TOKEN_DIV,
+    TOKEN_AND,
+    TOKEN_CHAR,
+    TOKEN_INTEGER,
+    TOKEN_BOOLEAN,
+    TOKEN_READLN,
+    TOKEN_WRITELN,
+    TOKEN_TRUE,
+    TOKEN_FALSE,
+    TOKEN_NUMBER,
+    TOKEN_STRING,
+    TOKEN_PLUS,
+    TOKEN_MINUS,
+    TOKEN_STAR,
+    TOKEN_EQUAL,
+    TOKEN_NOTEQ,
+    TOKEN_LE,
+    TOKEN_LEEQ,
+    TOKEN_GR,
+    TOKEN_GREQ,
+    TOKEN_LPAREN,
+    TOKEN_RPAREN,
+    TOKEN_LSQPAREN,
+    TOKEN_RSQPAREN,
+    TOKEN_ASSIGN,
+    TOKEN_DOT,
+    TOKEN_COMMA,
+    TOKEN_COLON,
+    TOKEN_SEMI,
+    TOKEN_READ,
+    TOKEN_WRITE,
+    TOKEN_BREAK,
+    TOKEN_WHITESPACE,
+    TOKEN_BRACES_COMMENT,
+    TOKEN_CSTYLE_COMMENT,
+    TOKEN_EOF,
+    TOKEN_UNKNOWN,
+    TOKEN_ERROR
+} token_kind_t;
+
+typedef union {
+    struct {
+        int terminated;
+        size_t len;
+        size_t str_len;
+    } string;
+    struct {
+        int terminated;
+    } braces_comment;
+    struct {
+        int terminated;
+    } cstyle_comment;
+} token_info_t;
+
+typedef union {
+    struct {
+        unsigned long value;
+    } number;
+    struct {
+        const char *ptr;
+        size_t len;
+        size_t str_len;
+    } string;
+} token_data_t;
+
+typedef struct {
+    const char *ptr;
+    size_t len;
+    size_t pos;
+    token_kind_t type;
+    token_data_t data;
+} token_t;
+
+void lex(cursol_t *cursol, token_t *ret);
+const char *token_to_str(token_kind_t type);
+
+/* parser.c */
+
+ast_t *parse(const source_t *src);
+
+/* pretty_print.c */
+
+void pretty_print(const ast_t *ast);
+
+/* msg.c */
+
+typedef enum {
+    MSG_HELP,
+    MSG_NOTE,
+    MSG_WARN,
+    MSG_ERROR,
+    MSG_FATAL
+} msg_level_t;
+
+typedef struct msg_entry msg_entry_t;
+struct msg_entry {
+    char msg[256];
+    msg_level_t level;
+    msg_entry_t *next;
+};
+
+typedef struct msg_inline_entry msg_inline_entry_t;
+struct msg_inline_entry {
+    char msg[256];
+    size_t pos;
+    size_t len;
+    msg_inline_entry_t *next;
+};
+
+typedef struct {
+    const source_t *src;
+    char msg[256];
+    size_t pos;
+    size_t len;
+    msg_level_t level;
+    msg_inline_entry_t *inline_entries;
+    msg_entry_t *entries;
+} msg_t;
+
+msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...);
+void delete_msg(msg_t *msg);
+void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
+void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, ...);
+void msg_emit(msg_t *msg);
+
+/* util.c */
+
+int is_alphabet(int c);
+int is_number(int c);
+int is_space(int c);
+int is_graphical(int c);
+
+uint64_t msb64(uint64_t n);
+size_t popcount64(uint64_t n);
+
+void *xmalloc(size_t size);
+
+#define new(type) ((type *) xmalloc(sizeof(type)))
+#define new_arr(type, size) ((type *) xmalloc(sizeof(type) * size))
