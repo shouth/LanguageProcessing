@@ -328,23 +328,23 @@ void delete_output_format(output_format_t *format)
     free(format);
 }
 
-params_t *new_params(ident_t *names, type_t *type)
+param_decl_t *new_param_decl(ident_t *names, type_t *type)
 {
-    params_t *ret = new(params_t);
+    param_decl_t *ret = new(param_decl_t);
     ret->names = names;
     ret->type = type;
     ret->next = NULL;
     return ret;
 }
 
-void delete_params(params_t *params)
+void delete_param_decl(param_decl_t *params)
 {
     if (!params) {
         return;
     }
     delete_ident(params->names);
     delete_type(params->type);
-    delete_params(params->next);
+    delete_param_decl(params->next);
     free(params);
 }
 
@@ -387,7 +387,7 @@ decl_part_t *new_variable_decl_part(variable_decl_t *decls)
     return ret;
 }
 
-decl_part_t *new_procedure_decl_part(ident_t *name, params_t *params, decl_part_t *variables, stmt_t *stmt)
+decl_part_t *new_procedure_decl_part(ident_t *name, param_decl_t *params, decl_part_t *variables, stmt_t *stmt)
 {
     decl_part_t *ret = new_decl_part(DECL_PART_PROCEDURE);
     ret->u.procedure_decl_part.name = name;
@@ -409,7 +409,7 @@ void delete_decl_part(decl_part_t *decl)
         break;
     case DECL_PART_PROCEDURE:
         delete_ident(decl->u.procedure_decl_part.name);
-        delete_params(decl->u.procedure_decl_part.params);
+        delete_param_decl(decl->u.procedure_decl_part.params);
         delete_stmt(decl->u.procedure_decl_part.stmt);
         delete_decl_part(decl->u.procedure_decl_part.variables);
         break;

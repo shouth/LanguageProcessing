@@ -503,7 +503,7 @@ void pp_procedure_decl_part(printer_t *printer, const procedure_decl_part_t *dec
     printf(" ");
     pp_colored_procedure(printer, decl_part->name);
     if (decl_part->params) {
-        const params_t *cur;
+        const param_decl_t *cur;
         printf("(");
         cur = decl_part->params;
         while (cur) {

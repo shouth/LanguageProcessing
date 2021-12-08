@@ -662,23 +662,23 @@ decl_part_t *parse_variable_decl_part(parser_t *parser)
 
 #define validate_params(parser, ret) validate(parser, ret, NULL, delete_params)
 
-params_t *parse_params(parser_t *parser)
+param_decl_t *parse_params(parser_t *parser)
 {
     ident_t *names;
     type_t *type;
-    params_t *ret = NULL, *param;
+    param_decl_t *ret = NULL, *param;
     assert(parser);
 
     expect(parser, TOKEN_LPAREN);
     names = parse_ident_seq(parser);
     expect(parser, TOKEN_COLON);
     type = parse_type(parser);
-    ret = param = new_params(names, type);
+    ret = param = new_param_decl(names, type);
     while (eat(parser, TOKEN_SEMI)) {
         names = parse_ident_seq(parser);
         expect(parser, TOKEN_COLON);
         type = parse_type(parser);
-        param = param->next = new_params(names, type);
+        param = param->next = new_param_decl(names, type);
     }
     expect(parser, TOKEN_RPAREN);
     return validate_params(parser, ret);
@@ -687,7 +687,7 @@ params_t *parse_params(parser_t *parser)
 decl_part_t *parse_procedure_decl_part(parser_t *parser)
 {
     ident_t *name;
-    params_t *params;
+    param_decl_t *params;
     decl_part_t *variables;
     stmt_t *stmt;
     assert(parser);

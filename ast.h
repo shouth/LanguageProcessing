@@ -275,21 +275,21 @@ variable_decl_t *new_variable_decl(ident_t *names, type_t *type);
 
 void delete_variable_decl(variable_decl_t *decl);
 
-typedef struct impl_params params_t;
-struct impl_params {
-    params_t *next;
+typedef struct impl_param_decl param_decl_t;
+struct impl_param_decl {
+    param_decl_t *next;
     ident_t *names;
     type_t *type;
 };
 
-params_t *new_params(ident_t *names, type_t *type);
+param_decl_t *new_param_decl(ident_t *names, type_t *type);
 
-void delete_params(params_t *params);
+void delete_param_decl(param_decl_t *params);
 
 typedef struct impl_procedure_decl_part procedure_decl_part_t;
 struct impl_procedure_decl_part {
     ident_t *name;
-    params_t *params;
+    param_decl_t *params;
     decl_part_t *variables;
     stmt_t *stmt;
 };
@@ -310,7 +310,7 @@ struct impl_decl_part {
 };
 
 decl_part_t *new_variable_decl_part(variable_decl_t *decls);
-decl_part_t *new_procedure_decl_part(ident_t *name, params_t *params, decl_part_t *variables, stmt_t *stmt);
+decl_part_t *new_procedure_decl_part(ident_t *name, param_decl_t *params, decl_part_t *variables, stmt_t *stmt);
 
 void delete_decl_part(decl_part_t *decl);
 
