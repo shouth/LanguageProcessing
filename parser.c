@@ -14,8 +14,8 @@ typedef struct {
     int alive, error;
 } parser_t;
 
-#define validate(parser, ret, nil, deleter) \
-    (parser)->alive ? (ret) : (error_unexpected(parser), deleter(ret), (nil));
+#define validate(parser, ret, deleter) \
+    (parser)->alive ? (ret) : (error_unexpected(parser), deleter(ret), NULL);
 
 #define delete_nothing(x) 0
 
@@ -133,7 +133,7 @@ int expect(parser_t *parser, token_kind_t type)
     return ret;
 }
 
-#define validate_ident(parser, ret) validate(parser, ret, NULL, delete_ident)
+#define validate_ident(parser, ret) validate(parser, ret, delete_ident)
 
 ident_t *parse_ident(parser_t *parser)
 {
@@ -156,7 +156,7 @@ ident_t *parse_ident_seq(parser_t *parser)
     return validate_ident(parser, ret);
 }
 
-#define validate_lit(parser, ret) validate(parser, ret, NULL, delete_lit)
+#define validate_lit(parser, ret) validate(parser, ret, delete_lit)
 
 lit_t *parse_number_lit(parser_t *parser)
 {
@@ -208,7 +208,7 @@ lit_t *parse_lit(parser_t *parser)
     return validate_lit(parser, ret);
 }
 
-#define validate_type(parser, ret) validate(parser, ret, NULL, delete_type)
+#define validate_type(parser, ret) validate(parser, ret, delete_type)
 
 type_t *parse_std_type(parser_t *parser)
 {
@@ -255,7 +255,7 @@ type_t *parse_type(parser_t *parser)
     return validate_type(parser, ret);
 }
 
-#define validate_expr(parser, ret) validate(parser, ret, NULL, delete_expr)
+#define validate_expr(parser, ret) validate(parser, ret, delete_expr)
 
 expr_t *parse_expr(parser_t *parser);
 
@@ -415,7 +415,7 @@ expr_t *parse_expr(parser_t *parser)
     return validate_expr(parser, ret);
 }
 
-#define validate_stmt(parser, ret) validate(parser, ret, NULL, delete_stmt)
+#define validate_stmt(parser, ret) validate(parser, ret, delete_stmt)
 
 stmt_t *parse_stmt(parser_t *parser);
 
@@ -510,7 +510,7 @@ stmt_t *parse_read_stmt(parser_t *parser)
     return validate_stmt(parser, new_read_stmt(newline, args));
 }
 
-#define validate_output_format(parser, ret) validate(parser, ret, NULL, delete_output_format)
+#define validate_output_format(parser, ret) validate(parser, ret, delete_output_format)
 
 output_format_t *parse_output_format(parser_t *parser)
 {
@@ -619,7 +619,7 @@ stmt_t *parse_stmt(parser_t *parser)
     return validate_stmt(parser, ret);
 }
 
-#define validate_decl_part(parser, ret) validate(parser, ret, NULL, delete_decl_part)
+#define validate_decl_part(parser, ret) validate(parser, ret, delete_decl_part)
 
 decl_part_t *parse_variable_decl_part(parser_t *parser)
 {
@@ -645,7 +645,7 @@ decl_part_t *parse_variable_decl_part(parser_t *parser)
     return validate_decl_part(parser, new_variable_decl_part(decls));
 }
 
-#define validate_param_decl(parser, ret) validate(parser, ret, NULL, delete_param_decl)
+#define validate_param_decl(parser, ret) validate(parser, ret, delete_param_decl)
 
 param_decl_t *parse_param_decl(parser_t *parser)
 {
@@ -715,7 +715,7 @@ decl_part_t *parse_decl_part(parser_t *parser)
     return validate_decl_part(parser, ret);
 }
 
-#define validate_program(parser, ret) validate(parser, ret, NULL, delete_program)
+#define validate_program(parser, ret) validate(parser, ret, delete_program)
 
 program_t *parse_program(parser_t *parser)
 {
