@@ -78,13 +78,18 @@ typedef enum {
 } type_kind_t;
 
 typedef struct impl_type type_t;
+
+typedef struct {
+    type_t *base;
+    lit_t *size;
+} array_type_t;
+
 struct impl_type {
     type_kind_t kind;
 
-    struct {
-        type_t *base;
-        lit_t *size;
-    } array;
+    union {
+        array_type_t array_type;
+    } u;
 };
 
 type_t *new_std_type(type_kind_t kind);

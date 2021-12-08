@@ -54,8 +54,8 @@ type_t *new_array_type(type_t *base, lit_t *size)
 {
     type_t *ret = new(type_t);
     ret->kind = TYPE_ARRAY;
-    ret->array.base = base;
-    ret->array.size = size;
+    ret->u.array_type.base = base;
+    ret->u.array_type.size = size;
     return ret;
 }
 
@@ -65,8 +65,8 @@ void delete_type(type_t *type)
         return;
     }
     if (type->kind == TYPE_ARRAY) {
-        delete_type(type->array.base);
-        delete_lit(type->array.size);
+        delete_type(type->u.array_type.base);
+        delete_lit(type->u.array_type.size);
     }
     free(type);
 }
