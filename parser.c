@@ -11,6 +11,7 @@ typedef struct {
 
     token_t current_token, next_token;
     uint64_t expected_terminals;
+    int within_loop;
     int alive, error;
 } parser_t;
 
@@ -31,6 +32,13 @@ size_t msg_token(char *ptr, token_kind_t type)
     }
 }
 
+void error_msg(parser_t *parser, msg_t *msg)
+{
+    parser->alive = 0;
+    parser->error = 1;
+    msg_emit(msg);
+}
+
 void error_expected(parser_t *parser, const char *str)
 {
     msg_t *msg;
@@ -39,13 +47,11 @@ void error_expected(parser_t *parser, const char *str)
     if (!parser->alive) {
         return;
     }
-    parser->alive = 0;
-    parser->error = 1;
 
     msg = new_msg(parser->src, parser->next_token.pos, parser->next_token.len,
         MSG_ERROR, "expected %s, got `%.*s`", str,
         (int) parser->next_token.len, parser->next_token.ptr);
-    msg_emit(msg);
+    error_msg(parser, msg);
     parser->expected_terminals = 0;
 }
 
@@ -453,8 +459,21 @@ stmt_t *parse_while_stmt(parser_t *parser)
     expect(parser, TOKEN_WHILE);
     cond = parse_expr(parser);
     expect(parser, TOKEN_DO);
+    parser->within_loop++;
     do_stmt = parse_stmt(parser);
+    parser->within_loop--;
     return validate_stmt(parser, new_while_stmt(cond, do_stmt));
+}
+
+void maybe_error_break_stmt(parser_t *parser)
+{
+    if (!parser->within_loop) {
+        if (parser->alive) {
+            msg_t *msg = new_msg(parser->src, parser->current_token.pos, parser->current_token.len,
+                MSG_ERROR, "break statement not within loop");
+            error_msg(parser, msg);
+        }
+    }
 }
 
 stmt_t *parse_break_stmt(parser_t *parser)
@@ -462,6 +481,7 @@ stmt_t *parse_break_stmt(parser_t *parser)
     assert(parser);
 
     expect(parser, TOKEN_BREAK);
+    maybe_error_break_stmt(parser);
     return validate_stmt(parser, new_break_stmt());
 }
 
@@ -510,36 +530,39 @@ stmt_t *parse_read_stmt(parser_t *parser)
 
 #define validate_output_format(parser, ret) validate(parser, ret, delete_output_format)
 
+void maybe_error_output_format(parser_t *parser, output_format_t *format, size_t spec_pos)
+{
+    if (format->expr && format->expr->kind == EXPR_CONSTANT) {
+        lit_t *lit = format->expr->u.constant_expr.lit;
+        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && format->len) {
+            if (parser->alive) {
+                size_t msg_len = parser->current_token.pos + parser->current_token.len - spec_pos;
+                msg_t *msg = new_msg(parser->src, spec_pos, msg_len,
+                    MSG_ERROR, "wrong output format");
+                msg_add_inline_entry(msg, spec_pos, msg_len,
+                    "field specifier cannot be used for string");
+                error_msg(parser, msg);
+            }
+        }
+    }
+}
+
 output_format_t *parse_output_format(parser_t *parser)
 {
     expr_t *expr;
     lit_t *len = NULL;
-    size_t init_pos;
+    size_t spec_pos;
+    output_format_t *ret;
     assert(parser);
 
     expr = parse_expr(parser);
     if (eat(parser, TOKEN_COLON)) {
-        init_pos = parser->current_token.pos;
+        spec_pos = parser->current_token.pos;
         len = parse_number_lit(parser);
     }
-    if (expr && expr->kind == EXPR_CONSTANT) {
-        lit_t *lit = expr->u.constant_expr.lit;
-        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && len) {
-            if (parser->alive) {
-                msg_t *msg;
-                size_t msg_len;
-                parser->alive = 0;
-                parser->error = 1;
-                msg_len = parser->current_token.pos + parser->current_token.len - init_pos;
-                msg = new_msg(parser->src, init_pos, msg_len,
-                    MSG_ERROR, "wrong output format");
-                msg_add_inline_entry(msg, init_pos, msg_len,
-                    "the field specifier cannot be used for string");
-                msg_emit(msg);
-            }
-        }
-    }
-    return validate_output_format(parser, new_output_format(expr, len));
+    ret = new_output_format(expr, len);
+    maybe_error_output_format(parser, ret, spec_pos);
+    return validate_output_format(parser, ret);
 }
 
 output_format_t *parse_output_format_seq(parser_t *parser)
@@ -741,6 +764,7 @@ ast_t *parse_source(const source_t *src)
     parser.src = src;
     parser.alive = 1;
     parser.error = 0;
+    parser.within_loop = 0;
     cursol_init(&parser.cursol, src, src->src_ptr, src->src_size);
     bump(&parser);
     program = parse_program(&parser);
