@@ -683,18 +683,20 @@ param_decl_t *parse_param_decl(parser_t *parser)
 decl_part_t *parse_procedure_decl_part(parser_t *parser)
 {
     ident_t *name;
-    param_decl_t *params;
-    decl_part_t *variables;
+    param_decl_t *params = NULL;
+    decl_part_t *variables = NULL;
     stmt_t *stmt;
     assert(parser);
 
     expect(parser, TOKEN_PROCEDURE);
     name = parse_ident(parser);
-    params = check(parser, TOKEN_LPAREN)
-        ? parse_param_decl(parser) : NULL;
+    if (check(parser, TOKEN_LPAREN)) {
+        params = parse_param_decl(parser);
+    }
     expect(parser, TOKEN_SEMI);
-    variables = check(parser, TOKEN_VAR)
-        ? parse_variable_decl_part(parser) : NULL;
+    if (check(parser, TOKEN_VAR)) {
+        variables = parse_variable_decl_part(parser);
+    }
     stmt = parse_compound_stmt(parser);
     expect(parser, TOKEN_SEMI);
     return validate_decl_part(parser,
