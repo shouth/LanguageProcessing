@@ -33,43 +33,6 @@ size_t msg_token(char *ptr, token_kind_t type)
     }
 }
 
-void error_unexpected(parser_t *parser)
-{
-    msg_t *msg;
-    size_t pos, len;
-    token_kind_t i;
-    char buf[256], *ptr;
-    uint64_t msb, bit;
-
-    assert(parser);
-
-    if (!parser->alive) {
-        return;
-    }
-    parser->alive = 0;
-    parser->error = 1;
-
-    assert(parser->expected_terminals);
-    pos = parser->next_token.pos;
-    len = parser->next_token.len;
-
-    ptr = buf;
-    msb = msb64(parser->expected_terminals);
-    for (i = 0; i <= TOKEN_EOF; i++) {
-        if (bit = ((uint64_t) 1 << i) & parser->expected_terminals) {
-            if (ptr != buf) {
-                ptr += sprintf(ptr, bit != msb ? ", " : " or ");
-            }
-            ptr += msg_token(ptr, i);
-        }
-    }
-    msg = new_msg(parser->src, pos, len,
-        MSG_ERROR, "expected %s, got `%.*s`", buf,
-        (int) parser->next_token.len, parser->next_token.ptr);
-    msg_emit(msg);
-    parser->expected_terminals = 0;
-}
-
 void error_expected(parser_t *parser, const char *str)
 {
     msg_t *msg;
@@ -86,6 +49,30 @@ void error_expected(parser_t *parser, const char *str)
         (int) parser->next_token.len, parser->next_token.ptr);
     msg_emit(msg);
     parser->expected_terminals = 0;
+}
+
+void error_unexpected(parser_t *parser)
+{
+    token_kind_t i;
+    char buf[256], *ptr;
+    uint64_t msb, bit;
+
+    assert(parser);
+    if (!parser->alive) {
+        return;
+    }
+    assert(parser->expected_terminals);
+    ptr = buf;
+    msb = msb64(parser->expected_terminals);
+    for (i = 0; i <= TOKEN_EOF; i++) {
+        if (bit = ((uint64_t) 1 << i) & parser->expected_terminals) {
+            if (ptr != buf) {
+                ptr += sprintf(ptr, bit != msb ? ", " : " or ");
+            }
+            ptr += msg_token(ptr, i);
+        }
+    }
+    error_expected(parser, buf);
 }
 
 void bump(parser_t *parser)
