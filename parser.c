@@ -337,7 +337,7 @@ expr_t *parse_term(parser_t *parser)
     assert(parser);
 
     ret = parse_factor(parser);
-    while (ret) {
+    while (1) {
         if (eat(parser, TOKEN_STAR)) {
             expr_t *factor = parse_factor(parser);
             ret = new_binary_expr(BINARY_OP_STAR, ret, factor);
@@ -364,7 +364,7 @@ expr_t *parse_simple_expr(parser_t *parser)
     } else {
         ret = parse_term(parser);
     }
-    while (ret) {
+    while (1) {
         if (eat(parser, TOKEN_PLUS)) {
             expr_t *term = parse_term(parser);
             ret = new_binary_expr(BINARY_OP_PLUS, ret, term);
@@ -387,7 +387,7 @@ expr_t *parse_expr(parser_t *parser)
     assert(parser);
 
     ret = parse_simple_expr(parser);
-    while (ret) {
+    while (1) {
         if (eat(parser, TOKEN_EQUAL)) {
             expr_t *simple = parse_simple_expr(parser);
             ret = new_binary_expr(BINARY_OP_EQUAL, ret, simple);
