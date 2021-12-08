@@ -656,9 +656,9 @@ decl_part_t *parse_variable_decl_part(parser_t *parser)
     return validate_decl_part(parser, new_variable_decl_part(decls));
 }
 
-#define validate_params(parser, ret) validate(parser, ret, NULL, delete_param_decl)
+#define validate_param_decl(parser, ret) validate(parser, ret, NULL, delete_param_decl)
 
-param_decl_t *parse_params(parser_t *parser)
+param_decl_t *parse_param_decl(parser_t *parser)
 {
     ident_t *names;
     type_t *type;
@@ -677,7 +677,7 @@ param_decl_t *parse_params(parser_t *parser)
         param = param->next = new_param_decl(names, type);
     }
     expect(parser, TOKEN_RPAREN);
-    return validate_params(parser, ret);
+    return validate_param_decl(parser, ret);
 }
 
 decl_part_t *parse_procedure_decl_part(parser_t *parser)
@@ -691,7 +691,7 @@ decl_part_t *parse_procedure_decl_part(parser_t *parser)
     expect(parser, TOKEN_PROCEDURE);
     name = parse_ident(parser);
     params = check(parser, TOKEN_LPAREN)
-        ? parse_params(parser) : NULL;
+        ? parse_param_decl(parser) : NULL;
     expect(parser, TOKEN_SEMI);
     variables = check(parser, TOKEN_VAR)
         ? parse_variable_decl_part(parser) : NULL;
