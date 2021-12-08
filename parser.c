@@ -467,12 +467,15 @@ stmt_t *parse_while_stmt(parser_t *parser)
 
 void maybe_error_break_stmt(parser_t *parser)
 {
+    assert(parser);
+    if (!parser->alive) {
+        return;
+    }
+
     if (!parser->within_loop) {
-        if (parser->alive) {
-            msg_t *msg = new_msg(parser->src, parser->current_token.pos, parser->current_token.len,
-                MSG_ERROR, "break statement not within loop");
-            error_msg(parser, msg);
-        }
+        msg_t *msg = new_msg(parser->src, parser->current_token.pos, parser->current_token.len,
+            MSG_ERROR, "break statement not within loop");
+        error_msg(parser, msg);
     }
 }
 
@@ -532,17 +535,20 @@ stmt_t *parse_read_stmt(parser_t *parser)
 
 void maybe_error_output_format(parser_t *parser, output_format_t *format, size_t spec_pos)
 {
+    assert(parser && format);
+    if (!parser->alive) {
+        return;
+    }
+
     if (format->expr && format->expr->kind == EXPR_CONSTANT) {
         lit_t *lit = format->expr->u.constant_expr.lit;
         if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && format->len) {
-            if (parser->alive) {
-                size_t msg_len = parser->current_token.pos + parser->current_token.len - spec_pos;
-                msg_t *msg = new_msg(parser->src, spec_pos, msg_len,
-                    MSG_ERROR, "wrong output format");
-                msg_add_inline_entry(msg, spec_pos, msg_len,
-                    "field specifier cannot be used for string");
-                error_msg(parser, msg);
-            }
+            size_t msg_len = parser->current_token.pos + parser->current_token.len - spec_pos;
+            msg_t *msg = new_msg(parser->src, spec_pos, msg_len,
+                MSG_ERROR, "wrong output format");
+            msg_add_inline_entry(msg, spec_pos, msg_len,
+                "field specifier cannot be used for string");
+            error_msg(parser, msg);
         }
     }
 }
