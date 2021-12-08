@@ -144,7 +144,7 @@ ident_t *parse_ident(parser_t *parser)
 
 ident_t *parse_ident_seq(parser_t *parser)
 {
-    ident_t *ret = NULL, *ident;
+    ident_t *ret, *ident;
     assert(parser);
 
     ret = ident = parse_ident(parser);
@@ -262,7 +262,7 @@ expr_t *parse_ref(parser_t *parser)
 
 expr_t *parse_ref_seq(parser_t *parser)
 {
-    expr_t *ret = NULL, *ref;
+    expr_t *ret, *ref;
     assert(parser);
 
     ret = ref = parse_ref(parser);
@@ -274,7 +274,7 @@ expr_t *parse_ref_seq(parser_t *parser)
 
 expr_t *parse_expr_seq(parser_t *parser)
 {
-    expr_t *ret = NULL, *expr;
+    expr_t *ret, *expr;
     assert(parser);
 
     ret = expr = parse_expr(parser);
@@ -317,7 +317,7 @@ expr_t *parse_factor(parser_t *parser)
 
 expr_t *parse_term(parser_t *parser)
 {
-    expr_t *ret = NULL;
+    expr_t *ret;
     assert(parser);
 
     ret = parse_factor(parser);
@@ -340,7 +340,7 @@ expr_t *parse_term(parser_t *parser)
 
 expr_t *parse_simple_expr(parser_t *parser)
 {
-    expr_t *ret = NULL;
+    expr_t *ret;
     assert(parser);
 
     if (check(parser, TOKEN_PLUS) || check(parser, TOKEN_MINUS)) {
@@ -367,7 +367,7 @@ expr_t *parse_simple_expr(parser_t *parser)
 
 expr_t *parse_expr(parser_t *parser)
 {
-    expr_t *ret = NULL;
+    expr_t *ret;
     assert(parser);
 
     ret = parse_simple_expr(parser);
@@ -545,7 +545,7 @@ output_format_t *parse_output_format(parser_t *parser)
 
 output_format_t *parse_output_format_seq(parser_t *parser)
 {
-    output_format_t *ret = NULL, *expr;
+    output_format_t *ret, *expr;
     assert(parser);
 
     ret = expr = parse_output_format(parser);
@@ -591,31 +591,28 @@ stmt_t *parse_compound_stmt(parser_t *parser)
 
 stmt_t *parse_stmt(parser_t *parser)
 {
-    stmt_t *ret = NULL;
     assert(parser);
 
     if (check(parser, TOKEN_NAME)) {
-        ret = parse_assign_stmt(parser);
+        return parse_assign_stmt(parser);
     } else if (check(parser, TOKEN_IF)) {
-        ret = parse_if_stmt(parser);
+        return parse_if_stmt(parser);
     } else if (check(parser, TOKEN_WHILE)) {
-        ret = parse_while_stmt(parser);
+        return parse_while_stmt(parser);
     } else if (check(parser, TOKEN_BREAK)) {
-        ret = parse_break_stmt(parser);
+        return parse_break_stmt(parser);
     } else if (check(parser, TOKEN_CALL)) {
-        ret = parse_call_stmt(parser);
+        return parse_call_stmt(parser);
     } else if (check(parser, TOKEN_RETURN)) {
-        ret = parse_return_stmt(parser);
+        return parse_return_stmt(parser);
     } else if (check(parser, TOKEN_READ) || check(parser, TOKEN_READLN)) {
-        ret = parse_read_stmt(parser);
+        return parse_read_stmt(parser);
     } else if (check(parser, TOKEN_WRITE) || check(parser, TOKEN_WRITELN)) {
-        ret = parse_write_stmt(parser);
+        return parse_write_stmt(parser);
     } else if (check(parser, TOKEN_BEGIN)) {
-        ret = parse_compound_stmt(parser);
-    } else {
-        ret = new_empty_stmt();
+        return parse_compound_stmt(parser);
     }
-    return ret;
+    return new_empty_stmt();
 }
 
 decl_part_t *parse_variable_decl_part(parser_t *parser)
@@ -646,7 +643,7 @@ param_decl_t *parse_param_decl(parser_t *parser)
 {
     ident_t *names;
     type_t *type;
-    param_decl_t *ret = NULL, *param;
+    param_decl_t *ret, *param;
     assert(parser);
 
     expect(parser, TOKEN_LPAREN);
@@ -688,15 +685,16 @@ decl_part_t *parse_procedure_decl_part(parser_t *parser)
 
 decl_part_t *parse_decl_part(parser_t *parser)
 {
-    decl_part_t *ret = NULL, *cur;
+    decl_part_t *ret, *cur;
     assert(parser);
 
     if (check(parser, TOKEN_VAR)) {
-        ret = parse_variable_decl_part(parser);
+        ret = cur = parse_variable_decl_part(parser);
     } else if (check(parser, TOKEN_PROCEDURE)) {
-        ret = parse_procedure_decl_part(parser);
+        ret = cur = parse_procedure_decl_part(parser);
+    } else {
+        return NULL;
     }
-    cur = ret;
     while (1) {
         if (check(parser, TOKEN_VAR)) {
             cur = cur->next = parse_variable_decl_part(parser);
