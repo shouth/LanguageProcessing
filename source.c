@@ -88,17 +88,10 @@ source_t *source_new(const char *filename)
     assert(filename);
 
     src = (source_t *) xmalloc(sizeof(source_t));
-    if (src == NULL) {
-        return NULL;
-    }
     src->lines_ptr = NULL;
     src->src_ptr = NULL;
 
     src->filename = (char *) xmalloc(sizeof(char) * (strlen(filename) + 1));
-    if (src->filename == NULL) {
-        source_free(src);
-        return NULL;
-    }
     strcpy(src->filename, filename);
 
     src->src_size = filesize(filename);
@@ -108,17 +101,13 @@ source_t *source_new(const char *filename)
     }
 
     src->src_ptr = (char *) xmalloc(sizeof(char) * (src->src_size + 1));
-    if (src->src_ptr == NULL) {
-        source_free(src);
-        return NULL;
-    }
     file = fopen(filename, "r");
-    if (file == NULL) {
+    if (!file) {
         source_free(src);
         return NULL;
     }
     fread(src->src_ptr, sizeof(char), src->src_size, file);
-    if (ferror(file) != 0) {
+    if (ferror(file)) {
         source_free(src);
         return NULL;
     }
@@ -132,10 +121,6 @@ source_t *source_new(const char *filename)
 
     src->lines_size = linecnt;
     src->lines_ptr = (size_t *) xmalloc(sizeof(size_t) * (src->lines_size + 1));
-    if (src->lines_ptr == NULL) {
-        source_free(src);
-        return NULL;
-    }
 
     linecnt = 0;
     for (cur = src->src_ptr; cur[0] != '\0'; cur = nextline(cur)) {
