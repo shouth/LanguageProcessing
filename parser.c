@@ -234,6 +234,8 @@ type_t *parse_std_type(parser_t *parser)
         ret = new_std_type(TYPE_BOOLEAN);
     } else if (eat(parser, TOKEN_CHAR)) {
         ret = new_std_type(TYPE_CHAR);
+    } else {
+        error_unexpected(parser);
     }
     return validate_type(parser, ret);
 }
