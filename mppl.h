@@ -460,7 +460,7 @@ const char *token_to_str(token_kind_t type);
 
 /* parser.c */
 
-ast_t *parse(const source_t *src);
+ast_t *parse_source(const source_t *src);
 
 /* pretty_print.c */
 

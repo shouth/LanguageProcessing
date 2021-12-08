@@ -732,7 +732,7 @@ program_t *parse_program(parser_t *parser)
     return validate_program(parser, new_program(name, decl_part, stmt));
 }
 
-ast_t *parse(const source_t *src)
+ast_t *parse_source(const source_t *src)
 {
     program_t *program;
     parser_t parser;

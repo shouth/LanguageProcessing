@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     }
 
     src = source_new(argv[1]);
-    ast = parse(src);
+    ast = parse_source(src);
     if (ast) {
         pretty_print(ast);
     }
