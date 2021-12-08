@@ -15,9 +15,6 @@ typedef struct {
     int alive, error;
 } parser_t;
 
-#define validate(parser, ret, deleter) \
-    (parser)->alive ? (ret) : (error_unexpected(parser), deleter(ret), NULL);
-
 size_t msg_token(char *ptr, token_kind_t type)
 {
     switch (type) {
@@ -137,15 +134,12 @@ int expect(parser_t *parser, token_kind_t type)
     return ret;
 }
 
-#define validate_ident(parser, ret) validate(parser, ret, delete_ident)
-
 ident_t *parse_ident(parser_t *parser)
 {
     assert(parser);
 
     expect(parser, TOKEN_NAME);
-    return validate_ident(parser,
-        new_ident(parser->current_token.ptr, parser->current_token.len));
+    return new_ident(parser->current_token.ptr, parser->current_token.len);
 }
 
 ident_t *parse_ident_seq(parser_t *parser)
@@ -157,20 +151,18 @@ ident_t *parse_ident_seq(parser_t *parser)
     while (eat(parser, TOKEN_COMMA)) {
         ident = ident->next = parse_ident(parser);
     }
-    return validate_ident(parser, ret);
+    return ret;
 }
-
-#define validate_lit(parser, ret) validate(parser, ret, delete_lit)
 
 lit_t *parse_number_lit(parser_t *parser)
 {
     assert(parser);
 
     expect(parser, TOKEN_NUMBER);
-    return validate_lit(parser, new_number_lit(
+    return new_number_lit(
         parser->current_token.ptr,
         parser->current_token.len,
-        parser->current_token.data.number.value));
+        parser->current_token.data.number.value);
 }
 
 lit_t *parse_boolean_lit(parser_t *parser)
@@ -183,7 +175,7 @@ lit_t *parse_boolean_lit(parser_t *parser)
     } else if (eat(parser, TOKEN_FALSE)) {
         ret = new_boolean_lit(0);
     }
-    return validate_lit(parser, ret);
+    return ret;
 }
 
 lit_t *parse_string_lit(parser_t *parser)
@@ -191,10 +183,10 @@ lit_t *parse_string_lit(parser_t *parser)
     assert(parser);
 
     expect(parser, TOKEN_STRING);
-    return validate_lit(parser, new_string_lit(
+    return new_string_lit(
         parser->current_token.data.string.ptr,
         parser->current_token.data.string.len,
-        parser->current_token.data.string.str_len));
+        parser->current_token.data.string.str_len);
 }
 
 lit_t *parse_lit(parser_t *parser)
@@ -209,10 +201,8 @@ lit_t *parse_lit(parser_t *parser)
     } else if (check(parser, TOKEN_STRING)) {
         ret = parse_string_lit(parser);
     }
-    return validate_lit(parser, ret);
+    return ret;
 }
-
-#define validate_type(parser, ret) validate(parser, ret, delete_type)
 
 type_t *parse_std_type(parser_t *parser)
 {
@@ -228,7 +218,7 @@ type_t *parse_std_type(parser_t *parser)
     } else {
         error_unexpected(parser);
     }
-    return validate_type(parser, ret);
+    return ret;
 }
 
 type_t *parse_array_type(parser_t *parser)
@@ -243,7 +233,7 @@ type_t *parse_array_type(parser_t *parser)
     expect(parser, TOKEN_RSQPAREN);
     expect(parser, TOKEN_OF);
     base = parse_std_type(parser);
-    return validate_type(parser, new_array_type(base, size));
+    return new_array_type(base, size);
 }
 
 type_t *parse_type(parser_t *parser)
@@ -256,10 +246,8 @@ type_t *parse_type(parser_t *parser)
     } else {
         ret = parse_std_type(parser);
     }
-    return validate_type(parser, ret);
+    return ret;
 }
-
-#define validate_expr(parser, ret) validate(parser, ret, delete_expr)
 
 expr_t *parse_expr(parser_t *parser);
 
@@ -277,7 +265,7 @@ expr_t *parse_ref(parser_t *parser)
     } else {
         ret = new_decl_ref_expr(ident);
     }
-    return validate_expr(parser, ret);
+    return ret;
 }
 
 expr_t *parse_ref_seq(parser_t *parser)
@@ -289,7 +277,7 @@ expr_t *parse_ref_seq(parser_t *parser)
     while (eat(parser, TOKEN_COMMA)) {
         ref = ref->next = parse_ref(parser);
     }
-    return validate_expr(parser, ret);
+    return ret;
 }
 
 expr_t *parse_expr_seq(parser_t *parser)
@@ -301,7 +289,7 @@ expr_t *parse_expr_seq(parser_t *parser)
     while (eat(parser, TOKEN_COMMA)) {
         expr = expr->next = parse_expr(parser);
     }
-    return validate_expr(parser, ret);
+    return ret;
 }
 
 expr_t *parse_factor(parser_t *parser)
@@ -334,7 +322,7 @@ expr_t *parse_factor(parser_t *parser)
     } else {
         error_expected(parser, "expression");
     }
-    return validate_expr(parser, ret);
+    return ret;
 }
 
 expr_t *parse_term(parser_t *parser)
@@ -357,7 +345,7 @@ expr_t *parse_term(parser_t *parser)
             break;
         }
     }
-    return validate_expr(parser, ret);
+    return ret;
 }
 
 expr_t *parse_simple_expr(parser_t *parser)
@@ -384,7 +372,7 @@ expr_t *parse_simple_expr(parser_t *parser)
             break;
         }
     }
-    return validate_expr(parser, ret);
+    return ret;
 }
 
 expr_t *parse_expr(parser_t *parser)
@@ -416,10 +404,8 @@ expr_t *parse_expr(parser_t *parser)
             break;
         }
     }
-    return validate_expr(parser, ret);
+    return ret;
 }
-
-#define validate_stmt(parser, ret) validate(parser, ret, delete_stmt)
 
 stmt_t *parse_stmt(parser_t *parser);
 
@@ -431,7 +417,7 @@ stmt_t *parse_assign_stmt(parser_t *parser)
     lhs = parse_ref(parser);
     expect(parser, TOKEN_ASSIGN);
     rhs = parse_expr(parser);
-    return validate_stmt(parser, new_assign_stmt(lhs, rhs));
+    return new_assign_stmt(lhs, rhs);
 }
 
 stmt_t *parse_if_stmt(parser_t *parser)
@@ -447,7 +433,7 @@ stmt_t *parse_if_stmt(parser_t *parser)
     if (eat(parser, TOKEN_ELSE)) {
         else_stmt = parse_stmt(parser);
     }
-    return validate_stmt(parser, new_if_stmt(cond, then_stmt, else_stmt));
+    return new_if_stmt(cond, then_stmt, else_stmt);
 }
 
 stmt_t *parse_while_stmt(parser_t *parser)
@@ -462,7 +448,7 @@ stmt_t *parse_while_stmt(parser_t *parser)
     parser->within_loop++;
     do_stmt = parse_stmt(parser);
     parser->within_loop--;
-    return validate_stmt(parser, new_while_stmt(cond, do_stmt));
+    return new_while_stmt(cond, do_stmt);
 }
 
 void maybe_error_break_stmt(parser_t *parser)
@@ -485,7 +471,7 @@ stmt_t *parse_break_stmt(parser_t *parser)
 
     expect(parser, TOKEN_BREAK);
     maybe_error_break_stmt(parser);
-    return validate_stmt(parser, new_break_stmt());
+    return new_break_stmt();
 }
 
 stmt_t *parse_call_stmt(parser_t *parser)
@@ -500,7 +486,7 @@ stmt_t *parse_call_stmt(parser_t *parser)
         args = parse_expr_seq(parser);
         expect(parser, TOKEN_RPAREN);
     }
-    return validate_stmt(parser, new_call_stmt(name, args));
+    return new_call_stmt(name, args);
 }
 
 stmt_t *parse_return_stmt(parser_t *parser)
@@ -508,7 +494,7 @@ stmt_t *parse_return_stmt(parser_t *parser)
     assert(parser);
 
     expect(parser, TOKEN_RETURN);
-    return validate_stmt(parser, new_return_stmt());
+    return new_return_stmt();
 }
 
 stmt_t *parse_read_stmt(parser_t *parser)
@@ -528,10 +514,8 @@ stmt_t *parse_read_stmt(parser_t *parser)
         args = parse_ref_seq(parser);
         expect(parser, TOKEN_RPAREN);
     }
-    return validate_stmt(parser, new_read_stmt(newline, args));
+    return new_read_stmt(newline, args);
 }
-
-#define validate_output_format(parser, ret) validate(parser, ret, delete_output_format)
 
 void maybe_error_output_format(parser_t *parser, output_format_t *format, size_t spec_pos)
 {
@@ -566,7 +550,7 @@ output_format_t *parse_output_format(parser_t *parser)
     }
     ret = new_output_format(expr, len);
     maybe_error_output_format(parser, ret, spec_pos);
-    return validate_output_format(parser, ret);
+    return ret;
 }
 
 output_format_t *parse_output_format_seq(parser_t *parser)
@@ -578,7 +562,7 @@ output_format_t *parse_output_format_seq(parser_t *parser)
     while (eat(parser, TOKEN_COMMA)) {
         expr = expr->next = parse_output_format(parser);
     }
-    return validate_output_format(parser, ret);
+    return ret;
 }
 
 stmt_t *parse_write_stmt(parser_t *parser)
@@ -598,7 +582,7 @@ stmt_t *parse_write_stmt(parser_t *parser)
         formats = parse_output_format_seq(parser);
         expect(parser, TOKEN_RPAREN);
     }
-    return validate_stmt(parser, new_write_stmt(newline, formats));
+    return new_write_stmt(newline, formats);
 }
 
 stmt_t *parse_compound_stmt(parser_t *parser)
@@ -612,7 +596,7 @@ stmt_t *parse_compound_stmt(parser_t *parser)
         cur = cur->next = parse_stmt(parser);
     }
     expect(parser, TOKEN_END);
-    return validate_stmt(parser, new_compound_stmt(stmts));
+    return parser, new_compound_stmt(stmts);
 }
 
 stmt_t *parse_stmt(parser_t *parser)
@@ -641,10 +625,8 @@ stmt_t *parse_stmt(parser_t *parser)
     } else {
         ret = new_empty_stmt();
     }
-    return validate_stmt(parser, ret);
+    return ret;
 }
-
-#define validate_decl_part(parser, ret) validate(parser, ret, delete_decl_part)
 
 decl_part_t *parse_variable_decl_part(parser_t *parser)
 {
@@ -667,10 +649,8 @@ decl_part_t *parse_variable_decl_part(parser_t *parser)
         expect(parser, TOKEN_SEMI);
         cur = cur->next = new_variable_decl(names, type);
     }
-    return validate_decl_part(parser, new_variable_decl_part(decls));
+    return new_variable_decl_part(decls);
 }
-
-#define validate_param_decl(parser, ret) validate(parser, ret, delete_param_decl)
 
 param_decl_t *parse_param_decl(parser_t *parser)
 {
@@ -691,7 +671,7 @@ param_decl_t *parse_param_decl(parser_t *parser)
         param = param->next = new_param_decl(names, type);
     }
     expect(parser, TOKEN_RPAREN);
-    return validate_param_decl(parser, ret);
+    return ret;
 }
 
 decl_part_t *parse_procedure_decl_part(parser_t *parser)
@@ -713,8 +693,7 @@ decl_part_t *parse_procedure_decl_part(parser_t *parser)
     }
     stmt = parse_compound_stmt(parser);
     expect(parser, TOKEN_SEMI);
-    return validate_decl_part(parser,
-        new_procedure_decl_part(name, params, variables, stmt));
+    return new_procedure_decl_part(name, params, variables, stmt);
 }
 
 decl_part_t *parse_decl_part(parser_t *parser)
@@ -728,7 +707,7 @@ decl_part_t *parse_decl_part(parser_t *parser)
         ret = parse_procedure_decl_part(parser);
     }
     cur = ret;
-    while (cur) {
+    while (1) {
         if (check(parser, TOKEN_VAR)) {
             cur = cur->next = parse_variable_decl_part(parser);
         } else if (check(parser, TOKEN_PROCEDURE)) {
@@ -737,10 +716,8 @@ decl_part_t *parse_decl_part(parser_t *parser)
             break;
         }
     }
-    return validate_decl_part(parser, ret);
+    return ret;
 }
-
-#define validate_program(parser, ret) validate(parser, ret, delete_program)
 
 program_t *parse_program(parser_t *parser)
 {
@@ -756,7 +733,7 @@ program_t *parse_program(parser_t *parser)
     stmt = parse_compound_stmt(parser);
     expect(parser, TOKEN_DOT);
     expect(parser, TOKEN_EOF);
-    return validate_program(parser, new_program(name, decl_part, stmt));
+    return new_program(name, decl_part, stmt);
 }
 
 ast_t *parse_source(const source_t *src)
