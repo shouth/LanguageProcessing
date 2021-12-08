@@ -84,12 +84,9 @@ source_t *source_new(const char *filename)
     FILE *file;
     size_t linecnt;
     const char *cur;
-
     assert(filename);
 
     src = (source_t *) xmalloc(sizeof(source_t));
-    src->lines_ptr = NULL;
-    src->src_ptr = NULL;
 
     src->filename = (char *) xmalloc(sizeof(char) * (strlen(filename) + 1));
     strcpy(src->filename, filename);
@@ -115,7 +112,7 @@ source_t *source_new(const char *filename)
     src->src_ptr[src->src_size] = '\0';
 
     linecnt = 0;
-    for (cur = src->src_ptr; cur[0] != '\0'; cur = nextline(cur)) {
+    for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
         linecnt++;
     }
 
@@ -123,7 +120,7 @@ source_t *source_new(const char *filename)
     src->lines_ptr = (size_t *) xmalloc(sizeof(size_t) * (src->lines_size + 1));
 
     linecnt = 0;
-    for (cur = src->src_ptr; cur[0] != '\0'; cur = nextline(cur)) {
+    for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
         src->lines_ptr[linecnt] = cur - src->src_ptr;
         linecnt++;
     }
