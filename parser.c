@@ -17,8 +17,6 @@ typedef struct {
 #define validate(parser, ret, deleter) \
     (parser)->alive ? (ret) : (error_unexpected(parser), deleter(ret), NULL);
 
-#define delete_nothing(x) 0
-
 size_t msg_token(char *ptr, token_kind_t type)
 {
     switch (type) {
