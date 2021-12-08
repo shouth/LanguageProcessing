@@ -1,9 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "source.h"
-#include "parser.h"
-#include "pretty_printer.h"
+#include "mppl.h"
 
 int main(int argc, char **argv)
 {

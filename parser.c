@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "mppl.h"
 
@@ -655,7 +656,7 @@ decl_part_t *parse_variable_decl_part(parser_t *parser)
     return validate_decl_part(parser, new_variable_decl_part(decls));
 }
 
-#define validate_params(parser, ret) validate(parser, ret, NULL, delete_params)
+#define validate_params(parser, ret) validate(parser, ret, NULL, delete_param_decl)
 
 param_decl_t *parse_params(parser_t *parser)
 {
