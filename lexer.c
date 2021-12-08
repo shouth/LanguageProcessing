@@ -197,7 +197,7 @@ token_kind_t lex_symbol(cursol_t *cur, token_info_t *ret)
     }
 }
 
-token_kind_t lex_token(cursol_t *cur, token_info_t *ret)
+token_kind_t lex_delimited(cursol_t *cur, token_info_t *ret)
 {
     assert(cur && ret);
 
@@ -265,7 +265,7 @@ token_kind_t keywords[] = {
 
 const size_t keywords_size = sizeof(keywords) / sizeof(*keywords);
 
-void lex(cursol_t *cursol, token_t *ret)
+void lex_token(cursol_t *cursol, token_t *ret)
 {
     token_info_t info;
     msg_t *msg;
@@ -274,7 +274,7 @@ void lex(cursol_t *cursol, token_t *ret)
 
     ret->ptr = cursol->ptr;
     ret->pos = cursol_position(cursol);
-    ret->type = lex_token(cursol, &info);
+    ret->type = lex_delimited(cursol, &info);
     ret->len = cursol_position(cursol) - ret->pos;
 
     switch (ret->type) {

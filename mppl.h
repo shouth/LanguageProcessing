@@ -450,7 +450,7 @@ typedef struct {
     token_data_t data;
 } token_t;
 
-void lex(cursol_t *cursol, token_t *ret);
+void lex_token(cursol_t *cursol, token_t *ret);
 const char *token_to_str(token_kind_t type);
 
 /* parser.c */

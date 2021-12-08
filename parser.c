@@ -83,7 +83,7 @@ void bump(parser_t *parser)
     parser->current_token = parser->next_token;
     parser->expected_terminals = 0;
     while (1) {
-        lex(&parser->cursol, &parser->next_token);
+        lex_token(&parser->cursol, &parser->next_token);
         switch (parser->next_token.type) {
         case TOKEN_WHITESPACE:
         case TOKEN_BRACES_COMMENT:
