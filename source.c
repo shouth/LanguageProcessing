@@ -78,7 +78,7 @@ static const char *nextline(const char *str)
     return str + 1;
 }
 
-source_t *source_new(const char *filename)
+source_t *new_source(const char *filename)
 {
     source_t *src;
     FILE *file;
@@ -93,19 +93,19 @@ source_t *source_new(const char *filename)
 
     src->src_size = filesize(filename);
     if (src->src_size == SIZE_MAX) {
-        source_free(src);
+        delete_source(src);
         return NULL;
     }
 
     src->src_ptr = (char *) xmalloc(sizeof(char) * (src->src_size + 1));
     file = fopen(filename, "r");
     if (!file) {
-        source_free(src);
+        delete_source(src);
         return NULL;
     }
     fread(src->src_ptr, sizeof(char), src->src_size, file);
     if (ferror(file)) {
-        source_free(src);
+        delete_source(src);
         return NULL;
     }
     fclose(file);
@@ -129,7 +129,7 @@ source_t *source_new(const char *filename)
     return src;
 }
 
-void source_free(source_t *src)
+void delete_source(source_t *src)
 {
     free(src->filename);
     free(src->src_ptr);

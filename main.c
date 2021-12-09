@@ -12,12 +12,12 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    src = source_new(argv[1]);
+    src = new_source(argv[1]);
     ast = parse_source(src);
     if (ast) {
         pretty_print(ast);
     }
     delete_ast(ast);
-    source_free(src);
+    delete_source(src);
     return 0;
 }

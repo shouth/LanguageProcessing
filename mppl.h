@@ -17,8 +17,8 @@ typedef struct {
     const source_t *src;
 } location_t;
 
-source_t *source_new(const char *filename);
-void source_free(source_t *src);
+source_t *new_source(const char *filename);
+void delete_source(source_t *src);
 void source_location(const source_t *src, size_t index, location_t *loc);
 
 /* ast.c */
