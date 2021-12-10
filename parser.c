@@ -10,7 +10,7 @@ typedef struct {
     cursol_t cursol;
 
     token_t current_token, next_token;
-    uint64_t expected_terminals;
+    uint64_t expected_tokens;
     int within_loop;
     int alive, error;
 } parser_t;
@@ -49,29 +49,30 @@ void error_expected(parser_t *parser, const char *str)
         MSG_ERROR, "expected %s, got `%.*s`", str,
         (int) parser->next_token.len, parser->next_token.ptr);
     error_msg(parser, msg);
-    parser->expected_terminals = 0;
+    parser->expected_tokens = 0;
 }
 
 void error_unexpected(parser_t *parser)
 {
     token_kind_t i;
     char buf[256], *ptr;
-    uint64_t msb, bit;
+    uint8_t m, l;
 
     assert(parser);
     if (!parser->alive) {
         return;
     }
-    assert(parser->expected_terminals);
+    assert(parser->expected_tokens);
+
+    m = msb(parser->expected_tokens);
     ptr = buf;
-    msb = msb64(parser->expected_terminals);
-    for (i = 0; i <= TOKEN_EOF; i++) {
-        if (bit = ((uint64_t) 1 << i) & parser->expected_terminals) {
-            if (ptr != buf) {
-                ptr += sprintf(ptr, bit != msb ? ", " : " or ");
-            }
-            ptr += msg_token(ptr, i);
+    while (parser->expected_tokens) {
+        l = lsb(parser->expected_tokens);
+        if (ptr != buf) {
+            ptr += sprintf(ptr, l != m ? ", " : " or ");
         }
+        ptr += msg_token(ptr, l);
+        parser->expected_tokens ^= (uint64_t) 1 << l;
     }
     error_expected(parser, buf);
 }
@@ -84,7 +85,7 @@ void bump(parser_t *parser)
         return;
     }
     parser->current_token = parser->next_token;
-    parser->expected_terminals = 0;
+    parser->expected_tokens = 0;
     while (1) {
         lex_token(&parser->cursol, &parser->next_token);
         switch (parser->next_token.type) {
@@ -108,7 +109,7 @@ int check(parser_t *parser, token_kind_t type)
     if (!parser->alive) {
         return 0;
     }
-    parser->expected_terminals |= (uint64_t) 1 << type;
+    parser->expected_tokens |= (uint64_t) 1 << type;
     return parser->next_token.type == type;
 }
 

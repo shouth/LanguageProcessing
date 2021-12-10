@@ -514,8 +514,9 @@ int is_number(int c);
 int is_space(int c);
 int is_graphical(int c);
 
-uint64_t msb64(uint64_t n);
-size_t popcount64(uint64_t n);
+uint8_t lsb(uint64_t n);
+uint8_t msb(uint64_t n);
+uint8_t popcount(uint64_t n);
 
 void *xmalloc(size_t size);
 

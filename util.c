@@ -59,26 +59,44 @@ int is_graphical(int c)
     return is_alphabet(c) || is_number(c) || is_space(c);
 }
 
-uint64_t msb64(uint64_t n)
+uint8_t lsb(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
-    return (uint64_t) 1 << (63 - __builtin_clzll(n));
+    /* If compiler is GCC or Clang, use builtin functions. */
+    return __builtin_ctzll(n);
+
 #else
+    /* Otherwise, use bitwise operatons. */
+    return popcount((n & (~n + 1)) - 1);
+#endif
+}
+
+uint8_t msb(uint64_t n)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    /* If compiler is GCC or Clang, use builtin functions. */
+    return 63 - __builtin_clzll(n);
+
+#else
+    /* Otherwise, use bitwise operatons. */
     n |= n >> 1;
     n |= n >> 2;
     n |= n >> 4;
     n |= n >> 8;
     n |= n >> 16;
     n |= n >> 32;
-    return n & ~(n >> 1);
+    return popcount(n);
 #endif
 }
 
-size_t popcount64(uint64_t n)
+uint8_t popcount(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
+    /* If compiler is GCC or Clang, use builtin functions. */
     return __builtin_popcountll(n);
+
 #else
+    /* Otherwise, use bitwise operatons. */
     n -= (n >> 1) & 0x5555555555555555;
     n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
     n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
