@@ -85,7 +85,7 @@ uint8_t msb(uint64_t n)
     n |= n >> 8;
     n |= n >> 16;
     n |= n >> 32;
-    return popcount(n);
+    return popcount(n) - 1;
 #endif
 }
 
