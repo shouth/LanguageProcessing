@@ -159,7 +159,6 @@ const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void
                     hash_table_entry_t *next = entry + i + l;
                     empty->key = next->key;
                     empty->value = next->value;
-                    next->key = NULL;
                     next->hop ^= (hash_table_hop_t) 1 << l;
                     next->hop ^= (hash_table_hop_t) 1 << (NBHD_RANGE - i - 1);
                     empty = next;
@@ -169,6 +168,7 @@ const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void
             }
         }
         if (i == NBHD_RANGE) {
+            empty->key = NULL;
             empty = NULL;
         }
     }
