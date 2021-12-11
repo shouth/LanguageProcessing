@@ -33,6 +33,7 @@ uint64_t fnv1_ptr(const void *ptr)
 static void hash_table_init_buckets(hash_table_t *table)
 {
     size_t i;
+    table->size = 0;
     table->bucket_cnt = table->capacity + NBHD_RANGE;
     table->buckets = new_arr(hash_table_entry_t, table->bucket_cnt);
     for (i = 0; i < table->bucket_cnt; i++) {
@@ -50,7 +51,6 @@ hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_has
 
     ret = new(hash_table_t);
     ret->capacity = 1 << 6;
-    ret->size = 0;
     ret->load_factor = 60;
     ret->comparator = comparator;
     ret->hasher = hasher;
@@ -60,11 +60,11 @@ hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_has
 
 void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter)
 {
+    size_t i;
     if (!table) {
         return;
     }
 
-    size_t i;
     for (i = 0; i < table->bucket_cnt; i++) {
         if (table->buckets[i].key) {
             if (key_deleter) {
@@ -93,7 +93,6 @@ static void hash_table_grow(hash_table_t *table, int enforce)
     old_buckets = table->buckets;
     old_bucket_cnt = table->bucket_cnt;
     table->capacity <<= 1;
-    table->size = 0;
     hash_table_init_buckets(table);
     for (i = 0; i < old_bucket_cnt; i++) {
         if (old_buckets[i].key) {
