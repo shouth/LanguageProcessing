@@ -3,9 +3,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <stdio.h>
-#include <sys/time.h>
-
 #include "mppl.h"
 
 #pragma GCC optimize("O3,inline")
