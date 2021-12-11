@@ -532,19 +532,16 @@ typedef struct {
     uint8_t load_factor;
     size_t bucket_cnt;
     hash_table_entry_t *buckets;
+    hash_table_entry_t removed;
     hash_table_comparator_t *comparator;
     hash_table_hasher_t *hasher;
-    hash_table_deleter_t *key_deleter;
-    hash_table_deleter_t *value_deleter;
 } hash_table_t;
 
-hash_table_t *new_hash_table(
-    hash_table_comparator_t *comparator, hash_table_hasher_t *hasher,
-    hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter);
-void delete_hash_table(hash_table_t *table);
-const void *hash_table_find(hash_table_t *table, const void *key);
-int hash_table_insert(hash_table_t *table, void *key, void *value);
-int hash_table_remove(hash_table_t *table, const void *key);
+hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_hasher_t *hasher);
+void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter);
+const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key);
+const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value);
+hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key);
 
 /* util.c */
 

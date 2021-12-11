@@ -42,9 +42,7 @@ static void hash_table_init_buckets(hash_table_t *table)
     }
 }
 
-hash_table_t *new_hash_table(
-    hash_table_comparator_t *comparator, hash_table_hasher_t *hasher,
-    hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter)
+hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_hasher_t *hasher)
 {
     hash_table_t *ret;
     size_t i;
@@ -56,36 +54,29 @@ hash_table_t *new_hash_table(
     ret->load_factor = 60;
     ret->comparator = comparator;
     ret->hasher = hasher;
-    ret->key_deleter = key_deleter;
-    ret->value_deleter = value_deleter;
     hash_table_init_buckets(ret);
     return ret;
 }
 
-static void hash_table_delete_kv(hash_table_t *table, void *key, void *value)
+void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter)
 {
-    assert(table && key && value);
-
-    if (table->key_deleter) {
-        table->key_deleter(key);
+    if (!table) {
+        return;
     }
-    if (table->value_deleter) {
-        table->value_deleter(value);
-    }
-}
 
-void delete_hash_table(hash_table_t *table)
-{
-    if (table) {
-        size_t i;
-        for (i = 0; i < table->bucket_cnt; i++) {
-            if (table->buckets[i].key) {
-                hash_table_delete_kv(table, table->buckets[i].key, table->buckets[i].value);
+    size_t i;
+    for (i = 0; i < table->bucket_cnt; i++) {
+        if (table->buckets[i].key) {
+            if (key_deleter) {
+                key_deleter(table->buckets[i].key);
+            }
+            if (value_deleter) {
+                value_deleter(table->buckets[i].value);
             }
         }
-        free(table->buckets);
-        free(table);
     }
+    free(table->buckets);
+    free(table);
 }
 
 static void hash_table_grow(hash_table_t *table, int enforce)
@@ -118,7 +109,7 @@ static size_t hash_table_index(hash_table_t *table, const void *key)
     return table->hasher(key) & (table->capacity - 1);
 }
 
-const void *hash_table_find(hash_table_t *table, const void *key)
+const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key)
 {
     hash_table_entry_t *home;
     hash_table_hop_t hop;
@@ -131,14 +122,14 @@ const void *hash_table_find(hash_table_t *table, const void *key)
     while (hop) {
         uint8_t l = lsb(hop);
         if (table->comparator(key, home[l].key)) {
-            return home[l].value;
+            return home + l;
         }
         hop ^= (hash_table_hop_t) 1 << l;
     }
     return NULL;
 }
 
-int hash_table_insert(hash_table_t *table, void *key, void *value)
+const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value)
 {
     hash_table_entry_t *home, *empty = NULL;
     size_t dist, index;
@@ -146,8 +137,7 @@ int hash_table_insert(hash_table_t *table, void *key, void *value)
     assert(table && key && value);
 
     if (hash_table_find(table, key)) {
-        hash_table_delete_kv(table, key, value);
-        return 0;
+        return NULL;
     }
 
     index = hash_table_index(table, key);
@@ -193,10 +183,10 @@ int hash_table_insert(hash_table_t *table, void *key, void *value)
     home->hop ^= (hash_table_hop_t) 1 << dist;
     table->size++;
     hash_table_grow(table, 0);
-    return 1;
+    return empty;
 }
 
-int hash_table_remove(hash_table_t *table, const void *key)
+hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key)
 {
     hash_table_entry_t *home;
     hash_table_hop_t hop;
@@ -209,13 +199,14 @@ int hash_table_remove(hash_table_t *table, const void *key)
     while (hop) {
         uint8_t l = lsb(hop);
         if (table->comparator(key, home[l].key)) {
-            hash_table_delete_kv(table, home[l].key, home[l].value);
+            table->removed.key = home[l].key;
+            table->removed.value = home[l].value;
             home[l].key = NULL;
             home->hop ^= (hash_table_hop_t) 1 << l;
             table->size--;
-            return 1;
+            return &table->removed;
         }
         hop ^= (hash_table_hop_t) 1 << l;
     }
-    return 0;
+    return NULL;
 }
