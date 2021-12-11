@@ -5,8 +5,6 @@
 
 #include "mppl.h"
 
-#pragma GCC optimize("O3,inline")
-
 inline uint64_t fnv1(const uint8_t *ptr, size_t len)
 {
     uint64_t ret   = 0xcbf29ce484222325;
@@ -17,7 +15,6 @@ inline uint64_t fnv1(const uint8_t *ptr, size_t len)
         ret *= prime;
         ret ^= ptr[i];
     }
-
     return ret;
 }
 
@@ -138,7 +135,6 @@ inline const void *hash_table_find(hash_table_t *table, const void *key)
         }
         hop ^= (hash_table_hop_t) 1 << l;
     }
-
     return NULL;
 }
 
