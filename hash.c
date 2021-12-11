@@ -96,7 +96,7 @@ static void hash_table_grow(hash_table_t *table, int enforce)
     hash_table_init_buckets(table);
     for (i = 0; i < old_bucket_cnt; i++) {
         if (old_buckets[i].key) {
-            hash_table_insert(table, old_buckets[i].key, old_buckets[i].value);
+            hash_table_insert_unchecked(table, old_buckets[i].key, old_buckets[i].value);
         }
     }
     free(old_buckets);
