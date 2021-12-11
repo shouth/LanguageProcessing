@@ -128,16 +128,12 @@ const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key)
     return NULL;
 }
 
-const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value)
+const hash_table_entry_t *hash_table_insert_unchecked(hash_table_t *table, void *key, void *value)
 {
     hash_table_entry_t *home, *empty = NULL;
     size_t dist, index;
     size_t i;
     assert(table && key && value);
-
-    if (hash_table_find(table, key)) {
-        return NULL;
-    }
 
     index = hash_table_index(table, key);
     home = table->buckets + index;
@@ -183,6 +179,16 @@ const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void
     table->size++;
     hash_table_grow(table, 0);
     return empty;
+}
+
+const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value)
+{
+    assert(table && key && value);
+
+    if (hash_table_find(table, key)) {
+        return NULL;
+    }
+    return hash_table_insert_unchecked(table, key, value);
 }
 
 hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key)
