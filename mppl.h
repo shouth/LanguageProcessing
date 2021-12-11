@@ -507,6 +507,45 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
 void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, ...);
 void msg_emit(msg_t *msg);
 
+/* hash.c */
+
+uint64_t fnv1(const uint8_t *ptr, size_t len);
+uint64_t fnv1_int(uint64_t value);
+uint64_t fnv1_ptr(const void *ptr);
+
+typedef uintptr_t hash_table_hop_t;
+typedef int hash_table_comparator_t(const void *, const void *);
+typedef uint64_t hash_table_hasher_t(const void *);
+typedef void hash_table_deleter_t(void *);
+
+typedef struct impl_hash_table_entry hash_table_entry_t;
+struct impl_hash_table_entry {
+    hash_table_hop_t hop;
+    void *key;
+    void *value;
+};
+
+typedef struct {
+    size_t size;
+    size_t capacity;
+    uint8_t nbhd_range;
+    uint8_t load_factor;
+    size_t bucket_cnt;
+    hash_table_entry_t *buckets;
+    hash_table_comparator_t *comparator;
+    hash_table_hasher_t *hasher;
+    hash_table_deleter_t *key_deleter;
+    hash_table_deleter_t *value_deleter;
+} hash_table_t;
+
+hash_table_t *new_hash_table(
+    hash_table_comparator_t *comparator, hash_table_hasher_t *hasher,
+    hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter);
+void delete_hash_table(hash_table_t *table);
+const void *hash_table_find(hash_table_t *table, const void *key);
+int hash_table_insert(hash_table_t *table, void *key, void *value);
+int hash_table_remove(hash_table_t *table, const void *key);
+
 /* util.c */
 
 int is_alphabet(int c);
