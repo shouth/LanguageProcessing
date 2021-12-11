@@ -6,6 +6,8 @@
 #if __STDC_VERSION__ < 199901L
 #   if defined(__GNUC__)
 #       define inline __inline__
+#   elif defined(_WIN32)
+#       define inline __inline
 #   else
 #       define inline
 #   endif
