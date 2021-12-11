@@ -5,7 +5,7 @@
 
 #include "mppl.h"
 
-inline uint64_t fnv1(const uint8_t *ptr, size_t len)
+uint64_t fnv1(const uint8_t *ptr, size_t len)
 {
     uint64_t ret   = 0xcbf29ce484222325;
     uint64_t prime = 0x00000100000001b3;
@@ -18,19 +18,19 @@ inline uint64_t fnv1(const uint8_t *ptr, size_t len)
     return ret;
 }
 
-inline uint64_t fnv1_int(uint64_t value)
+uint64_t fnv1_int(uint64_t value)
 {
     return fnv1((uint8_t *) &value, sizeof(value));
 }
 
-inline uint64_t fnv1_ptr(const void *ptr)
+uint64_t fnv1_ptr(const void *ptr)
 {
     return fnv1((uint8_t *) &ptr, sizeof(ptr));
 }
 
 #define NBHD_RANGE (sizeof(hash_table_hop_t) * 8)
 
-static inline void hash_table_init_buckets(hash_table_t *table)
+static void hash_table_init_buckets(hash_table_t *table)
 {
     size_t i;
     table->bucket_cnt = table->capacity + NBHD_RANGE;
@@ -62,7 +62,7 @@ hash_table_t *new_hash_table(
     return ret;
 }
 
-static inline void hash_table_delete_kv(hash_table_t *table, void *key, void *value)
+static void hash_table_delete_kv(hash_table_t *table, void *key, void *value)
 {
     assert(table && key && value);
 
@@ -88,7 +88,7 @@ void delete_hash_table(hash_table_t *table)
     }
 }
 
-static inline void hash_table_grow(hash_table_t *table, int enforce)
+static void hash_table_grow(hash_table_t *table, int enforce)
 {
     hash_table_entry_t *old_buckets;
     size_t old_bucket_cnt;
@@ -112,13 +112,13 @@ static inline void hash_table_grow(hash_table_t *table, int enforce)
     free(old_buckets);
 }
 
-static inline size_t hash_table_index(hash_table_t *table, const void *key)
+static size_t hash_table_index(hash_table_t *table, const void *key)
 {
     assert(table && key);
     return table->hasher(key) & (table->capacity - 1);
 }
 
-inline const void *hash_table_find(hash_table_t *table, const void *key)
+const void *hash_table_find(hash_table_t *table, const void *key)
 {
     hash_table_entry_t *home;
     hash_table_hop_t hop;
@@ -138,7 +138,7 @@ inline const void *hash_table_find(hash_table_t *table, const void *key)
     return NULL;
 }
 
-inline int hash_table_insert(hash_table_t *table, void *key, void *value)
+int hash_table_insert(hash_table_t *table, void *key, void *value)
 {
     hash_table_entry_t *home, *empty = NULL;
     size_t dist, index;
@@ -196,7 +196,7 @@ inline int hash_table_insert(hash_table_t *table, void *key, void *value)
     return 1;
 }
 
-inline int hash_table_remove(hash_table_t *table, const void *key)
+int hash_table_remove(hash_table_t *table, const void *key)
 {
     hash_table_entry_t *home;
     hash_table_hop_t hop;
