@@ -5,32 +5,9 @@
 
 #include "mppl.h"
 
-uint64_t fnv1(const uint8_t *ptr, size_t len)
-{
-    uint64_t ret   = 0xcbf29ce484222325;
-    uint64_t prime = 0x00000100000001b3;
-    size_t i;
-
-    for (i = 0; i < len; i++) {
-        ret *= prime;
-        ret ^= ptr[i];
-    }
-    return ret;
-}
-
-uint64_t fnv1_int(uint64_t value)
-{
-    return fnv1((uint8_t *) &value, sizeof(value));
-}
-
-uint64_t fnv1_ptr(const void *ptr)
-{
-    return fnv1((uint8_t *) &ptr, sizeof(ptr));
-}
-
 #define NBHD_RANGE (sizeof(hash_table_hop_t) * 8)
 
-static void hash_table_init_buckets(hash_table_t *table)
+static inline void hash_table_init_buckets(hash_table_t *table)
 {
     size_t i;
     table->size = 0;
@@ -79,7 +56,7 @@ void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, h
     free(table);
 }
 
-static void hash_table_grow(hash_table_t *table, int enforce)
+static inline void hash_table_grow(hash_table_t *table, int enforce)
 {
     hash_table_entry_t *old_buckets;
     size_t old_bucket_cnt;
@@ -102,7 +79,7 @@ static void hash_table_grow(hash_table_t *table, int enforce)
     free(old_buckets);
 }
 
-static size_t hash_table_index(hash_table_t *table, const void *key)
+static inline size_t hash_table_index(hash_table_t *table, const void *key)
 {
     assert(table && key);
     return table->hasher(key) & (table->capacity - 1);
