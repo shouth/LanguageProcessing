@@ -106,7 +106,6 @@ struct impl_hash_table_entry {
 typedef struct {
     size_t size;
     size_t capacity;
-    uint8_t nbhd_range;
     uint8_t load_factor;
     size_t bucket_cnt;
     hash_table_entry_t *buckets;
