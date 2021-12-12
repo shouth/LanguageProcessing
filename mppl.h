@@ -512,20 +512,6 @@ typedef enum {
 
 typedef union {
     struct {
-        int terminated;
-        size_t len;
-        size_t str_len;
-    } string;
-    struct {
-        int terminated;
-    } braces_comment;
-    struct {
-        int terminated;
-    } cstyle_comment;
-} token_info_t;
-
-typedef union {
-    struct {
         unsigned long value;
     } number;
     struct {
