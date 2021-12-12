@@ -3,6 +3,92 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* utility */
+
+static uint64_t fnv1(const uint8_t *ptr, size_t len)
+{
+    uint64_t ret   = 0xcbf29ce484222325;
+    uint64_t prime = 0x00000100000001b3;
+    size_t i;
+
+    for (i = 0; i < len; i++) {
+        ret *= prime;
+        ret ^= ptr[i];
+    }
+    return ret;
+}
+
+static uint64_t fnv1_int(uint64_t value)
+{
+    return fnv1((uint8_t *) &value, sizeof(value));
+}
+
+static uint64_t fnv1_ptr(const void *ptr)
+{
+    return fnv1((uint8_t *) &ptr, sizeof(ptr));
+}
+
+static uint8_t lsb(uint64_t n)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    /* If compiler is GCC or Clang, use builtin functions. */
+    return __builtin_ctzll(n);
+
+#else
+    /* Otherwise, use bitwise operatons. */
+    return popcount((n & (~n + 1)) - 1);
+#endif
+}
+
+static uint8_t msb(uint64_t n)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    /* If compiler is GCC or Clang, use builtin functions. */
+    return 63 - __builtin_clzll(n);
+
+#else
+    /* Otherwise, use bitwise operatons. */
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n |= n >> 32;
+    return popcount(n) - 1;
+#endif
+}
+
+static uint8_t popcount(uint64_t n)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    /* If compiler is GCC or Clang, use builtin functions. */
+    return __builtin_popcountll(n);
+
+#else
+    /* Otherwise, use bitwise operatons. */
+    n -= (n >> 1) & 0x5555555555555555;
+    n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
+    n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
+    n += n >> 8;
+    n += n >> 16;
+    n += n >> 32;
+    return n & 0x000000000000007f;
+#endif
+}
+
+static void *xmalloc(size_t size)
+{
+    void *ret = malloc(size);
+    if (ret == NULL) {
+        fprintf(stderr, "memory allocation failed!");
+        exit(1);
+    }
+    return ret;
+}
+
+#define new(type) ((type *) xmalloc(sizeof(type)))
+#define new_arr(type, size) ((type *) xmalloc(sizeof(type) * size))
+
 /* source.c */
 
 typedef struct {
@@ -542,88 +628,12 @@ void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value);
 hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value);
 hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key);
 
-/* utility */
-
-static uint64_t fnv1(const uint8_t *ptr, size_t len)
+static int hash_table_default_comparator(const void *lhs, const void *rhs)
 {
-    uint64_t ret   = 0xcbf29ce484222325;
-    uint64_t prime = 0x00000100000001b3;
-    size_t i;
-
-    for (i = 0; i < len; i++) {
-        ret *= prime;
-        ret ^= ptr[i];
-    }
-    return ret;
+    return lhs == rhs;
 }
 
-static uint64_t fnv1_int(uint64_t value)
+static int hash_table_default_hasher(const void *ptr)
 {
-    return fnv1((uint8_t *) &value, sizeof(value));
+    return fnv1_ptr(ptr);
 }
-
-static uint64_t fnv1_ptr(const void *ptr)
-{
-    return fnv1((uint8_t *) &ptr, sizeof(ptr));
-}
-
-static uint8_t lsb(uint64_t n)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    /* If compiler is GCC or Clang, use builtin functions. */
-    return __builtin_ctzll(n);
-
-#else
-    /* Otherwise, use bitwise operatons. */
-    return popcount((n & (~n + 1)) - 1);
-#endif
-}
-
-static uint8_t msb(uint64_t n)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    /* If compiler is GCC or Clang, use builtin functions. */
-    return 63 - __builtin_clzll(n);
-
-#else
-    /* Otherwise, use bitwise operatons. */
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n |= n >> 32;
-    return popcount(n) - 1;
-#endif
-}
-
-static uint8_t popcount(uint64_t n)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    /* If compiler is GCC or Clang, use builtin functions. */
-    return __builtin_popcountll(n);
-
-#else
-    /* Otherwise, use bitwise operatons. */
-    n -= (n >> 1) & 0x5555555555555555;
-    n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
-    n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
-    n += n >> 8;
-    n += n >> 16;
-    n += n >> 32;
-    return n & 0x000000000000007f;
-#endif
-}
-
-static void *xmalloc(size_t size)
-{
-    void *ret = malloc(size);
-    if (ret == NULL) {
-        fprintf(stderr, "memory allocation failed!");
-        exit(1);
-    }
-    return ret;
-}
-
-#define new(type) ((type *) xmalloc(sizeof(type)))
-#define new_arr(type, size) ((type *) xmalloc(sizeof(type) * size))
