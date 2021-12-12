@@ -157,13 +157,12 @@ void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value)
 
 hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value)
 {
+    hash_table_entry_t *ret;
     assert(table && key && value);
 
-    if (hash_table_remove(table, key)) {
-        return &table->removed;
-    }
+    ret = hash_table_remove(table, key);
     hash_table_insert_unchecked(table, key, value);
-    return NULL;
+    return ret;
 }
 
 hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key)
