@@ -89,6 +89,49 @@ static void *xmalloc(size_t size)
 #define new(type) ((type *) xmalloc(sizeof(type)))
 #define new_arr(type, size) ((type *) xmalloc(sizeof(type) * size))
 
+/* hash.c */
+
+typedef uintptr_t hash_table_hop_t;
+typedef int hash_table_comparator_t(const void *, const void *);
+typedef uint64_t hash_table_hasher_t(const void *);
+typedef void hash_table_deleter_t(void *);
+
+typedef struct impl_hash_table_entry hash_table_entry_t;
+struct impl_hash_table_entry {
+    hash_table_hop_t hop;
+    void *key;
+    void *value;
+};
+
+typedef struct {
+    size_t size;
+    size_t capacity;
+    uint8_t nbhd_range;
+    uint8_t load_factor;
+    size_t bucket_cnt;
+    hash_table_entry_t *buckets;
+    hash_table_entry_t removed;
+    hash_table_comparator_t *comparator;
+    hash_table_hasher_t *hasher;
+} hash_table_t;
+
+hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_hasher_t *hasher);
+void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter);
+const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key);
+void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value);
+hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value);
+hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key);
+
+static int hash_table_default_comparator(const void *lhs, const void *rhs)
+{
+    return lhs == rhs;
+}
+
+static int hash_table_default_hasher(const void *ptr)
+{
+    return fnv1_ptr(ptr);
+}
+
 /* source.c */
 
 typedef struct {
@@ -109,6 +152,22 @@ source_t *new_source(const char *filename);
 void delete_source(source_t *src);
 void source_location(const source_t *src, size_t index, location_t *loc);
 
+/* symbol.c */
+
+typedef struct {
+    const char *ptr;
+    size_t len;
+} symbol_t;
+
+typedef struct {
+    hash_table_t *table;
+    symbol_t *key;
+} symbol_storage_t;
+
+symbol_storage_t *new_symbol_storage();
+symbol_storage_t *delete_symbol_storage(symbol_storage_t *storage);
+const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
+
 /* ast.c */
 
 typedef enum {
@@ -118,8 +177,7 @@ typedef enum {
 } lit_kind_t;
 
 typedef struct {
-    const char *ptr;
-    size_t len;
+    const symbol_t *symbol;
     unsigned long value;
 } number_lit_t;
 
@@ -128,8 +186,7 @@ typedef struct {
 } boolean_lit_t;
 
 typedef struct {
-    const char *ptr;
-    size_t len;
+    const symbol_t *symbol;
     size_t str_len;
 } string_lit_t;
 
@@ -143,19 +200,18 @@ typedef struct {
     } u;
 } lit_t;
 
-lit_t *new_number_lit(const char *ptr, size_t len, unsigned long value);
+lit_t *new_number_lit(const symbol_t *symbol, unsigned long value);
 lit_t *new_boolean_lit(int value);
-lit_t *new_string_lit(const char *ptr, size_t len, size_t str_len);
+lit_t *new_string_lit(const symbol_t *symbol, size_t str_len);
 void delete_lit(lit_t *lit);
 
 typedef struct impl_ident ident_t;
 struct impl_ident {
+    const symbol_t *symbol;
     ident_t *next;
-    const char *ptr;
-    size_t len;
 };
 
-ident_t *new_ident(const char *ptr, size_t len);
+ident_t *new_ident(const symbol_t *symbol);
 void delete_ident(ident_t *ident);
 
 typedef enum {
@@ -427,10 +483,11 @@ void delete_program(program_t *program);
 
 typedef struct {
     program_t *program;
+    symbol_storage_t *storage;
     const source_t *source;
 } ast_t;
 
-ast_t *new_ast(program_t *program, const source_t *source);
+ast_t *new_ast(program_t *program, symbol_storage_t *storage, const source_t *source);
 void delete_ast(ast_t *ast);
 
 /* cursol.c */
@@ -580,46 +637,3 @@ void delete_msg(msg_t *msg);
 void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
 void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, ...);
 void msg_emit(msg_t *msg);
-
-/* hash.c */
-
-typedef uintptr_t hash_table_hop_t;
-typedef int hash_table_comparator_t(const void *, const void *);
-typedef uint64_t hash_table_hasher_t(const void *);
-typedef void hash_table_deleter_t(void *);
-
-typedef struct impl_hash_table_entry hash_table_entry_t;
-struct impl_hash_table_entry {
-    hash_table_hop_t hop;
-    void *key;
-    void *value;
-};
-
-typedef struct {
-    size_t size;
-    size_t capacity;
-    uint8_t nbhd_range;
-    uint8_t load_factor;
-    size_t bucket_cnt;
-    hash_table_entry_t *buckets;
-    hash_table_entry_t removed;
-    hash_table_comparator_t *comparator;
-    hash_table_hasher_t *hasher;
-} hash_table_t;
-
-hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_hasher_t *hasher);
-void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter);
-const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key);
-void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value);
-hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value);
-hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key);
-
-static int hash_table_default_comparator(const void *lhs, const void *rhs)
-{
-    return lhs == rhs;
-}
-
-static int hash_table_default_hasher(const void *ptr)
-{
-    return fnv1_ptr(ptr);
-}

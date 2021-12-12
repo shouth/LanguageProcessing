@@ -8,6 +8,7 @@
 typedef struct {
     const source_t *src;
     cursol_t cursol;
+    symbol_storage_t *storage;
 
     token_t current_token, next_token;
     uint64_t expected_tokens;
@@ -137,10 +138,12 @@ int expect(parser_t *parser, token_kind_t type)
 
 ident_t *parse_ident(parser_t *parser)
 {
+    const symbol_t *symbol;
     assert(parser);
 
     expect(parser, TOKEN_NAME);
-    return new_ident(parser->current_token.ptr, parser->current_token.len);
+    symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.len);
+    return new_ident(symbol);
 }
 
 ident_t *parse_ident_seq(parser_t *parser)
@@ -157,13 +160,12 @@ ident_t *parse_ident_seq(parser_t *parser)
 
 lit_t *parse_number_lit(parser_t *parser)
 {
+    const symbol_t *symbol;
     assert(parser);
 
     expect(parser, TOKEN_NUMBER);
-    return new_number_lit(
-        parser->current_token.ptr,
-        parser->current_token.len,
-        parser->current_token.data.number.value);
+    symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.len);
+    return new_number_lit(symbol, parser->current_token.data.number.value);
 }
 
 lit_t *parse_boolean_lit(parser_t *parser)
@@ -181,13 +183,14 @@ lit_t *parse_boolean_lit(parser_t *parser)
 
 lit_t *parse_string_lit(parser_t *parser)
 {
+    const symbol_t *symbol;
+    const token_data_t *data;
     assert(parser);
 
     expect(parser, TOKEN_STRING);
-    return new_string_lit(
-        parser->current_token.data.string.ptr,
-        parser->current_token.data.string.len,
-        parser->current_token.data.string.str_len);
+    data = &parser->current_token.data;
+    symbol = symbol_intern(parser->storage, data->string.ptr, data->string.len);
+    return new_string_lit(symbol, data->string.str_len);
 }
 
 lit_t *parse_lit(parser_t *parser)
@@ -732,6 +735,7 @@ ast_t *parse_source(const source_t *src)
     assert(src);
 
     parser.src = src;
+    parser.storage = new_symbol_storage();
     parser.alive = 1;
     parser.error = 0;
     parser.within_loop = 0;
@@ -742,5 +746,5 @@ ast_t *parse_source(const source_t *src)
         delete_program(program);
         return NULL;
     }
-    return new_ast(program, src);
+    return new_ast(program, parser.storage, src);
 }

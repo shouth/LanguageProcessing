@@ -10,11 +10,10 @@ static lit_t *new_lit(lit_kind_t kind)
     return ret;
 }
 
-lit_t *new_number_lit(const char *ptr, size_t len, unsigned long value)
+lit_t *new_number_lit(const symbol_t *symbol, unsigned long value)
 {
     lit_t *ret = new_lit(LIT_NUMBER);
-    ret->u.number_lit.ptr = ptr;
-    ret->u.number_lit.len = len;
+    ret->u.number_lit.symbol = symbol;
     ret->u.number_lit.value = value;
     return ret;
 }
@@ -26,11 +25,10 @@ lit_t *new_boolean_lit(int value)
     return ret;
 }
 
-lit_t *new_string_lit(const char *ptr, size_t len, size_t str_len)
+lit_t *new_string_lit(const symbol_t *symbol, size_t str_len)
 {
     lit_t *ret = new_lit(LIT_STRING);
-    ret->u.string_lit.ptr = ptr;
-    ret->u.string_lit.len = len;
+    ret->u.string_lit.symbol = symbol;
     ret->u.string_lit.str_len = str_len;
     return ret;
 }
@@ -71,12 +69,11 @@ void delete_type(type_t *type)
     free(type);
 }
 
-ident_t *new_ident(const char *ptr, size_t len)
+ident_t *new_ident(const symbol_t *symbol)
 {
     ident_t *ret = new(ident_t);
     ret->next = NULL;
-    ret->ptr = ptr;
-    ret->len = len;
+    ret->symbol = symbol;
     return ret;
 }
 
@@ -437,10 +434,11 @@ void delete_program(program_t *program)
     free(program);
 }
 
-ast_t *new_ast(program_t *program, const source_t *source)
+ast_t *new_ast(program_t *program, symbol_storage_t *storage, const source_t *source)
 {
     ast_t *ret = new(ast_t);
     ret->program = program;
+    ret->storage = storage;
     ret->source = source;
     return ret;
 }
@@ -451,5 +449,6 @@ void delete_ast(ast_t *ast)
         return;
     }
     delete_program(ast->program);
+    delete_symbol_storage(ast->storage);
     free(ast);
 }

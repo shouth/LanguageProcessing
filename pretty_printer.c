@@ -41,10 +41,15 @@ void console_reset_color(printer_t *printer)
     }
 }
 
+void pp_symbol(printer_t *printer, const symbol_t *symbol)
+{
+    printf("%.*s", (int) symbol->len, symbol->ptr);
+}
+
 void pp_colored_program(printer_t *printer, const ident_t *ident)
 {
     console_set_color(printer, printer->color_scheme->program);
-    printf("%.*s", (int) ident->len, ident->ptr);
+    pp_symbol(printer, ident->symbol);
     console_reset_color(printer);
 }
 
@@ -65,7 +70,7 @@ void pp_colored_operator(printer_t *printer, token_kind_t type)
 void pp_colored_procedure(printer_t *printer, const ident_t *ident)
 {
     console_set_color(printer, printer->color_scheme->procedure);
-    printf("%.*s", (int) ident->len, ident->ptr);
+    pp_symbol(printer, ident->symbol);
     console_reset_color(printer);
 }
 
@@ -79,21 +84,23 @@ void pp_colored_reserved_function(printer_t *printer, token_kind_t type)
 void pp_colored_parameter(printer_t *printer, const ident_t *ident)
 {
     console_set_color(printer, printer->color_scheme->argument);
-    printf("%.*s", (int) ident->len, ident->ptr);
+    pp_symbol(printer, ident->symbol);
     console_reset_color(printer);
 }
 
 void pp_colored_string(printer_t *printer, const string_lit_t *lit)
 {
     console_set_color(printer, printer->color_scheme->string);
-    printf("'%.*s'", (int) lit->len, lit->ptr);
+    printf("\'");
+    pp_symbol(printer, lit->symbol);
+    printf("\'");
     console_reset_color(printer);
 }
 
 void pp_colored_number(printer_t *printer, const number_lit_t *lit)
 {
     console_set_color(printer, printer->color_scheme->literal);
-    printf("%.*s", (int) lit->len, lit->ptr);
+    pp_symbol(printer, lit->symbol);
     console_reset_color(printer);
 }
 
@@ -140,14 +147,14 @@ void pp_indent(printer_t *printer)
 
 void pp_ident(printer_t *printer, const ident_t *ident)
 {
-    const ident_t *cur;
     assert(printer && ident);
 
-    printf("%.*s", (int) ident->len, ident->ptr);
-    cur = ident->next;
-    while (cur) {
-        printf(", %.*s", (int) cur->len, cur->ptr);
-        cur = cur->next;
+    pp_symbol(printer, ident->symbol);
+    ident = ident->next;
+    while (ident) {
+        printf(", ");
+        pp_symbol(printer, ident->symbol);
+        ident = ident->next;
     }
 }
 
