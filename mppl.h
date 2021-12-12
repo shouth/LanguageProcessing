@@ -87,7 +87,7 @@ static void *xmalloc(size_t size)
 }
 
 #define new(type) ((type *) xmalloc(sizeof(type)))
-#define new_arr(type, size) ((type *) xmalloc(sizeof(type) * size))
+#define new_arr(type, size) ((type *) xmalloc(sizeof(type) * (size)))
 
 /* hash.c */
 

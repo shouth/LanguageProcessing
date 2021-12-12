@@ -13,21 +13,7 @@
 
 static size_t filesize(const char *filename)
 {
-#if defined(_WIN32)
-    struct __stat64 s;
-
-    assert(filename);
-    if (_stat64(filename, &s) < 0) {
-        return SIZE_MAX;
-    } else {
-        if (s.st_mode & _S_IFREG) {
-            return s.st_size;
-        } else {
-            return SIZE_MAX;
-        }
-    }
-
-#elif defined(__unix__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__)
     struct stat s;
 
     assert(filename);
@@ -35,6 +21,20 @@ static size_t filesize(const char *filename)
         return SIZE_MAX;
     } else {
         if (S_ISREG(s.st_mode)) {
+            return s.st_size;
+        } else {
+            return SIZE_MAX;
+        }
+    }
+
+#elif defined(_WIN32)
+    struct __stat64 s;
+
+    assert(filename);
+    if (_stat64(filename, &s) < 0) {
+        return SIZE_MAX;
+    } else {
+        if (s.st_mode & _S_IFREG) {
             return s.st_size;
         } else {
             return SIZE_MAX;
@@ -81,50 +81,57 @@ static const char *nextline(const char *str)
 source_t *new_source(const char *filename)
 {
     source_t *src;
-    FILE *file;
-    size_t linecnt;
-    const char *cur;
     assert(filename);
 
-    src = (source_t *) xmalloc(sizeof(source_t));
+    src = new(source_t);
 
-    src->filename = (char *) xmalloc(sizeof(char) * (strlen(filename) + 1));
-    strcpy(src->filename, filename);
+    src->filename = new_arr(char, strlen(filename) + 1);
+    {
+        strcpy(src->filename, filename);
+    }
 
     src->src_size = filesize(filename);
-    if (src->src_size == SIZE_MAX) {
-        delete_source(src);
-        return NULL;
+    {
+        if (src->src_size == SIZE_MAX) {
+            delete_source(src);
+            return NULL;
+        }
     }
 
-    src->src_ptr = (char *) xmalloc(sizeof(char) * (src->src_size + 1));
-    file = fopen(filename, "r");
-    if (!file) {
-        delete_source(src);
-        return NULL;
-    }
-    fread(src->src_ptr, sizeof(char), src->src_size, file);
-    if (ferror(file)) {
-        delete_source(src);
-        return NULL;
-    }
-    fclose(file);
-    src->src_ptr[src->src_size] = '\0';
-
-    linecnt = 0;
-    for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
-        linecnt++;
+    src->src_ptr = new_arr(char, src->src_size + 1);
+    {
+        FILE *file = fopen(filename, "r");
+        if (!file) {
+            delete_source(src);
+            return NULL;
+        }
+        fread(src->src_ptr, sizeof(char), src->src_size, file);
+        if (ferror(file)) {
+            delete_source(src);
+            return NULL;
+        }
+        fclose(file);
+        src->src_ptr[src->src_size] = '\0';
     }
 
-    src->lines_size = linecnt;
-    src->lines_ptr = (size_t *) xmalloc(sizeof(size_t) * (src->lines_size + 1));
+    src->lines_size = 0;
+    {
+        const char *cur;
+        for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
+            src->lines_size++;
+        }
+    }
 
-    linecnt = 0;
-    for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
+    src->lines_ptr = new_arr(size_t, src->lines_size + 1);
+    {
+        const char *cur;
+        size_t linecnt = 0;
+        for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
+            src->lines_ptr[linecnt] = cur - src->src_ptr;
+            linecnt++;
+        }
         src->lines_ptr[linecnt] = cur - src->src_ptr;
-        linecnt++;
     }
-    src->lines_ptr[linecnt] = cur - src->src_ptr;
 
     return src;
 }
