@@ -548,8 +548,8 @@ typedef struct {
 hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_hasher_t *hasher);
 void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter);
 const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key);
-const hash_table_entry_t *hash_table_insert_unchecked(hash_table_t *table, void *key, void *value);
-const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value);
+void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value);
+hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value);
 hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key);
 
 /* utility */

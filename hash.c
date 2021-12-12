@@ -105,7 +105,7 @@ const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key)
     return NULL;
 }
 
-const hash_table_entry_t *hash_table_insert_unchecked(hash_table_t *table, void *key, void *value)
+void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value)
 {
     hash_table_entry_t *home, *empty = NULL;
     size_t dist, index;
@@ -147,25 +147,25 @@ const hash_table_entry_t *hash_table_insert_unchecked(hash_table_t *table, void 
 
     if (!empty) {
         hash_table_grow(table, 1);
-        return hash_table_insert(table, key, value);
+        hash_table_insert_unchecked(table, key, value);
+    } else {
+        empty->key = key;
+        empty->value = value;
+        home->hop ^= (hash_table_hop_t) 1 << dist;
+        table->size++;
+        hash_table_grow(table, 0);
     }
-
-    empty->key = key;
-    empty->value = value;
-    home->hop ^= (hash_table_hop_t) 1 << dist;
-    table->size++;
-    hash_table_grow(table, 0);
-    return empty;
 }
 
-const hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value)
+hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *value)
 {
     assert(table && key && value);
 
-    if (hash_table_find(table, key)) {
-        return NULL;
+    if (hash_table_remove(table, key)) {
+        return &table->removed;
     }
-    return hash_table_insert_unchecked(table, key, value);
+    hash_table_insert_unchecked(table, key, value);
+    return NULL;
 }
 
 hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key)
