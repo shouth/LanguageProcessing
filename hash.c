@@ -7,7 +7,7 @@
 
 #define NBHD_RANGE (sizeof(hash_table_hop_t) * 8)
 
-static inline void hash_table_init_buckets(hash_table_t *table)
+static void hash_table_init_buckets(hash_table_t *table)
 {
     size_t i;
     table->size = 0;
@@ -56,7 +56,7 @@ void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, h
     free(table);
 }
 
-static inline void hash_table_grow(hash_table_t *table)
+static void hash_table_grow(hash_table_t *table)
 {
     hash_table_entry_t *old_buckets;
     size_t old_bucket_cnt;
@@ -75,7 +75,7 @@ static inline void hash_table_grow(hash_table_t *table)
     free(old_buckets);
 }
 
-static inline size_t hash_table_index(hash_table_t *table, const void *key)
+static size_t hash_table_index(hash_table_t *table, const void *key)
 {
     assert(table && key);
     return table->hasher(key) & (table->capacity - 1);

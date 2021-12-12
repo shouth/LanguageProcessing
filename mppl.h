@@ -3,16 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if __STDC_VERSION__ < 199901L
-#   if defined(__GNUC__)
-#       define inline __inline__
-#   elif defined(_WIN32)
-#       define inline __inline
-#   else
-#       define inline
-#   endif
-#endif
-
 /* source.c */
 
 typedef struct {
@@ -554,7 +544,7 @@ hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key);
 
 /* utility */
 
-static inline uint64_t fnv1(const uint8_t *ptr, size_t len)
+static uint64_t fnv1(const uint8_t *ptr, size_t len)
 {
     uint64_t ret   = 0xcbf29ce484222325;
     uint64_t prime = 0x00000100000001b3;
@@ -567,17 +557,17 @@ static inline uint64_t fnv1(const uint8_t *ptr, size_t len)
     return ret;
 }
 
-static inline uint64_t fnv1_int(uint64_t value)
+static uint64_t fnv1_int(uint64_t value)
 {
     return fnv1((uint8_t *) &value, sizeof(value));
 }
 
-static inline uint64_t fnv1_ptr(const void *ptr)
+static uint64_t fnv1_ptr(const void *ptr)
 {
     return fnv1((uint8_t *) &ptr, sizeof(ptr));
 }
 
-static inline uint8_t lsb(uint64_t n)
+static uint8_t lsb(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
     /* If compiler is GCC or Clang, use builtin functions. */
@@ -589,7 +579,7 @@ static inline uint8_t lsb(uint64_t n)
 #endif
 }
 
-static inline uint8_t msb(uint64_t n)
+static uint8_t msb(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
     /* If compiler is GCC or Clang, use builtin functions. */
@@ -607,7 +597,7 @@ static inline uint8_t msb(uint64_t n)
 #endif
 }
 
-static inline uint8_t popcount(uint64_t n)
+static uint8_t popcount(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
     /* If compiler is GCC or Clang, use builtin functions. */
@@ -625,7 +615,7 @@ static inline uint8_t popcount(uint64_t n)
 #endif
 }
 
-static inline void *xmalloc(size_t size)
+static void *xmalloc(size_t size)
 {
     void *ret = malloc(size);
     if (ret == NULL) {
