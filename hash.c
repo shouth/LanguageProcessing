@@ -56,16 +56,12 @@ void delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, h
     free(table);
 }
 
-static inline void hash_table_grow(hash_table_t *table, int enforce)
+static inline void hash_table_grow(hash_table_t *table)
 {
     hash_table_entry_t *old_buckets;
     size_t old_bucket_cnt;
     size_t i;
     assert(table);
-
-    if (!enforce && 100 * table->size / table->bucket_cnt < table->load_factor) {
-        return;
-    }
 
     old_buckets = table->buckets;
     old_bucket_cnt = table->bucket_cnt;
@@ -146,14 +142,16 @@ void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value)
     }
 
     if (!empty) {
-        hash_table_grow(table, 1);
+        hash_table_grow(table);
         hash_table_insert_unchecked(table, key, value);
     } else {
         empty->key = key;
         empty->value = value;
         home->hop ^= (hash_table_hop_t) 1 << dist;
         table->size++;
-        hash_table_grow(table, 0);
+        if (100 * table->size / table->bucket_cnt >= table->load_factor) {
+            hash_table_grow(table);
+        }
     }
 }
 
