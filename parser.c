@@ -136,19 +136,19 @@ int expect(parser_t *parser, token_kind_t type)
     return ret;
 }
 
-ident_t *parse_ident(parser_t *parser)
+ast_ident_t *parse_ident(parser_t *parser)
 {
     const symbol_t *symbol;
     assert(parser);
 
     expect(parser, TOKEN_NAME);
     symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.len);
-    return new_ident(symbol);
+    return new_ast_ident(symbol);
 }
 
-ident_t *parse_ident_seq(parser_t *parser)
+ast_ident_t *parse_ident_seq(parser_t *parser)
 {
-    ident_t *ret, *ident;
+    ast_ident_t *ret, *ident;
     assert(parser);
 
     ret = ident = parse_ident(parser);
@@ -158,30 +158,30 @@ ident_t *parse_ident_seq(parser_t *parser)
     return ret;
 }
 
-lit_t *parse_number_lit(parser_t *parser)
+ast_lit_t *parse_number_lit(parser_t *parser)
 {
     const symbol_t *symbol;
     assert(parser);
 
     expect(parser, TOKEN_NUMBER);
     symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.len);
-    return new_number_lit(symbol, parser->current_token.data.number.value);
+    return new_ast_number_lit(symbol, parser->current_token.data.number.value);
 }
 
-lit_t *parse_boolean_lit(parser_t *parser)
+ast_lit_t *parse_boolean_lit(parser_t *parser)
 {
     assert(parser);
 
     if (eat(parser, TOKEN_TRUE)) {
-        return new_boolean_lit(1);
+        return new_ast_boolean_lit(1);
     } else if (eat(parser, TOKEN_FALSE)) {
-        return new_boolean_lit(0);
+        return new_ast_boolean_lit(0);
     }
     error_unexpected(parser);
     return NULL;
 }
 
-lit_t *parse_string_lit(parser_t *parser)
+ast_lit_t *parse_string_lit(parser_t *parser)
 {
     const symbol_t *symbol;
     const token_data_t *data;
@@ -190,10 +190,10 @@ lit_t *parse_string_lit(parser_t *parser)
     expect(parser, TOKEN_STRING);
     data = &parser->current_token.data;
     symbol = symbol_intern(parser->storage, data->string.ptr, data->string.len);
-    return new_string_lit(symbol, data->string.str_len);
+    return new_ast_string_lit(symbol, data->string.str_len);
 }
 
-lit_t *parse_lit(parser_t *parser)
+ast_lit_t *parse_lit(parser_t *parser)
 {
     assert(parser);
 
@@ -208,25 +208,25 @@ lit_t *parse_lit(parser_t *parser)
     return NULL;
 }
 
-type_t *parse_std_type(parser_t *parser)
+ast_type_t *parse_std_type(parser_t *parser)
 {
     assert(parser);
 
     if (eat(parser, TOKEN_INTEGER)) {
-        return new_std_type(TYPE_INTEGER);
+        return new_ast_std_type(AST_TYPE_INTEGER);
     } else if (eat(parser, TOKEN_BOOLEAN)) {
-        return new_std_type(TYPE_BOOLEAN);
+        return new_ast_std_type(AST_TYPE_BOOLEAN);
     } else if (eat(parser, TOKEN_CHAR)) {
-        return new_std_type(TYPE_CHAR);
+        return new_ast_std_type(AST_TYPE_CHAR);
     }
     error_unexpected(parser);
     return NULL;
 }
 
-type_t *parse_array_type(parser_t *parser)
+ast_type_t *parse_array_type(parser_t *parser)
 {
-    lit_t *size;
-    type_t *base;
+    ast_lit_t *size;
+    ast_type_t *base;
     assert(parser);
 
     expect(parser, TOKEN_ARRAY);
@@ -235,10 +235,10 @@ type_t *parse_array_type(parser_t *parser)
     expect(parser, TOKEN_RSQPAREN);
     expect(parser, TOKEN_OF);
     base = parse_std_type(parser);
-    return new_array_type(base, size);
+    return new_ast_array_type(base, size);
 }
 
-type_t *parse_type(parser_t *parser)
+ast_type_t *parse_type(parser_t *parser)
 {
     assert(parser);
 
@@ -248,25 +248,25 @@ type_t *parse_type(parser_t *parser)
     return parse_std_type(parser);
 }
 
-expr_t *parse_expr(parser_t *parser);
+ast_expr_t *parse_expr(parser_t *parser);
 
-expr_t *parse_ref(parser_t *parser)
+ast_expr_t *parse_ref(parser_t *parser)
 {
-    ident_t *ident;
+    ast_ident_t *ident;
     assert(parser);
 
     ident = parse_ident(parser);
     if (eat(parser, TOKEN_LSQPAREN)) {
-        expr_t *expr = parse_expr(parser);
+        ast_expr_t *expr = parse_expr(parser);
         expect(parser, TOKEN_RSQPAREN);
-        return new_array_subscript_expr(ident, expr);
+        return new_ast_array_subscript_expr(ident, expr);
     }
-    return new_decl_ref_expr(ident);
+    return new_ast_decl_ref_expr(ident);
 }
 
-expr_t *parse_ref_seq(parser_t *parser)
+ast_expr_t *parse_ref_seq(parser_t *parser)
 {
-    expr_t *ret, *ref;
+    ast_expr_t *ret, *ref;
     assert(parser);
 
     ret = ref = parse_ref(parser);
@@ -276,9 +276,9 @@ expr_t *parse_ref_seq(parser_t *parser)
     return ret;
 }
 
-expr_t *parse_expr_seq(parser_t *parser)
+ast_expr_t *parse_expr_seq(parser_t *parser)
 {
-    expr_t *ret, *expr;
+    ast_expr_t *ret, *expr;
     assert(parser);
 
     ret = expr = parse_expr(parser);
@@ -288,7 +288,7 @@ expr_t *parse_expr_seq(parser_t *parser)
     return ret;
 }
 
-expr_t *parse_factor(parser_t *parser)
+ast_expr_t *parse_factor(parser_t *parser)
 {
     assert(parser);
 
@@ -297,44 +297,44 @@ expr_t *parse_factor(parser_t *parser)
     } else if (check(parser, TOKEN_NUMBER) || check(parser, TOKEN_TRUE)
         || check(parser, TOKEN_FALSE) || check(parser, TOKEN_STRING))
     {
-        lit_t *lit = parse_lit(parser);
-        return new_constant_expr(lit);
+        ast_lit_t *lit = parse_lit(parser);
+        return new_ast_constant_expr(lit);
     } else if (eat(parser, TOKEN_LPAREN)) {
-        expr_t *expr = parse_expr(parser);
+        ast_expr_t *expr = parse_expr(parser);
         expect(parser, TOKEN_RPAREN);
-        return new_paren_expr(expr);
+        return new_ast_paren_expr(expr);
     } else if (eat(parser, TOKEN_NOT)) {
-        expr_t *expr = parse_factor(parser);
-        return new_unary_expr(UNARY_OP_NOT, expr);
+        ast_expr_t *expr = parse_factor(parser);
+        return new_ast_unary_expr(AST_UNARY_OP_NOT, expr);
     } else if (check(parser, TOKEN_INTEGER) || check(parser, TOKEN_BOOLEAN) || check(parser, TOKEN_CHAR)) {
-        type_t *type;
-        expr_t *expr;
+        ast_type_t *type;
+        ast_expr_t *expr;
         type = parse_std_type(parser);
         expect(parser, TOKEN_LPAREN);
         expr = parse_expr(parser);
         expect(parser, TOKEN_RPAREN);
-        return new_cast_expr(type, expr);
+        return new_ast_cast_expr(type, expr);
     }
     error_expected(parser, "expression");
     return NULL;
 }
 
-expr_t *parse_term(parser_t *parser)
+ast_expr_t *parse_term(parser_t *parser)
 {
-    expr_t *ret;
+    ast_expr_t *ret;
     assert(parser);
 
     ret = parse_factor(parser);
     while (1) {
         if (eat(parser, TOKEN_STAR)) {
-            expr_t *factor = parse_factor(parser);
-            ret = new_binary_expr(BINARY_OP_STAR, ret, factor);
+            ast_expr_t *factor = parse_factor(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_STAR, ret, factor);
         } else if (eat(parser, TOKEN_DIV)) {
-            expr_t *factor = parse_factor(parser);
-            ret = new_binary_expr(BINARY_OP_DIV, ret, factor);
+            ast_expr_t *factor = parse_factor(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_DIV, ret, factor);
         } else if (eat(parser, TOKEN_AND)) {
-            expr_t *factor = parse_factor(parser);
-            ret = new_binary_expr(BINARY_OP_AND, ret, factor);
+            ast_expr_t *factor = parse_factor(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_AND, ret, factor);
         } else {
             break;
         }
@@ -342,26 +342,26 @@ expr_t *parse_term(parser_t *parser)
     return ret;
 }
 
-expr_t *parse_simple_expr(parser_t *parser)
+ast_expr_t *parse_simple_expr(parser_t *parser)
 {
-    expr_t *ret;
+    ast_expr_t *ret;
     assert(parser);
 
     if (check(parser, TOKEN_PLUS) || check(parser, TOKEN_MINUS)) {
-        ret = new_empty_expr();
+        ret = new_ast_empty_expr();
     } else {
         ret = parse_term(parser);
     }
     while (1) {
         if (eat(parser, TOKEN_PLUS)) {
-            expr_t *term = parse_term(parser);
-            ret = new_binary_expr(BINARY_OP_PLUS, ret, term);
+            ast_expr_t *term = parse_term(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_PLUS, ret, term);
         } else if (eat(parser, TOKEN_MINUS)) {
-            expr_t *term = parse_term(parser);
-            ret = new_binary_expr(BINARY_OP_MINUS, ret, term);
+            ast_expr_t *term = parse_term(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_MINUS, ret, term);
         } else if (eat(parser, TOKEN_OR)) {
-            expr_t *term = parse_term(parser);
-            ret = new_binary_expr(BINARY_OP_OR, ret, term);
+            ast_expr_t *term = parse_term(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_OR, ret, term);
         } else {
             break;
         }
@@ -369,31 +369,31 @@ expr_t *parse_simple_expr(parser_t *parser)
     return ret;
 }
 
-expr_t *parse_expr(parser_t *parser)
+ast_expr_t *parse_expr(parser_t *parser)
 {
-    expr_t *ret;
+    ast_expr_t *ret;
     assert(parser);
 
     ret = parse_simple_expr(parser);
     while (1) {
         if (eat(parser, TOKEN_EQUAL)) {
-            expr_t *simple = parse_simple_expr(parser);
-            ret = new_binary_expr(BINARY_OP_EQUAL, ret, simple);
+            ast_expr_t *simple = parse_simple_expr(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_EQUAL, ret, simple);
         } else if (eat(parser, TOKEN_NOTEQ)) {
-            expr_t *simple = parse_simple_expr(parser);
-            ret = new_binary_expr(BINARY_OP_NOTEQ, ret, simple);
+            ast_expr_t *simple = parse_simple_expr(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_NOTEQ, ret, simple);
         } else if (eat(parser, TOKEN_LE)) {
-            expr_t *simple = parse_simple_expr(parser);
-            ret = new_binary_expr(BINARY_OP_LE, ret, simple);
+            ast_expr_t *simple = parse_simple_expr(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_LE, ret, simple);
         } else if (eat(parser, TOKEN_LEEQ)) {
-            expr_t *simple = parse_simple_expr(parser);
-            ret = new_binary_expr(BINARY_OP_LEEQ, ret, simple);
+            ast_expr_t *simple = parse_simple_expr(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_LEEQ, ret, simple);
         } else if (eat(parser, TOKEN_GR)) {
-            expr_t *simple = parse_simple_expr(parser);
-            ret = new_binary_expr(BINARY_OP_GR, ret, simple);
+            ast_expr_t *simple = parse_simple_expr(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_GR, ret, simple);
         } else if (eat(parser, TOKEN_GREQ)) {
-            expr_t *simple = parse_simple_expr(parser);
-            ret = new_binary_expr(BINARY_OP_GREQ, ret, simple);
+            ast_expr_t *simple = parse_simple_expr(parser);
+            ret = new_ast_binary_expr(AST_BINARY_OP_GREQ, ret, simple);
         } else {
             break;
         }
@@ -401,23 +401,23 @@ expr_t *parse_expr(parser_t *parser)
     return ret;
 }
 
-stmt_t *parse_stmt(parser_t *parser);
+ast_stmt_t *parse_stmt(parser_t *parser);
 
-stmt_t *parse_assign_stmt(parser_t *parser)
+ast_stmt_t *parse_assign_stmt(parser_t *parser)
 {
-    expr_t *lhs, *rhs;
+    ast_expr_t *lhs, *rhs;
     assert(parser);
 
     lhs = parse_ref(parser);
     expect(parser, TOKEN_ASSIGN);
     rhs = parse_expr(parser);
-    return new_assign_stmt(lhs, rhs);
+    return new_ast_assign_stmt(lhs, rhs);
 }
 
-stmt_t *parse_if_stmt(parser_t *parser)
+ast_stmt_t *parse_if_stmt(parser_t *parser)
 {
-    expr_t *cond;
-    stmt_t *then_stmt, *else_stmt = NULL;
+    ast_expr_t *cond;
+    ast_stmt_t *then_stmt, *else_stmt = NULL;
     assert(parser);
 
     expect(parser, TOKEN_IF);
@@ -427,13 +427,13 @@ stmt_t *parse_if_stmt(parser_t *parser)
     if (eat(parser, TOKEN_ELSE)) {
         else_stmt = parse_stmt(parser);
     }
-    return new_if_stmt(cond, then_stmt, else_stmt);
+    return new_ast_if_stmt(cond, then_stmt, else_stmt);
 }
 
-stmt_t *parse_while_stmt(parser_t *parser)
+ast_stmt_t *parse_while_stmt(parser_t *parser)
 {
-    expr_t *cond;
-    stmt_t *do_stmt;
+    ast_expr_t *cond;
+    ast_stmt_t *do_stmt;
     assert(parser);
 
     expect(parser, TOKEN_WHILE);
@@ -442,7 +442,7 @@ stmt_t *parse_while_stmt(parser_t *parser)
     parser->within_loop++;
     do_stmt = parse_stmt(parser);
     parser->within_loop--;
-    return new_while_stmt(cond, do_stmt);
+    return new_ast_while_stmt(cond, do_stmt);
 }
 
 void maybe_error_break_stmt(parser_t *parser)
@@ -459,19 +459,19 @@ void maybe_error_break_stmt(parser_t *parser)
     }
 }
 
-stmt_t *parse_break_stmt(parser_t *parser)
+ast_stmt_t *parse_break_stmt(parser_t *parser)
 {
     assert(parser);
 
     expect(parser, TOKEN_BREAK);
     maybe_error_break_stmt(parser);
-    return new_break_stmt();
+    return new_ast_break_stmt();
 }
 
-stmt_t *parse_call_stmt(parser_t *parser)
+ast_stmt_t *parse_call_stmt(parser_t *parser)
 {
-    ident_t *name;
-    expr_t *args = NULL;
+    ast_ident_t *name;
+    ast_expr_t *args = NULL;
     assert(parser);
 
     expect(parser, TOKEN_CALL);
@@ -480,21 +480,21 @@ stmt_t *parse_call_stmt(parser_t *parser)
         args = parse_expr_seq(parser);
         expect(parser, TOKEN_RPAREN);
     }
-    return new_call_stmt(name, args);
+    return new_ast_call_stmt(name, args);
 }
 
-stmt_t *parse_return_stmt(parser_t *parser)
+ast_stmt_t *parse_return_stmt(parser_t *parser)
 {
     assert(parser);
 
     expect(parser, TOKEN_RETURN);
-    return new_return_stmt();
+    return new_ast_return_stmt();
 }
 
-stmt_t *parse_read_stmt(parser_t *parser)
+ast_stmt_t *parse_read_stmt(parser_t *parser)
 {
     int newline;
-    expr_t *args = NULL;
+    ast_expr_t *args = NULL;
     assert(parser);
 
     if (eat(parser, TOKEN_READ)) {
@@ -508,19 +508,19 @@ stmt_t *parse_read_stmt(parser_t *parser)
         args = parse_ref_seq(parser);
         expect(parser, TOKEN_RPAREN);
     }
-    return new_read_stmt(newline, args);
+    return new_ast_read_stmt(newline, args);
 }
 
-void maybe_error_output_format(parser_t *parser, output_format_t *format, size_t spec_pos)
+void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, size_t spec_pos)
 {
     assert(parser && format);
     if (!parser->alive) {
         return;
     }
 
-    if (format->expr && format->expr->kind == EXPR_CONSTANT) {
-        lit_t *lit = format->expr->u.constant_expr.lit;
-        if (lit->kind == LIT_STRING && lit->u.string_lit.str_len != 1 && format->len) {
+    if (format->expr && format->expr->kind == AST_EXPR_CONSTANT) {
+        ast_lit_t *lit = format->expr->u.constant_expr.lit;
+        if (lit->kind == AST_LIT_STRING && lit->u.string_lit.str_len != 1 && format->len) {
             size_t msg_len = parser->current_token.pos + parser->current_token.len - spec_pos;
             msg_t *msg = new_msg(parser->src, spec_pos, msg_len, MSG_ERROR, "wrong output format");
             msg_add_inline_entry(msg, spec_pos, msg_len, "field specifier cannot be used for string");
@@ -529,12 +529,12 @@ void maybe_error_output_format(parser_t *parser, output_format_t *format, size_t
     }
 }
 
-output_format_t *parse_output_format(parser_t *parser)
+ast_output_format_t *parse_output_format(parser_t *parser)
 {
-    expr_t *expr;
-    lit_t *len = NULL;
+    ast_expr_t *expr;
+    ast_lit_t *len = NULL;
     size_t spec_pos;
-    output_format_t *ret;
+    ast_output_format_t *ret;
     assert(parser);
 
     expr = parse_expr(parser);
@@ -542,14 +542,14 @@ output_format_t *parse_output_format(parser_t *parser)
         spec_pos = parser->current_token.pos;
         len = parse_number_lit(parser);
     }
-    ret = new_output_format(expr, len);
+    ret = new_ast_output_format(expr, len);
     maybe_error_output_format(parser, ret, spec_pos);
     return ret;
 }
 
-output_format_t *parse_output_format_seq(parser_t *parser)
+ast_output_format_t *parse_output_format_seq(parser_t *parser)
 {
-    output_format_t *ret, *expr;
+    ast_output_format_t *ret, *expr;
     assert(parser);
 
     ret = expr = parse_output_format(parser);
@@ -559,10 +559,10 @@ output_format_t *parse_output_format_seq(parser_t *parser)
     return ret;
 }
 
-stmt_t *parse_write_stmt(parser_t *parser)
+ast_stmt_t *parse_write_stmt(parser_t *parser)
 {
     int newline;
-    output_format_t *formats = NULL;
+    ast_output_format_t *formats = NULL;
     assert(parser);
 
     if (eat(parser, TOKEN_WRITE)) {
@@ -576,12 +576,12 @@ stmt_t *parse_write_stmt(parser_t *parser)
         formats = parse_output_format_seq(parser);
         expect(parser, TOKEN_RPAREN);
     }
-    return new_write_stmt(newline, formats);
+    return new_ast_write_stmt(newline, formats);
 }
 
-stmt_t *parse_compound_stmt(parser_t *parser)
+ast_stmt_t *parse_compound_stmt(parser_t *parser)
 {
-    stmt_t *stmts, *cur;
+    ast_stmt_t *stmts, *cur;
     assert(parser);
 
     expect(parser, TOKEN_BEGIN);
@@ -590,10 +590,10 @@ stmt_t *parse_compound_stmt(parser_t *parser)
         cur = cur->next = parse_stmt(parser);
     }
     expect(parser, TOKEN_END);
-    return new_compound_stmt(stmts);
+    return new_ast_compound_stmt(stmts);
 }
 
-stmt_t *parse_stmt(parser_t *parser)
+ast_stmt_t *parse_stmt(parser_t *parser)
 {
     assert(parser);
 
@@ -616,14 +616,14 @@ stmt_t *parse_stmt(parser_t *parser)
     } else if (check(parser, TOKEN_BEGIN)) {
         return parse_compound_stmt(parser);
     }
-    return new_empty_stmt();
+    return new_ast_empty_stmt();
 }
 
-decl_part_t *parse_variable_decl_part(parser_t *parser)
+ast_decl_part_t *parse_variable_decl_part(parser_t *parser)
 {
-    variable_decl_t *decls, *cur;
-    ident_t *names;
-    type_t *type;
+    ast_variable_decl_t *decls, *cur;
+    ast_ident_t *names;
+    ast_type_t *type;
     assert(parser);
 
     expect(parser, TOKEN_VAR);
@@ -632,45 +632,45 @@ decl_part_t *parse_variable_decl_part(parser_t *parser)
     expect(parser, TOKEN_COLON);
     type = parse_type(parser);
     expect(parser, TOKEN_SEMI);
-    decls = cur = new_variable_decl(names, type);
+    decls = cur = new_ast_variable_decl(names, type);
     while (check(parser, TOKEN_NAME)) {
         names = parse_ident_seq(parser);
         expect(parser, TOKEN_COLON);
         type = parse_type(parser);
         expect(parser, TOKEN_SEMI);
-        cur = cur->next = new_variable_decl(names, type);
+        cur = cur->next = new_ast_variable_decl(names, type);
     }
     return new_variable_decl_part(decls);
 }
 
-param_decl_t *parse_param_decl(parser_t *parser)
+ast_param_decl_t *parse_param_decl(parser_t *parser)
 {
-    ident_t *names;
-    type_t *type;
-    param_decl_t *ret, *param;
+    ast_ident_t *names;
+    ast_type_t *type;
+    ast_param_decl_t *ret, *param;
     assert(parser);
 
     expect(parser, TOKEN_LPAREN);
     names = parse_ident_seq(parser);
     expect(parser, TOKEN_COLON);
     type = parse_type(parser);
-    ret = param = new_param_decl(names, type);
+    ret = param = new_ast_param_decl(names, type);
     while (eat(parser, TOKEN_SEMI)) {
         names = parse_ident_seq(parser);
         expect(parser, TOKEN_COLON);
         type = parse_type(parser);
-        param = param->next = new_param_decl(names, type);
+        param = param->next = new_ast_param_decl(names, type);
     }
     expect(parser, TOKEN_RPAREN);
     return ret;
 }
 
-decl_part_t *parse_procedure_decl_part(parser_t *parser)
+ast_decl_part_t *parse_procedure_decl_part(parser_t *parser)
 {
-    ident_t *name;
-    param_decl_t *params = NULL;
-    decl_part_t *variables = NULL;
-    stmt_t *stmt;
+    ast_ident_t *name;
+    ast_param_decl_t *params = NULL;
+    ast_decl_part_t *variables = NULL;
+    ast_stmt_t *stmt;
     assert(parser);
 
     expect(parser, TOKEN_PROCEDURE);
@@ -687,9 +687,9 @@ decl_part_t *parse_procedure_decl_part(parser_t *parser)
     return new_procedure_decl_part(name, params, variables, stmt);
 }
 
-decl_part_t *parse_decl_part(parser_t *parser)
+ast_decl_part_t *parse_decl_part(parser_t *parser)
 {
-    decl_part_t *ret, *cur;
+    ast_decl_part_t *ret, *cur;
     assert(parser);
 
     if (check(parser, TOKEN_VAR)) {
@@ -711,11 +711,11 @@ decl_part_t *parse_decl_part(parser_t *parser)
     return ret;
 }
 
-program_t *parse_program(parser_t *parser)
+ast_program_t *parse_program(parser_t *parser)
 {
-    ident_t *name;
-    decl_part_t *decl_part;
-    stmt_t *stmt;
+    ast_ident_t *name;
+    ast_decl_part_t *decl_part;
+    ast_stmt_t *stmt;
     assert(parser);
 
     expect(parser, TOKEN_PROGRAM);
@@ -730,7 +730,7 @@ program_t *parse_program(parser_t *parser)
 
 ast_t *parse_source(const source_t *src)
 {
-    program_t *program;
+    ast_program_t *program;
     parser_t parser;
     assert(src);
 

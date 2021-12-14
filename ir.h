@@ -4,17 +4,17 @@
 #include "mppl.h"
 
 typedef enum {
-    IR_TYPE_PROGRAM,
-    IR_TYPE_PROCEDURE,
-    IR_TYPE_ARRAY,
-    IR_TYPE_INTEGER,
-    IR_TYPE_BOOLEAN,
-    IR_TYPE_CHAR
-} ir_type_kind_t;
+    IR_AST_TYPE_PROGRAM,
+    IR_AST_TYPE_PROCEDURE,
+    IR_AST_TYPE_ARRAY,
+    IR_AST_TYPE_INTEGER,
+    IR_AST_TYPE_BOOLEAN,
+    IR_AST_TYPE_CHAR
+} ir_ast_type_kind_t;
 
 typedef struct impl_ir_type ir_type_t;
 struct impl_ir_type {
-    ir_type_kind_t kind;
+    ir_ast_type_kind_t kind;
     ir_type_t *next;
 
     union {
@@ -104,7 +104,7 @@ typedef struct {
 
 typedef enum {
     IR_RVALUE_USE,
-    IR_RVALUE_BINARY_OP,
+    IR_RVALUE_AST_BINARY_OP,
     IR_RVALUE_UNARY_OP,
     IR_RVALUE_CAST
 } ir_rvalue_kind_t;
@@ -119,12 +119,12 @@ struct impl_ir_rvalue {
             ir_operand_t *place;
         } use_rvalue;
         struct {
-            binary_op_kind_t kind;
+            ast_binary_op_kind_t kind;
             ir_operand_t *lhs;
             ir_operand_t *rhs;
         } binary_op_rvalue;
         struct {
-            unary_op_kind_t kind;
+            ast_unary_op_kind_t kind;
             ir_operand_t *value;
         } unary_op_rvalue;
         struct {

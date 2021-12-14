@@ -2,7 +2,7 @@
 
 #include "mppl.h"
 
-static ir_type_t *new_ir_type(ir_type_kind_t kind)
+static ir_type_t *new_ir_type(ir_ast_type_kind_t kind)
 {
     ir_type_t *ret = new(ir_type_t);
     ret->kind = kind;
@@ -12,7 +12,7 @@ static ir_type_t *new_ir_type(ir_type_kind_t kind)
 
 ir_type_t *new_ir_program_type()
 {
-    return new_ir_type(IR_TYPE_PROGRAM);
+    return new_ir_type(IR_AST_TYPE_PROGRAM);
 }
 
 ir_type_t *new_ir_procedure_type(ir_type_t *arg_types)
@@ -20,31 +20,31 @@ ir_type_t *new_ir_procedure_type(ir_type_t *arg_types)
     ir_type_t *ret;
     assert(arg_types);
 
-    ret = new_ir_type(IR_TYPE_PROCEDURE);
+    ret = new_ir_type(IR_AST_TYPE_PROCEDURE);
     ret->u.procedure_type.arg_types = arg_types;
     return ret;
 }
 
 ir_type_t *new_ir_array_type(size_t size)
 {
-    ir_type_t *ret = new_ir_type(IR_TYPE_ARRAY);
+    ir_type_t *ret = new_ir_type(IR_AST_TYPE_ARRAY);
     ret->u.array_type.size = size;
     return ret;
 }
 
 ir_type_t *new_ir_integer_type()
 {
-    return new_ir_type(IR_TYPE_INTEGER);
+    return new_ir_type(IR_AST_TYPE_INTEGER);
 }
 
 ir_type_t *new_ir_boolean_type()
 {
-    return new_ir_type(IR_TYPE_BOOLEAN);
+    return new_ir_type(IR_AST_TYPE_BOOLEAN);
 }
 
 ir_type_t *new_ir_char_type()
 {
-    return new_ir_type(IR_TYPE_CHAR);
+    return new_ir_type(IR_AST_TYPE_CHAR);
 }
 
 void delete_ir_type(ir_type_t *type)
@@ -53,7 +53,7 @@ void delete_ir_type(ir_type_t *type)
         return;
     }
     switch (type->kind) {
-    case IR_TYPE_PROCEDURE:
+    case IR_AST_TYPE_PROCEDURE:
         delete_ir_type(type->u.procedure_type.arg_types);
         break;
     }
@@ -241,19 +241,19 @@ ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *place)
     return ret;
 }
 
-ir_rvalue_t *new_ir_binary_op_rvalue(binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs)
+ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs)
 {
     ir_rvalue_t *ret;
     assert(lhs && rhs);
 
-    ret = new_ir_rvalue(IR_RVALUE_BINARY_OP);
+    ret = new_ir_rvalue(IR_RVALUE_AST_BINARY_OP);
     ret->u.binary_op_rvalue.kind = kind;
     ret->u.binary_op_rvalue.lhs = lhs;
     ret->u.binary_op_rvalue.rhs = rhs;
     return ret;
 }
 
-ir_rvalue_t *new_ir_unary_op_rvalue(unary_op_kind_t kind, ir_operand_t *value)
+ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *value)
 {
     ir_rvalue_t *ret;
     assert(value);
@@ -284,7 +284,7 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
     case IR_RVALUE_USE:
         delete_ir_operand(rvalue->u.use_rvalue.place);
         break;
-    case IR_RVALUE_BINARY_OP:
+    case IR_RVALUE_AST_BINARY_OP:
         delete_ir_operand(rvalue->u.binary_op_rvalue.lhs);
         delete_ir_operand(rvalue->u.binary_op_rvalue.rhs);
         break;

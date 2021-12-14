@@ -4,323 +4,323 @@
 #include "mppl.h"
 
 typedef enum {
-    LIT_NUMBER,
-    LIT_BOOLEAN,
-    LIT_STRING
-} lit_kind_t;
+    AST_LIT_NUMBER,
+    AST_LIT_BOOLEAN,
+    AST_LIT_STRING
+} ast_lit_kind_t;
 
 typedef struct {
     const symbol_t *symbol;
     unsigned long value;
-} number_lit_t;
+} ast_number_lit_t;
 
 typedef struct {
     int value;
-} boolean_lit_t;
+} ast_boolean_lit_t;
 
 typedef struct {
     const symbol_t *symbol;
     size_t str_len;
-} string_lit_t;
+} ast_string_lit_t;
 
 typedef struct {
-    lit_kind_t kind;
+    ast_lit_kind_t kind;
 
     union {
-        number_lit_t number_lit;
-        boolean_lit_t boolean_lit;
-        string_lit_t string_lit;
+        ast_number_lit_t number_lit;
+        ast_boolean_lit_t boolean_lit;
+        ast_string_lit_t string_lit;
     } u;
-} lit_t;
+} ast_lit_t;
 
-lit_t *new_number_lit(const symbol_t *symbol, unsigned long value);
-lit_t *new_boolean_lit(int value);
-lit_t *new_string_lit(const symbol_t *symbol, size_t str_len);
-void delete_lit(lit_t *lit);
+ast_lit_t *new_ast_number_lit(const symbol_t *symbol, unsigned long value);
+ast_lit_t *new_ast_boolean_lit(int value);
+ast_lit_t *new_ast_string_lit(const symbol_t *symbol, size_t str_len);
+void delete_ast_lit(ast_lit_t *lit);
 
-typedef struct impl_ident ident_t;
-struct impl_ident {
+typedef struct impl_ast_ident ast_ident_t;
+struct impl_ast_ident {
     const symbol_t *symbol;
-    ident_t *next;
+    ast_ident_t *next;
 };
 
-ident_t *new_ident(const symbol_t *symbol);
-void delete_ident(ident_t *ident);
+ast_ident_t *new_ast_ident(const symbol_t *symbol);
+void delete_ast_ident(ast_ident_t *ident);
 
 typedef enum {
-    TYPE_CHAR,
-    TYPE_INTEGER,
-    TYPE_BOOLEAN,
-    TYPE_ARRAY
-} type_kind_t;
+    AST_TYPE_CHAR,
+    AST_TYPE_INTEGER,
+    AST_TYPE_BOOLEAN,
+    AST_TYPE_ARRAY
+} ast_type_kind_t;
 
-typedef struct impl_type type_t;
+typedef struct impl_ast_type ast_type_t;
 
 typedef struct {
-    type_t *base;
-    lit_t *size;
-} array_type_t;
+    ast_type_t *base;
+    ast_lit_t *size;
+} ast_array_type_t;
 
-struct impl_type {
-    type_kind_t kind;
+struct impl_ast_type {
+    ast_type_kind_t kind;
 
     union {
-        array_type_t array_type;
+        ast_array_type_t array_type;
     } u;
 };
 
-type_t *new_std_type(type_kind_t kind);
-type_t *new_array_type(type_t *base, lit_t *size);
-void delete_type(type_t *type);
+ast_type_t *new_ast_std_type(ast_type_kind_t kind);
+ast_type_t *new_ast_array_type(ast_type_t *base, ast_lit_t *size);
+void delete_ast_type(ast_type_t *type);
 
-typedef struct impl_expr expr_t;
-
-typedef enum {
-    BINARY_OP_STAR,
-    BINARY_OP_DIV,
-    BINARY_OP_AND,
-    BINARY_OP_PLUS,
-    BINARY_OP_MINUS,
-    BINARY_OP_OR,
-    BINARY_OP_EQUAL,
-    BINARY_OP_NOTEQ,
-    BINARY_OP_LE,
-    BINARY_OP_LEEQ,
-    BINARY_OP_GR,
-    BINARY_OP_GREQ
-} binary_op_kind_t;
-
-typedef struct {
-    binary_op_kind_t kind;
-    expr_t *lhs;
-    expr_t *rhs;
-} binary_expr_t;
+typedef struct impl_ast_expr ast_expr_t;
 
 typedef enum {
-    UNARY_OP_NOT
-} unary_op_kind_t;
+    AST_BINARY_OP_STAR,
+    AST_BINARY_OP_DIV,
+    AST_BINARY_OP_AND,
+    AST_BINARY_OP_PLUS,
+    AST_BINARY_OP_MINUS,
+    AST_BINARY_OP_OR,
+    AST_BINARY_OP_EQUAL,
+    AST_BINARY_OP_NOTEQ,
+    AST_BINARY_OP_LE,
+    AST_BINARY_OP_LEEQ,
+    AST_BINARY_OP_GR,
+    AST_BINARY_OP_GREQ
+} ast_binary_op_kind_t;
 
 typedef struct {
-    unary_op_kind_t kind;
-    expr_t *expr;
-} unary_expr_t;
-
-typedef struct {
-    expr_t *expr;
-} paren_expr_t;
-
-typedef struct {
-    expr_t *expr;
-    type_t *type;
-} cast_expr_t;
-
-typedef struct {
-    lit_t *lit;
-} constant_expr_t;
-
-typedef struct {
-    ident_t *decl;
-} decl_ref_expr_t;
-
-typedef struct {
-    ident_t *decl;
-    expr_t *expr;
-} array_subscript_expr_t;
+    ast_binary_op_kind_t kind;
+    ast_expr_t *lhs;
+    ast_expr_t *rhs;
+} ast_binary_expr_t;
 
 typedef enum {
-    EXPR_DECL_REF,
-    EXPR_ARRAY_SUBSCRIPT,
-    EXPR_BINARY_OP,
-    EXPR_UNARY_OP,
-    EXPR_PAREN,
-    EXPR_CAST,
-    EXPR_CONSTANT,
-    EXPR_EMPTY
-} expr_kind_t;
+    AST_UNARY_OP_NOT
+} ast_unary_op_kind_t;
 
-struct impl_expr {
-    expr_kind_t kind;
-    expr_t *next;
+typedef struct {
+    ast_unary_op_kind_t kind;
+    ast_expr_t *expr;
+} ast_unary_expr_t;
+
+typedef struct {
+    ast_expr_t *expr;
+} ast_paren_expr_t;
+
+typedef struct {
+    ast_expr_t *expr;
+    ast_type_t *type;
+} ast_cast_expr_t;
+
+typedef struct {
+    ast_lit_t *lit;
+} ast_constant_expr_t;
+
+typedef struct {
+    ast_ident_t *decl;
+} ast_decl_ref_expr_t;
+
+typedef struct {
+    ast_ident_t *decl;
+    ast_expr_t *expr;
+} ast_array_subscript_expr_t;
+
+typedef enum {
+    AST_EXPR_AST_DECL_REF,
+    AST_EXPR_ARRAY_SUBSCRIPT,
+    AST_EXPR_AST_BINARY_OP,
+    AST_EXPR_UNARY_OP,
+    AST_EXPR_PAREN,
+    AST_EXPR_CAST,
+    AST_EXPR_CONSTANT,
+    AST_EXPR_EMPTY
+} ast_expr_kind_t;
+
+struct impl_ast_expr {
+    ast_expr_kind_t kind;
+    ast_expr_t *next;
 
     union {
-        binary_expr_t binary_expr;
-        unary_expr_t unary_expr;
-        paren_expr_t paren_expr;
-        cast_expr_t cast_expr;
-        decl_ref_expr_t decl_ref_expr;
-        array_subscript_expr_t array_subscript_expr;
-        constant_expr_t constant_expr;
+        ast_binary_expr_t binary_expr;
+        ast_unary_expr_t unary_expr;
+        ast_paren_expr_t paren_expr;
+        ast_cast_expr_t cast_expr;
+        ast_decl_ref_expr_t decl_ref_expr;
+        ast_array_subscript_expr_t array_subscript_expr;
+        ast_constant_expr_t constant_expr;
     } u;
 };
 
-expr_t *new_binary_expr(binary_op_kind_t kind, expr_t *lhs, expr_t *rhs);
-expr_t *new_unary_expr(unary_op_kind_t kind, expr_t *expr);
-expr_t *new_paren_expr(expr_t *expr);
-expr_t *new_cast_expr(type_t *type, expr_t *expr);
-expr_t *new_decl_ref_expr(ident_t *decl);
-expr_t *new_array_subscript_expr(ident_t *decl, expr_t *expr);
-expr_t *new_constant_expr(lit_t *lit);
-expr_t *new_empty_expr();
-void delete_expr(expr_t *expr);
+ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs);
+ast_expr_t *new_ast_unary_expr(ast_unary_op_kind_t kind, ast_expr_t *expr);
+ast_expr_t *new_ast_paren_expr(ast_expr_t *expr);
+ast_expr_t *new_ast_cast_expr(ast_type_t *type, ast_expr_t *expr);
+ast_expr_t *new_ast_decl_ref_expr(ast_ident_t *decl);
+ast_expr_t *new_ast_array_subscript_expr(ast_ident_t *decl, ast_expr_t *expr);
+ast_expr_t *new_ast_constant_expr(ast_lit_t *lit);
+ast_expr_t *new_ast_empty_expr();
+void delete_ast_expr(ast_expr_t *expr);
 
-typedef struct impl_stmt stmt_t;
-
-typedef struct {
-    expr_t *lhs;
-    expr_t *rhs;
-} assign_stmt_t;
+typedef struct impl_ast_stmt ast_stmt_t;
 
 typedef struct {
-    expr_t *cond;
-    stmt_t *then_stmt;
-    stmt_t *else_stmt;
-} if_stmt_t;
+    ast_expr_t *lhs;
+    ast_expr_t *rhs;
+} ast_assign_stmt_t;
 
 typedef struct {
-    expr_t *cond;
-    stmt_t *do_stmt;
-} while_stmt_t;
+    ast_expr_t *cond;
+    ast_stmt_t *then_stmt;
+    ast_stmt_t *else_stmt;
+} ast_if_stmt_t;
 
 typedef struct {
-    ident_t *name;
-    expr_t *args;
-} call_stmt_t;
+    ast_expr_t *cond;
+    ast_stmt_t *do_stmt;
+} ast_while_stmt_t;
+
+typedef struct {
+    ast_ident_t *name;
+    ast_expr_t *args;
+} ast_call_stmt_t;
 
 typedef struct {
     int newline;
-    expr_t *args;
-} read_stmt_t;
+    ast_expr_t *args;
+} ast_read_stmt_t;
 
-typedef struct impl_output_format output_format_t;
-struct impl_output_format {
-    output_format_t *next;
-    expr_t *expr;
-    lit_t *len;
+typedef struct impl_ast_output_format ast_output_format_t;
+struct impl_ast_output_format {
+    ast_output_format_t *next;
+    ast_expr_t *expr;
+    ast_lit_t *len;
 };
 
-output_format_t *new_output_format(expr_t *expr, lit_t *len);
-void delete_output_format(output_format_t *format);
+ast_output_format_t *new_ast_output_format(ast_expr_t *expr, ast_lit_t *len);
+void delete_ast_output_format(ast_output_format_t *format);
 
 typedef struct {
     int newline;
-    output_format_t *formats;
-} write_stmt_t;
+    ast_output_format_t *formats;
+} ast_write_stmt_t;
 
-typedef struct impl_compound_stmt compound_stmt_t;
-struct impl_compound_stmt {
-    stmt_t *stmts;
+typedef struct impl_ast_compound_stmt ast_compound_stmt_t;
+struct impl_ast_compound_stmt {
+    ast_stmt_t *stmts;
 };
 
 typedef enum {
-    STMT_ASSIGN,
-    STMT_IF,
-    STMT_WHILE,
-    STMT_BREAK,
-    STMT_CALL,
-    STMT_RETURN,
-    STMT_READ,
-    STMT_WRITE,
-    STMT_COMPOUND,
-    STMT_EMPTY
-} stmt_kind_t;
+    AST_STMT_ASSIGN,
+    AST_STMT_IF,
+    AST_STMT_WHILE,
+    AST_STMT_BREAK,
+    AST_STMT_CALL,
+    AST_STMT_RETURN,
+    AST_STMT_READ,
+    AST_STMT_WRITE,
+    AST_STMT_COMPOUND,
+    AST_STMT_EMPTY
+} ast_stmt_kind_t;
 
-struct impl_stmt {
-    stmt_kind_t kind;
-    stmt_t *next;
+struct impl_ast_stmt {
+    ast_stmt_kind_t kind;
+    ast_stmt_t *next;
 
     union {
-        assign_stmt_t assign_stmt;
-        if_stmt_t if_stmt;
-        while_stmt_t while_stmt;
-        call_stmt_t call_stmt;
-        read_stmt_t read_stmt;
-        write_stmt_t write_stmt;
-        compound_stmt_t compound_stmt;
+        ast_assign_stmt_t assign_stmt;
+        ast_if_stmt_t if_stmt;
+        ast_while_stmt_t while_stmt;
+        ast_call_stmt_t call_stmt;
+        ast_read_stmt_t read_stmt;
+        ast_write_stmt_t write_stmt;
+        ast_compound_stmt_t compound_stmt;
     } u;
 };
 
-stmt_t *new_assign_stmt(expr_t *lhs, expr_t *rhs);
-stmt_t *new_if_stmt(expr_t *cond, stmt_t *then_stmt, stmt_t *else_stmt);
-stmt_t *new_while_stmt(expr_t *cond, stmt_t *do_stmt);
-stmt_t *new_break_stmt();
-stmt_t *new_call_stmt(ident_t *name, expr_t *args);
-stmt_t *new_return_stmt();
-stmt_t *new_read_stmt(int newline, expr_t *args);
-stmt_t *new_write_stmt(int newline, output_format_t *formats);
-stmt_t *new_compound_stmt(stmt_t *stmts);
-stmt_t *new_empty_stmt();
-void delete_stmt(stmt_t *stmt);
+ast_stmt_t *new_ast_assign_stmt(ast_expr_t *lhs, ast_expr_t *rhs);
+ast_stmt_t *new_ast_if_stmt(ast_expr_t *cond, ast_stmt_t *then_stmt, ast_stmt_t *else_stmt);
+ast_stmt_t *new_ast_while_stmt(ast_expr_t *cond, ast_stmt_t *do_stmt);
+ast_stmt_t *new_ast_break_stmt();
+ast_stmt_t *new_ast_call_stmt(ast_ident_t *name, ast_expr_t *args);
+ast_stmt_t *new_ast_return_stmt();
+ast_stmt_t *new_ast_read_stmt(int newline, ast_expr_t *args);
+ast_stmt_t *new_ast_write_stmt(int newline, ast_output_format_t *formats);
+ast_stmt_t *new_ast_compound_stmt(ast_stmt_t *stmts);
+ast_stmt_t *new_ast_empty_stmt();
+void delete_ast_stmt(ast_stmt_t *stmt);
 
-typedef struct impl_decl_part decl_part_t;
+typedef struct impl_ast_decl_part ast_decl_part_t;
 
-typedef struct impl_variable_decl variable_decl_t;
-struct impl_variable_decl {
-    variable_decl_t *next;
-    ident_t *names;
-    type_t *type;
+typedef struct impl_ast_variable_decl ast_variable_decl_t;
+struct impl_ast_variable_decl {
+    ast_variable_decl_t *next;
+    ast_ident_t *names;
+    ast_type_t *type;
 };
 
-typedef struct impl_variable_decl_part variable_decl_part_t;
-struct impl_variable_decl_part {
-    variable_decl_t *decls;
+typedef struct impl_ast_variable_decl_part ast_variable_decl_part_t;
+struct impl_ast_variable_decl_part {
+    ast_variable_decl_t *decls;
 };
 
-variable_decl_t *new_variable_decl(ident_t *names, type_t *type);
-void delete_variable_decl(variable_decl_t *decl);
+ast_variable_decl_t *new_ast_variable_decl(ast_ident_t *names, ast_type_t *type);
+void delete_ast_variable_decl(ast_variable_decl_t *decl);
 
-typedef struct impl_param_decl param_decl_t;
-struct impl_param_decl {
-    param_decl_t *next;
-    ident_t *names;
-    type_t *type;
+typedef struct impl_ast_param_decl ast_param_decl_t;
+struct impl_ast_param_decl {
+    ast_param_decl_t *next;
+    ast_ident_t *names;
+    ast_type_t *type;
 };
 
-param_decl_t *new_param_decl(ident_t *names, type_t *type);
-void delete_param_decl(param_decl_t *params);
+ast_param_decl_t *new_ast_param_decl(ast_ident_t *names, ast_type_t *type);
+void delete_ast_param_decl(ast_param_decl_t *params);
 
-typedef struct impl_procedure_decl_part procedure_decl_part_t;
-struct impl_procedure_decl_part {
-    ident_t *name;
-    param_decl_t *params;
-    decl_part_t *variables;
-    stmt_t *stmt;
+typedef struct impl_ast_procedure_decl_part ast_procedure_decl_part_t;
+struct impl_ast_procedure_decl_part {
+    ast_ident_t *name;
+    ast_param_decl_t *params;
+    ast_decl_part_t *variables;
+    ast_stmt_t *stmt;
 };
 
 typedef enum {
-    DECL_PART_VARIABLE,
-    DECL_PART_PROCEDURE
-} decl_part_kind_t;
+    AST_DECL_PART_VARIABLE,
+    AST_DECL_PART_PROCEDURE
+} ast_decl_part_kind_t;
 
-struct impl_decl_part {
-    decl_part_kind_t kind;
-    decl_part_t *next;
+struct impl_ast_decl_part {
+    ast_decl_part_kind_t kind;
+    ast_decl_part_t *next;
 
     union {
-        variable_decl_part_t variable_decl_part;
-        procedure_decl_part_t procedure_decl_part;
+        ast_variable_decl_part_t variable_decl_part;
+        ast_procedure_decl_part_t procedure_decl_part;
     } u;
 };
 
-decl_part_t *new_variable_decl_part(variable_decl_t *decls);
-decl_part_t *new_procedure_decl_part(ident_t *name, param_decl_t *params, decl_part_t *variables, stmt_t *stmt);
-void delete_decl_part(decl_part_t *decl);
+ast_decl_part_t *new_variable_decl_part(ast_variable_decl_t *decls);
+ast_decl_part_t *new_procedure_decl_part(ast_ident_t *name, ast_param_decl_t *params, ast_decl_part_t *variables, ast_stmt_t *stmt);
+void delete_decl_part(ast_decl_part_t *decl);
 
 typedef struct {
-    ident_t *name;
-    decl_part_t *decl_part;
-    stmt_t *stmt;
-} program_t;
+    ast_ident_t *name;
+    ast_decl_part_t *decl_part;
+    ast_stmt_t *stmt;
+} ast_program_t;
 
-program_t *new_program(ident_t *name, decl_part_t *decl_part, stmt_t *stmt);
-void delete_program(program_t *program);
+ast_program_t *new_program(ast_ident_t *name, ast_decl_part_t *decl_part, ast_stmt_t *stmt);
+void delete_program(ast_program_t *program);
 
 typedef struct {
-    program_t *program;
+    ast_program_t *program;
     symbol_storage_t *storage;
     const source_t *source;
 } ast_t;
 
-ast_t *new_ast(program_t *program, symbol_storage_t *storage, const source_t *source);
+ast_t *new_ast(ast_program_t *program, symbol_storage_t *storage, const source_t *source);
 void delete_ast(ast_t *ast);
 
 #endif
