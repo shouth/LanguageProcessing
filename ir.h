@@ -4,12 +4,12 @@
 #include "mppl.h"
 
 typedef enum {
-    IR_AST_TYPE_PROGRAM,
-    IR_AST_TYPE_PROCEDURE,
-    IR_AST_TYPE_ARRAY,
-    IR_AST_TYPE_INTEGER,
-    IR_AST_TYPE_BOOLEAN,
-    IR_AST_TYPE_CHAR
+    IR_TYPE_PROGRAM,
+    IR_TYPE_PROCEDURE,
+    IR_TYPE_ARRAY,
+    IR_TYPE_INTEGER,
+    IR_TYPE_BOOLEAN,
+    IR_TYPE_CHAR
 } ir_ast_type_kind_t;
 
 typedef struct impl_ir_type ir_type_t;
