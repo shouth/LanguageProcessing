@@ -104,7 +104,7 @@ typedef struct {
 
 typedef enum {
     IR_RVALUE_USE,
-    IR_RVALUE_AST_BINARY_OP,
+    IR_RVALUE_BINARY_OP,
     IR_RVALUE_UNARY_OP,
     IR_RVALUE_CAST
 } ir_rvalue_kind_t;

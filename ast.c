@@ -96,7 +96,7 @@ static ast_expr_t *new_expr(ast_expr_kind_t kind)
 
 ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_AST_BINARY_OP);
+    ast_expr_t *ret = new_expr(AST_EXPR_BINARY_OP);
     ret->u.binary_expr.kind = kind;
     ret->u.binary_expr.lhs = lhs;
     ret->u.binary_expr.rhs = rhs;
@@ -128,7 +128,7 @@ ast_expr_t *new_ast_cast_expr(ast_type_t *type, ast_expr_t *expr)
 
 ast_expr_t *new_ast_decl_ref_expr(ast_ident_t *decl)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_AST_DECL_REF);
+    ast_expr_t *ret = new_expr(AST_EXPR_DECL_REF);
     ret->u.decl_ref_expr.decl = decl;
     return ret;
 }
@@ -159,7 +159,7 @@ void delete_ast_expr(ast_expr_t *expr)
         return;
     }
     switch (expr->kind) {
-    case AST_EXPR_AST_BINARY_OP:
+    case AST_EXPR_BINARY_OP:
         delete_ast_expr(expr->u.binary_expr.lhs);
         delete_ast_expr(expr->u.binary_expr.rhs);
         break;
@@ -173,7 +173,7 @@ void delete_ast_expr(ast_expr_t *expr)
         delete_ast_type(expr->u.cast_expr.type);
         delete_ast_expr(expr->u.cast_expr.expr);
         break;
-    case AST_EXPR_AST_DECL_REF:
+    case AST_EXPR_DECL_REF:
         delete_ast_ident(expr->u.decl_ref_expr.decl);
         break;
     case AST_EXPR_ARRAY_SUBSCRIPT:

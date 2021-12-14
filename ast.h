@@ -128,9 +128,9 @@ typedef struct {
 } ast_array_subscript_expr_t;
 
 typedef enum {
-    AST_EXPR_AST_DECL_REF,
+    AST_EXPR_DECL_REF,
     AST_EXPR_ARRAY_SUBSCRIPT,
-    AST_EXPR_AST_BINARY_OP,
+    AST_EXPR_BINARY_OP,
     AST_EXPR_UNARY_OP,
     AST_EXPR_PAREN,
     AST_EXPR_CAST,

@@ -283,7 +283,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
     cur = expr;
     while (cur) {
         switch (cur->kind) {
-        case AST_EXPR_AST_BINARY_OP:
+        case AST_EXPR_BINARY_OP:
             pp_binary_op_expr(printer, &cur->u.binary_expr);
             break;
         case AST_EXPR_UNARY_OP:
@@ -295,7 +295,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
         case AST_EXPR_CAST:
             pp_cast_expr(printer, &cur->u.cast_expr);
             break;
-        case AST_EXPR_AST_DECL_REF:
+        case AST_EXPR_DECL_REF:
             pp_decl_ref_expr(printer, &cur->u.decl_ref_expr);
             break;
         case AST_EXPR_ARRAY_SUBSCRIPT:

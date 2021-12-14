@@ -246,7 +246,7 @@ ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lh
     ir_rvalue_t *ret;
     assert(lhs && rhs);
 
-    ret = new_ir_rvalue(IR_RVALUE_AST_BINARY_OP);
+    ret = new_ir_rvalue(IR_RVALUE_BINARY_OP);
     ret->u.binary_op_rvalue.kind = kind;
     ret->u.binary_op_rvalue.lhs = lhs;
     ret->u.binary_op_rvalue.rhs = rhs;
@@ -284,7 +284,7 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
     case IR_RVALUE_USE:
         delete_ir_operand(rvalue->u.use_rvalue.place);
         break;
-    case IR_RVALUE_AST_BINARY_OP:
+    case IR_RVALUE_BINARY_OP:
         delete_ir_operand(rvalue->u.binary_op_rvalue.lhs);
         delete_ir_operand(rvalue->u.binary_op_rvalue.rhs);
         break;
