@@ -2,7 +2,7 @@
 
 #include "mppl.h"
 
-static ir_type_t *new_ir_type(ir_ast_type_kind_t kind)
+static ir_type_t *new_ir_type(ir_type_kind_t kind)
 {
     ir_type_t *ret = new(ir_type_t);
     ret->kind = kind;
