@@ -10,11 +10,11 @@ typedef enum {
     IR_TYPE_INTEGER,
     IR_TYPE_BOOLEAN,
     IR_TYPE_CHAR
-} ir_ast_type_kind_t;
+} ir_type_kind_t;
 
 typedef struct impl_ir_type ir_type_t;
 struct impl_ir_type {
-    ir_ast_type_kind_t kind;
+    ir_type_kind_t kind;
     ir_type_t *next;
 
     union {
