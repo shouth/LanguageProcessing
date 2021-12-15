@@ -27,6 +27,14 @@ struct impl_ir_type {
     } u;
 };
 
+ir_type_t *new_ir_program_type();
+ir_type_t *new_ir_procedure_type(ir_type_t *arg_types);
+ir_type_t *new_ir_array_type(size_t size);
+ir_type_t *new_ir_integer_type();
+ir_type_t *new_ir_boolean_type();
+ir_type_t *new_ir_char_type();
+void delete_ir_type(ir_type_t *type);
+
 typedef enum {
     IR_LOCAL_NORMAL,
     IR_LOCAL_TEMP,
@@ -37,6 +45,12 @@ typedef struct {
     ir_local_kind_t kind;
     const symbol_t *key;
 } ir_local_t;
+
+static ir_local_t *new_ir_local(ir_local_kind_t kind);
+ir_local_t *new_ir_normal_local(const symbol_t *key);
+ir_local_t *new_ir_temp_local(const symbol_t *key);
+ir_local_t *new_ir_ref_local(const symbol_t *key);
+void delete_ir_local(ir_local_t *local);
 
 typedef enum {
     IR_PLACE_ACCESS_NORMAL,
@@ -53,10 +67,17 @@ typedef struct {
     } u;
 } ir_place_access_t;
 
+ir_place_access_t *new_ir_normal_place_access();
+ir_place_access_t *new_ir_index_place_access(size_t index);
+void delete_ir_place_access(ir_place_access_t *place_access);
+
 typedef struct {
     ir_local_t *local;
     ir_place_access_t *place_access;
 } ir_place_t;
+
+ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access);
+void delete_ir_place(ir_place_t *place);
 
 typedef enum {
     IR_CONSTANT_NUMBER,
@@ -84,6 +105,12 @@ typedef struct {
     } u;
 } ir_constant_t;
 
+ir_constant_t *new_ir_number_constant(unsigned long value);
+ir_constant_t *new_ir_boolean_constant(int value);
+ir_constant_t *new_ir_char_constant(int value);
+ir_constant_t *new_ir_string_constant(const symbol_t *value);
+void delete_ir_constant(ir_constant_t *constant);
+
 typedef enum {
     IR_OPERAND_PLACE,
     IR_OPERAND_CONSTANT
@@ -101,6 +128,10 @@ typedef struct {
         } constant_operand;
     } u;
 } ir_operand_t;
+
+ir_operand_t *new_ir_place_operand(ir_place_t *place);
+ir_operand_t *new_ir_constant_operand(ir_constant_t *constant);
+void delete_ir_operand(ir_operand_t *operand);
 
 typedef enum {
     IR_RVALUE_USE,
@@ -134,6 +165,12 @@ struct impl_ir_rvalue {
     } u;
 };
 
+ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *place);
+ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs);
+ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *value);
+ir_rvalue_t *new_ir_cast_rvalue(const ir_type_t *type, ir_operand_t *value);
+void delete_ir_rvalue(ir_rvalue_t *rvalue);
+
 typedef struct impl_ir_stmt ir_stmt_t;
 typedef struct impl_ir_block ir_block_t;
 
@@ -142,6 +179,9 @@ struct impl_ir_stmt {
     ir_rvalue_t *rhs;
     ir_stmt_t *next;
 };
+
+ir_stmt_t *new_ir_stmt(ir_place_t *lhs, ir_rvalue_t *rhs);
+void delete_ir_stmt(ir_stmt_t *stmt);
 
 typedef enum {
     IR_TERMN_GOTO,
@@ -170,16 +210,28 @@ typedef struct {
     } u;
 } ir_termn_t;
 
+ir_termn_t *new_ir_goto_termn(ir_block_t *next);
+ir_termn_t *new_ir_if_termn(ir_operand_t *cond, ir_block_t *then, ir_block_t *els);
+ir_termn_t *new_ir_call_termn(ir_place_t *func, ir_rvalue_t *args, ir_block_t *dest);
+ir_termn_t *new_ir_return_termn();
+void delete_ir_termn(ir_termn_t *termn);
+
 struct impl_ir_block {
     ir_stmt_t *stmt;
     ir_termn_t *termn;
 };
+
+ir_block_t *new_ir_block(ir_stmt_t *stmt, ir_termn_t *termn);
+void delete_ir_block(ir_block_t *block);
 
 typedef struct {
     hash_table_t *items;
     hash_table_t *refs;
     ir_block_t *inner;
 } ir_body_t;
+
+ir_body_t *new_ir_body(ir_block_t *inner);
+void delete_ir_body(ir_body_t *body);
 
 typedef enum {
     IR_ITEM_PROGRAM,
@@ -197,8 +249,14 @@ typedef struct {
     const symbol_t *next_key;
 } ir_item_t;
 
+ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, const symbol_t *symbol);
+void delete_ir_item(ir_item_t *item);
+
 typedef struct {
     ir_item_t *program;
 } ir_t;
+
+ir_t *new_ir(ir_item_t *program);
+void delete_ir(ir_t *ir);
 
 #endif
