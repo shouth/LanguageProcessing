@@ -138,7 +138,7 @@ int expect(parser_t *parser, token_kind_t type)
 
 ast_ident_t *parse_ident(parser_t *parser)
 {
-    const symbol_t *symbol;
+    symbol_t symbol;
     assert(parser);
 
     expect(parser, TOKEN_NAME);
@@ -160,7 +160,7 @@ ast_ident_t *parse_ident_seq(parser_t *parser)
 
 ast_lit_t *parse_number_lit(parser_t *parser)
 {
-    const symbol_t *symbol;
+    symbol_t symbol;
     assert(parser);
 
     expect(parser, TOKEN_NUMBER);
@@ -183,7 +183,7 @@ ast_lit_t *parse_boolean_lit(parser_t *parser)
 
 ast_lit_t *parse_string_lit(parser_t *parser)
 {
-    const symbol_t *symbol;
+    symbol_t symbol;
     const token_data_t *data;
     assert(parser);
 

@@ -43,13 +43,13 @@ typedef enum {
 
 typedef struct {
     ir_local_kind_t kind;
-    const symbol_t *key;
+    symbol_t key;
 } ir_local_t;
 
 static ir_local_t *new_ir_local(ir_local_kind_t kind);
-ir_local_t *new_ir_normal_local(const symbol_t *key);
-ir_local_t *new_ir_temp_local(const symbol_t *key);
-ir_local_t *new_ir_ref_local(const symbol_t *key);
+ir_local_t *new_ir_normal_local(symbol_t key);
+ir_local_t *new_ir_temp_local(symbol_t key);
+ir_local_t *new_ir_ref_local(symbol_t key);
 void delete_ir_local(ir_local_t *local);
 
 typedef enum {
@@ -71,10 +71,12 @@ ir_place_access_t *new_ir_normal_place_access();
 ir_place_access_t *new_ir_index_place_access(size_t index);
 void delete_ir_place_access(ir_place_access_t *place_access);
 
-typedef struct {
+typedef struct impl_ir_place ir_place_t;
+struct impl_ir_place {
     ir_local_t *local;
     ir_place_access_t *place_access;
-} ir_place_t;
+    ir_place_t *next;
+};
 
 ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access);
 void delete_ir_place(ir_place_t *place);
@@ -100,7 +102,7 @@ typedef struct {
             int value;
         } char_constant;
         struct {
-            const symbol_t *value;
+            symbol_t value;
         } string_constant;
     } u;
 } ir_constant_t;
@@ -108,7 +110,7 @@ typedef struct {
 ir_constant_t *new_ir_number_constant(unsigned long value);
 ir_constant_t *new_ir_boolean_constant(int value);
 ir_constant_t *new_ir_char_constant(int value);
-ir_constant_t *new_ir_string_constant(const symbol_t *value);
+ir_constant_t *new_ir_string_constant(symbol_t value);
 void delete_ir_constant(ir_constant_t *constant);
 
 typedef enum {
@@ -140,10 +142,8 @@ typedef enum {
     IR_RVALUE_CAST
 } ir_rvalue_kind_t;
 
-typedef struct impl_ir_rvalue ir_rvalue_t;
-struct impl_ir_rvalue {
+typedef struct {
     ir_rvalue_kind_t kind;
-    ir_rvalue_t *next;
 
     union {
         struct {
@@ -163,7 +163,7 @@ struct impl_ir_rvalue {
             ir_operand_t *value;
         } cast_rvalue;
     } u;
-};
+} ir_rvalue_t;
 
 ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *place);
 ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs);
@@ -204,7 +204,7 @@ typedef struct {
         } if_termn;
         struct {
             ir_place_t *func;
-            ir_rvalue_t *args;
+            ir_place_t *args;
             ir_block_t *dest;
         } call_termn;
     } u;
@@ -212,7 +212,7 @@ typedef struct {
 
 ir_termn_t *new_ir_goto_termn(ir_block_t *next);
 ir_termn_t *new_ir_if_termn(ir_operand_t *cond, ir_block_t *then, ir_block_t *els);
-ir_termn_t *new_ir_call_termn(ir_place_t *func, ir_rvalue_t *args, ir_block_t *dest);
+ir_termn_t *new_ir_call_termn(ir_place_t *func, ir_place_t *args, ir_block_t *dest);
 ir_termn_t *new_ir_return_termn();
 void delete_ir_termn(ir_termn_t *termn);
 
@@ -224,13 +224,15 @@ struct impl_ir_block {
 ir_block_t *new_ir_block(ir_stmt_t *stmt, ir_termn_t *termn);
 void delete_ir_block(ir_block_t *block);
 
+typedef struct impl_ir_item_table ir_item_table_t;
+
 typedef struct {
-    hash_table_t *items;
-    hash_table_t *refs;
+    ir_item_table_t *items;
+    ir_item_table_t *refs;
     ir_block_t *inner;
 } ir_body_t;
 
-ir_body_t *new_ir_body(ir_block_t *inner);
+ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items, ir_item_table_t *refs);
 void delete_ir_body(ir_body_t *body);
 
 typedef enum {
@@ -244,13 +246,21 @@ typedef enum {
 typedef struct {
     ir_item_kind_t kind;
     const ir_type_t *type;
-    const symbol_t *symbol;
+    symbol_t symbol;
     ir_body_t *body;
-    const symbol_t *next_key;
+    symbol_t next_key;
 } ir_item_t;
 
-ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, const symbol_t *symbol);
+ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, symbol_t symbol);
 void delete_ir_item(ir_item_t *item);
+
+struct impl_ir_item_table {
+    hash_table_t *table;
+};
+
+ir_item_table_t *new_ir_item_table();
+void delete_ir_item_table(ir_item_table_t *table);
+int ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item);
 
 typedef struct {
     ir_item_t *program;

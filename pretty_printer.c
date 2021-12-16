@@ -29,6 +29,7 @@ typedef struct {
 
 void console_set_color(printer_t *printer, color_t color)
 {
+    assert(printer);
     if (printer->color_scheme) {
         printf("\033[38;2;%ld;%ld;%ldm", (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
     }
@@ -36,18 +37,24 @@ void console_set_color(printer_t *printer, color_t color)
 
 void console_reset_color(printer_t *printer)
 {
+    assert(printer);
     if (printer->color_scheme) {
         console_set_color(printer, printer->color_scheme->foreground);
     }
 }
 
-void pp_symbol(printer_t *printer, const symbol_t *symbol)
+void pp_symbol(printer_t *printer, symbol_t symbol)
 {
-    printf("%.*s", (int) symbol->len, symbol->ptr);
+    const symbol_instance_t *instance;
+    assert(printer);
+
+    instance = symbol_get_instance(symbol);
+    printf("%.*s", (int) instance->len, instance->ptr);
 }
 
 void pp_colored_program(printer_t *printer, const ast_ident_t *ident)
 {
+    assert(printer && ident);
     console_set_color(printer, printer->color_scheme->program);
     pp_symbol(printer, ident->symbol);
     console_reset_color(printer);
@@ -55,6 +62,7 @@ void pp_colored_program(printer_t *printer, const ast_ident_t *ident)
 
 void pp_colored_keyword(printer_t *printer, token_kind_t type)
 {
+    assert(printer);
     console_set_color(printer, printer->color_scheme->keyword);
     printf("%s", token_to_str(type));
     console_reset_color(printer);
@@ -62,6 +70,7 @@ void pp_colored_keyword(printer_t *printer, token_kind_t type)
 
 void pp_colored_operator(printer_t *printer, token_kind_t type)
 {
+    assert(printer);
     console_set_color(printer, printer->color_scheme->operator);
     printf("%s", token_to_str(type));
     console_reset_color(printer);
@@ -69,6 +78,7 @@ void pp_colored_operator(printer_t *printer, token_kind_t type)
 
 void pp_colored_procedure(printer_t *printer, const ast_ident_t *ident)
 {
+    assert(printer && ident);
     console_set_color(printer, printer->color_scheme->procedure);
     pp_symbol(printer, ident->symbol);
     console_reset_color(printer);
@@ -76,6 +86,7 @@ void pp_colored_procedure(printer_t *printer, const ast_ident_t *ident)
 
 void pp_colored_reserved_function(printer_t *printer, token_kind_t type)
 {
+    assert(printer);
     console_set_color(printer, printer->color_scheme->procedure);
     printf("%s", token_to_str(type));
     console_reset_color(printer);
@@ -83,6 +94,7 @@ void pp_colored_reserved_function(printer_t *printer, token_kind_t type)
 
 void pp_colored_parameter(printer_t *printer, const ast_ident_t *ident)
 {
+    assert(printer && ident);
     console_set_color(printer, printer->color_scheme->argument);
     pp_symbol(printer, ident->symbol);
     console_reset_color(printer);
@@ -90,6 +102,7 @@ void pp_colored_parameter(printer_t *printer, const ast_ident_t *ident)
 
 void pp_colored_string(printer_t *printer, const ast_string_lit_t *lit)
 {
+    assert(printer && lit);
     console_set_color(printer, printer->color_scheme->string);
     printf("\'");
     pp_symbol(printer, lit->symbol);
@@ -99,6 +112,7 @@ void pp_colored_string(printer_t *printer, const ast_string_lit_t *lit)
 
 void pp_colored_number(printer_t *printer, const ast_number_lit_t *lit)
 {
+    assert(printer && lit);
     console_set_color(printer, printer->color_scheme->literal);
     pp_symbol(printer, lit->symbol);
     console_reset_color(printer);
@@ -106,6 +120,7 @@ void pp_colored_number(printer_t *printer, const ast_number_lit_t *lit)
 
 void pp_colored_reserved_lit(printer_t *printer, token_kind_t type)
 {
+    assert(printer);
     console_set_color(printer, printer->color_scheme->literal);
     printf("%s", token_to_str(type));
     console_reset_color(printer);

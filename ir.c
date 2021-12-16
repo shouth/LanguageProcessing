@@ -69,21 +69,21 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
     return ret;
 }
 
-ir_local_t *new_ir_normal_local(const symbol_t *key)
+ir_local_t *new_ir_normal_local(symbol_t key)
 {
     ir_local_t *ret = new_ir_local(IR_LOCAL_NORMAL);
     ret->key = key;
     return ret;
 }
 
-ir_local_t *new_ir_temp_local(const symbol_t *key)
+ir_local_t *new_ir_temp_local(symbol_t key)
 {
     ir_local_t *ret = new_ir_local(IR_LOCAL_TEMP);
     ret->key = key;
     return ret;
 }
 
-ir_local_t *new_ir_ref_local(const symbol_t *key)
+ir_local_t *new_ir_ref_local(symbol_t key)
 {
     ir_local_t *ret = new_ir_local(IR_LOCAL_REF);
     ret->key = key;
@@ -129,13 +129,18 @@ ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access)
     ret = new(ir_place_t);
     ret->local = local;
     ret->place_access = place_access;
+    ret->next = NULL;
     return ret;
 }
 
 void delete_ir_place(ir_place_t *place)
 {
+    if (!place) {
+        return;
+    }
     delete_ir_local(place->local);
     delete_ir_place_access(place->place_access);
+    delete_ir_place(place->next);
     free(place);
 }
 
@@ -167,7 +172,7 @@ ir_constant_t *new_ir_char_constant(int value)
     return ret;
 }
 
-ir_constant_t *new_ir_string_constant(const symbol_t *value)
+ir_constant_t *new_ir_string_constant(symbol_t value)
 {
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_STRING);
     ret->u.string_constant.value = value;
@@ -227,7 +232,6 @@ static ir_rvalue_t *new_ir_rvalue(ir_rvalue_kind_t kind)
 {
     ir_rvalue_t *ret = new(ir_rvalue_t);
     ret->kind = kind;
-    ret->next = NULL;
     return ret;
 }
 
@@ -295,7 +299,6 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
         delete_ir_operand(rvalue->u.cast_rvalue.value);
         break;
     }
-    delete_ir_rvalue(rvalue->next);
     free(rvalue);
 }
 
@@ -351,7 +354,7 @@ ir_termn_t *new_ir_if_termn(ir_operand_t *cond, ir_block_t *then, ir_block_t *el
     return ret;
 }
 
-ir_termn_t *new_ir_call_termn(ir_place_t *func, ir_rvalue_t *args, ir_block_t *dest)
+ir_termn_t *new_ir_call_termn(ir_place_t *func, ir_place_t *args, ir_block_t *dest)
 {
     ir_termn_t *ret;
     assert(func && args && dest);
@@ -386,7 +389,7 @@ void delete_ir_termn(ir_termn_t *termn)
         break;
     case IR_TERMN_CALL:
         delete_ir_place(termn->u.call_termn.func);
-        delete_ir_rvalue(termn->u.call_termn.args);
+        delete_ir_place(termn->u.call_termn.args);
         delete_ir_block(termn->u.call_termn.dest);
         break;
     }
@@ -413,14 +416,39 @@ void delete_ir_block(ir_block_t *block)
     free(block);
 }
 
-ir_body_t *new_ir_body(ir_block_t *inner)
+ir_item_table_t *new_ir_item_table()
+{
+    ir_item_table_t *ret = new(ir_item_table_t);
+    ret->table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+    return ret;
+}
+
+void delete_ir_item_table(ir_item_table_t *table)
+{
+    if (!table) {
+        return;
+    }
+    delete_hash_table(table->table, NULL, NULL);
+    free(table);
+}
+
+int ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item)
+{
+    if (hash_table_find(table->table, (void *) item->symbol)) {
+        return 0;
+    }
+    hash_table_insert_unchecked(table->table, (void *) item->symbol, item);
+    return 1;
+}
+
+ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items, ir_item_table_t *refs)
 {
     ir_body_t *ret;
     assert(inner);
 
     ret->inner = inner;
-    ret->items = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    ret->refs = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+    ret->items = items;
+    ret->refs = refs;
     return ret;
 }
 
@@ -430,12 +458,12 @@ void delete_ir_body(ir_body_t *body)
         return;
     }
     delete_ir_block(body->inner);
-    delete_hash_table(body->items, NULL, NULL);
-    delete_hash_table(body->refs, NULL, NULL);
+    delete_ir_item_table(body->items);
+    delete_ir_item_table(body->refs);
     free(body);
 }
 
-ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, const symbol_t *symbol)
+ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, symbol_t symbol)
 {
     ir_item_t *ret;
     assert(type && symbol);
@@ -444,8 +472,7 @@ ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, const symbol_
     ret->kind = kind;
     ret->type = type;
     ret->symbol = symbol;
-    ret->body = NULL;
-    ret->next_key = NULL;
+    ret->body = 0;
     return ret;
 }
 

@@ -10,7 +10,7 @@ static ast_lit_t *new_lit(ast_lit_kind_t kind)
     return ret;
 }
 
-ast_lit_t *new_ast_number_lit(const symbol_t *symbol, unsigned long value)
+ast_lit_t *new_ast_number_lit(symbol_t symbol, unsigned long value)
 {
     ast_lit_t *ret = new_lit(AST_LIT_NUMBER);
     ret->u.number_lit.symbol = symbol;
@@ -25,7 +25,7 @@ ast_lit_t *new_ast_boolean_lit(int value)
     return ret;
 }
 
-ast_lit_t *new_ast_string_lit(const symbol_t *symbol, size_t str_len)
+ast_lit_t *new_ast_string_lit(symbol_t symbol, size_t str_len)
 {
     ast_lit_t *ret = new_lit(AST_LIT_STRING);
     ret->u.string_lit.symbol = symbol;
@@ -69,7 +69,7 @@ void delete_ast_type(ast_type_t *type)
     free(type);
 }
 
-ast_ident_t *new_ast_ident(const symbol_t *symbol)
+ast_ident_t *new_ast_ident(symbol_t symbol)
 {
     ast_ident_t *ret = new(ast_ident_t);
     ret->next = NULL;

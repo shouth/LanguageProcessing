@@ -156,19 +156,21 @@ void source_location(const source_t *src, size_t index, location_t *loc);
 
 /* symbol.c */
 
+typedef uintptr_t symbol_t;
+
 typedef struct {
     const char *ptr;
     size_t len;
-} symbol_t;
+} symbol_instance_t;
 
 typedef struct {
     hash_table_t *table;
-    symbol_t *key;
 } symbol_storage_t;
 
 symbol_storage_t *new_symbol_storage();
 symbol_storage_t *delete_symbol_storage(symbol_storage_t *storage);
-const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
+symbol_t symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
+const symbol_instance_t *symbol_get_instance(symbol_t symbol);
 
 /* cursol.c */
 
