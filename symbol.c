@@ -25,10 +25,10 @@ symbol_storage_t *new_symbol_storage()
     return ret;
 }
 
-symbol_storage_t *delete_symbol_storage(symbol_storage_t *storage)
+void delete_symbol_storage(symbol_storage_t *storage)
 {
     if (!storage) {
-        return NULL;
+        return;
     }
     delete_hash_table(storage->table, free, NULL);
     free(storage);

@@ -168,7 +168,7 @@ typedef struct {
 } symbol_storage_t;
 
 symbol_storage_t *new_symbol_storage();
-symbol_storage_t *delete_symbol_storage(symbol_storage_t *storage);
+void delete_symbol_storage(symbol_storage_t *storage);
 symbol_t symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
 const symbol_instance_t *symbol_get_instance(symbol_t symbol);
 
