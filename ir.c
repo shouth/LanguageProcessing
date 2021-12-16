@@ -21,14 +21,14 @@ ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *arg_types
     assert(arg_types);
 
     ret = new_ir_type_instance(IR_TYPE_PROCEDURE);
-    ret->u.procedure_type.u.arg_types = arg_types;
+    ret->u.procedure_type.arg_types = arg_types;
     return ret;
 }
 
 ir_type_instance_t *new_ir_array_type_instance(ir_type_instance_t *base_type, size_t size)
 {
     ir_type_instance_t *ret = new_ir_type_instance(IR_TYPE_ARRAY);
-    ret->u.array_type.u.base_type = base_type;
+    ret->u.array_type.base_type = base_type;
     ret->u.array_type.size = size;
     return ret;
 }
@@ -55,10 +55,10 @@ void delete_ir_type_instance(ir_type_instance_t *type)
     }
     switch (type->kind) {
     case IR_TYPE_PROCEDURE:
-        delete_ir_type_instance(type->u.procedure_type.u.arg_types);
+        delete_ir_type_instance(type->u.procedure_type.arg_types);
         break;
     case IR_TYPE_ARRAY:
-        delete_ir_type_instance(type->u.array_type.u.base_type);
+        delete_ir_type_instance(type->u.array_type.base_type);
         break;
     }
     delete_ir_type_instance(type->next);
@@ -75,10 +75,10 @@ static int ir_type_instance_comparator(const void *lhs, const void *rhs)
     }
     switch (l->kind) {
     case IR_TYPE_PROCEDURE:
-        lcur = l->u.procedure_type.u.arg_types;
-        rcur = r->u.procedure_type.u.arg_types;
+        lcur = l->u.procedure_type.arg_types;
+        rcur = r->u.procedure_type.arg_types;
         while (lcur && rcur) {
-            if (lcur->u.procedure_type.u.resolved != rcur->u.procedure_type.u.resolved) {
+            if (lcur->u.ref != rcur->u.ref) {
                 return 0;
             }
             lcur = lcur->next;
@@ -87,9 +87,9 @@ static int ir_type_instance_comparator(const void *lhs, const void *rhs)
         return !lcur && !rcur;
 
     case IR_TYPE_ARRAY:
-        lcur = l->u.array_type.u.base_type;
-        rcur = r->u.array_type.u.base_type;
-        if (lcur->u.array_type.u.resolved != rcur->u.array_type.u.resolved) {
+        lcur = l->u.array_type.base_type;
+        rcur = r->u.array_type.base_type;
+        if (lcur->u.ref != rcur->u.ref) {
             return 0;
         }
         return l->u.array_type.size == r->u.array_type.size;
@@ -107,15 +107,15 @@ static uint64_t ir_type_instance_hasher(const void *ptr)
 
     switch (p->kind) {
     case IR_TYPE_PROCEDURE:
-        cur = p->u.procedure_type.u.arg_types;
+        cur = p->u.procedure_type.arg_types;
         while (cur) {
-            ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.procedure_type.u.resolved));
+            ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.ref));
             cur = cur->next;
         }
         break;
     case IR_TYPE_ARRAY:
-        cur = p->u.array_type.u.base_type;
-        ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.array_type.u.resolved));
+        cur = p->u.array_type.base_type;
+        ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.ref));
         ret = 31 * ret + fnv1_int(p->u.array_type.size);
         break;
     }
@@ -138,27 +138,46 @@ void delete_ir_type_storage(ir_type_storage_t *storage)
     free(storage);
 }
 
+static ir_type_instance_t *ir_type_ref(ir_type_t type)
+{
+    ir_type_instance_t *ret;
+    assert(type);
+
+    ret = new_ir_type_instance(-1);
+    ret->u.ref = type;
+    return ret;
+}
+
+static ir_type_instance_t *ir_type_intern_chaining(ir_type_storage_t *storage, ir_type_instance_t *arg_types)
+{
+    ir_type_instance_t *ret, *next;
+    ir_type_t type;
+    assert(storage);
+    if (!arg_types) {
+        return NULL;
+    }
+
+    next = ir_type_intern_chaining(storage, arg_types->next);
+    type = ir_type_intern(storage, arg_types);
+    ret = ir_type_ref(type);
+    ret->next = next;
+    return ret;
+}
+
 ir_type_t ir_type_intern(ir_type_storage_t *storage, ir_type_instance_t *instance)
 {
-    ir_type_instance_t *cur, *key;
+    ir_type_instance_t *cur;
     const hash_table_entry_t *entry;
     assert(storage && instance);
 
     switch (instance->kind) {
     case IR_TYPE_PROCEDURE:
-        cur = instance->u.procedure_type.u.arg_types;
-        while (cur) {
-            key = new_ir_type_instance(cur->kind);
-            key->u = cur->u;
-            cur->u.procedure_type.u.resolved = ir_type_intern(storage, key);
-            cur = cur->next;
-        }
+        instance->u.procedure_type.arg_types =
+            ir_type_intern_chaining(storage, instance->u.procedure_type.arg_types);
         break;
     case IR_TYPE_ARRAY:
-        cur = instance->u.array_type.u.base_type;
-        key = new_ir_type_instance(cur->kind);
-        key->u = cur->u;
-        cur->u.array_type.u.resolved = ir_type_intern(storage, key);
+        instance->u.array_type.base_type =
+            ir_type_intern_chaining(storage, instance->u.array_type.base_type);
         break;
     }
     if (entry = hash_table_find(storage->table, instance)) {

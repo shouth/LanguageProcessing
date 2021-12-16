@@ -21,18 +21,13 @@ struct impl_ir_type_instance {
 
     union {
         struct {
-            union {
-                ir_type_instance_t *arg_types;
-                ir_type_t resolved;
-            } u;
+            ir_type_instance_t *arg_types;
         } procedure_type;
         struct {
-            union {
-                ir_type_instance_t *base_type;
-                ir_type_t resolved;
-            } u;
+            ir_type_instance_t *base_type;
             size_t size;
         } array_type;
+        ir_type_t ref;
     } u;
 };
 
