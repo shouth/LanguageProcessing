@@ -2,64 +2,176 @@
 
 #include "mppl.h"
 
-static ir_type_t *new_ir_type(ir_type_kind_t kind)
+static ir_type_instance_t *new_ir_type_instance(ir_type_kind_t kind)
 {
-    ir_type_t *ret = new(ir_type_t);
+    ir_type_instance_t *ret = new(ir_type_instance_t);
     ret->kind = kind;
     ret->next = NULL;
     return ret;
 }
 
-ir_type_t *new_ir_program_type()
+ir_type_instance_t *new_ir_program_type_instance()
 {
-    return new_ir_type(IR_TYPE_PROGRAM);
+    return new_ir_type_instance(IR_TYPE_PROGRAM);
 }
 
-ir_type_t *new_ir_procedure_type(ir_type_t *arg_types)
+ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *arg_types)
 {
-    ir_type_t *ret;
+    ir_type_instance_t *ret;
     assert(arg_types);
 
-    ret = new_ir_type(IR_TYPE_PROCEDURE);
-    ret->u.procedure_type.arg_types = arg_types;
+    ret = new_ir_type_instance(IR_TYPE_PROCEDURE);
+    ret->u.procedure_type.u.arg_types = arg_types;
     return ret;
 }
 
-ir_type_t *new_ir_array_type(size_t size)
+ir_type_instance_t *new_ir_array_type_instance(ir_type_instance_t *base_type, size_t size)
 {
-    ir_type_t *ret = new_ir_type(IR_TYPE_ARRAY);
+    ir_type_instance_t *ret = new_ir_type_instance(IR_TYPE_ARRAY);
+    ret->u.array_type.u.base_type = base_type;
     ret->u.array_type.size = size;
     return ret;
 }
 
-ir_type_t *new_ir_integer_type()
+ir_type_instance_t *new_ir_integer_type_instance()
 {
-    return new_ir_type(IR_TYPE_INTEGER);
+    return new_ir_type_instance(IR_TYPE_INTEGER);
 }
 
-ir_type_t *new_ir_boolean_type()
+ir_type_instance_t *new_ir_boolean_type_instance()
 {
-    return new_ir_type(IR_TYPE_BOOLEAN);
+    return new_ir_type_instance(IR_TYPE_BOOLEAN);
 }
 
-ir_type_t *new_ir_char_type()
+ir_type_instance_t *new_ir_char_type_instance()
 {
-    return new_ir_type(IR_TYPE_CHAR);
+    return new_ir_type_instance(IR_TYPE_CHAR);
 }
 
-void delete_ir_type(ir_type_t *type)
+void delete_ir_type_instance(ir_type_instance_t *type)
 {
     if (!type) {
         return;
     }
     switch (type->kind) {
     case IR_TYPE_PROCEDURE:
-        delete_ir_type(type->u.procedure_type.arg_types);
+        delete_ir_type_instance(type->u.procedure_type.u.arg_types);
+        break;
+    case IR_TYPE_ARRAY:
+        delete_ir_type_instance(type->u.array_type.u.base_type);
         break;
     }
-    delete_ir_type(type->next);
+    delete_ir_type_instance(type->next);
     free(type);
-    return;
+}
+
+static int ir_type_instance_comparator(const void *lhs, const void *rhs)
+{
+    const ir_type_instance_t *l = lhs, *r = rhs;
+    ir_type_instance_t *lcur, *rcur;
+
+    if (l->kind != r->kind) {
+        return 0;
+    }
+    switch (l->kind) {
+    case IR_TYPE_PROCEDURE:
+        lcur = l->u.procedure_type.u.arg_types;
+        rcur = r->u.procedure_type.u.arg_types;
+        while (lcur && rcur) {
+            if (lcur->u.procedure_type.u.resolved != rcur->u.procedure_type.u.resolved) {
+                return 0;
+            }
+            lcur = lcur->next;
+            rcur = rcur->next;
+        }
+        return !lcur && !rcur;
+
+    case IR_TYPE_ARRAY:
+        lcur = l->u.array_type.u.base_type;
+        rcur = r->u.array_type.u.base_type;
+        if (lcur->u.array_type.u.resolved != rcur->u.array_type.u.resolved) {
+            return 0;
+        }
+        return l->u.array_type.size == r->u.array_type.size;
+
+    default:
+        return 1;
+    }
+}
+
+static uint64_t ir_type_instance_hasher(const void *ptr)
+{
+    const ir_type_instance_t *p = ptr;
+    ir_type_instance_t *cur;
+    uint64_t ret = fnv1_int(p->kind);
+
+    switch (p->kind) {
+    case IR_TYPE_PROCEDURE:
+        cur = p->u.procedure_type.u.arg_types;
+        while (cur) {
+            ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.procedure_type.u.resolved));
+            cur = cur->next;
+        }
+        break;
+    case IR_TYPE_ARRAY:
+        cur = p->u.array_type.u.base_type;
+        ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.array_type.u.resolved));
+        ret = 31 * ret + fnv1_int(p->u.array_type.size);
+        break;
+    }
+    return ret;
+}
+
+ir_type_storage_t *new_ir_type_storage()
+{
+    ir_type_storage_t *ret = new(ir_type_storage_t);
+    ret->table = new_hash_table(ir_type_instance_comparator, ir_type_instance_hasher);
+    return ret;
+}
+
+void delete_ir_type_storage(ir_type_storage_t *storage)
+{
+    if (!storage) {
+        return;
+    }
+    delete_hash_table(storage->table, free, NULL);
+    free(storage);
+}
+
+ir_type_t ir_type_intern(ir_type_storage_t *storage, ir_type_instance_t *instance)
+{
+    ir_type_instance_t *cur, *key;
+    const hash_table_entry_t *entry;
+    assert(storage && instance);
+
+    switch (instance->kind) {
+    case IR_TYPE_PROCEDURE:
+        cur = instance->u.procedure_type.u.arg_types;
+        while (cur) {
+            key = new_ir_type_instance(cur->kind);
+            key->u = cur->u;
+            cur->u.procedure_type.u.resolved = ir_type_intern(storage, key);
+            cur = cur->next;
+        }
+        break;
+    case IR_TYPE_ARRAY:
+        cur = instance->u.array_type.u.base_type;
+        key = new_ir_type_instance(cur->kind);
+        key->u = cur->u;
+        cur->u.array_type.u.resolved = ir_type_intern(storage, key);
+        break;
+    }
+    if (entry = hash_table_find(storage->table, instance)) {
+        delete_ir_type_instance(instance);
+        return (ir_type_t) entry->value;
+    }
+    hash_table_insert_unchecked(storage->table, instance, instance);
+    return (ir_type_t) instance;
+}
+
+const ir_type_instance_t *ir_type_get_instance(ir_type_t type)
+{
+    return (ir_type_instance_t *) type;
 }
 
 static ir_local_t *new_ir_local(ir_local_kind_t kind)
@@ -268,7 +380,7 @@ ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *valu
     return ret;
 }
 
-ir_rvalue_t *new_ir_cast_rvalue(const ir_type_t *type, ir_operand_t *value)
+ir_rvalue_t *new_ir_cast_rvalue(ir_type_t type, ir_operand_t *value)
 {
     ir_rvalue_t *ret;
     assert(type && value);
@@ -463,7 +575,7 @@ void delete_ir_body(ir_body_t *body)
     free(body);
 }
 
-ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, symbol_t symbol)
+static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symbol)
 {
     ir_item_t *ret;
     assert(type && symbol);
@@ -474,6 +586,44 @@ ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, symbol_t symb
     ret->symbol = symbol;
     ret->body = 0;
     return ret;
+}
+
+ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, ir_body_t *body)
+{
+    ir_item_t *ret;
+    assert(type && symbol && body);
+
+    ret = new_ir_item(IR_ITEM_PROGRAM, type, symbol);
+    ret->body = body;
+    return ret;
+}
+
+ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, ir_body_t *body)
+{
+    ir_item_t *ret;
+    assert(type);
+
+    ret = new_ir_item(IR_ITEM_PROCEDURE, type, symbol);
+    ret->body = body;
+    return ret;
+}
+
+ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol)
+{
+    assert(type);
+    return new_ir_item(IR_ITEM_VAR, type, symbol);
+}
+
+ir_item_t *new_ir_arg_var_item(ir_type_t type, symbol_t symbol)
+{
+    assert(type);
+    return new_ir_item(IR_ITEM_ARG_VAR, type, symbol);
+}
+
+ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol)
+{
+    assert(type);
+    return new_ir_item(IR_ITEM_LOCAL_VAR, type, symbol);
 }
 
 void delete_ir_item(ir_item_t *item)
