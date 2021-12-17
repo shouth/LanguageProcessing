@@ -138,7 +138,7 @@ void delete_ir_type_storage(ir_type_storage_t *storage)
     free(storage);
 }
 
-ir_type_instance_t *ir_type_ref(ir_type_t type)
+ir_type_instance_t *new_ir_type_ref(ir_type_t type)
 {
     ir_type_instance_t *ret;
     assert(type);
@@ -160,7 +160,7 @@ static ir_type_instance_t *ir_type_intern_chaining(ir_type_storage_t *storage, i
     next = ir_type_intern_chaining(storage, types->next);
     if (types->kind != -1) {
         type = ir_type_intern(storage, types);
-        ret = ir_type_ref(type);
+        ret = new_ir_type_ref(type);
     } else {
         ret = types;
     }

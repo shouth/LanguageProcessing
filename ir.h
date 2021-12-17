@@ -37,8 +37,8 @@ ir_type_instance_t *new_ir_array_type_instance(ir_type_instance_t *base_type, si
 ir_type_instance_t *new_ir_integer_type_instance();
 ir_type_instance_t *new_ir_boolean_type_instance();
 ir_type_instance_t *new_ir_char_type_instance();
+ir_type_instance_t *new_ir_type_ref(ir_type_t type);
 void delete_ir_type_instance(ir_type_instance_t *type);
-ir_type_instance_t *ir_type_ref(ir_type_t type);
 
 typedef struct {
     hash_table_t *table;
