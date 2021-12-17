@@ -265,8 +265,8 @@ typedef struct {
     symbol_t next_key;
 } ir_item_t;
 
-ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, ir_body_t *body);
-ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, ir_body_t *body);
+ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol);
+ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol);
 ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol);
 ir_item_t *new_ir_arg_var_item(ir_type_t type, symbol_t symbol);
 ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol);

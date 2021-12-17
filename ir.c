@@ -607,41 +607,33 @@ static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symb
     return ret;
 }
 
-ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, ir_body_t *body)
+ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol)
 {
-    ir_item_t *ret;
-    assert(type && symbol && body);
-
-    ret = new_ir_item(IR_ITEM_PROGRAM, type, symbol);
-    ret->body = body;
-    return ret;
+    assert(type && symbol);
+    return new_ir_item(IR_ITEM_PROGRAM, type, symbol);
 }
 
-ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, ir_body_t *body)
+ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol)
 {
-    ir_item_t *ret;
-    assert(type);
-
-    ret = new_ir_item(IR_ITEM_PROCEDURE, type, symbol);
-    ret->body = body;
-    return ret;
+    assert(type && symbol);
+    return new_ir_item(IR_ITEM_PROCEDURE, type, symbol);
 }
 
 ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type);
+    assert(type && symbol);
     return new_ir_item(IR_ITEM_VAR, type, symbol);
 }
 
 ir_item_t *new_ir_arg_var_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type);
+    assert(type && symbol);
     return new_ir_item(IR_ITEM_ARG_VAR, type, symbol);
 }
 
 ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type);
+    assert(type && symbol);
     return new_ir_item(IR_ITEM_LOCAL_VAR, type, symbol);
 }
 
