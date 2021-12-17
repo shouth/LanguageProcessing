@@ -15,13 +15,13 @@ ir_type_instance_t *new_ir_program_type_instance()
     return new_ir_type_instance(IR_TYPE_PROGRAM);
 }
 
-ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *arg_types)
+ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *param_types)
 {
     ir_type_instance_t *ret;
-    assert(arg_types);
+    assert(param_types);
 
     ret = new_ir_type_instance(IR_TYPE_PROCEDURE);
-    ret->u.procedure_type.arg_types = arg_types;
+    ret->u.procedure_type.param_types = param_types;
     return ret;
 }
 
@@ -55,7 +55,7 @@ void delete_ir_type_instance(ir_type_instance_t *type)
     }
     switch (type->kind) {
     case IR_TYPE_PROCEDURE:
-        delete_ir_type_instance(type->u.procedure_type.arg_types);
+        delete_ir_type_instance(type->u.procedure_type.param_types);
         break;
     case IR_TYPE_ARRAY:
         delete_ir_type_instance(type->u.array_type.base_type);
@@ -75,8 +75,8 @@ static int ir_type_instance_comparator(const void *lhs, const void *rhs)
     }
     switch (l->kind) {
     case IR_TYPE_PROCEDURE:
-        lcur = l->u.procedure_type.arg_types;
-        rcur = r->u.procedure_type.arg_types;
+        lcur = l->u.procedure_type.param_types;
+        rcur = r->u.procedure_type.param_types;
         while (lcur && rcur) {
             if (lcur->u.ref != rcur->u.ref) {
                 return 0;
@@ -107,7 +107,7 @@ static uint64_t ir_type_instance_hasher(const void *ptr)
 
     switch (p->kind) {
     case IR_TYPE_PROCEDURE:
-        cur = p->u.procedure_type.arg_types;
+        cur = p->u.procedure_type.param_types;
         while (cur) {
             ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.ref));
             cur = cur->next;
@@ -138,7 +138,7 @@ void delete_ir_type_storage(ir_type_storage_t *storage)
     free(storage);
 }
 
-static ir_type_instance_t *ir_type_ref(ir_type_t type)
+ir_type_instance_t *ir_type_ref(ir_type_t type)
 {
     ir_type_instance_t *ret;
     assert(type);
@@ -148,18 +148,22 @@ static ir_type_instance_t *ir_type_ref(ir_type_t type)
     return ret;
 }
 
-static ir_type_instance_t *ir_type_intern_chaining(ir_type_storage_t *storage, ir_type_instance_t *arg_types)
+static ir_type_instance_t *ir_type_intern_chaining(ir_type_storage_t *storage, ir_type_instance_t *types)
 {
     ir_type_instance_t *ret, *next;
     ir_type_t type;
     assert(storage);
-    if (!arg_types) {
+    if (!types) {
         return NULL;
     }
 
-    next = ir_type_intern_chaining(storage, arg_types->next);
-    type = ir_type_intern(storage, arg_types);
-    ret = ir_type_ref(type);
+    next = ir_type_intern_chaining(storage, types->next);
+    if (types->kind != -1) {
+        type = ir_type_intern(storage, types);
+        ret = ir_type_ref(type);
+    } else {
+        ret = types;
+    }
     ret->next = next;
     return ret;
 }
@@ -169,11 +173,12 @@ ir_type_t ir_type_intern(ir_type_storage_t *storage, ir_type_instance_t *instanc
     ir_type_instance_t *cur;
     const hash_table_entry_t *entry;
     assert(storage && instance);
+    assert(instance->kind != -1);
 
     switch (instance->kind) {
     case IR_TYPE_PROCEDURE:
-        instance->u.procedure_type.arg_types =
-            ir_type_intern_chaining(storage, instance->u.procedure_type.arg_types);
+        instance->u.procedure_type.param_types =
+            ir_type_intern_chaining(storage, instance->u.procedure_type.param_types);
         break;
     case IR_TYPE_ARRAY:
         instance->u.array_type.base_type =
@@ -572,14 +577,13 @@ int ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item)
     return 1;
 }
 
-ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items, ir_item_table_t *refs)
+ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items)
 {
     ir_body_t *ret;
     assert(inner);
 
     ret->inner = inner;
     ret->items = items;
-    ret->refs = refs;
     return ret;
 }
 
@@ -625,7 +629,7 @@ ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol)
     return new_ir_item(IR_ITEM_VAR, type, symbol);
 }
 
-ir_item_t *new_ir_arg_var_item(ir_type_t type, symbol_t symbol)
+ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol)
 {
     assert(type && symbol);
     return new_ir_item(IR_ITEM_ARG_VAR, type, symbol);

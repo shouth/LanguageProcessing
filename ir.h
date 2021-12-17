@@ -21,7 +21,7 @@ struct impl_ir_type_instance {
 
     union {
         struct {
-            ir_type_instance_t *arg_types;
+            ir_type_instance_t *param_types;
         } procedure_type;
         struct {
             ir_type_instance_t *base_type;
@@ -32,13 +32,13 @@ struct impl_ir_type_instance {
 };
 
 ir_type_instance_t *new_ir_program_type_instance();
-ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *arg_types);
+ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *param_types);
 ir_type_instance_t *new_ir_array_type_instance(ir_type_instance_t *base_type, size_t size);
 ir_type_instance_t *new_ir_integer_type_instance();
 ir_type_instance_t *new_ir_boolean_type_instance();
 ir_type_instance_t *new_ir_char_type_instance();
 void delete_ir_type_instance(ir_type_instance_t *type);
-
+ir_type_instance_t *ir_type_ref(ir_type_t type);
 
 typedef struct {
     hash_table_t *table;
@@ -246,7 +246,7 @@ typedef struct {
     ir_block_t *inner;
 } ir_body_t;
 
-ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items, ir_item_table_t *refs);
+ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items);
 void delete_ir_body(ir_body_t *body);
 
 typedef enum {
@@ -268,7 +268,7 @@ typedef struct {
 ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol);
 ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol);
 ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol);
-ir_item_t *new_ir_arg_var_item(ir_type_t type, symbol_t symbol);
+ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol);
 ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol);
 void delete_ir_item(ir_item_t *item);
 
