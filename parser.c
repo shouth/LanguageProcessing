@@ -177,8 +177,8 @@ ast_lit_t *parse_boolean_lit(parser_t *parser)
     } else if (eat(parser, TOKEN_FALSE)) {
         return new_ast_boolean_lit(0);
     }
-    error_unexpected(parser);
-    return NULL;
+
+    unreachable();
 }
 
 ast_lit_t *parse_string_lit(parser_t *parser)
@@ -204,8 +204,8 @@ ast_lit_t *parse_lit(parser_t *parser)
     } else if (check(parser, TOKEN_STRING)) {
         return parse_string_lit(parser);
     }
-    error_unexpected(parser);
-    return NULL;
+
+    unreachable();
 }
 
 ast_type_t *parse_std_type(parser_t *parser)
@@ -219,8 +219,8 @@ ast_type_t *parse_std_type(parser_t *parser)
     } else if (eat(parser, TOKEN_CHAR)) {
         return new_ast_std_type(AST_TYPE_CHAR);
     }
-    error_unexpected(parser);
-    return NULL;
+
+    unreachable();
 }
 
 ast_type_t *parse_array_type(parser_t *parser)
@@ -570,7 +570,7 @@ ast_stmt_t *parse_write_stmt(parser_t *parser)
     } else if (eat(parser, TOKEN_WRITELN)) {
         newline = 1;
     } else {
-        error_unexpected(parser);
+        unreachable();
     }
     if (eat(parser, TOKEN_LPAREN)) {
         formats = parse_output_format_seq(parser);

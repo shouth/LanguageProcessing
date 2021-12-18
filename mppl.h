@@ -92,6 +92,9 @@ static void *xmalloc(size_t size)
 #define new(type) ((type *) xmalloc(sizeof(type)))
 #define new_arr(type, size) ((type *) xmalloc(sizeof(type) * (size)))
 
+#define unreachable() \
+    (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), abort())
+
 /* hash.c */
 
 typedef uintptr_t hash_table_hop_t;
