@@ -188,19 +188,34 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue);
 typedef struct impl_ir_stmt ir_stmt_t;
 typedef struct impl_ir_block ir_block_t;
 
+typedef enum {
+    IR_STMT_ASSIGN,
+    IR_STMT_CALL
+} ir_stmt_kind_t;
+
 struct impl_ir_stmt {
-    ir_place_t *lhs;
-    ir_rvalue_t *rhs;
+    ir_stmt_kind_t kind;
     ir_stmt_t *next;
+
+    union {
+        struct {
+            ir_place_t *lhs;
+            ir_rvalue_t *rhs;
+        } assign_stmt;
+        struct {
+            ir_place_t *func;
+            ir_place_t *args;
+        } call_stmt;
+    } u;
 };
 
-ir_stmt_t *new_ir_stmt(ir_place_t *lhs, ir_rvalue_t *rhs);
+ir_stmt_t *new_ir_assign_stmt(ir_place_t *lhs, ir_rvalue_t *rhs);
+ir_stmt_t *new_ir_call_stmt(ir_place_t *func, ir_place_t *args);
 void delete_ir_stmt(ir_stmt_t *stmt);
 
 typedef enum {
     IR_TERMN_GOTO,
     IR_TERMN_IF,
-    IR_TERMN_CALL,
     IR_TERMN_RETURN
 } ir_termn_kind_t;
 
@@ -216,11 +231,6 @@ typedef struct {
             ir_block_t *then;
             ir_block_t *els;
         } if_termn;
-        struct {
-            ir_place_t *func;
-            ir_place_t *args;
-            ir_block_t *dest;
-        } call_termn;
     } u;
 } ir_termn_t;
 

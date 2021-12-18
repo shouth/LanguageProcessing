@@ -438,15 +438,33 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
     free(rvalue);
 }
 
-ir_stmt_t *new_ir_stmt(ir_place_t *lhs, ir_rvalue_t *rhs)
+static ir_stmt_t *new_ir_stmt(ir_stmt_kind_t kind)
+{
+    ir_stmt_t *ret = new(ir_stmt_t);
+    ret->kind = kind;
+    ret->next = NULL;
+    return ret;
+}
+
+ir_stmt_t *new_ir_assign_stmt(ir_place_t *lhs, ir_rvalue_t *rhs)
 {
     ir_stmt_t *ret;
     assert(lhs && rhs);
 
-    ret = new(ir_stmt_t);
-    ret->lhs = lhs;
-    ret->rhs = rhs;
-    ret->next = NULL;
+    ret = new_ir_stmt(IR_STMT_ASSIGN);
+    ret->u.assign_stmt.lhs = lhs;
+    ret->u.assign_stmt.rhs = rhs;
+    return ret;
+}
+
+ir_stmt_t *new_ir_call_stmt(ir_place_t *func, ir_place_t *args)
+{
+    ir_stmt_t *ret;
+    assert(func && args);
+
+    ret = new_ir_stmt(IR_STMT_CALL);
+    ret->u.call_stmt.func = func;
+    ret->u.call_stmt.args = args;
     return ret;
 }
 
@@ -455,8 +473,17 @@ void delete_ir_stmt(ir_stmt_t *stmt)
     if (!stmt) {
         return;
     }
-    delete_ir_place(stmt->lhs);
-    delete_ir_rvalue(stmt->rhs);
+
+    switch (stmt->kind) {
+    case IR_STMT_ASSIGN:
+        delete_ir_place(stmt->u.assign_stmt.lhs);
+        delete_ir_rvalue(stmt->u.assign_stmt.rhs);
+        break;
+    case IR_STMT_CALL:
+        delete_ir_place(stmt->u.call_stmt.func);
+        delete_ir_place(stmt->u.call_stmt.args);
+        break;
+    }
     delete_ir_stmt(stmt->next);
     free(stmt);
 }
@@ -490,18 +517,6 @@ ir_termn_t *new_ir_if_termn(ir_operand_t *cond, ir_block_t *then, ir_block_t *el
     return ret;
 }
 
-ir_termn_t *new_ir_call_termn(ir_place_t *func, ir_place_t *args, ir_block_t *dest)
-{
-    ir_termn_t *ret;
-    assert(func && args && dest);
-
-    ret = new_ir_termn(IR_TERMN_CALL);
-    ret->u.call_termn.func = func;
-    ret->u.call_termn.args = args;
-    ret->u.call_termn.dest = dest;
-    return ret;
-}
-
 ir_termn_t *new_ir_return_termn()
 {
     return new_ir_termn(IR_TERMN_RETURN);
@@ -522,11 +537,6 @@ void delete_ir_termn(ir_termn_t *termn)
         delete_ir_operand(termn->u.if_termn.cond);
         delete_ir_block(termn->u.if_termn.then);
         delete_ir_block(termn->u.if_termn.els);
-        break;
-    case IR_TERMN_CALL:
-        delete_ir_place(termn->u.call_termn.func);
-        delete_ir_place(termn->u.call_termn.args);
-        delete_ir_block(termn->u.call_termn.dest);
         break;
     }
     free(termn);
