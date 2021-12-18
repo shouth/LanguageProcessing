@@ -143,7 +143,7 @@ ast_ident_t *parse_ident(parser_t *parser)
 
     expect(parser, TOKEN_NAME);
     symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.len);
-    return new_ast_ident(symbol);
+    return new_ast_ident(symbol, parser->current_token.pos, parser->current_token.len);
 }
 
 ast_ident_t *parse_ident_seq(parser_t *parser)

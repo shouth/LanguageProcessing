@@ -41,10 +41,12 @@ void delete_ast_lit(ast_lit_t *lit);
 typedef struct impl_ast_ident ast_ident_t;
 struct impl_ast_ident {
     symbol_t symbol;
+    size_t pos;
+    size_t len;
     ast_ident_t *next;
 };
 
-ast_ident_t *new_ast_ident(symbol_t symbol);
+ast_ident_t *new_ast_ident(symbol_t symbol, size_t pos, size_t len);
 void delete_ast_ident(ast_ident_t *ident);
 
 typedef enum {

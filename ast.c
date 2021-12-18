@@ -69,11 +69,13 @@ void delete_ast_type(ast_type_t *type)
     free(type);
 }
 
-ast_ident_t *new_ast_ident(symbol_t symbol)
+ast_ident_t *new_ast_ident(symbol_t symbol, size_t pos, size_t len)
 {
     ast_ident_t *ret = new(ast_ident_t);
-    ret->next = NULL;
     ret->symbol = symbol;
+    ret->pos = pos;
+    ret->len = len;
+    ret->next = NULL;
     return ret;
 }
 
