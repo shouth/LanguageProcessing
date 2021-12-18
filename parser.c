@@ -744,6 +744,7 @@ ast_t *parse_source(const source_t *src)
     program = parse_program(&parser);
     if (parser.error) {
         delete_program(program);
+        delete_symbol_storage(parser.storage);
         return NULL;
     }
     return new_ast(program, parser.storage, src);

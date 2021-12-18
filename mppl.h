@@ -31,6 +31,24 @@ static uint64_t fnv1_ptr(const void *ptr)
     return fnv1((uint8_t *) &ptr, sizeof(ptr));
 }
 
+static uint8_t popcount(uint64_t n)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    /* If compiler is GCC or Clang, use builtin functions. */
+    return __builtin_popcountll(n);
+
+#else
+    /* Otherwise, use bitwise operatons. */
+    n -= (n >> 1) & 0x5555555555555555;
+    n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
+    n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
+    n += n >> 8;
+    n += n >> 16;
+    n += n >> 32;
+    return n & 0x000000000000007f;
+#endif
+}
+
 static uint8_t lsb(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
@@ -58,24 +76,6 @@ static uint8_t msb(uint64_t n)
     n |= n >> 16;
     n |= n >> 32;
     return popcount(n) - 1;
-#endif
-}
-
-static uint8_t popcount(uint64_t n)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    /* If compiler is GCC or Clang, use builtin functions. */
-    return __builtin_popcountll(n);
-
-#else
-    /* Otherwise, use bitwise operatons. */
-    n -= (n >> 1) & 0x5555555555555555;
-    n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
-    n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
-    n += n >> 8;
-    n += n >> 16;
-    n += n >> 32;
-    return n & 0x000000000000007f;
 #endif
 }
 
