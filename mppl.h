@@ -93,7 +93,7 @@ static void *xmalloc(size_t size)
 #define new_arr(type, size) ((type *) xmalloc(sizeof(type) * (size)))
 
 #define unreachable() \
-    (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), abort())
+    (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), exit(1))
 
 /* hash.c */
 
