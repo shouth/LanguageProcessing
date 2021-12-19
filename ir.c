@@ -198,30 +198,30 @@ const ir_type_instance_t *ir_type_get_instance(ir_type_t type)
     return (ir_type_instance_t *) type;
 }
 
-static ir_local_t *new_ir_local(ir_local_kind_t kind)
+static ir_local_t *new_ir_local(ir_type_t type, ir_local_kind_t kind)
 {
     ir_local_t *ret = new(ir_local_t);
     ret->kind = kind;
+    ret->type = type;
     return ret;
 }
 
-ir_local_t *new_ir_normal_local(symbol_t key)
+ir_local_t *new_ir_normal_local(ir_type_t type, symbol_t key)
 {
-    ir_local_t *ret = new_ir_local(IR_LOCAL_NORMAL);
+    ir_local_t *ret = new_ir_local(type, IR_LOCAL_NORMAL);
     ret->key = key;
     return ret;
 }
 
-ir_local_t *new_ir_temp_local(symbol_t key)
+ir_local_t *new_ir_temp_local(ir_type_t type)
 {
-    ir_local_t *ret = new_ir_local(IR_LOCAL_TEMP);
-    ret->key = key;
+    ir_local_t *ret = new_ir_local(type, IR_LOCAL_TEMP);
     return ret;
 }
 
-ir_local_t *new_ir_ref_local(symbol_t key)
+ir_local_t *new_ir_ref_local(ir_type_t type, symbol_t key)
 {
-    ir_local_t *ret = new_ir_local(IR_LOCAL_REF);
+    ir_local_t *ret = new_ir_local(type, IR_LOCAL_REF);
     ret->key = key;
     return ret;
 }

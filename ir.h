@@ -57,13 +57,13 @@ typedef enum {
 
 typedef struct {
     ir_local_kind_t kind;
+    ir_type_t type;
     symbol_t key;
 } ir_local_t;
 
-static ir_local_t *new_ir_local(ir_local_kind_t kind);
-ir_local_t *new_ir_normal_local(symbol_t key);
-ir_local_t *new_ir_temp_local(symbol_t key);
-ir_local_t *new_ir_ref_local(symbol_t key);
+ir_local_t *new_ir_normal_local(ir_type_t type, symbol_t key);
+ir_local_t *new_ir_temp_local(ir_type_t type);
+ir_local_t *new_ir_ref_local(ir_type_t type, symbol_t key);
 void delete_ir_local(ir_local_t *local);
 
 typedef enum {
