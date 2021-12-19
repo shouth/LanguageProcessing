@@ -2,6 +2,17 @@
 
 #include "mppl.h"
 
+int ir_type_kind_is_std(ir_type_kind_t kind)
+{
+    switch (kind) {
+    case IR_TYPE_INTEGER:
+    case IR_TYPE_BOOLEAN:
+    case IR_TYPE_CHAR:
+        return 1;
+    }
+    return 0;
+}
+
 static ir_type_instance_t *new_ir_type_instance(ir_type_kind_t kind)
 {
     ir_type_instance_t *ret = new(ir_type_instance_t);
@@ -246,7 +257,7 @@ ir_place_access_t *new_ir_normal_place_access()
     return new_ir_place_access(IR_PLACE_ACCESS_NORMAL);
 }
 
-ir_place_access_t *new_ir_index_place_access(size_t index)
+ir_place_access_t *new_ir_index_place_access(ir_operand_t *index)
 {
     ir_place_access_t *ret = new_ir_place_access(IR_PLACE_ACCESS_INDEX);
     ret->u.index_place_access.index = index;
@@ -267,6 +278,29 @@ ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access)
     ret->place_access = place_access;
     ret->next = NULL;
     return ret;
+}
+
+ir_type_kind_t ir_place_type_kind(ir_place_t *place)
+{
+    const ir_type_instance_t *instance = ir_type_get_instance(place->local->type);
+
+    switch (instance->kind) {
+    case IR_TYPE_ARRAY:
+        if (place->place_access != NULL) {
+            const ir_type_instance_t *base_instance = instance->u.array_type.base_type;
+            assert(base_instance->kind == -1);
+            return ir_type_get_instance(base_instance->u.ref)->kind;
+        } else {
+            return IR_TYPE_ARRAY;
+        }
+
+    default:
+        if (place->place_access == NULL) {
+            return instance->kind;
+        }
+    }
+
+    unreachable();
 }
 
 void delete_ir_place(ir_place_t *place)
@@ -348,6 +382,30 @@ ir_operand_t *new_ir_constant_operand(ir_constant_t *constant)
     return ret;
 }
 
+ir_type_kind_t ir_operand_type_kind(ir_operand_t *operand)
+{
+    assert(operand);
+
+    switch (operand->kind) {
+    case IR_OPERAND_PLACE: {
+        return ir_place_type_kind(operand->u.place_operand.place);
+    }
+    case IR_OPERAND_CONSTANT: {
+        ir_constant_t *constant = operand->u.constant_operand.constant;
+        switch (constant->kind) {
+        case IR_CONSTANT_NUMBER:
+            return IR_TYPE_INTEGER;
+        case IR_CONSTANT_CHAR:
+            return IR_TYPE_CHAR;
+        case IR_CONSTANT_BOOLEAN:
+            return IR_TYPE_BOOLEAN;
+        }
+
+        unreachable();
+    }
+    }
+}
+
 void delete_ir_operand(ir_operand_t *operand)
 {
     if (!operand) {
@@ -371,13 +429,13 @@ static ir_rvalue_t *new_ir_rvalue(ir_rvalue_kind_t kind)
     return ret;
 }
 
-ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *place)
+ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *operand)
 {
     ir_rvalue_t *ret;
-    assert(place);
+    assert(operand);
 
     ret = new_ir_rvalue(IR_RVALUE_USE);
-    ret->u.use_rvalue.place = place;
+    ret->u.use_rvalue.operand = operand;
     return ret;
 }
 
@@ -422,7 +480,7 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
     }
     switch (rvalue->kind) {
     case IR_RVALUE_USE:
-        delete_ir_operand(rvalue->u.use_rvalue.place);
+        delete_ir_operand(rvalue->u.use_rvalue.operand);
         break;
     case IR_RVALUE_BINARY_OP:
         delete_ir_operand(rvalue->u.binary_op_rvalue.lhs);

@@ -16,10 +16,10 @@ struct impl_analyzer_tails {
 
 typedef struct {
     const source_t *source;
-    ir_type_storage_t *type_storage;
     analyzer_scope_t *scope;
     analyzer_tails_t *tails;
     analyzer_tails_t *breaks;
+    ir_type_storage_t *type_storage;
 } analyzer_t;
 
 void analyzer_push_scope(analyzer_t *analyzer)
@@ -74,42 +74,9 @@ void analyzer_connect_tail(analyzer_tails_t *tails, ir_block_t *block)
             break;
         case IR_TERMN_RETURN:
             unreachable();
-            break;
         }
         tails = cur->next;
         free(cur);
-    }
-}
-
-ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
-{
-    ir_block_t *ret;
-    assert(analyzer && stmt);
-
-    while (stmt) {
-        switch (stmt->kind) {
-        case AST_STMT_ASSIGN:
-            break;
-        case AST_STMT_IF:
-            break;
-        case AST_STMT_WHILE:
-            break;
-        case AST_STMT_BREAK:
-            break;
-        case AST_STMT_CALL:
-            break;
-        case AST_STMT_RETURN:
-            break;
-        case AST_STMT_READ:
-            break;
-        case AST_STMT_WRITE:
-            break;
-        case AST_STMT_COMPOUND:
-            break;
-        case AST_STMT_EMPTY:
-            break;
-        }
-        stmt = stmt->next;
     }
 }
 
@@ -142,6 +109,316 @@ ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
 
     instance = internal_analyze_type(analyzer, type);
     return ir_type_intern(analyzer->type_storage, instance);
+}
+
+ir_operand_t *analyze_expr(analyzer_t *analyzer, ast_expr_t *expr);
+
+ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
+{
+    assert(analyzer && expr);
+    assert(expr->kind == AST_EXPR_DECL_REF || expr->kind == AST_EXPR_ARRAY_SUBSCRIPT);
+
+    switch (expr->kind) {
+    case AST_EXPR_DECL_REF: {
+        ir_local_t *lookup; /* テーブルを調べてシンボルを取得する */
+        return new_ir_place(lookup, NULL);
+    }
+    case AST_EXPR_ARRAY_SUBSCRIPT: {
+        ir_operand_t *index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
+        ir_place_access_t *access = new_ir_index_place_access(index);
+        ir_local_t *lookup; /* テーブルを調べてシンボルを取得する */
+        return new_ir_place(lookup, access);
+    }
+    }
+}
+
+ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
+{
+    ir_rvalue_t *ret;
+    ir_operand_t *lhs, *rhs;
+    ir_type_kind_t ltype, rtype;
+    ir_local_t *result;
+    ir_place_t *place;
+    assert(analyzer && expr);
+
+    rhs = analyze_expr(analyzer, expr->rhs);
+    rtype = ir_operand_type_kind(rhs);
+
+    if (expr->lhs->kind == AST_EXPR_EMPTY) {
+        assert(expr->kind == AST_BINARY_OP_PLUS || expr->kind == AST_BINARY_OP_MINUS);
+        if (!ir_type_kind_is_std(rtype)) {
+            /* エラー */
+        }
+
+        result; /* 一時変数に格納し返り値とする */
+        place = new_ir_place(result, NULL);
+        return new_ir_place_operand(place);
+    }
+
+    lhs = analyze_expr(analyzer, expr->lhs);
+    ltype = ir_operand_type_kind(lhs);
+
+    switch (expr->kind) {
+    case AST_BINARY_OP_EQUAL:
+    case AST_BINARY_OP_NOTEQ:
+    case AST_BINARY_OP_LE:
+    case AST_BINARY_OP_LEEQ:
+    case AST_BINARY_OP_GR:
+    case AST_BINARY_OP_GREQ:
+        if (ltype != rtype || !ir_type_kind_is_std(ltype) || !ir_type_kind_is_std(rtype)) {
+            /* エラー */
+        }
+        break;
+    case AST_BINARY_OP_PLUS:
+    case AST_BINARY_OP_MINUS:
+    case AST_BINARY_OP_STAR:
+    case AST_BINARY_OP_DIV:
+        if (ltype != IR_TYPE_INTEGER || rtype != IR_TYPE_INTEGER) {
+            /* エラー */
+        }
+        break;
+    case AST_BINARY_OP_OR:
+    case AST_BINARY_OP_AND:
+        if (ltype != IR_TYPE_BOOLEAN || rtype != IR_TYPE_BOOLEAN) {
+            /* エラー */
+        }
+        break;
+    }
+
+    result; /* 一時変数に格納し返り値とする */
+    place = new_ir_place(result, NULL);
+    return new_ir_place_operand(place);
+}
+
+ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
+{
+    ir_rvalue_t *ret;
+    ir_operand_t *operand;
+    ir_type_kind_t type;
+    ir_local_t *result;
+    ir_place_t *place;
+    assert(analyzer && expr);
+
+    operand = analyze_expr(analyzer, expr->expr);
+    type = ir_operand_type_kind(operand);
+
+    switch (expr->kind) {
+    case AST_UNARY_OP_NOT:
+        if (type != IR_TYPE_BOOLEAN) {
+            /* エラー */
+        }
+        break;
+    }
+
+    result; /* 一時変数に格納し返り値とする */
+    place = new_ir_place(result, NULL);
+    return new_ir_place_operand(place);
+}
+
+ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
+{
+    ir_operand_t *operand;
+    ir_type_kind_t type_kind;
+    ir_type_kind_t cast_kind;
+    ir_type_t cast;
+    ir_rvalue_t *rvalue;
+    ir_local_t *result;
+    ir_place_t *place;
+
+    operand = analyze_expr(analyzer, expr->expr);
+    type_kind = ir_operand_type_kind(operand);
+    cast = analyze_type(analyzer, expr->type);
+    cast_kind = ir_type_get_instance(cast)->kind;
+
+    if (!ir_type_kind_is_std(type_kind) || !ir_type_kind_is_std(cast_kind)) {
+        /* エラー */
+    }
+
+    rvalue = new_ir_cast_rvalue(cast, operand);
+    result; /* 一時変数に格納し返り値とする */
+    place = new_ir_place(result, NULL);
+    return new_ir_place_operand(place);
+}
+
+ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ast_constant_expr_t *expr)
+{
+    assert(analyzer && expr);
+
+    switch (expr->lit->kind) {
+    case AST_LIT_NUMBER: {
+        ir_constant_t *constant = new_ir_number_constant(expr->lit->u.number_lit.value);
+        return new_ir_constant_operand(constant);
+    }
+    case AST_LIT_BOOLEAN: {
+        ir_constant_t *constant = new_ir_boolean_constant(expr->lit->u.boolean_lit.value);
+        return new_ir_constant_operand(constant);
+    }
+    case AST_LIT_STRING: {
+        const symbol_instance_t *instance;
+        ir_constant_t *constant;
+        if (expr->lit->u.string_lit.str_len != 1) {
+            /* エラー */
+        }
+        instance = symbol_get_instance(expr->lit->u.string_lit.symbol);
+        constant = new_ir_char_constant(instance->ptr[0]);
+        return new_ir_constant_operand(constant);
+    }
+    }
+
+    unreachable();
+}
+
+ir_operand_t *analyze_expr(analyzer_t *analyzer, ast_expr_t *expr)
+{
+    assert(analyzer && expr);
+
+    switch (expr->kind) {
+    case AST_EXPR_DECL_REF:
+    case AST_EXPR_ARRAY_SUBSCRIPT: {
+        ir_place_t *place = analyze_lvalue(analyzer, expr);
+        return new_ir_place_operand(place);
+    }
+    case AST_EXPR_BINARY_OP:
+        return analyze_binary_expr(analyzer, &expr->u.binary_expr);
+    case AST_EXPR_UNARY_OP:
+        return analyze_unary_expr(analyzer, &expr->u.unary_expr);
+    case AST_EXPR_PAREN:
+        return analyze_expr(analyzer, expr->u.paren_expr.expr);
+    case AST_EXPR_CAST:
+        return analyze_cast_expr(analyzer, &expr->u.cast_expr);
+    case AST_EXPR_CONSTANT:
+        return analyze_constant_expr(analyzer, &expr->u.constant_expr);
+    }
+
+    unreachable();
+}
+
+ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
+{
+    ir_block_t *ret;
+    assert(analyzer && stmt);
+
+    while (stmt) {
+        switch (stmt->kind) {
+        case AST_STMT_ASSIGN: {
+            ir_place_t *lhs = analyze_lvalue(analyzer, stmt->u.assign_stmt.lhs);
+            ir_operand_t *rhs_operand = analyze_expr(analyzer, stmt->u.assign_stmt.rhs);
+            ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
+            /* ir_stmt_t *stmt = new_ir_assign_stmt(lhs, rhs); */
+            /* 現在のブロックに追加する */
+            break;
+        }
+        case AST_STMT_IF: {
+            ir_operand_t *cond = analyze_expr(analyzer, stmt->u.if_stmt.cond);
+            ir_type_kind_t type_kind = ir_operand_type_kind(cond);
+            ir_block_t *then = analyze_stmt(analyzer, stmt->u.if_stmt.then_stmt);
+            ir_block_t *els = stmt->u.if_stmt.else_stmt ? analyze_stmt(analyzer, stmt->u.if_stmt.else_stmt) : NULL;
+
+            if (type_kind != IR_TYPE_BOOLEAN) {
+                /* エラー */
+            }
+
+            /* 現在のブロックをifで終端し分岐する */
+            break;
+        }
+        case AST_STMT_WHILE: {
+            ir_operand_t *cond = analyze_expr(analyzer, stmt->u.while_stmt.cond);
+            ir_type_kind_t type_kind = ir_operand_type_kind(cond);
+            ir_block_t *block = analyze_stmt(analyzer, stmt->u.while_stmt.do_stmt);
+
+            if (type_kind != IR_TYPE_BOOLEAN) {
+                /* エラー */
+            }
+
+            /* 別のブロックに区切りループする */
+            break;
+        }
+        case AST_STMT_BREAK: {
+            /* 現在のブロックを未終端で区切り処理を続行する */
+            break;
+        }
+        case AST_STMT_CALL: {
+            ir_local_t *func; /* テーブルを調べてシンボルを取得する */
+            ast_expr_t *args = stmt->u.call_stmt.args;
+            ir_place_t *place, **place_back;
+            ir_type_instance_t *type, **type_back;
+            ir_type_instance_t *procedure_instance;
+            ir_type_t interned;
+
+            type = NULL, type_back = &type;
+            place = NULL, place_back = &place;
+            while (args) {
+                ir_operand_t *operand = analyze_expr(analyzer, args);
+                if (operand->kind == IR_OPERAND_PLACE) {
+                    *place_back = operand->u.place_operand.place;
+                } else {
+                    ir_local_t *tmp; /* 一時変数に格納し引数とする */
+                    *place_back = new_ir_place(tmp, NULL);
+                }
+                operand->kind = -1;
+                delete_ir_operand(operand);
+                *type_back = new_ir_type_ref((*place_back)->local->type);
+                type_back = &(*type_back)->next;
+                place_back = &(*place_back)->next;
+                args = args->next;
+            }
+
+            procedure_instance = new_ir_procedure_type_instance(type);
+            interned = ir_type_intern(analyzer->type_storage, procedure_instance);
+
+            if (func->type != interned) {
+                /* エラー */
+            }
+
+            /* ir_stmt_t *stmt = new_ir_call_stmt(func, args); */
+            break;
+        }
+        case AST_STMT_RETURN: {
+            /* 現在のブロックをreturnで終端し処理を続行する */
+            break;
+        }
+        case AST_STMT_READ: {
+            ast_expr_t *args = stmt->u.read_stmt.args;
+            ir_place_t *place, **place_back;
+
+            place = NULL, place_back = &place;
+            while (args) {
+                if (args->kind != AST_EXPR_DECL_REF || args->kind != AST_EXPR_ARRAY_SUBSCRIPT) {
+                    /* エラー */
+                }
+
+                *place_back = analyze_lvalue(analyzer, args);
+                if (!ir_type_kind_is_std(ir_place_type_kind(*place_back))) {
+                    /* エラー */
+                }
+
+                place_back = &(*place_back)->next;
+                args = args->next;
+            }
+            break;
+        }
+        case AST_STMT_WRITE: {
+            ast_output_format_t *formats = stmt->u.write_stmt.formats;
+
+            while (formats) {
+                ir_operand_t *operand = analyze_expr(analyzer, formats->expr);
+                if (!ir_type_kind_is_std(ir_operand_type_kind(operand))) {
+                    /* エラー */
+                }
+                formats = formats->next;
+            }
+            break;
+        }
+        case AST_STMT_COMPOUND: {
+            ir_block_t *block = analyze_stmt(analyzer, stmt->u.compound_stmt.stmts);
+            /* 現在のブロックに接続する */
+            break;
+        }
+        case AST_STMT_EMPTY:
+            break;
+        }
+        stmt = stmt->next;
+    }
 }
 
 ir_type_instance_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
