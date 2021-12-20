@@ -294,6 +294,10 @@ void pretty_print(const ast_t *ast);
 
 ir_t *analyze_ast(ast_t *ast);
 
+/* cross_ref.c */
+
+void print_cross_ref(const ir_t *ir);
+
 /* msg.c */
 
 typedef enum {

@@ -280,6 +280,12 @@ typedef struct {
 ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items);
 void delete_ir_body(ir_body_t *body);
 
+typedef struct impl_ir_item_pos ir_item_pos_t;
+struct impl_ir_item_pos {
+    size_t pos;
+    ir_item_pos_t *next;
+};
+
 typedef enum {
     IR_ITEM_PROGRAM,
     IR_ITEM_PROCEDURE,
@@ -294,14 +300,21 @@ struct impl_ir_item {
     symbol_t symbol;
     ir_body_t *body;
     ir_item_t *next;
+
+    ir_item_pos_t *def;
+    struct {
+        ir_item_pos_t *head;
+        ir_item_pos_t **tail;
+    } refs;
 };
 
-ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol);
-ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol);
-ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol);
-ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol);
-ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol);
+ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, size_t pos);
+ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, size_t pos);
+ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol, size_t pos);
+ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, size_t pos);
+ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, size_t pos);
 void delete_ir_item(ir_item_t *item);
+void ir_item_add_ref(ir_item_t *item, size_t pos);
 
 struct impl_ir_item_table {
     hash_table_t *table;
@@ -309,14 +322,15 @@ struct impl_ir_item_table {
 
 ir_item_table_t *new_ir_item_table();
 void delete_ir_item_table(ir_item_table_t *table);
-const ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item);
-const ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol);
+ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item);
+ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol);
 
 typedef struct {
+    const source_t *source;
     ir_item_t *program;
 } ir_t;
 
-ir_t *new_ir(ir_item_t *program);
+ir_t *new_ir(const source_t *source, ir_item_t *program);
 void delete_ir(ir_t *ir);
 
 #endif

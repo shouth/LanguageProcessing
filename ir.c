@@ -613,7 +613,7 @@ void delete_ir_item_table(ir_item_table_t *table)
     free(table);
 }
 
-const ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item)
+ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item)
 {
     const hash_table_entry_t *entry;
     if (entry = hash_table_find(table->table, (void *) item->symbol)) {
@@ -623,7 +623,7 @@ const ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *i
     return NULL;
 }
 
-const ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol)
+ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol)
 {
     const hash_table_entry_t *entry;
     assert(table && symbol);
@@ -652,7 +652,7 @@ void delete_ir_body(ir_body_t *body)
     free(body);
 }
 
-static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symbol)
+static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symbol, size_t pos)
 {
     ir_item_t *ret = new(ir_item_t);
     ret->kind = kind;
@@ -660,32 +660,38 @@ static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symb
     ret->symbol = symbol;
     ret->body = 0;
     ret->next = NULL;
+
+    ret->def = new(ir_item_pos_t);
+    ret->def->pos = pos;
+    ret->def->next = NULL;
+    ret->refs.head = NULL;
+    ret->refs.tail = &ret->refs.head;
     return ret;
 }
 
-ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol)
+ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, size_t pos)
 {
-    return new_ir_item(IR_ITEM_PROGRAM, type, symbol);
+    return new_ir_item(IR_ITEM_PROGRAM, type, symbol, pos);
 }
 
-ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol)
+ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, size_t pos)
 {
-    return new_ir_item(IR_ITEM_PROCEDURE, type, symbol);
+    return new_ir_item(IR_ITEM_PROCEDURE, type, symbol, pos);
 }
 
-ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol)
+ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol, size_t pos)
 {
-    return new_ir_item(IR_ITEM_VAR, type, symbol);
+    return new_ir_item(IR_ITEM_VAR, type, symbol, pos);
 }
 
-ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol)
+ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, size_t pos)
 {
-    return new_ir_item(IR_ITEM_ARG_VAR, type, symbol);
+    return new_ir_item(IR_ITEM_ARG_VAR, type, symbol, pos);
 }
 
-ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol)
+ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, size_t pos)
 {
-    return new_ir_item(IR_ITEM_LOCAL_VAR, type, symbol);
+    return new_ir_item(IR_ITEM_LOCAL_VAR, type, symbol, pos);
 }
 
 void delete_ir_item(ir_item_t *item)
@@ -698,9 +704,19 @@ void delete_ir_item(ir_item_t *item)
     free(item);
 }
 
-ir_t *new_ir(ir_item_t *program)
+void ir_item_add_ref(ir_item_t *item, size_t pos)
+{
+    ir_item_pos_t *item_pos = new(ir_item_pos_t);
+    item_pos->pos = pos;
+    item_pos->next = NULL;
+    *item->refs.tail = item_pos;
+    item->refs.tail = &item_pos->next;
+}
+
+ir_t *new_ir(const source_t *source, ir_item_t *program)
 {
     ir_t *ret = new(ir_t);
+    ret->source = source;
     ret->program = program;
     return ret;
 }
