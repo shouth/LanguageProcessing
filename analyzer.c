@@ -520,6 +520,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
         }
         stmt = stmt->next;
     }
+
+    return ret;
 }
 
 ir_type_instance_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
@@ -619,9 +621,14 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             }
 
             analyzer_push_scope(analyzer);
-            analyze_param_decl(analyzer, decl->params);
-            analyze_variable_decl(analyzer, decl->variables->u.variable_decl_part.decls, 1);
-            inner = analyze_stmt(analyzer, decl->stmt);
+            {
+                ast_decl_part_t *decl_part = decl->variables;
+                analyze_param_decl(analyzer, decl->params);
+                if (decl_part) {
+                    analyze_variable_decl(analyzer, decl_part->u.variable_decl_part.decls, 1);
+                }
+                inner = analyze_stmt(analyzer, decl->stmt);
+            }
             items = analyzer_pop_scope(analyzer);
             item->body = new_ir_body(inner, items);
             break;
