@@ -4,6 +4,7 @@
 
 typedef struct impl_analyzer_scope analyzer_scope_t;
 struct impl_analyzer_scope {
+    const ir_item_t *owner;
     ir_item_table_t *table;
     struct {
         ir_item_t *head;
@@ -26,12 +27,13 @@ typedef struct {
     ir_type_storage_t *type_storage;
 } analyzer_t;
 
-void analyzer_push_scope(analyzer_t *analyzer)
+void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner)
 {
     analyzer_scope_t *scope;
     assert(analyzer);
 
     scope = new(analyzer_scope_t);
+    scope->owner = owner;
     scope->table = new_ir_item_table();
     scope->next = analyzer->scope;
     scope->items.head = NULL;
@@ -515,6 +517,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             ir_type_instance_t *type, **type_back;
             ir_type_instance_t *procedure_instance;
             ir_type_t interned;
+            analyzer_scope_t *scope;
 
             ident = stmt->u.call_stmt.name;
             item = analyzer_lookup_item(analyzer, ident->symbol);
@@ -529,6 +532,15 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
                 fprintf(stderr, "item %.*s is not a procedure.\n", (int) instance->len, instance->ptr);
                 exit(1);
+            }
+
+            scope = analyzer->scope;
+            while (scope) {
+                if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
+                    fprintf(stderr, "recursive call of procedure is not allowed.\n");
+                    exit(1);
+                }
+                scope = scope->next;
             }
 
             func = analyzer_create_local_for(analyzer, item, ident->pos);
@@ -755,7 +767,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 exit(1);
             }
 
-            analyzer_push_scope(analyzer);
+            analyzer_push_scope(analyzer, item);
             {
                 ast_decl_part_t *decl_part = decl->variables;
                 analyze_param_decl(analyzer, decl->params);
@@ -784,7 +796,7 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     instance = new_ir_program_type_instance();
     type = ir_type_intern(analyzer->type_storage, instance);
     ret = new_ir_program_item(type, program->name->symbol, program->name->pos);
-    analyzer_push_scope(analyzer);
+    analyzer_push_scope(analyzer, ret);
     analyze_decl_part(analyzer, program->decl_part);
     inner = analyze_stmt(analyzer, program->stmt);
     inner_item = analyzer_pop_scope(analyzer);
