@@ -59,8 +59,10 @@ typedef enum {
     IR_LOCAL_REF
 } ir_local_kind_t;
 
-typedef struct {
+typedef struct impl_ir_local ir_local_t;
+struct impl_ir_local {
     ir_local_kind_t kind;
+    ir_local_t *next;
 
     union {
         struct {
@@ -73,7 +75,7 @@ typedef struct {
             const ir_item_t *item;
         } ref;
     } u;
-} ir_local_t;
+};
 
 ir_local_t *new_ir_normal_local(const ir_item_t *item);
 ir_local_t *new_ir_temp_local(ir_type_t type);

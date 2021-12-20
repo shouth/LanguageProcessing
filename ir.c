@@ -213,6 +213,7 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
 {
     ir_local_t *ret = new(ir_local_t);
     ret->kind = kind;
+    ret->next = NULL;
     return ret;
 }
 

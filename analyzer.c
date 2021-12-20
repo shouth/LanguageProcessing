@@ -72,6 +72,16 @@ const ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, symbol_t symbol)
     return NULL;
 }
 
+ir_local_t *analyzer_create_local_for(analyzer_t *analyzer, const ir_item_t *item)
+{
+
+}
+
+ir_local_t *analyzer_create_temp_local(analyzer_t *analyzer, ir_type_t type)
+{
+
+}
+
 analyzer_tails_t *analyzer_push_tail(analyzer_tails_t *tails, ir_block_t *block)
 {
     analyzer_tails_t *tail;
@@ -156,7 +166,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         if (!lookup) {
             /* エラー */
         }
-        local = new_ir_ref_local(lookup);
+        local = analyzer_create_local_for(analyzer, lookup);
         return new_ir_place(local, NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
@@ -171,7 +181,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         if (!lookup) {
             /* エラー */
         }
-        local = new_ir_ref_local(lookup);
+        local = analyzer_create_local_for(analyzer, lookup);
         return new_ir_place(local, access);
     }
     }
@@ -349,7 +359,6 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             ir_place_t *lhs = analyze_lvalue(analyzer, stmt->u.assign_stmt.lhs);
             ir_operand_t *rhs_operand = analyze_expr(analyzer, stmt->u.assign_stmt.rhs);
             ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
-            /* ir_stmt_t *stmt = new_ir_assign_stmt(lhs, rhs); */
             /* [課題4] 現在のブロックに追加する */
             break;
         }
@@ -395,7 +404,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             if (!func) {
                 /* エラー */
             }
-            func = new_ir_ref_local(item);
+            func = analyzer_create_local_for(analyzer, item);
             args = stmt->u.call_stmt.args;
             type = NULL, type_back = &type;
             place = NULL, place_back = &place;
@@ -422,7 +431,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 /* エラー */
             }
 
-            /* ir_stmt_t *stmt = new_ir_call_stmt(func, args); */
+            /* [課題4] 現在のブロックに追加する */
             break;
         }
         case AST_STMT_RETURN: {
