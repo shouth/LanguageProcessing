@@ -95,7 +95,7 @@ static void *xmalloc(size_t size)
 #define unreachable() \
     (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), exit(1))
 
-/* hash.c */
+/* hash_table.c */
 
 typedef uintptr_t hash_table_hop_t;
 typedef int hash_table_comparator_t(const void *, const void *);
