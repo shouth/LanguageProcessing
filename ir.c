@@ -28,10 +28,7 @@ ir_type_instance_t *new_ir_program_type_instance()
 
 ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *param_types)
 {
-    ir_type_instance_t *ret;
-    assert(param_types);
-
-    ret = new_ir_type_instance(IR_TYPE_PROCEDURE);
+    ir_type_instance_t *ret = new_ir_type_instance(IR_TYPE_PROCEDURE);
     ret->u.procedure_type.param_types = param_types;
     return ret;
 }
@@ -151,10 +148,7 @@ void delete_ir_type_storage(ir_type_storage_t *storage)
 
 ir_type_instance_t *new_ir_type_ref(ir_type_t type)
 {
-    ir_type_instance_t *ret;
-    assert(type);
-
-    ret = new_ir_type_instance(-1);
+    ir_type_instance_t *ret = new_ir_type_instance(-1);
     ret->u.ref = type;
     return ret;
 }
@@ -286,9 +280,7 @@ void delete_ir_place_access(ir_place_access_t *place_access)
 
 ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access)
 {
-    ir_place_t *ret;
-    assert(local);
-    ret = new(ir_place_t);
+    ir_place_t *ret = new(ir_place_t);
     ret->local = local;
     ret->place_access = place_access;
     ret->next = NULL;
@@ -381,18 +373,14 @@ static ir_operand_t *new_ir_operand(ir_operand_kind_t kind)
 
 ir_operand_t *new_ir_place_operand(ir_place_t *place)
 {
-    ir_operand_t *ret;
-    assert(place);
-    ret = new_ir_operand(IR_OPERAND_PLACE);
+    ir_operand_t *ret = new_ir_operand(IR_OPERAND_PLACE);
     ret->u.place_operand.place = place;
     return ret;
 }
 
 ir_operand_t *new_ir_constant_operand(ir_constant_t *constant)
 {
-    ir_operand_t *ret;
-    assert(constant);
-    ret = new_ir_operand(IR_OPERAND_CONSTANT);
+    ir_operand_t *ret = new_ir_operand(IR_OPERAND_CONSTANT);
     ret->u.constant_operand.constant = constant;
     return ret;
 }
@@ -446,20 +434,14 @@ static ir_rvalue_t *new_ir_rvalue(ir_rvalue_kind_t kind)
 
 ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *operand)
 {
-    ir_rvalue_t *ret;
-    assert(operand);
-
-    ret = new_ir_rvalue(IR_RVALUE_USE);
+    ir_rvalue_t *ret = new_ir_rvalue(IR_RVALUE_USE);
     ret->u.use_rvalue.operand = operand;
     return ret;
 }
 
 ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs)
 {
-    ir_rvalue_t *ret;
-    assert(lhs && rhs);
-
-    ret = new_ir_rvalue(IR_RVALUE_BINARY_OP);
+    ir_rvalue_t *ret = new_ir_rvalue(IR_RVALUE_BINARY_OP);
     ret->u.binary_op_rvalue.kind = kind;
     ret->u.binary_op_rvalue.lhs = lhs;
     ret->u.binary_op_rvalue.rhs = rhs;
@@ -468,10 +450,7 @@ ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lh
 
 ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *value)
 {
-    ir_rvalue_t *ret;
-    assert(value);
-
-    ret = new_ir_rvalue(IR_RVALUE_UNARY_OP);
+    ir_rvalue_t *ret = new_ir_rvalue(IR_RVALUE_UNARY_OP);
     ret->u.unary_op_rvalue.kind = kind;
     ret->u.unary_op_rvalue.value = value;
     return ret;
@@ -479,10 +458,7 @@ ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *valu
 
 ir_rvalue_t *new_ir_cast_rvalue(ir_type_t type, ir_operand_t *value)
 {
-    ir_rvalue_t *ret;
-    assert(type && value);
-
-    ret = new_ir_rvalue(IR_RVALUE_CAST);
+    ir_rvalue_t *ret = new_ir_rvalue(IR_RVALUE_CAST);
     ret->u.cast_rvalue.type = type;
     ret->u.cast_rvalue.value = value;
     return ret;
@@ -521,10 +497,7 @@ static ir_stmt_t *new_ir_stmt(ir_stmt_kind_t kind)
 
 ir_stmt_t *new_ir_assign_stmt(ir_place_t *lhs, ir_rvalue_t *rhs)
 {
-    ir_stmt_t *ret;
-    assert(lhs && rhs);
-
-    ret = new_ir_stmt(IR_STMT_ASSIGN);
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_ASSIGN);
     ret->u.assign_stmt.lhs = lhs;
     ret->u.assign_stmt.rhs = rhs;
     return ret;
@@ -532,10 +505,7 @@ ir_stmt_t *new_ir_assign_stmt(ir_place_t *lhs, ir_rvalue_t *rhs)
 
 ir_stmt_t *new_ir_call_stmt(ir_place_t *func, ir_place_t *args)
 {
-    ir_stmt_t *ret;
-    assert(func && args);
-
-    ret = new_ir_stmt(IR_STMT_CALL);
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_CALL);
     ret->u.call_stmt.func = func;
     ret->u.call_stmt.args = args;
     return ret;
@@ -570,20 +540,14 @@ static ir_termn_t *new_ir_termn(ir_termn_kind_t kind)
 
 ir_termn_t *new_ir_goto_termn(ir_block_t *next)
 {
-    ir_termn_t *ret;
-    assert(next);
-
-    ret = new_ir_termn(IR_TERMN_GOTO);
+    ir_termn_t *ret = new_ir_termn(IR_TERMN_GOTO);
     ret->u.goto_termn.next = next;
     return ret;
 }
 
 ir_termn_t *new_ir_if_termn(ir_operand_t *cond, ir_block_t *then, ir_block_t *els)
 {
-    ir_termn_t *ret;
-    assert(cond && then && els);
-
-    ret = new_ir_termn(IR_TERMN_IF);
+    ir_termn_t *ret = new_ir_termn(IR_TERMN_IF);
     ret->u.if_termn.cond = cond;
     ret->u.if_termn.then = then;
     ret->u.if_termn.els = els;
@@ -617,9 +581,7 @@ void delete_ir_termn(ir_termn_t *termn)
 
 ir_block_t *new_ir_block(ir_stmt_t *stmt, ir_termn_t *termn)
 {
-    ir_block_t *ret;
-    assert(stmt && termn);
-
+    ir_block_t *ret = new(ir_block_t);
     ret->stmt = stmt;
     ret->termn = termn;
     return ret;
@@ -672,9 +634,7 @@ const ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol)
 
 ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items)
 {
-    ir_body_t *ret;
-    assert(inner);
-
+    ir_body_t *ret = new(ir_body_t);
     ret->inner = inner;
     ret->items = items;
     return ret;
@@ -693,10 +653,7 @@ void delete_ir_body(ir_body_t *body)
 
 static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symbol)
 {
-    ir_item_t *ret;
-    assert(type && symbol);
-
-    ret = new(ir_item_t);
+    ir_item_t *ret = new(ir_item_t);
     ret->kind = kind;
     ret->type = type;
     ret->symbol = symbol;
@@ -706,31 +663,26 @@ static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symb
 
 ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type && symbol);
     return new_ir_item(IR_ITEM_PROGRAM, type, symbol);
 }
 
 ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type && symbol);
     return new_ir_item(IR_ITEM_PROCEDURE, type, symbol);
 }
 
 ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type && symbol);
     return new_ir_item(IR_ITEM_VAR, type, symbol);
 }
 
 ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type && symbol);
     return new_ir_item(IR_ITEM_ARG_VAR, type, symbol);
 }
 
 ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol)
 {
-    assert(type && symbol);
     return new_ir_item(IR_ITEM_LOCAL_VAR, type, symbol);
 }
 
@@ -745,10 +697,7 @@ void delete_ir_item(ir_item_t *item)
 
 ir_t *new_ir(ir_item_t *program)
 {
-    ir_t *ret;
-    assert(program);
-
-    ret = new(ir_t);
+    ir_t *ret = new(ir_t);
     ret->program = program;
     return ret;
 }
