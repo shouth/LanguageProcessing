@@ -205,7 +205,6 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         ir_item_t *lookup;
         ir_local_t *local;
         ast_ident_t *ident;
-        const symbol_instance_t *instance;
 
         index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
         access = new_ir_index_place_access(index);
@@ -215,6 +214,15 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
             /* エラー */
             const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
             fprintf(stderr, "item %.*s does not exist in this scope.\n", (int) instance->len, instance->ptr);
+            exit(1);
+        }
+        if (ir_type_get_instance(lookup->type)->kind != IR_TYPE_ARRAY) {
+            const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
+            fprintf(stderr, "item %.*s is not an array.\n", (int) instance->len, instance->ptr);
+            exit(1);
+        }
+        if (ir_operand_type_kind(index) != IR_TYPE_INTEGER) {
+            fprintf(stderr, "type of index expression needs to be integer");
             exit(1);
         }
         local = analyzer_create_local_for(analyzer, lookup, ident->pos);
@@ -239,9 +247,9 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
 
     if (expr->lhs->kind == AST_EXPR_EMPTY) {
         assert(expr->kind == AST_BINARY_OP_PLUS || expr->kind == AST_BINARY_OP_MINUS);
-        if (!ir_type_kind_is_std(rtype)) {
+        if (rtype != IR_TYPE_INTEGER) {
             /* エラー */
-            fprintf(stderr, "operand needs to be a standard type.\n");
+            fprintf(stderr, "the type of the operand needs to be integer.\n");
             exit(1);
         }
 
@@ -259,12 +267,12 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
         case AST_BINARY_OP_GREQ:
             if (ltype != rtype) {
                 /* エラー */
-                fprintf(stderr, "types of operands need to be same.\n");
+                fprintf(stderr, "the types of the operands need to be same.\n");
                 exit(1);
             }
             if (!ir_type_kind_is_std(ltype) || !ir_type_kind_is_std(rtype)) {
                 /* エラー */
-                fprintf(stderr, "operands need to be a standard type.\n");
+                fprintf(stderr, "the types of the operands need to be standard types.\n");
                 exit(1);
             }
             instance = new_ir_boolean_type_instance();
@@ -275,7 +283,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
         case AST_BINARY_OP_DIV:
             if (ltype != IR_TYPE_INTEGER || rtype != IR_TYPE_INTEGER) {
                 /* エラー */
-                fprintf(stderr, "operands need to be integers.\n");
+                fprintf(stderr, "the type of the operands need to be integer.\n");
                 exit(1);
             }
             instance = new_ir_integer_type_instance();
@@ -284,7 +292,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
         case AST_BINARY_OP_AND:
             if (ltype != IR_TYPE_BOOLEAN || rtype != IR_TYPE_BOOLEAN) {
                 /* エラー */
-                fprintf(stderr, "operands need to be booleans.\n");
+                fprintf(stderr, "the type of the operands need to be boolean.\n");
                 exit(1);
             }
             instance = new_ir_boolean_type_instance();
@@ -318,7 +326,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
     case AST_UNARY_OP_NOT:
         if (type_kind != IR_TYPE_BOOLEAN) {
             /* エラー */
-            fprintf(stderr, "operands need to be booleans.\n");
+            fprintf(stderr, "the types of the operands need to be boolean.\n");
             exit(1);
         }
         instance = new_ir_boolean_type_instance();
@@ -448,6 +456,20 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             ir_place_t *lhs = analyze_lvalue(analyzer, stmt->u.assign_stmt.lhs);
             ir_operand_t *rhs_operand = analyze_expr(analyzer, stmt->u.assign_stmt.rhs);
             ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
+            ir_type_kind_t ltype = ir_place_type_kind(lhs);
+            ir_type_kind_t rtype = ir_operand_type_kind(rhs_operand);
+
+            if (ltype != rtype) {
+                /* エラー */
+                fprintf(stderr, "types of operands need to be same.\n");
+                exit(1);
+            }
+            if (!ir_type_kind_is_std(ltype) || !ir_type_kind_is_std(rtype)) {
+                /* エラー */
+                fprintf(stderr, "operands need to be a standard type.\n");
+                exit(1);
+            }
+
             /* [課題4] 現在のブロックに追加する */
             break;
         }
@@ -502,6 +524,13 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 fprintf(stderr, "item %.*s does not exist in this scope.\n", (int) instance->len, instance->ptr);
                 exit(1);
             }
+            if (item->kind != IR_ITEM_PROCEDURE) {
+                /* エラー */
+                const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
+                fprintf(stderr, "item %.*s is not a procedure.\n", (int) instance->len, instance->ptr);
+                exit(1);
+            }
+
             func = analyzer_create_local_for(analyzer, item, ident->pos);
             args = stmt->u.call_stmt.args;
             type = NULL, type_back = &type;
@@ -511,7 +540,25 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 if (operand->kind == IR_OPERAND_PLACE) {
                     *place_back = operand->u.place_operand.place;
                 } else {
-                    ir_local_t *tmp; /* 一時変数に格納し引数とする */
+                    ir_local_t *tmp;
+                    ir_type_instance_t *instance;
+                    ir_type_t type;
+
+                    switch (operand->u.constant_operand.constant->kind) {
+                    case IR_CONSTANT_BOOLEAN:
+                        instance = new_ir_boolean_type_instance();
+                        break;
+                    case IR_CONSTANT_NUMBER:
+                        instance = new_ir_integer_type_instance();
+                        break;
+                    case IR_CONSTANT_CHAR:
+                        instance = new_ir_char_type_instance();
+                        break;
+                    default:
+                        unreachable();
+                    }
+                    type = ir_type_intern(analyzer->type_storage, instance);
+                    tmp = analyzer_create_temp_local(analyzer, type);
                     *place_back = new_ir_place(tmp, NULL);
                 }
                 operand->kind = -1;
@@ -545,6 +592,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
 
             place = NULL, place_back = &place;
             while (args) {
+                ir_type_kind_t type_kind;
                 if (args->kind != AST_EXPR_DECL_REF && args->kind != AST_EXPR_ARRAY_SUBSCRIPT) {
                     /* エラー */
                     fprintf(stderr, "arguments for input statement needs to be references.\n");
@@ -552,9 +600,10 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 }
 
                 *place_back = analyze_lvalue(analyzer, args);
-                if (!ir_type_kind_is_std(ir_place_type_kind(*place_back))) {
+                type_kind = ir_place_type_kind(*place_back);
+                if (type_kind != IR_TYPE_INTEGER && type_kind != IR_TYPE_CHAR) {
                     /* エラー */
-                    fprintf(stderr, "arguments for input statement needs to be standard types.\n");
+                    fprintf(stderr, "types of arguments for input statement needs to be integer or char.\n");
                     exit(1);
                 }
 
@@ -604,7 +653,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
 ir_type_instance_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
 {
     ir_type_instance_t *ret, **last;
-    assert(analyzer && decl);
+    assert(analyzer);
 
     ret = NULL;
     last = &ret;
@@ -649,7 +698,7 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
 
 void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
 {
-    assert(analyzer && decl);
+    assert(analyzer);
 
     while (decl) {
         ast_ident_t *ident = decl->names;
