@@ -46,6 +46,8 @@ ir_item_table_t *analyzer_pop_scope(analyzer_t *analyzer)
     return ret;
 }
 
+
+
 analyzer_tails_t *analyzer_push_tail(analyzer_tails_t *tails, ir_block_t *block)
 {
     analyzer_tails_t *tail;
@@ -95,6 +97,9 @@ static ir_type_instance_t *internal_analyze_type(analyzer_t *analyzer, ast_type_
     case AST_TYPE_ARRAY: {
         ir_type_instance_t *base_type = internal_analyze_type(analyzer, type->u.array_type.base);
         size_t size = type->u.array_type.size->u.number_lit.value;
+        if (size == 0) {
+            /* エラー */
+        }
         return new_ir_array_type_instance(base_type, size);
     }
     }
@@ -431,6 +436,9 @@ ir_type_instance_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *
     while (decl) {
         ast_ident_t *ident = decl->names;
         ir_type_t type = analyze_type(analyzer, decl->type);
+        if (!ir_type_kind_is_std(ir_type_get_instance(type)->kind)) {
+            /* エラー */
+        }
         while (ident) {
             *last = new_ir_type_ref(type);
             last = &(*last)->next;
@@ -448,6 +456,9 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
     while (decl) {
         ast_ident_t *ident = decl->names;
         ir_type_t type = analyze_type(analyzer, decl->type);
+        if (!ir_type_kind_is_std(ir_type_get_instance(type)->kind)) {
+            /* エラー */
+        }
         while (ident) {
             ir_item_t *item = local ? new_ir_local_var_item(type, ident->symbol) : new_ir_var_item(type, ident->symbol);
             /* TODO: ここでテーブルに挿入する */
@@ -464,6 +475,9 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
     while (decl) {
         ast_ident_t *ident = decl->names;
         ir_type_t type = analyze_type(analyzer, decl->type);
+        if (!ir_type_kind_is_std(ir_type_get_instance(type)->kind)) {
+            /* エラー */
+        }
         while (ident) {
             ir_item_t *item = new_ir_param_var_item(type, ident->symbol);
             /* TODO: ここでテーブルに挿入する */
