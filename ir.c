@@ -632,7 +632,7 @@ const ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol)
     return entry ? entry->value : NULL;
 }
 
-ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items)
+ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items)
 {
     ir_body_t *ret = new(ir_body_t);
     ret->inner = inner;
@@ -640,14 +640,15 @@ ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items)
     return ret;
 }
 
+void delete_ir_item(ir_item_t *item);
+
 void delete_ir_body(ir_body_t *body)
 {
     if (!body) {
         return;
     }
     delete_ir_block(body->inner);
-    delete_ir_item_table(body->items);
-    delete_ir_item_table(body->refs);
+    delete_ir_item(body->items);
     free(body);
 }
 
@@ -693,6 +694,7 @@ void delete_ir_item(ir_item_t *item)
         return;
     }
     delete_ir_body(item->body);
+    delete_ir_item(item->next);
     free(item);
 }
 

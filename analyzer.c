@@ -39,15 +39,16 @@ void analyzer_push_scope(analyzer_t *analyzer)
     analyzer->scope = scope;
 }
 
-ir_item_table_t *analyzer_pop_scope(analyzer_t *analyzer)
+ir_item_t *analyzer_pop_scope(analyzer_t *analyzer)
 {
     analyzer_scope_t *scope;
-    ir_item_table_t *ret;
+    ir_item_t *ret;
     assert(analyzer);
 
     scope = analyzer->scope;
-    ret = scope->table;
+    ret = scope->items.head;
     analyzer->scope = scope->next;
+    delete_ir_item_table(scope->table);
     free(scope);
     return ret;
 }
@@ -616,8 +617,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_type_instance_t *instance;
             ir_type_t type;
             ir_block_t *inner;
-            ir_item_t *item;
-            ir_item_table_t *items;
+            ir_item_t *item, *inner_item;
 
             decl = &decl_part->u.procedure_decl_part;
             param_types = analyze_param_types(analyzer, decl->params);
@@ -637,8 +637,8 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 }
                 inner = analyze_stmt(analyzer, decl->stmt);
             }
-            items = analyzer_pop_scope(analyzer);
-            item->body = new_ir_body(inner, items);
+            inner_item = analyzer_pop_scope(analyzer);
+            item->body = new_ir_body(inner, inner_item);
             break;
         }
         }
@@ -648,9 +648,8 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 
 ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 {
-    ir_item_t *ret;
+    ir_item_t *ret, *inner_item;
     ir_block_t *inner;
-    ir_item_table_t *items;
     ir_type_instance_t *instance;
     ir_type_t type;
     assert(analyzer && program);
@@ -661,8 +660,8 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     analyzer_push_scope(analyzer);
     analyze_decl_part(analyzer, program->decl_part);
     inner = analyze_stmt(analyzer, program->stmt);
-    items = analyzer_pop_scope(analyzer);
-    ret->body = new_ir_body(inner, items);
+    inner_item = analyzer_pop_scope(analyzer);
+    ret->body = new_ir_body(inner, inner_item);
     return ret;
 }
 

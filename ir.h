@@ -273,12 +273,11 @@ void delete_ir_block(ir_block_t *block);
 typedef struct impl_ir_item_table ir_item_table_t;
 
 typedef struct {
-    ir_item_table_t *items;
-    ir_item_table_t *refs;
     ir_block_t *inner;
+    ir_item_t *items;
 } ir_body_t;
 
-ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items);
+ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items);
 void delete_ir_body(ir_body_t *body);
 
 typedef enum {
