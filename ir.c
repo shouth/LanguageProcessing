@@ -287,7 +287,7 @@ void delete_ir_place_access(ir_place_access_t *place_access)
 ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access)
 {
     ir_place_t *ret;
-    assert(local && place_access);
+    assert(local);
     ret = new(ir_place_t);
     ret->local = local;
     ret->place_access = place_access;
