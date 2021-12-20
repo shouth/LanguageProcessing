@@ -74,12 +74,23 @@ const ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, symbol_t symbol)
 
 ir_local_t *analyzer_create_local_for(analyzer_t *analyzer, const ir_item_t *item)
 {
+    assert(analyzer && item);
 
+    switch (item->kind) {
+    case IR_ITEM_ARG_VAR:
+    case IR_ITEM_LOCAL_VAR:
+        return new_ir_normal_local(item);
+    default:
+        return new_ir_ref_local(item);
+    }
+
+    unreachable();
 }
 
 ir_local_t *analyzer_create_temp_local(analyzer_t *analyzer, ir_type_t type)
 {
-
+    assert(analyzer && type);
+    return new_ir_temp_local(type);
 }
 
 analyzer_tails_t *analyzer_push_tail(analyzer_tails_t *tails, ir_block_t *block)
@@ -194,6 +205,8 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
     ir_type_kind_t ltype, rtype;
     ir_local_t *result;
     ir_place_t *place;
+    ir_type_instance_t *instance;
+    ir_type_t type;
     assert(analyzer && expr);
 
     rhs = analyze_expr(analyzer, expr->rhs);
@@ -205,43 +218,47 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
             /* エラー */
         }
 
-        result; /* 一時変数に格納し返り値とする */
-        place = new_ir_place(result, NULL);
-        return new_ir_place_operand(place);
+        instance = new_ir_integer_type_instance();
+    } else {
+        lhs = analyze_expr(analyzer, expr->lhs);
+        ltype = ir_operand_type_kind(lhs);
+
+        switch (expr->kind) {
+        case AST_BINARY_OP_EQUAL:
+        case AST_BINARY_OP_NOTEQ:
+        case AST_BINARY_OP_LE:
+        case AST_BINARY_OP_LEEQ:
+        case AST_BINARY_OP_GR:
+        case AST_BINARY_OP_GREQ:
+            if (ltype != rtype || !ir_type_kind_is_std(ltype) || !ir_type_kind_is_std(rtype)) {
+                /* エラー */
+            }
+            instance = new_ir_boolean_type_instance();
+            break;
+        case AST_BINARY_OP_PLUS:
+        case AST_BINARY_OP_MINUS:
+        case AST_BINARY_OP_STAR:
+        case AST_BINARY_OP_DIV:
+            if (ltype != IR_TYPE_INTEGER || rtype != IR_TYPE_INTEGER) {
+                /* エラー */
+            }
+            instance = new_ir_integer_type_instance();
+            break;
+        case AST_BINARY_OP_OR:
+        case AST_BINARY_OP_AND:
+            if (ltype != IR_TYPE_BOOLEAN || rtype != IR_TYPE_BOOLEAN) {
+                /* エラー */
+            }
+            instance = new_ir_boolean_type_instance();
+            break;
+        }
+
     }
 
-    lhs = analyze_expr(analyzer, expr->lhs);
-    ltype = ir_operand_type_kind(lhs);
-
-    switch (expr->kind) {
-    case AST_BINARY_OP_EQUAL:
-    case AST_BINARY_OP_NOTEQ:
-    case AST_BINARY_OP_LE:
-    case AST_BINARY_OP_LEEQ:
-    case AST_BINARY_OP_GR:
-    case AST_BINARY_OP_GREQ:
-        if (ltype != rtype || !ir_type_kind_is_std(ltype) || !ir_type_kind_is_std(rtype)) {
-            /* エラー */
-        }
-        break;
-    case AST_BINARY_OP_PLUS:
-    case AST_BINARY_OP_MINUS:
-    case AST_BINARY_OP_STAR:
-    case AST_BINARY_OP_DIV:
-        if (ltype != IR_TYPE_INTEGER || rtype != IR_TYPE_INTEGER) {
-            /* エラー */
-        }
-        break;
-    case AST_BINARY_OP_OR:
-    case AST_BINARY_OP_AND:
-        if (ltype != IR_TYPE_BOOLEAN || rtype != IR_TYPE_BOOLEAN) {
-            /* エラー */
-        }
-        break;
-    }
-
-    result; /* 一時変数に格納し返り値とする */
+    type = ir_type_intern(analyzer->type_storage, instance);
+    result = analyzer_create_temp_local(analyzer, type);
     place = new_ir_place(result, NULL);
+    /* [課題4] 現在のブロックに追加する */
     return new_ir_place_operand(place);
 }
 
@@ -252,6 +269,8 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
     ir_type_kind_t type;
     ir_local_t *result;
     ir_place_t *place;
+    ir_type_instance_t *instance;
+    ir_type_t type;
     assert(analyzer && expr);
 
     operand = analyze_expr(analyzer, expr->expr);
@@ -262,11 +281,14 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
         if (type != IR_TYPE_BOOLEAN) {
             /* エラー */
         }
+        instance = new_ir_boolean_type_instance();
         break;
     }
 
-    result; /* 一時変数に格納し返り値とする */
+    type = ir_type_intern(analyzer->type_storage, instance);
+    result = analyzer_create_temp_local(analyzer, type);
     place = new_ir_place(result, NULL);
+    /* [課題4] 現在のブロックに追加する */
     return new_ir_place_operand(place);
 }
 
@@ -279,6 +301,8 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
     ir_rvalue_t *rvalue;
     ir_local_t *result;
     ir_place_t *place;
+    ir_type_instance_t *instance;
+    ir_type_t type;
 
     operand = analyze_expr(analyzer, expr->expr);
     type_kind = ir_operand_type_kind(operand);
@@ -289,8 +313,24 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
         /* エラー */
     }
 
+    switch (cast_kind) {
+    case IR_TYPE_INTEGER:
+        instance = new_ir_integer_type_instance();
+        break;
+    case IR_TYPE_BOOLEAN:
+        instance = new_ir_boolean_type_instance();
+        break;
+    case IR_TYPE_CHAR:
+        instance = new_ir_char_type_instance();
+        break;
+    default:
+        unreachable();
+    }
+
+    type = ir_type_intern(analyzer->type_storage, instance);
     rvalue = new_ir_cast_rvalue(cast, operand);
-    result; /* 一時変数に格納し返り値とする */
+    result = analyzer_create_temp_local(analyzer, type);
+    /* [課題4] 現在のブロックに追加する */
     place = new_ir_place(result, NULL);
     return new_ir_place_operand(place);
 }
