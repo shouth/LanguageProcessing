@@ -49,7 +49,7 @@ ir_item_table_t *analyzer_pop_scope(analyzer_t *analyzer)
 const ir_item_t *analyzer_try_register_item(analyzer_t *analyzer, ir_item_t *item)
 {
     analyzer_scope_t *scope;
-    ir_item_t *ret;
+    const ir_item_t *ret;
     assert(analyzer && item);
 
     ret = ir_item_table_try_register(analyzer->scope->table, item);
@@ -386,7 +386,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 }
                 operand->kind = -1;
                 delete_ir_operand(operand);
-                *type_back = new_ir_type_ref((*place_back)->local->type);
+                *type_back = new_ir_type_ref(ir_local_type((*place_back)->local));
                 type_back = &(*type_back)->next;
                 place_back = &(*place_back)->next;
                 args = args->next;
@@ -395,7 +395,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             procedure_instance = new_ir_procedure_type_instance(type);
             interned = ir_type_intern(analyzer->type_storage, procedure_instance);
 
-            if (func->type != interned) {
+            if (ir_local_type(func) != interned) {
                 /* エラー */
             }
 

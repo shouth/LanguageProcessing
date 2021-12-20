@@ -209,32 +209,46 @@ const ir_type_instance_t *ir_type_get_instance(ir_type_t type)
     return (ir_type_instance_t *) type;
 }
 
-static ir_local_t *new_ir_local(ir_type_t type, ir_local_kind_t kind)
+static ir_local_t *new_ir_local(ir_local_kind_t kind)
 {
     ir_local_t *ret = new(ir_local_t);
     ret->kind = kind;
-    ret->type = type;
     return ret;
 }
 
-ir_local_t *new_ir_normal_local(ir_type_t type, symbol_t key)
+ir_local_t *new_ir_normal_local(const ir_item_t *item)
 {
-    ir_local_t *ret = new_ir_local(type, IR_LOCAL_NORMAL);
-    ret->key = key;
+    ir_local_t *ret = new_ir_local(IR_LOCAL_NORMAL);
+    ret->u.normal.item = item;
     return ret;
 }
 
 ir_local_t *new_ir_temp_local(ir_type_t type)
 {
-    ir_local_t *ret = new_ir_local(type, IR_LOCAL_TEMP);
+    ir_local_t *ret = new_ir_local(IR_LOCAL_TEMP);
+    ret->u.temp.type = type;
     return ret;
 }
 
-ir_local_t *new_ir_ref_local(ir_type_t type, symbol_t key)
+ir_local_t *new_ir_ref_local(const ir_item_t *item)
 {
-    ir_local_t *ret = new_ir_local(type, IR_LOCAL_REF);
-    ret->key = key;
+    ir_local_t *ret = new_ir_local(IR_LOCAL_REF);
+    ret->u.ref.item = item;
     return ret;
+}
+
+ir_type_t ir_local_type(const ir_local_t *local)
+{
+    switch (local->kind) {
+    case IR_LOCAL_TEMP:
+        return local->u.temp.type;
+    case IR_LOCAL_REF:
+        return local->u.ref.item->type;
+    case IR_LOCAL_NORMAL:
+        return local->u.normal.item->type;
+    }
+
+    unreachable();
 }
 
 void delete_ir_local(ir_local_t *local)
@@ -282,7 +296,7 @@ ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access)
 
 ir_type_kind_t ir_place_type_kind(ir_place_t *place)
 {
-    const ir_type_instance_t *instance = ir_type_get_instance(place->local->type);
+    const ir_type_instance_t *instance = ir_type_get_instance(ir_local_type(place->local));
 
     switch (instance->kind) {
     case IR_TYPE_ARRAY:

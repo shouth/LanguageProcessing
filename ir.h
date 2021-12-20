@@ -51,6 +51,8 @@ void delete_ir_type_storage(ir_type_storage_t *storage);
 ir_type_t ir_type_intern(ir_type_storage_t *storage, ir_type_instance_t *instance);
 const ir_type_instance_t *ir_type_get_instance(ir_type_t type);
 
+typedef struct impl_ir_item ir_item_t;
+
 typedef enum {
     IR_LOCAL_NORMAL,
     IR_LOCAL_TEMP,
@@ -59,13 +61,24 @@ typedef enum {
 
 typedef struct {
     ir_local_kind_t kind;
-    ir_type_t type;
-    symbol_t key;
+
+    union {
+        struct {
+            ir_type_t type;
+        } temp;
+        struct {
+            const ir_item_t *item;
+        } normal;
+        struct {
+            const ir_item_t *item;
+        } ref;
+    } u;
 } ir_local_t;
 
-ir_local_t *new_ir_normal_local(ir_type_t type, symbol_t key);
+ir_local_t *new_ir_normal_local(const ir_item_t *item);
 ir_local_t *new_ir_temp_local(ir_type_t type);
-ir_local_t *new_ir_ref_local(ir_type_t type, symbol_t key);
+ir_local_t *new_ir_ref_local(const ir_item_t *item);
+ir_type_t ir_local_type(const ir_local_t *local);
 void delete_ir_local(ir_local_t *local);
 
 typedef struct impl_ir_operand ir_operand_t;
@@ -274,13 +287,13 @@ typedef enum {
     IR_ITEM_LOCAL_VAR
 } ir_item_kind_t;
 
-typedef struct {
+struct impl_ir_item {
     ir_item_kind_t kind;
     ir_type_t type;
     symbol_t symbol;
     ir_body_t *body;
     symbol_t next_key;
-} ir_item_t;
+};
 
 ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol);
 ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol);
