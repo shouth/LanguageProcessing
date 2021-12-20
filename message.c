@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -145,7 +146,7 @@ void put_sanitized(int c)
         return;
     }
 
-    if (!is_graphical(c)) {
+    if (!isprint(c)) {
         printf("\033[2m\\%03o\033[22m", (unsigned char) c);
         return;
     }
@@ -289,7 +290,7 @@ void msg_emit(msg_t *msg)
         for (i = 0; i < (*cur0)->len; i++) {
             putchar(m);
             c = msg->src->src_ptr[offset + i];
-            if (c == '\t' || !is_graphical(c)) {
+            if (c == '\t' || !isprint(c)) {
                 putchar(m);
                 putchar(m);
                 putchar(m);
