@@ -290,6 +290,10 @@ void pretty_print(const ast_t *ast);
 
 #include "ir.h"
 
+/* analyzer.c */
+
+ir_t *analyze_ast(ast_t *ast);
+
 /* msg.c */
 
 typedef enum {
