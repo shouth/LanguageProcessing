@@ -554,9 +554,6 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
     while (decl) {
         ast_ident_t *ident = decl->names;
         ir_type_t type = analyze_type(analyzer, decl->type);
-        if (!ir_type_kind_is_std(ir_type_get_instance(type)->kind)) {
-            /* エラー */
-        }
         while (ident) {
             ir_item_t *item = local ? new_ir_local_var_item(type, ident->symbol) : new_ir_var_item(type, ident->symbol);
             if (analyzer_try_register_item(analyzer, item)) {
