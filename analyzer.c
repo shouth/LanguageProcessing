@@ -149,14 +149,30 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
 
     switch (expr->kind) {
     case AST_EXPR_DECL_REF: {
-        ir_local_t *lookup; /* テーブルを調べてシンボルを取得する */
-        return new_ir_place(lookup, NULL);
+        const ir_item_t *lookup;
+        ir_local_t *local;
+
+        lookup = analyzer_lookup_item(analyzer, expr->u.decl_ref_expr.decl->symbol);
+        if (!lookup) {
+            /* エラー */
+        }
+        local = new_ir_ref_local(lookup);
+        return new_ir_place(local, NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
-        ir_operand_t *index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
-        ir_place_access_t *access = new_ir_index_place_access(index);
-        ir_local_t *lookup; /* テーブルを調べてシンボルを取得する */
-        return new_ir_place(lookup, access);
+        ir_operand_t *index;
+        ir_place_access_t *access;
+        const ir_item_t *lookup;
+        ir_local_t *local;
+
+        index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
+        access = new_ir_index_place_access(index);
+        lookup = analyzer_lookup_item(analyzer, expr->u.array_subscript_expr.decl->symbol);
+        if (!lookup) {
+            /* エラー */
+        }
+        local = new_ir_ref_local(lookup);
+        return new_ir_place(local, access);
     }
     }
 }
@@ -334,7 +350,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             ir_operand_t *rhs_operand = analyze_expr(analyzer, stmt->u.assign_stmt.rhs);
             ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
             /* ir_stmt_t *stmt = new_ir_assign_stmt(lhs, rhs); */
-            /* 現在のブロックに追加する */
+            /* [課題4] 現在のブロックに追加する */
             break;
         }
         case AST_STMT_IF: {
@@ -347,7 +363,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 /* エラー */
             }
 
-            /* 現在のブロックをifで終端し分岐する */
+            /* [課題4] 現在のブロックをifで終端し分岐する */
             break;
         }
         case AST_STMT_WHILE: {
@@ -359,21 +375,28 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 /* エラー */
             }
 
-            /* 別のブロックに区切りループする */
+            /* [課題4] 別のブロックに区切りループする */
             break;
         }
         case AST_STMT_BREAK: {
-            /* 現在のブロックを未終端で区切り処理を続行する */
+            /* [課題4] 現在のブロックを未終端で区切り処理を続行する */
             break;
         }
         case AST_STMT_CALL: {
-            ir_local_t *func; /* テーブルを調べてシンボルを取得する */
-            ast_expr_t *args = stmt->u.call_stmt.args;
+            const ir_item_t *item;
+            ir_local_t *func;
+            ast_expr_t *args;
             ir_place_t *place, **place_back;
             ir_type_instance_t *type, **type_back;
             ir_type_instance_t *procedure_instance;
             ir_type_t interned;
 
+            item = analyzer_lookup_item(analyzer, stmt->u.call_stmt.name->symbol);
+            if (!func) {
+                /* エラー */
+            }
+            func = new_ir_ref_local(item);
+            args = stmt->u.call_stmt.args;
             type = NULL, type_back = &type;
             place = NULL, place_back = &place;
             while (args) {
@@ -403,7 +426,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             break;
         }
         case AST_STMT_RETURN: {
-            /* 現在のブロックをreturnで終端し処理を続行する */
+            /* [課題4] 現在のブロックをreturnで終端し処理を続行する */
             break;
         }
         case AST_STMT_READ: {
@@ -440,7 +463,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
         }
         case AST_STMT_COMPOUND: {
             ir_block_t *block = analyze_stmt(analyzer, stmt->u.compound_stmt.stmts);
-            /* 現在のブロックに接続する */
+            /* [課題4] 現在のブロックに接続する */
             break;
         }
         case AST_STMT_EMPTY:
@@ -485,7 +508,9 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
         }
         while (ident) {
             ir_item_t *item = local ? new_ir_local_var_item(type, ident->symbol) : new_ir_var_item(type, ident->symbol);
-            /* TODO: ここでテーブルに挿入する */
+            if (analyzer_try_register_item(analyzer, item)) {
+                /* エラー */
+            }
             ident = ident->next;
         }
         decl = decl->next;
@@ -504,7 +529,9 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
         }
         while (ident) {
             ir_item_t *item = new_ir_param_var_item(type, ident->symbol);
-            /* TODO: ここでテーブルに挿入する */
+            if (analyzer_try_register_item(analyzer, item)) {
+                /* エラー */
+            }
             ident = ident->next;
         }
         decl = decl->next;
@@ -538,7 +565,10 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             instance = new_ir_procedure_type_instance(param_types);
             type = ir_type_intern(analyzer->type_storage, instance);
             item = new_ir_procedure_item(type, decl->name->symbol);
-            /* TODO: ここでテーブルに挿入する */
+            if (analyzer_try_register_item(analyzer, item)) {
+                /* エラー */
+            }
+
             analyzer_push_scope(analyzer);
             analyze_param_decl(analyzer, decl->params);
             analyze_variable_decl(analyzer, decl->variables->u.variable_decl_part.decls, 1);
