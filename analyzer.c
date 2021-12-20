@@ -266,7 +266,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
 {
     ir_rvalue_t *ret;
     ir_operand_t *operand;
-    ir_type_kind_t type;
+    ir_type_kind_t type_kind;
     ir_local_t *result;
     ir_place_t *place;
     ir_type_instance_t *instance;
@@ -274,11 +274,11 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
     assert(analyzer && expr);
 
     operand = analyze_expr(analyzer, expr->expr);
-    type = ir_operand_type_kind(operand);
+    type_kind = ir_operand_type_kind(operand);
 
     switch (expr->kind) {
     case AST_UNARY_OP_NOT:
-        if (type != IR_TYPE_BOOLEAN) {
+        if (type_kind != IR_TYPE_BOOLEAN) {
             /* エラー */
         }
         instance = new_ir_boolean_type_instance();
