@@ -439,9 +439,11 @@ void pp_compound_stmt(printer_t *printer, const ast_compound_stmt_t *stmt)
     ast_stmt_t *cur;
     assert(printer && stmt);
     pp_colored_keyword(printer, TOKEN_BEGIN);
-    printf("\n");
     printer->indent++;
     cur = stmt->stmts;
+    if (cur->next || cur->kind != AST_STMT_EMPTY) {
+        printf("\n");
+    }
     while (cur) {
         pp_indent(printer);
         pp_stmt(printer, cur);
@@ -593,7 +595,7 @@ void pretty_print(const ast_t *ast)
     printer.indent = 0;
 
     printer.color_scheme = &monokai;
-    printer.colored = 0;
+    printer.colored = 0; /* ここを1にすると色付きで出力 */
     console_reset_color(&printer);
     pp_program(&printer, ast->program);
     printf("\033[0m");
