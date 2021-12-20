@@ -46,7 +46,31 @@ ir_item_table_t *analyzer_pop_scope(analyzer_t *analyzer)
     return ret;
 }
 
+const ir_item_t *analyzer_try_register_item(analyzer_t *analyzer, ir_item_t *item)
+{
+    analyzer_scope_t *scope;
+    ir_item_t *ret;
+    assert(analyzer && item);
 
+    ret = ir_item_table_try_register(analyzer->scope->table, item);
+    return ret ? ret : NULL;
+}
+
+const ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, symbol_t symbol)
+{
+    analyzer_scope_t *scope;
+    assert(analyzer && symbol);
+
+    scope = analyzer->scope;
+    while (scope) {
+        const ir_item_t *item;
+        if (item = ir_item_table_lookup(scope->table, symbol)) {
+            return item;
+        }
+        scope = scope->next;
+    }
+    return NULL;
+}
 
 analyzer_tails_t *analyzer_push_tail(analyzer_tails_t *tails, ir_block_t *block)
 {

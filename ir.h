@@ -295,7 +295,8 @@ struct impl_ir_item_table {
 
 ir_item_table_t *new_ir_item_table();
 void delete_ir_item_table(ir_item_table_t *table);
-int ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item);
+const ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item);
+const ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol);
 
 typedef struct {
     ir_item_t *program;

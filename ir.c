@@ -636,13 +636,23 @@ void delete_ir_item_table(ir_item_table_t *table)
     free(table);
 }
 
-int ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item)
+const ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item)
 {
-    if (hash_table_find(table->table, (void *) item->symbol)) {
-        return 0;
+    const hash_table_entry_t *entry;
+    if (entry = hash_table_find(table->table, (void *) item->symbol)) {
+        return entry->value;
     }
     hash_table_insert_unchecked(table->table, (void *) item->symbol, item);
-    return 1;
+    return NULL;
+}
+
+const ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol)
+{
+    const hash_table_entry_t *entry;
+    assert(table && symbol);
+
+    entry = hash_table_find(table->table, (void *) symbol);
+    return entry ? entry->value : NULL;
 }
 
 ir_body_t *new_ir_body(ir_block_t *inner, ir_item_table_t *items)
