@@ -5,6 +5,10 @@
 typedef struct impl_analyzer_scope analyzer_scope_t;
 struct impl_analyzer_scope {
     ir_item_table_t *table;
+    struct {
+        ir_item_t *head;
+        ir_item_t **tail;
+    } items;
     analyzer_scope_t *next;
 };
 
@@ -30,6 +34,8 @@ void analyzer_push_scope(analyzer_t *analyzer)
     scope = new(analyzer_scope_t);
     scope->table = new_ir_item_table();
     scope->next = analyzer->scope;
+    scope->items.head = NULL;
+    scope->items.tail = &scope->items.head;
     analyzer->scope = scope;
 }
 
@@ -48,12 +54,15 @@ ir_item_table_t *analyzer_pop_scope(analyzer_t *analyzer)
 
 const ir_item_t *analyzer_try_register_item(analyzer_t *analyzer, ir_item_t *item)
 {
-    analyzer_scope_t *scope;
     const ir_item_t *ret;
     assert(analyzer && item);
 
-    ret = ir_item_table_try_register(analyzer->scope->table, item);
-    return ret ? ret : NULL;
+    if (ret = ir_item_table_try_register(analyzer->scope->table, item)) {
+        return ret;
+    }
+    *analyzer->scope->items.tail = item;
+    analyzer->scope->items.tail = &item->next;
+    return NULL;
 }
 
 const ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, symbol_t symbol)
@@ -496,6 +505,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 place_back = &(*place_back)->next;
                 args = args->next;
             }
+            /* [課題4] 現在のブロックに追加する */
             break;
         }
         case AST_STMT_WRITE: {
@@ -508,6 +518,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 }
                 formats = formats->next;
             }
+            /* [課題4] 現在のブロックに追加する */
             break;
         }
         case AST_STMT_COMPOUND: {

@@ -658,6 +658,7 @@ static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symb
     ret->type = type;
     ret->symbol = symbol;
     ret->body = 0;
+    ret->next = NULL;
     return ret;
 }
 
