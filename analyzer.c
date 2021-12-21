@@ -55,17 +55,17 @@ ir_item_t *analyzer_pop_scope(analyzer_t *analyzer)
     return ret;
 }
 
-ir_item_t *analyzer_try_register_item(analyzer_t *analyzer, ir_item_t *item)
+void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
 {
     ir_item_t *ret;
     assert(analyzer && item);
 
     if (ret = ir_item_table_try_register(analyzer->scope->table, item)) {
-        return ret;
+        fprintf(stderr, "conflicting names\n");
+        exit(1);
     }
     *analyzer->scope->items.tail = item;
     analyzer->scope->items.tail = &item->next;
-    return NULL;
 }
 
 ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, symbol_t symbol)
@@ -696,12 +696,7 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
         ir_type_t type = analyze_type(analyzer, decl->type);
         while (ident) {
             ir_item_t *item = local ? new_ir_local_var_item(type, ident->symbol, ident->pos) : new_ir_var_item(type, ident->symbol, ident->pos);
-            if (analyzer_try_register_item(analyzer, item)) {
-                /* エラー */
-                const symbol_instance_t *instance = symbol_get_instance(ident->symbol);
-                fprintf(stderr, "identifier `%.*s` is already used in this scope.\n", (int) instance->len, instance->ptr);
-                exit(1);
-            }
+            analyzer_register_item(analyzer, item);
             ident = ident->next;
         }
         decl = decl->next;
@@ -722,12 +717,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
         }
         while (ident) {
             ir_item_t *item = new_ir_param_var_item(type, ident->symbol, ident->pos);
-            if (analyzer_try_register_item(analyzer, item)) {
-                /* エラー */
-                const symbol_instance_t *instance = symbol_get_instance(ident->symbol);
-                fprintf(stderr, "identifier `%.*s` is already used in this scope.\n", (int) instance->len, instance->ptr);
-                exit(1);
-            }
+            analyzer_register_item(analyzer, item);
             ident = ident->next;
         }
         decl = decl->next;
@@ -760,12 +750,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             instance = new_ir_procedure_type_instance(param_types);
             type = ir_type_intern(analyzer->type_storage, instance);
             item = new_ir_procedure_item(type, decl->name->symbol, decl->name->pos);
-            if (analyzer_try_register_item(analyzer, item)) {
-                /* エラー */
-                const symbol_instance_t *instance = symbol_get_instance(item->symbol);
-                fprintf(stderr, "identifier `%.*s` is already in use.\n", (int) instance->len, instance->ptr);
-                exit(1);
-            }
+            analyzer_register_item(analyzer, item);
 
             analyzer_push_scope(analyzer, item);
             {
@@ -797,8 +782,10 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     type = ir_type_intern(analyzer->type_storage, instance);
     ret = new_ir_program_item(type, program->name->symbol, program->name->pos);
     analyzer_push_scope(analyzer, ret);
-    analyze_decl_part(analyzer, program->decl_part);
-    inner = analyze_stmt(analyzer, program->stmt);
+    {
+        analyze_decl_part(analyzer, program->decl_part);
+        inner = analyze_stmt(analyzer, program->stmt);
+    }
     inner_item = analyzer_pop_scope(analyzer);
     ret->body = new_ir_body(inner, inner_item);
     return ret;
