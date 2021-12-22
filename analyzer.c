@@ -74,8 +74,6 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
 ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
 {
     analyzer_scope_t *scope;
-    msg_t *msg;
-    const symbol_instance_t *instance;
     assert(analyzer && ident);
 
     scope = analyzer->scope;
@@ -87,11 +85,13 @@ ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
         scope = scope->next;
     }
 
-    instance = symbol_get_instance(ident->symbol);
-    msg = new_msg(analyzer->source, ident->region,
-        MSG_ERROR, "identifier `%.*s` is not declared", (int) instance->len, instance->ptr);
-    msg_emit(msg);
-    exit(1);
+    {
+        const symbol_instance_t *instance = symbol_get_instance(ident->symbol);
+        msg_t *msg = new_msg(analyzer->source, ident->region,
+            MSG_ERROR, "`%.*s` is not declared", (int) instance->len, instance->ptr);
+        msg_emit(msg);
+        exit(1);
+    }
 }
 
 ir_local_t *analyzer_create_local_for(analyzer_t *analyzer, ir_item_t *item, size_t pos)
@@ -220,7 +220,9 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         lookup = analyzer_lookup_item(analyzer, ident);
         if (ir_type_get_instance(lookup->type)->kind != IR_TYPE_ARRAY) {
             const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
-            fprintf(stderr, "item %.*s is not an array.\n", (int) instance->len, instance->ptr);
+            msg_t *msg = new_msg(analyzer->source, ident->region, MSG_ERROR,
+                "`%.*s` is not an array.", (int) instance->len, instance->ptr);
+            msg_emit(msg);
             exit(1);
         }
         if (ir_operand_type_kind(index) != IR_TYPE_INTEGER) {
@@ -524,14 +526,18 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             if (item->kind != IR_ITEM_PROCEDURE) {
                 /* エラー */
                 const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
-                fprintf(stderr, "item %.*s is not a procedure.\n", (int) instance->len, instance->ptr);
+                msg_t *msg = new_msg(analyzer->source, ident->region,
+                    MSG_ERROR, "`%.*s` is not a procedure", (int) instance->len, instance->ptr);
+                msg_emit(msg);
                 exit(1);
             }
 
             scope = analyzer->scope;
             while (scope) {
                 if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
-                    fprintf(stderr, "recursive call of procedure is not allowed.\n");
+                    msg_t *msg = new_msg(analyzer->source, ident->region,
+                        MSG_ERROR, "recursive call of procedure is not allowed");
+                    msg_emit(msg);
                     exit(1);
                 }
                 scope = scope->next;
