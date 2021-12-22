@@ -71,20 +71,27 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
     analyzer->scope->items.tail = &item->next;
 }
 
-ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, symbol_t symbol)
+ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
 {
     analyzer_scope_t *scope;
-    assert(analyzer && symbol);
+    msg_t *msg;
+    const symbol_instance_t *instance;
+    assert(analyzer && ident);
 
     scope = analyzer->scope;
     while (scope) {
         ir_item_t *item;
-        if (item = ir_item_table_lookup(scope->table, symbol)) {
+        if (item = ir_item_table_lookup(scope->table, ident->symbol)) {
             return item;
         }
         scope = scope->next;
     }
-    return NULL;
+
+    instance = symbol_get_instance(ident->symbol);
+    msg = new_msg(analyzer->source, ident->region,
+        MSG_ERROR, "identifier `%.*s` is not declared", (int) instance->len, instance->ptr);
+    msg_emit(msg);
+    exit(1);
 }
 
 ir_local_t *analyzer_create_local_for(analyzer_t *analyzer, ir_item_t *item, size_t pos)
@@ -194,13 +201,8 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         const symbol_instance_t *instance;
 
         ident = expr->u.decl_ref_expr.decl;
-        lookup = analyzer_lookup_item(analyzer, ident->symbol);
+        lookup = analyzer_lookup_item(analyzer, ident);
         instance = symbol_get_instance(ident->symbol);
-        if (!lookup) {
-            /* エラー */
-            fprintf(stderr, "item %.*s does not exist in this scope.\n", (int) instance->len, instance->ptr);
-            exit(1);
-        }
         local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
         return new_ir_place(local, NULL);
     }
@@ -214,13 +216,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
         access = new_ir_index_place_access(index);
         ident = expr->u.array_subscript_expr.decl;
-        lookup = analyzer_lookup_item(analyzer, ident->symbol);
-        if (!lookup) {
-            /* エラー */
-            const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
-            fprintf(stderr, "item %.*s does not exist in this scope.\n", (int) instance->len, instance->ptr);
-            exit(1);
-        }
+        lookup = analyzer_lookup_item(analyzer, ident);
         if (ir_type_get_instance(lookup->type)->kind != IR_TYPE_ARRAY) {
             const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
             fprintf(stderr, "item %.*s is not an array.\n", (int) instance->len, instance->ptr);
@@ -523,7 +519,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             analyzer_scope_t *scope;
 
             ident = stmt->u.call_stmt.name;
-            item = analyzer_lookup_item(analyzer, ident->symbol);
+            item = analyzer_lookup_item(analyzer, ident);
             if (!item) {
                 /* エラー */
                 const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
