@@ -245,7 +245,7 @@ ast_type_t *parse_array_type(parser_t *parser)
     expect(parser, TOKEN_RSQPAREN);
     expect(parser, TOKEN_OF);
     base = parse_std_type(parser);
-    end = parser->next_token.region.pos;
+    end = parser->current_token.region.pos + parser->current_token.region.len;
     return new_ast_array_type(base, size, region_from(begin, end - begin));
 }
 
