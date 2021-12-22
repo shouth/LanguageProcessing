@@ -271,8 +271,7 @@ ast_expr_t *parse_ref(parser_t *parser)
     if (eat(parser, TOKEN_LSQPAREN)) {
         ast_expr_t *expr = parse_expr(parser);
         expect(parser, TOKEN_RSQPAREN);
-        end = parser->current_token.region;
-        return new_ast_array_subscript_expr(ident, expr, region_unite(begin, end));
+        return new_ast_array_subscript_expr(ident, expr, region_unite(begin, parser->current_token.region));
     }
     return new_ast_decl_ref_expr(ident, ident->region);
 }
@@ -303,42 +302,35 @@ ast_expr_t *parse_expr_seq(parser_t *parser)
 
 ast_expr_t *parse_factor(parser_t *parser)
 {
-    region_t begin, end;
+    region_t begin;
     assert(parser);
 
+    begin = parser->next_token.region;
     if (check(parser, TOKEN_NAME)) {
         return parse_ref(parser);
     } else if (check(parser, TOKEN_NUMBER) || check(parser, TOKEN_TRUE)
         || check(parser, TOKEN_FALSE) || check(parser, TOKEN_STRING))
     {
         ast_lit_t *lit;
-        begin = parser->next_token.region;
         lit = parse_lit(parser);
-        end = parser->current_token.region;
-        return new_ast_constant_expr(lit, region_unite(begin, end));
+        return new_ast_constant_expr(lit, region_unite(begin, parser->current_token.region));
     } else if (eat(parser, TOKEN_LPAREN)) {
         ast_expr_t *expr;
-        begin = parser->current_token.region;
         expr = parse_expr(parser);
         expect(parser, TOKEN_RPAREN);
-        end = parser->current_token.region;
-        return new_ast_paren_expr(expr, region_unite(begin, end));
+        return new_ast_paren_expr(expr, region_unite(begin, parser->current_token.region));
     } else if (eat(parser, TOKEN_NOT)) {
         ast_expr_t *expr;
-        begin = parser->current_token.region;
         expr = parse_factor(parser);
-        end = parser->current_token.region;
-        return new_ast_unary_expr(AST_UNARY_OP_NOT, expr, region_unite(begin, end));
+        return new_ast_unary_expr(AST_UNARY_OP_NOT, expr, region_unite(begin, parser->current_token.region));
     } else if (check(parser, TOKEN_INTEGER) || check(parser, TOKEN_BOOLEAN) || check(parser, TOKEN_CHAR)) {
         ast_type_t *type;
         ast_expr_t *expr;
-        begin = parser->next_token.region;
         type = parse_std_type(parser);
         expect(parser, TOKEN_LPAREN);
         expr = parse_expr(parser);
         expect(parser, TOKEN_RPAREN);
-        end = parser->current_token.region;
-        return new_ast_cast_expr(type, expr, region_unite(begin, end));
+        return new_ast_cast_expr(type, expr, region_unite(begin, parser->current_token.region));
     }
     error_expected(parser, "expression");
     return NULL;
