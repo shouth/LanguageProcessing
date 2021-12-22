@@ -97,10 +97,7 @@ static int ir_type_instance_comparator(const void *lhs, const void *rhs)
     case IR_TYPE_ARRAY:
         lcur = l->u.array_type.base_type;
         rcur = r->u.array_type.base_type;
-        if (lcur->u.ref != rcur->u.ref) {
-            return 0;
-        }
-        return l->u.array_type.size == r->u.array_type.size;
+        return lcur->u.ref == rcur->u.ref && l->u.array_type.size == r->u.array_type.size;
 
     default:
         return 1;

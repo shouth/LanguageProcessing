@@ -80,8 +80,7 @@ static void cross_ref_print_type(cross_ref_t *cross_ref, ir_type_t type)
 static void cross_ref_print_pos(cross_ref_t *cross_ref, ir_item_pos_t *pos)
 {
     while (pos) {
-        location_t loc;
-        source_location(cross_ref->source, pos->pos, &loc);
+        location_t loc = source_location(cross_ref->source, pos->pos);
         printf("%ld:%ld", loc.line, loc.col);
         if (pos = pos->next) {
             printf(", ");

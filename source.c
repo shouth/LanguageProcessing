@@ -144,11 +144,18 @@ void delete_source(source_t *src)
     free(src);
 }
 
-void source_location(const source_t *src, size_t index, location_t *loc)
+location_t location_from(size_t line, size_t col)
+{
+    location_t ret;
+    ret.line = line;
+    ret.col = col;
+    return ret;
+}
+
+location_t source_location(const source_t *src, size_t index)
 {
     size_t left, right, middle;
-
-    assert(src && src->lines_ptr && loc);
+    assert(src && src->lines_ptr);
 
     left = 0;
     right = src->lines_size;
@@ -163,7 +170,13 @@ void source_location(const source_t *src, size_t index, location_t *loc)
         }
     }
 
-    loc->line = left + 1;
-    loc->col = index - src->lines_ptr[left] + 1;
-    loc->src = src;
+    return location_from(index - src->lines_ptr[left] + 1, left + 1);
+}
+
+region_t region_from(size_t pos, size_t len)
+{
+    region_t ret;
+    ret.pos = pos;
+    ret.len = len;
+    return ret;
 }

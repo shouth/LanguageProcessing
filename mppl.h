@@ -147,15 +147,23 @@ typedef struct {
     size_t lines_size;
 } source_t;
 
+source_t *new_source(const char *filename);
+void delete_source(source_t *src);
+
 typedef struct {
     size_t line;
     size_t col;
-    const source_t *src;
 } location_t;
 
-source_t *new_source(const char *filename);
-void delete_source(source_t *src);
-void source_location(const source_t *src, size_t index, location_t *loc);
+location_t location_from(size_t line, size_t col);
+location_t source_location(const source_t *src, size_t index);
+
+typedef struct {
+    size_t pos;
+    size_t len;
+} region_t;
+
+region_t region_from(size_t pos, size_t len);
 
 /* symbol.c */
 

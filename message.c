@@ -198,7 +198,7 @@ void msg_emit(msg_t *msg)
 
     for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
         if ((*cur0)->next == NULL) {
-            source_location(msg->src, msg->pos, &loc);
+            loc = source_location(msg->src, msg->pos);
             tmp = loc.line;
             left_margin = 0;
             while (tmp > 0) {
@@ -216,7 +216,7 @@ void msg_emit(msg_t *msg)
     printf(": %s\n", msg->msg);
     reset();
 
-    source_location(msg->src, msg->pos, &loc);
+    loc = source_location(msg->src, msg->pos);
     printf("%*.s", left_margin, "");
     set_bold();
     printf("\033[94m");
@@ -226,7 +226,7 @@ void msg_emit(msg_t *msg)
 
     for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
         preloc = loc;
-        source_location(msg->src, (*cur0)->pos, &loc);
+        loc = source_location(msg->src, (*cur0)->pos);
         if (cur0 == &msg->inline_entries) {
             set_bold();
             printf("\033[94m");
