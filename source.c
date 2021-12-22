@@ -170,7 +170,7 @@ location_t source_location(const source_t *src, size_t index)
         }
     }
 
-    return location_from(index - src->lines_ptr[left] + 1, left + 1);
+    return location_from(left + 1, index - src->lines_ptr[left] + 1);
 }
 
 region_t region_from(size_t pos, size_t len)
