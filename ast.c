@@ -3,31 +3,32 @@
 
 #include "mppl.h"
 
-static ast_lit_t *new_lit(ast_lit_kind_t kind)
+static ast_lit_t *new_lit(ast_lit_kind_t kind, region_t region)
 {
     ast_lit_t *ret = new(ast_lit_t);
     ret->kind = kind;
+    ret->region = region;
     return ret;
 }
 
-ast_lit_t *new_ast_number_lit(symbol_t symbol, unsigned long value)
+ast_lit_t *new_ast_number_lit(symbol_t symbol, unsigned long value, region_t region)
 {
-    ast_lit_t *ret = new_lit(AST_LIT_NUMBER);
+    ast_lit_t *ret = new_lit(AST_LIT_NUMBER, region);
     ret->u.number_lit.symbol = symbol;
     ret->u.number_lit.value = value;
     return ret;
 }
 
-ast_lit_t *new_ast_boolean_lit(int value)
+ast_lit_t *new_ast_boolean_lit(int value, region_t region)
 {
-    ast_lit_t *ret = new_lit(AST_LIT_BOOLEAN);
+    ast_lit_t *ret = new_lit(AST_LIT_BOOLEAN, region);
     ret->u.boolean_lit.value = value;
     return ret;
 }
 
-ast_lit_t *new_ast_string_lit(symbol_t symbol, size_t str_len)
+ast_lit_t *new_ast_string_lit(symbol_t symbol, size_t str_len, region_t region)
 {
-    ast_lit_t *ret = new_lit(AST_LIT_STRING);
+    ast_lit_t *ret = new_lit(AST_LIT_STRING, region);
     ret->u.string_lit.symbol = symbol;
     ret->u.string_lit.str_len = str_len;
     return ret;

@@ -25,6 +25,7 @@ typedef struct {
 
 typedef struct {
     ast_lit_kind_t kind;
+    region_t region;
 
     union {
         ast_number_lit_t number_lit;
@@ -33,9 +34,9 @@ typedef struct {
     } u;
 } ast_lit_t;
 
-ast_lit_t *new_ast_number_lit(symbol_t symbol, unsigned long value);
-ast_lit_t *new_ast_boolean_lit(int value);
-ast_lit_t *new_ast_string_lit(symbol_t symbol, size_t str_len);
+ast_lit_t *new_ast_number_lit(symbol_t symbol, unsigned long value, region_t region);
+ast_lit_t *new_ast_boolean_lit(int value, region_t region);
+ast_lit_t *new_ast_string_lit(symbol_t symbol, size_t str_len, region_t region);
 void delete_ast_lit(ast_lit_t *lit);
 
 typedef struct impl_ast_ident ast_ident_t;

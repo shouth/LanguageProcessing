@@ -169,7 +169,7 @@ ast_lit_t *parse_number_lit(parser_t *parser)
 
     if (expect(parser, TOKEN_NUMBER)) {
         symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
-        return new_ast_number_lit(symbol, parser->current_token.data.number.value);
+        return new_ast_number_lit(symbol, parser->current_token.data.number.value, parser->current_token.region);
     }
     return NULL;
 }
@@ -179,9 +179,9 @@ ast_lit_t *parse_boolean_lit(parser_t *parser)
     assert(parser);
 
     if (eat(parser, TOKEN_TRUE)) {
-        return new_ast_boolean_lit(1);
+        return new_ast_boolean_lit(1, parser->current_token.region);
     } else if (eat(parser, TOKEN_FALSE)) {
-        return new_ast_boolean_lit(0);
+        return new_ast_boolean_lit(0, parser->current_token.region);
     }
 
     maybe_error_unreachable(parser);
@@ -196,7 +196,7 @@ ast_lit_t *parse_string_lit(parser_t *parser)
     if (expect(parser, TOKEN_STRING)) {
         data = &parser->current_token.data;
         symbol = symbol_intern(parser->storage, data->string.ptr, data->string.len);
-        return new_ast_string_lit(symbol, data->string.str_len);
+        return new_ast_string_lit(symbol, data->string.str_len, parser->current_token.region);
     }
     return NULL;
 }

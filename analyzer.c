@@ -166,8 +166,9 @@ static ir_type_instance_t *internal_analyze_type(analyzer_t *analyzer, ast_type_
         ir_type_instance_t *base_type = internal_analyze_type(analyzer, type->u.array_type.base);
         size_t size = type->u.array_type.size->u.number_lit.value;
         if (size == 0) {
-            /* エラー */
-            fprintf(stderr, "size of array must be greater than 0.\n");
+            msg_t *msg = new_msg(analyzer->source, type->u.array_type.size->region,
+                MSG_ERROR, "size of array needs to be greater than 0");
+            msg_emit(msg);
             exit(1);
         }
         return new_ir_array_type_instance(base_type, size);
@@ -408,8 +409,8 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ast_constant_expr_t *e
         const symbol_instance_t *instance;
         ir_constant_t *constant;
         if (expr->lit->u.string_lit.str_len != 1) {
-            /* エラー */
-            fprintf(stderr, "string is not a valid expression.\n");
+            msg_t *msg = new_msg(analyzer->source, expr->lit->region, MSG_ERROR, "string is not a valid expression");
+            msg_emit(msg);
             exit(1);
         }
         instance = symbol_get_instance(expr->lit->u.string_lit.symbol);
