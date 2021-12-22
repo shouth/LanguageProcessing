@@ -143,6 +143,7 @@ typedef enum {
 
 struct impl_ast_expr {
     ast_expr_kind_t kind;
+    region_t region;
     ast_expr_t *next;
 
     union {
@@ -156,14 +157,14 @@ struct impl_ast_expr {
     } u;
 };
 
-ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs);
-ast_expr_t *new_ast_unary_expr(ast_unary_op_kind_t kind, ast_expr_t *expr);
-ast_expr_t *new_ast_paren_expr(ast_expr_t *expr);
-ast_expr_t *new_ast_cast_expr(ast_type_t *type, ast_expr_t *expr);
-ast_expr_t *new_ast_decl_ref_expr(ast_ident_t *decl);
-ast_expr_t *new_ast_array_subscript_expr(ast_ident_t *decl, ast_expr_t *expr);
-ast_expr_t *new_ast_constant_expr(ast_lit_t *lit);
-ast_expr_t *new_ast_empty_expr();
+ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs, region_t region);
+ast_expr_t *new_ast_unary_expr(ast_unary_op_kind_t kind, ast_expr_t *expr, region_t region);
+ast_expr_t *new_ast_paren_expr(ast_expr_t *expr, region_t region);
+ast_expr_t *new_ast_cast_expr(ast_type_t *type, ast_expr_t *expr, region_t region);
+ast_expr_t *new_ast_decl_ref_expr(ast_ident_t *decl, region_t region);
+ast_expr_t *new_ast_array_subscript_expr(ast_ident_t *decl, ast_expr_t *expr, region_t region);
+ast_expr_t *new_ast_constant_expr(ast_lit_t *lit, region_t region);
+ast_expr_t *new_ast_empty_expr(region_t region);
 void delete_ast_expr(ast_expr_t *expr);
 
 typedef struct impl_ast_stmt ast_stmt_t;
@@ -229,6 +230,7 @@ typedef enum {
 
 struct impl_ast_stmt {
     ast_stmt_kind_t kind;
+    region_t region;
     ast_stmt_t *next;
 
     union {

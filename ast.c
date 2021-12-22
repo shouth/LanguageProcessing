@@ -95,71 +95,72 @@ void delete_ast_ident(ast_ident_t *ident)
     free(ident);
 }
 
-static ast_expr_t *new_expr(ast_expr_kind_t kind)
+static ast_expr_t *new_expr(ast_expr_kind_t kind, region_t region)
 {
     ast_expr_t *ret = new(ast_expr_t);
     ret->kind = kind;
+    ret->region = region;
     ret->next = NULL;
     return ret;
 }
 
-ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs)
+ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs, region_t region)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_BINARY_OP);
+    ast_expr_t *ret = new_expr(AST_EXPR_BINARY_OP, region);
     ret->u.binary_expr.kind = kind;
     ret->u.binary_expr.lhs = lhs;
     ret->u.binary_expr.rhs = rhs;
     return ret;
 }
 
-ast_expr_t *new_ast_unary_expr(ast_unary_op_kind_t kind, ast_expr_t *expr)
+ast_expr_t *new_ast_unary_expr(ast_unary_op_kind_t kind, ast_expr_t *expr, region_t region)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_UNARY_OP);
+    ast_expr_t *ret = new_expr(AST_EXPR_UNARY_OP, region);
     ret->u.unary_expr.kind = kind;
     ret->u.unary_expr.expr = expr;
     return ret;
 }
 
-ast_expr_t *new_ast_paren_expr(ast_expr_t *expr)
+ast_expr_t *new_ast_paren_expr(ast_expr_t *expr, region_t region)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_PAREN);
+    ast_expr_t *ret = new_expr(AST_EXPR_PAREN, region);
     ret->u.paren_expr.expr = expr;
     return ret;
 }
 
-ast_expr_t *new_ast_cast_expr(ast_type_t *type, ast_expr_t *expr)
+ast_expr_t *new_ast_cast_expr(ast_type_t *type, ast_expr_t *expr, region_t region)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_CAST);
+    ast_expr_t *ret = new_expr(AST_EXPR_CAST, region);
     ret->u.cast_expr.type = type;
     ret->u.cast_expr.expr = expr;
     return ret;
 }
 
-ast_expr_t *new_ast_decl_ref_expr(ast_ident_t *decl)
+ast_expr_t *new_ast_decl_ref_expr(ast_ident_t *decl, region_t region)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_DECL_REF);
+    ast_expr_t *ret = new_expr(AST_EXPR_DECL_REF, region);
     ret->u.decl_ref_expr.decl = decl;
     return ret;
 }
 
-ast_expr_t *new_ast_array_subscript_expr(ast_ident_t *decl, ast_expr_t *expr)
+ast_expr_t *new_ast_array_subscript_expr(ast_ident_t *decl, ast_expr_t *expr, region_t region)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_ARRAY_SUBSCRIPT);
+    ast_expr_t *ret = new_expr(AST_EXPR_ARRAY_SUBSCRIPT, region);
     ret->u.array_subscript_expr.decl = decl;
     ret->u.array_subscript_expr.expr = expr;
     return ret;
 }
 
-ast_expr_t *new_ast_constant_expr(ast_lit_t *lit)
+ast_expr_t *new_ast_constant_expr(ast_lit_t *lit, region_t region)
 {
-    ast_expr_t *ret = new_expr(AST_EXPR_CONSTANT);
+    ast_expr_t *ret = new_expr(AST_EXPR_CONSTANT, region);
     ret->u.constant_expr.lit = lit;
     return ret;
 }
 
-ast_expr_t *new_ast_empty_expr()
+ast_expr_t *new_ast_empty_expr(region_t region)
 {
-    return new_expr(AST_EXPR_EMPTY);
+    return new_expr(AST_EXPR_EMPTY, region);
 }
 
 void delete_ast_expr(ast_expr_t *expr)

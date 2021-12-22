@@ -164,6 +164,7 @@ typedef struct {
 } region_t;
 
 region_t region_from(size_t pos, size_t len);
+region_t region_unite(region_t a, region_t b);
 int region_compare(region_t a, region_t b);
 
 /* symbol.c */

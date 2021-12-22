@@ -220,13 +220,15 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         lookup = analyzer_lookup_item(analyzer, ident);
         if (ir_type_get_instance(lookup->type)->kind != IR_TYPE_ARRAY) {
             const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
-            msg_t *msg = new_msg(analyzer->source, ident->region, MSG_ERROR,
-                "`%.*s` is not an array.", (int) instance->len, instance->ptr);
+            msg_t *msg = new_msg(analyzer->source, ident->region,
+                MSG_ERROR, "`%.*s` is not an array.", (int) instance->len, instance->ptr);
             msg_emit(msg);
             exit(1);
         }
         if (ir_operand_type_kind(index) != IR_TYPE_INTEGER) {
-            fprintf(stderr, "type of index expression needs to be integer");
+            msg_t *msg = new_msg(analyzer->source, expr->u.array_subscript_expr.expr->region,
+                MSG_ERROR, "index needs to be integer");
+            msg_emit(msg);
             exit(1);
         }
         local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);

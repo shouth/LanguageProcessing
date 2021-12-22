@@ -181,6 +181,11 @@ region_t region_from(size_t pos, size_t len)
     return ret;
 }
 
+region_t region_unite(region_t a, region_t b)
+{
+    return region_from(a.pos, b.pos + b.len - a.pos);
+}
+
 int region_compare(region_t a, region_t b)
 {
     if (a.pos < b.pos) {
