@@ -77,11 +77,16 @@ static void cross_ref_print_type(cross_ref_t *cross_ref, ir_type_t type)
     }
 }
 
-static void cross_ref_print_pos(cross_ref_t *cross_ref, ir_item_pos_t *pos)
+static void cross_ref_print_location(cross_ref_t *cross_ref, size_t pos)
+{
+    location_t loc = source_location(cross_ref->source, pos);
+    printf("%ld:%ld", loc.line, loc.col);
+}
+
+static void cross_ref_print_ref(cross_ref_t *cross_ref, ir_item_pos_t *pos)
 {
     while (pos) {
-        location_t loc = source_location(cross_ref->source, pos->pos);
-        printf("%ld:%ld", loc.line, loc.col);
+        cross_ref_print_location(cross_ref, pos->pos);
         if (pos = pos->next) {
             printf(", ");
         }
@@ -110,10 +115,10 @@ static void internal_print_cross_ref(cross_ref_t *cross_ref, const ir_item_t *it
         cross_ref_print_type(cross_ref, inner_item->type);
         printf("\n");
         printf("Def. | ");
-        cross_ref_print_pos(cross_ref, inner_item->def);
+        cross_ref_print_location(cross_ref, inner_item->name_region.pos);
         printf("\n");
         printf("Ref. | ");
-        cross_ref_print_pos(cross_ref, inner_item->refs.head);
+        cross_ref_print_ref(cross_ref, inner_item->refs.head);
         printf("\n\n");
 
         ns.item = inner_item;

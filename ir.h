@@ -300,19 +300,19 @@ struct impl_ir_item {
     symbol_t symbol;
     ir_body_t *body;
     ir_item_t *next;
+    region_t name_region;
 
-    ir_item_pos_t *def;
     struct {
         ir_item_pos_t *head;
         ir_item_pos_t **tail;
     } refs;
 };
 
-ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, size_t pos);
-ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, size_t pos);
-ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol, size_t pos);
-ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, size_t pos);
-ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, size_t pos);
+ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, region_t name_region);
 void delete_ir_item(ir_item_t *item);
 void ir_item_add_ref(ir_item_t *item, size_t pos);
 

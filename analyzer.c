@@ -696,8 +696,8 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
         ir_type_t type = analyze_type(analyzer, decl->type);
         while (ident) {
             ir_item_t *item = local
-                ? new_ir_local_var_item(type, ident->symbol, ident->region.pos)
-                : new_ir_var_item(type, ident->symbol, ident->region.pos);
+                ? new_ir_local_var_item(type, ident->symbol, ident->region)
+                : new_ir_var_item(type, ident->symbol, ident->region);
             analyzer_register_item(analyzer, item);
             ident = ident->next;
         }
@@ -718,7 +718,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
             exit(1);
         }
         while (ident) {
-            ir_item_t *item = new_ir_param_var_item(type, ident->symbol, ident->region.pos);
+            ir_item_t *item = new_ir_param_var_item(type, ident->symbol, ident->region);
             analyzer_register_item(analyzer, item);
             ident = ident->next;
         }
@@ -751,7 +751,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             param_types = analyze_param_types(analyzer, decl->params);
             instance = new_ir_procedure_type_instance(param_types);
             type = ir_type_intern(analyzer->type_storage, instance);
-            item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region.pos);
+            item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
             analyzer_register_item(analyzer, item);
 
             analyzer_push_scope(analyzer, item);
@@ -782,7 +782,7 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 
     instance = new_ir_program_type_instance();
     type = ir_type_intern(analyzer->type_storage, instance);
-    ret = new_ir_program_item(type, program->name->symbol, program->name->region.pos);
+    ret = new_ir_program_item(type, program->name->symbol, program->name->region);
     analyzer_push_scope(analyzer, ret);
     {
         analyze_decl_part(analyzer, program->decl_part);

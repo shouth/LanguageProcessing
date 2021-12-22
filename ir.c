@@ -649,7 +649,7 @@ void delete_ir_body(ir_body_t *body)
     free(body);
 }
 
-static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symbol, size_t pos)
+static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symbol, region_t name_region)
 {
     ir_item_t *ret = new(ir_item_t);
     ret->kind = kind;
@@ -657,38 +657,35 @@ static ir_item_t *new_ir_item(ir_item_kind_t kind, ir_type_t type, symbol_t symb
     ret->symbol = symbol;
     ret->body = 0;
     ret->next = NULL;
-
-    ret->def = new(ir_item_pos_t);
-    ret->def->pos = pos;
-    ret->def->next = NULL;
+    ret->name_region = name_region;
     ret->refs.head = NULL;
     ret->refs.tail = &ret->refs.head;
     return ret;
 }
 
-ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, size_t pos)
+ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, region_t name_region)
 {
-    return new_ir_item(IR_ITEM_PROGRAM, type, symbol, pos);
+    return new_ir_item(IR_ITEM_PROGRAM, type, symbol, name_region);
 }
 
-ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, size_t pos)
+ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, region_t name_region)
 {
-    return new_ir_item(IR_ITEM_PROCEDURE, type, symbol, pos);
+    return new_ir_item(IR_ITEM_PROCEDURE, type, symbol, name_region);
 }
 
-ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol, size_t pos)
+ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol, region_t name_region)
 {
-    return new_ir_item(IR_ITEM_VAR, type, symbol, pos);
+    return new_ir_item(IR_ITEM_VAR, type, symbol, name_region);
 }
 
-ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, size_t pos)
+ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, region_t name_region)
 {
-    return new_ir_item(IR_ITEM_ARG_VAR, type, symbol, pos);
+    return new_ir_item(IR_ITEM_ARG_VAR, type, symbol, name_region);
 }
 
-ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, size_t pos)
+ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, region_t name_region)
 {
-    return new_ir_item(IR_ITEM_LOCAL_VAR, type, symbol, pos);
+    return new_ir_item(IR_ITEM_LOCAL_VAR, type, symbol, name_region);
 }
 
 void delete_ir_item(ir_item_t *item)
