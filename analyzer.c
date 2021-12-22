@@ -520,12 +520,6 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
 
             ident = stmt->u.call_stmt.name;
             item = analyzer_lookup_item(analyzer, ident);
-            if (!item) {
-                /* エラー */
-                const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
-                fprintf(stderr, "item %.*s does not exist in this scope.\n", (int) instance->len, instance->ptr);
-                exit(1);
-            }
             if (item->kind != IR_ITEM_PROCEDURE) {
                 /* エラー */
                 const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
