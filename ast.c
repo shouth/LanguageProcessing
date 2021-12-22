@@ -41,17 +41,24 @@ void delete_ast_lit(ast_lit_t *lit)
     free(lit);
 }
 
-ast_type_t *new_ast_std_type(ast_type_kind_t kind)
+static ast_type_t *new_ast_type(ast_type_kind_t kind, region_t region)
 {
     ast_type_t *ret = new(ast_type_t);
     ret->kind = kind;
+    ret->region = region;
     return ret;
 }
 
-ast_type_t *new_ast_array_type(ast_type_t *base, ast_lit_t *size)
+ast_type_t *new_ast_std_type(ast_type_kind_t kind, region_t region)
 {
-    ast_type_t *ret = new(ast_type_t);
-    ret->kind = AST_TYPE_ARRAY;
+    ast_type_t *ret = new_ast_type(kind, region);
+    ret->region = region;
+    return ret;
+}
+
+ast_type_t *new_ast_array_type(ast_type_t *base, ast_lit_t *size, region_t region)
+{
+    ast_type_t *ret = new_ast_type(AST_TYPE_ARRAY, region);
     ret->u.array_type.base = base;
     ret->u.array_type.size = size;
     return ret;
@@ -69,12 +76,11 @@ void delete_ast_type(ast_type_t *type)
     free(type);
 }
 
-ast_ident_t *new_ast_ident(symbol_t symbol, size_t pos, size_t len)
+ast_ident_t *new_ast_ident(symbol_t symbol, region_t region)
 {
     ast_ident_t *ret = new(ast_ident_t);
     ret->symbol = symbol;
-    ret->pos = pos;
-    ret->len = len;
+    ret->region = region;
     ret->next = NULL;
     return ret;
 }

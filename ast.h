@@ -41,12 +41,11 @@ void delete_ast_lit(ast_lit_t *lit);
 typedef struct impl_ast_ident ast_ident_t;
 struct impl_ast_ident {
     symbol_t symbol;
-    size_t pos;
-    size_t len;
+    region_t region;
     ast_ident_t *next;
 };
 
-ast_ident_t *new_ast_ident(symbol_t symbol, size_t pos, size_t len);
+ast_ident_t *new_ast_ident(symbol_t symbol, region_t region);
 void delete_ast_ident(ast_ident_t *ident);
 
 typedef enum {
@@ -65,14 +64,15 @@ typedef struct {
 
 struct impl_ast_type {
     ast_type_kind_t kind;
+    region_t region;
 
     union {
         ast_array_type_t array_type;
     } u;
 };
 
-ast_type_t *new_ast_std_type(ast_type_kind_t kind);
-ast_type_t *new_ast_array_type(ast_type_t *base, ast_lit_t *size);
+ast_type_t *new_ast_std_type(ast_type_kind_t kind, region_t region);
+ast_type_t *new_ast_array_type(ast_type_t *base, ast_lit_t *size, region_t region);
 void delete_ast_type(ast_type_t *type);
 
 typedef struct impl_ast_expr ast_expr_t;

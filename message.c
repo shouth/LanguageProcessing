@@ -6,7 +6,7 @@
 
 #include "mppl.h"
 
-msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...)
+msg_t *new_msg(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...)
 {
     msg_t *ret;
     va_list args;
@@ -19,8 +19,7 @@ msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, c
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(ret->msg, fmt, args);
     va_end(args);
-    ret->pos = pos;
-    ret->len = len;
+    ret->region = region;
     ret->level = level;
     ret->inline_entries = NULL;
     ret->entries = NULL;
@@ -74,7 +73,7 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
     *cur = entry;
 }
 
-void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, ...)
+void msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...)
 {
     msg_inline_entry_t *entry;
     msg_inline_entry_t **cur;
@@ -87,12 +86,11 @@ void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, .
     /* v`n`sprintf is preferred to vsprintf here, but v`n`sprintf is unavailable in C89. */
     vsprintf(entry->msg, fmt, args);
     va_end(args);
-    entry->pos = pos;
-    entry->len = len;
+    entry->region = region;
     entry->next = NULL;
 
     for (cur = &msg->inline_entries; *cur; cur = &(*cur)->next) {
-        if ((*cur)->pos > pos || ((*cur)->pos == pos && (*cur)->len <= len)) {
+        if (region_compare((*cur)->region, region) >= 0) {
             break;
         }
     }
@@ -188,17 +186,17 @@ void msg_emit(msg_t *msg)
 
     has_primary = 0;
     for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
-        if ((*cur0)->pos == msg->pos && (*cur0)->len == msg->len) {
+        if (region_compare((*cur0)->region, msg->region) == 0) {
             has_primary = 1;
         }
     }
     if (!has_primary) {
-        msg_add_inline_entry(msg, msg->pos, msg->len, "");
+        msg_add_inline_entry(msg, msg->region, "");
     }
 
     for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
         if ((*cur0)->next == NULL) {
-            loc = source_location(msg->src, msg->pos);
+            loc = source_location(msg->src, msg->region.pos);
             tmp = loc.line;
             left_margin = 0;
             while (tmp > 0) {
@@ -216,7 +214,7 @@ void msg_emit(msg_t *msg)
     printf(": %s\n", msg->msg);
     reset();
 
-    loc = source_location(msg->src, msg->pos);
+    loc = source_location(msg->src, msg->region.pos);
     printf("%*.s", left_margin, "");
     set_bold();
     printf("\033[94m");
@@ -226,7 +224,7 @@ void msg_emit(msg_t *msg)
 
     for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
         preloc = loc;
-        loc = source_location(msg->src, (*cur0)->pos);
+        loc = source_location(msg->src, (*cur0)->region.pos);
         if (cur0 == &msg->inline_entries) {
             set_bold();
             printf("\033[94m");
@@ -252,16 +250,16 @@ void msg_emit(msg_t *msg)
         }
         offset += loc.col - 1;
 
-        has_primary = (*cur0)->pos == msg->pos && (*cur0)->len == msg->len;
+        has_primary = region_compare((*cur0)->region, msg->region) == 0;
         if (has_primary) {
             set_level_color(msg->level);
         } else {
             set_level_color(MSG_NOTE);
         }
-        for (i = 0; i < (*cur0)->len; i++) {
+        for (i = 0; i < (*cur0)->region.len; i++) {
             put_sanitized(msg->src->src_ptr[offset + i]);
         }
-        offset += (*cur0)->len;
+        offset += (*cur0)->region.len;
         reset();
         for (; offset < msg->src->lines_ptr[loc.line]; offset++) {
             put_sanitized(msg->src->src_ptr[offset]);
@@ -287,7 +285,7 @@ void msg_emit(msg_t *msg)
             set_level_color(MSG_NOTE);
             m = '-';
         }
-        for (i = 0; i < (*cur0)->len; i++) {
+        for (i = 0; i < (*cur0)->region.len; i++) {
             putchar(m);
             c = msg->src->src_ptr[offset + i];
             if (c == '\t' || !isprint(c)) {

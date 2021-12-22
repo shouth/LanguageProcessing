@@ -180,3 +180,17 @@ region_t region_from(size_t pos, size_t len)
     ret.len = len;
     return ret;
 }
+
+int region_compare(region_t a, region_t b)
+{
+    if (a.pos < b.pos) {
+        return -1;
+    } else if (a.pos > b.pos) {
+        return 1;
+    } else if (a.pos + a.len < b.pos + b.len) {
+        return -1;
+    } else if (a.pos + a.len > b.pos + b.len) {
+        return 1;
+    }
+    return 0;
+}

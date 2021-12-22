@@ -198,7 +198,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
             fprintf(stderr, "item %.*s does not exist in this scope.\n", (int) instance->len, instance->ptr);
             exit(1);
         }
-        local = analyzer_create_local_for(analyzer, lookup, ident->pos);
+        local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
         return new_ir_place(local, NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
@@ -227,7 +227,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
             fprintf(stderr, "type of index expression needs to be integer");
             exit(1);
         }
-        local = analyzer_create_local_for(analyzer, lookup, ident->pos);
+        local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
         return new_ir_place(local, access);
     }
     }
@@ -543,7 +543,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 scope = scope->next;
             }
 
-            func = analyzer_create_local_for(analyzer, item, ident->pos);
+            func = analyzer_create_local_for(analyzer, item, ident->region.pos);
             args = stmt->u.call_stmt.args;
             type = NULL, type_back = &type;
             place = NULL, place_back = &place;
@@ -695,7 +695,9 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
         ast_ident_t *ident = decl->names;
         ir_type_t type = analyze_type(analyzer, decl->type);
         while (ident) {
-            ir_item_t *item = local ? new_ir_local_var_item(type, ident->symbol, ident->pos) : new_ir_var_item(type, ident->symbol, ident->pos);
+            ir_item_t *item = local
+                ? new_ir_local_var_item(type, ident->symbol, ident->region.pos)
+                : new_ir_var_item(type, ident->symbol, ident->region.pos);
             analyzer_register_item(analyzer, item);
             ident = ident->next;
         }
@@ -716,7 +718,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
             exit(1);
         }
         while (ident) {
-            ir_item_t *item = new_ir_param_var_item(type, ident->symbol, ident->pos);
+            ir_item_t *item = new_ir_param_var_item(type, ident->symbol, ident->region.pos);
             analyzer_register_item(analyzer, item);
             ident = ident->next;
         }
@@ -749,7 +751,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             param_types = analyze_param_types(analyzer, decl->params);
             instance = new_ir_procedure_type_instance(param_types);
             type = ir_type_intern(analyzer->type_storage, instance);
-            item = new_ir_procedure_item(type, decl->name->symbol, decl->name->pos);
+            item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region.pos);
             analyzer_register_item(analyzer, item);
 
             analyzer_push_scope(analyzer, item);
@@ -780,7 +782,7 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 
     instance = new_ir_program_type_instance();
     type = ir_type_intern(analyzer->type_storage, instance);
-    ret = new_ir_program_item(type, program->name->symbol, program->name->pos);
+    ret = new_ir_program_item(type, program->name->symbol, program->name->region.pos);
     analyzer_push_scope(analyzer, ret);
     {
         analyze_decl_part(analyzer, program->decl_part);

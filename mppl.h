@@ -164,6 +164,7 @@ typedef struct {
 } region_t;
 
 region_t region_from(size_t pos, size_t len);
+int region_compare(region_t a, region_t b);
 
 /* symbol.c */
 
@@ -273,8 +274,7 @@ typedef union {
 
 typedef struct {
     const char *ptr;
-    size_t len;
-    size_t pos;
+    region_t region;
     token_kind_t type;
     token_data_t data;
 } token_t;
@@ -326,25 +326,23 @@ struct msg_entry {
 typedef struct msg_inline_entry msg_inline_entry_t;
 struct msg_inline_entry {
     char msg[256];
-    size_t pos;
-    size_t len;
+    region_t region;
     msg_inline_entry_t *next;
 };
 
 typedef struct {
     const source_t *src;
     char msg[256];
-    size_t pos;
-    size_t len;
+    region_t region;
     msg_level_t level;
     msg_inline_entry_t *inline_entries;
     msg_entry_t *entries;
 } msg_t;
 
-msg_t *new_msg(const source_t *src, size_t pos, size_t len, msg_level_t level, const char *fmt, ...);
+msg_t *new_msg(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...);
 void delete_msg(msg_t *msg);
 void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
-void msg_add_inline_entry(msg_t *msg, size_t pos, size_t len, const char *fmt, ...);
+void msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...);
 void msg_emit(msg_t *msg);
 
 #endif

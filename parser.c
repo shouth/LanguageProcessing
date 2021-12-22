@@ -46,9 +46,9 @@ void error_expected(parser_t *parser, const char *str)
         return;
     }
 
-    msg = new_msg(parser->src, parser->next_token.pos, parser->next_token.len,
+    msg = new_msg(parser->src, parser->next_token.region,
         MSG_ERROR, "expected %s, got `%.*s`", str,
-        (int) parser->next_token.len, parser->next_token.ptr);
+        (int) parser->next_token.region.len, parser->next_token.ptr);
     error_msg(parser, msg);
     parser->expected_tokens = 0;
 }
@@ -144,8 +144,8 @@ ast_ident_t *parse_ident(parser_t *parser)
     assert(parser);
 
     if (expect(parser, TOKEN_NAME)) {
-        symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.len);
-        return new_ast_ident(symbol, parser->current_token.pos, parser->current_token.len);
+        symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
+        return new_ast_ident(symbol, parser->current_token.region);
     }
     return NULL;
 }
@@ -168,7 +168,7 @@ ast_lit_t *parse_number_lit(parser_t *parser)
     assert(parser);
 
     if (expect(parser, TOKEN_NUMBER)) {
-        symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.len);
+        symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
         return new_ast_number_lit(symbol, parser->current_token.data.number.value);
     }
     return NULL;
@@ -221,11 +221,11 @@ ast_type_t *parse_std_type(parser_t *parser)
     assert(parser);
 
     if (eat(parser, TOKEN_INTEGER)) {
-        return new_ast_std_type(AST_TYPE_INTEGER);
+        return new_ast_std_type(AST_TYPE_INTEGER, parser->current_token.region);
     } else if (eat(parser, TOKEN_BOOLEAN)) {
-        return new_ast_std_type(AST_TYPE_BOOLEAN);
+        return new_ast_std_type(AST_TYPE_BOOLEAN, parser->current_token.region);
     } else if (eat(parser, TOKEN_CHAR)) {
-        return new_ast_std_type(AST_TYPE_CHAR);
+        return new_ast_std_type(AST_TYPE_CHAR, parser->current_token.region);
     }
 
     maybe_error_unreachable(parser);
@@ -235,15 +235,18 @@ ast_type_t *parse_array_type(parser_t *parser)
 {
     ast_lit_t *size;
     ast_type_t *base;
+    size_t begin, end;
     assert(parser);
 
+    begin = parser->next_token.region.pos;
     expect(parser, TOKEN_ARRAY);
     expect(parser, TOKEN_LSQPAREN);
     size = parse_number_lit(parser);
     expect(parser, TOKEN_RSQPAREN);
     expect(parser, TOKEN_OF);
     base = parse_std_type(parser);
-    return new_ast_array_type(base, size);
+    end = parser->next_token.region.pos;
+    return new_ast_array_type(base, size, region_from(begin, end - begin));
 }
 
 ast_type_t *parse_type(parser_t *parser)
@@ -461,7 +464,7 @@ void maybe_error_break_stmt(parser_t *parser)
     }
 
     if (!parser->within_loop) {
-        msg_t *msg = new_msg(parser->src, parser->current_token.pos, parser->current_token.len,
+        msg_t *msg = new_msg(parser->src, parser->current_token.region,
             MSG_ERROR, "break statement not within loop");
         error_msg(parser, msg);
     }
@@ -529,9 +532,9 @@ void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, si
     if (format->expr && format->expr->kind == AST_EXPR_CONSTANT) {
         ast_lit_t *lit = format->expr->u.constant_expr.lit;
         if (lit->kind == AST_LIT_STRING && lit->u.string_lit.str_len != 1 && format->len) {
-            size_t msg_len = parser->current_token.pos + parser->current_token.len - spec_pos;
-            msg_t *msg = new_msg(parser->src, spec_pos, msg_len, MSG_ERROR, "wrong output format");
-            msg_add_inline_entry(msg, spec_pos, msg_len, "field specifier cannot be used for string");
+            size_t msg_len = parser->current_token.region.pos + parser->current_token.region.len - spec_pos;
+            msg_t *msg = new_msg(parser->src, region_from(spec_pos, msg_len), MSG_ERROR, "wrong output format");
+            msg_add_inline_entry(msg, region_from(spec_pos, msg_len), "field specifier cannot be used for string");
             error_msg(parser, msg);
         }
     }
@@ -547,7 +550,7 @@ ast_output_format_t *parse_output_format(parser_t *parser)
 
     expr = parse_expr(parser);
     if (eat(parser, TOKEN_COLON)) {
-        spec_pos = parser->current_token.pos;
+        spec_pos = parser->current_token.region.pos;
         len = parse_number_lit(parser);
     }
     ret = new_ast_output_format(expr, len);
