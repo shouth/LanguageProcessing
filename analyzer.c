@@ -61,7 +61,10 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
     assert(analyzer && item);
 
     if (ret = ir_item_table_try_register(analyzer->scope->table, item)) {
-        fprintf(stderr, "conflicting names\n");
+        msg_t *msg = new_msg(analyzer->source, item->name_region, MSG_ERROR, "conflicting names");
+        msg_add_inline_entry(msg, ret->name_region, "first used here");
+        msg_add_inline_entry(msg, item->name_region, "second used here");
+        msg_emit(msg);
         exit(1);
     }
     *analyzer->scope->items.tail = item;
