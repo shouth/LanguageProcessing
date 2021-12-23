@@ -14,7 +14,8 @@ typedef enum {
     IR_TYPE_CHAR
 } ir_type_kind_t;
 
-int ir_type_kind_is_std(ir_type_kind_t kind);
+int ir_type_is_kind(ir_type_t type, ir_type_kind_t kind);
+int ir_type_is_std(ir_type_t type);
 
 typedef struct impl_ir_type_instance ir_type_instance_t;
 struct impl_ir_type_instance {
@@ -44,6 +45,9 @@ void delete_ir_type_instance(ir_type_instance_t *type);
 
 typedef struct {
     hash_table_t *table;
+    ir_type_t std_integer;
+    ir_type_t std_char;
+    ir_type_t std_boolean;
 } ir_type_storage_t;
 
 ir_type_storage_t *new_ir_type_storage();
@@ -112,7 +116,7 @@ struct impl_ir_place {
 };
 
 ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access);
-ir_type_kind_t ir_place_type_kind(ir_place_t *place);
+ir_type_t ir_place_type(ir_place_t *place);
 void delete_ir_place(ir_place_t *place);
 
 typedef enum {
@@ -124,6 +128,7 @@ typedef enum {
 
 typedef struct {
     ir_constant_kind_t kind;
+    ir_type_t type;
 
     union {
         struct {
@@ -141,10 +146,11 @@ typedef struct {
     } u;
 } ir_constant_t;
 
-ir_constant_t *new_ir_number_constant(unsigned long value);
-ir_constant_t *new_ir_boolean_constant(int value);
-ir_constant_t *new_ir_char_constant(int value);
-ir_constant_t *new_ir_string_constant(symbol_t value);
+ir_constant_t *new_ir_number_constant(ir_type_t type, unsigned long value);
+ir_constant_t *new_ir_boolean_constant(ir_type_t type, int value);
+ir_constant_t *new_ir_char_constant(ir_type_t type, int value);
+ir_constant_t *new_ir_string_constant(ir_type_t type, symbol_t value);
+ir_type_t ir_constant_type(const ir_constant_t *constant);
 void delete_ir_constant(ir_constant_t *constant);
 
 typedef enum {
@@ -167,7 +173,7 @@ struct impl_ir_operand {
 
 ir_operand_t *new_ir_place_operand(ir_place_t *place);
 ir_operand_t *new_ir_constant_operand(ir_constant_t *constant);
-ir_type_kind_t ir_operand_type_kind(ir_operand_t *operand);
+ir_type_t ir_operand_type(ir_operand_t *operand);
 void delete_ir_operand(ir_operand_t *operand);
 
 typedef enum {

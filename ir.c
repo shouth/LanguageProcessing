@@ -2,15 +2,17 @@
 
 #include "mppl.h"
 
-int ir_type_kind_is_std(ir_type_kind_t kind)
+int ir_type_is_kind(ir_type_t type, ir_type_kind_t kind)
 {
-    switch (kind) {
-    case IR_TYPE_INTEGER:
-    case IR_TYPE_BOOLEAN:
-    case IR_TYPE_CHAR:
-        return 1;
-    }
-    return 0;
+    const ir_type_instance_t *instance = ir_type_get_instance(type);
+    return instance->kind == kind;
+}
+
+int ir_type_is_std(ir_type_t type)
+{
+    return ir_type_is_kind(type, IR_TYPE_INTEGER)
+        || ir_type_is_kind(type, IR_TYPE_CHAR)
+        || ir_type_is_kind(type, IR_TYPE_BOOLEAN);
 }
 
 static ir_type_instance_t *new_ir_type_instance(ir_type_kind_t kind)
@@ -131,6 +133,9 @@ ir_type_storage_t *new_ir_type_storage()
 {
     ir_type_storage_t *ret = new(ir_type_storage_t);
     ret->table = new_hash_table(ir_type_instance_comparator, ir_type_instance_hasher);
+    ret->std_integer = ir_type_intern(ret, new_ir_type_instance(IR_TYPE_INTEGER));
+    ret->std_char = ir_type_intern(ret, new_ir_type_instance(IR_TYPE_CHAR));
+    ret->std_boolean = ir_type_intern(ret, new_ir_type_instance(IR_TYPE_BOOLEAN));
     return ret;
 }
 
@@ -284,23 +289,27 @@ ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access)
     return ret;
 }
 
-ir_type_kind_t ir_place_type_kind(ir_place_t *place)
+ir_type_t ir_place_type(ir_place_t *place)
 {
-    const ir_type_instance_t *instance = ir_type_get_instance(ir_local_type(place->local));
+    ir_type_t type;
+    const ir_type_instance_t *instance;
+    assert(place);
+
+    type = ir_local_type(place->local);
+    instance = ir_type_get_instance(type);
 
     switch (instance->kind) {
     case IR_TYPE_ARRAY:
         if (place->place_access != NULL) {
             const ir_type_instance_t *base_instance = instance->u.array_type.base_type;
-            assert(base_instance->kind == -1);
-            return ir_type_get_instance(base_instance->u.ref)->kind;
+            return base_instance->u.ref;
         } else {
-            return IR_TYPE_ARRAY;
+            return type;
         }
 
     default:
         if (place->place_access == NULL) {
-            return instance->kind;
+            return type;
         }
     }
 
@@ -318,39 +327,45 @@ void delete_ir_place(ir_place_t *place)
     free(place);
 }
 
-static ir_constant_t *new_ir_constant(ir_constant_kind_t kind)
+static ir_constant_t *new_ir_constant(ir_constant_kind_t kind, ir_type_t type)
 {
     ir_constant_t *ret = new(ir_constant_t);
     ret->kind = kind;
+    ret->type = type;
     return ret;
 }
 
-ir_constant_t *new_ir_number_constant(unsigned long value)
+ir_constant_t *new_ir_number_constant(ir_type_t type, unsigned long value)
 {
-    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_NUMBER);
+    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_NUMBER, type);
     ret->u.number_constant.value = value;
     return ret;
 }
 
-ir_constant_t *new_ir_boolean_constant(int value)
+ir_constant_t *new_ir_boolean_constant(ir_type_t type, int value)
 {
-    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_BOOLEAN);
+    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_BOOLEAN, type);
     ret->u.boolean_constant.value = value;
     return ret;
 }
 
-ir_constant_t *new_ir_char_constant(int value)
+ir_constant_t *new_ir_char_constant(ir_type_t type, int value)
 {
-    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_CHAR);
+    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_CHAR, type);
     ret->u.char_constant.value = value;
     return ret;
 }
 
-ir_constant_t *new_ir_string_constant(symbol_t value)
+ir_constant_t *new_ir_string_constant(ir_type_t type, symbol_t value)
 {
-    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_STRING);
+    ir_constant_t *ret = new_ir_constant(IR_CONSTANT_STRING, type);
     ret->u.string_constant.value = value;
     return ret;
+}
+
+ir_type_t ir_constant_type(const ir_constant_t *constant)
+{
+    return constant->type;
 }
 
 void delete_ir_constant(ir_constant_t *constant)
@@ -382,27 +397,15 @@ ir_operand_t *new_ir_constant_operand(ir_constant_t *constant)
     return ret;
 }
 
-ir_type_kind_t ir_operand_type_kind(ir_operand_t *operand)
+ir_type_t ir_operand_type(ir_operand_t *operand)
 {
     assert(operand);
 
     switch (operand->kind) {
-    case IR_OPERAND_PLACE: {
-        return ir_place_type_kind(operand->u.place_operand.place);
-    }
-    case IR_OPERAND_CONSTANT: {
-        ir_constant_t *constant = operand->u.constant_operand.constant;
-        switch (constant->kind) {
-        case IR_CONSTANT_NUMBER:
-            return IR_TYPE_INTEGER;
-        case IR_CONSTANT_CHAR:
-            return IR_TYPE_CHAR;
-        case IR_CONSTANT_BOOLEAN:
-            return IR_TYPE_BOOLEAN;
-        }
-
-        unreachable();
-    }
+    case IR_OPERAND_PLACE:
+        return ir_place_type(operand->u.place_operand.place);
+    case IR_OPERAND_CONSTANT:
+        return ir_constant_type(operand->u.constant_operand.constant);
     }
 }
 
