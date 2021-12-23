@@ -104,6 +104,38 @@ static ast_expr_t *new_expr(ast_expr_kind_t kind, region_t region)
     return ret;
 }
 
+const char *ast_binop_str(ast_binary_op_kind_t kind)
+{
+    switch (kind) {
+    case AST_BINARY_OP_STAR:
+        return "*";
+    case AST_BINARY_OP_DIV:
+        return "div";
+    case AST_BINARY_OP_AND:
+        return "and";
+    case AST_BINARY_OP_PLUS:
+        return "+";
+    case AST_BINARY_OP_MINUS:
+        return "-";
+    case AST_BINARY_OP_OR:
+        return "or";
+    case AST_BINARY_OP_EQUAL:
+        return "=";
+    case AST_BINARY_OP_NOTEQ:
+        return "<>";
+    case AST_BINARY_OP_LE:
+        return "<";
+    case AST_BINARY_OP_LEEQ:
+        return "<=";
+    case AST_BINARY_OP_GR:
+        return ">";
+    case AST_BINARY_OP_GREQ:
+        return ">=";
+    default:
+        unreachable();
+    }
+}
+
 ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs, region_t region)
 {
     ast_expr_t *ret = new_expr(AST_EXPR_BINARY_OP, region);

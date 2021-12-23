@@ -26,55 +26,9 @@ static void cross_ref_print_ns(cross_ref_t *cross_ref, cross_ref_ns_t *ns)
     cross_ref_print_ns(cross_ref, ns->next);
 }
 
-static void cross_ref_print_type_kind(cross_ref_t *cross_ref, ir_type_kind_t kind)
-{
-    switch (kind) {
-    case IR_TYPE_INTEGER:
-        printf("integer");
-        return;
-    case IR_TYPE_BOOLEAN:
-        printf("boolean");
-        return;
-    case IR_TYPE_CHAR:
-        printf("char");
-        return;
-    case IR_TYPE_ARRAY:
-        printf("array");
-        return;
-    case IR_TYPE_PROCEDURE:
-        printf("procedure");
-        return;
-    case IR_TYPE_PROGRAM:
-        printf("program");
-        return;
-    }
-
-    unreachable();
-}
-
 static void cross_ref_print_type(cross_ref_t *cross_ref, ir_type_t type)
 {
-    const ir_type_instance_t *instance = ir_type_get_instance(type);
-
-    cross_ref_print_type_kind(cross_ref, instance->kind);
-    switch (instance->kind) {
-    case IR_TYPE_ARRAY:
-        printf("[%ld] of ", instance->u.array_type.size);
-        cross_ref_print_type(cross_ref, instance->u.array_type.base_type->u.ref);
-        break;
-    case IR_TYPE_PROCEDURE: {
-        ir_type_instance_t *cur = instance->u.procedure_type.param_types;
-        printf("(");
-        while (cur) {
-            cross_ref_print_type(cross_ref, cur->u.ref);
-            if (cur = cur->next) {
-                printf(", ");
-            }
-        }
-        printf(")");
-        break;
-    }
-    }
+    printf("%s", ir_type_str(type));
 }
 
 static void cross_ref_print_location(cross_ref_t *cross_ref, size_t pos)

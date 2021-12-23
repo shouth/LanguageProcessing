@@ -93,6 +93,8 @@ typedef enum {
     AST_BINARY_OP_GREQ
 } ast_binary_op_kind_t;
 
+const char *ast_binop_str(ast_binary_op_kind_t kind);
+
 typedef struct {
     ast_binary_op_kind_t kind;
     ast_expr_t *lhs;

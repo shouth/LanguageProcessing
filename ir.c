@@ -2,6 +2,26 @@
 
 #include "mppl.h"
 
+const char *ir_type_kind_str(ir_type_kind_t kind)
+{
+    switch (kind) {
+    case IR_TYPE_PROGRAM:
+        return "program";
+    case IR_TYPE_PROCEDURE:
+        return "procedure";
+    case IR_TYPE_INTEGER:
+        return "integer";
+    case IR_TYPE_CHAR:
+        return "char";
+    case IR_TYPE_BOOLEAN:
+        return "boolean";
+    case IR_TYPE_ARRAY:
+        return "array";
+    default:
+        unreachable();
+    }
+}
+
 int ir_type_is_kind(ir_type_t type, ir_type_kind_t kind)
 {
     const ir_type_instance_t *instance = ir_type_get_instance(type);
@@ -73,6 +93,39 @@ void delete_ir_type_instance(ir_type_instance_t *type)
     }
     delete_ir_type_instance(type->next);
     free(type);
+}
+
+static char *internal_ir_type_str(char *buf, ir_type_t type)
+{
+    const ir_type_instance_t *instance = ir_type_get_instance(type);
+
+    buf += sprintf(buf, "%s", ir_type_kind_str(instance->kind));
+    switch (instance->kind) {
+    case IR_TYPE_PROCEDURE: {
+        const ir_type_instance_t *cur = instance->u.procedure_type.param_types;
+        buf += sprintf(buf, "(");
+        while (cur) {
+            buf = internal_ir_type_str(buf, cur->u.ref);
+            if (cur = cur->next) {
+                buf += sprintf(buf, ", ");
+            }
+        }
+        buf += sprintf(buf, ")");
+        break;
+    }
+    case IR_TYPE_ARRAY:
+        sprintf(buf, "[%ld] of ", instance->u.array_type.size);
+        internal_ir_type_str(buf, instance->u.array_type.base_type->u.ref);
+        break;
+    }
+    return buf;
+}
+
+const char *ir_type_str(ir_type_t type)
+{
+    static char buffer[1024];
+    internal_ir_type_str(buffer, type);
+    return buffer;
 }
 
 static int ir_type_instance_comparator(const void *lhs, const void *rhs)

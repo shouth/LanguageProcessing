@@ -209,6 +209,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         ir_place_access_t *access;
         ir_item_t *lookup;
         ir_local_t *local;
+        ir_type_t operand_type;
         ast_ident_t *ident;
 
         index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
@@ -222,9 +223,12 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
             msg_emit(msg);
             exit(1);
         }
-        if (!ir_type_is_kind(ir_operand_type(index), IR_TYPE_INTEGER)) {
-            msg_t *msg = new_msg(analyzer->source, expr->u.array_subscript_expr.expr->region,
-                MSG_ERROR, "index needs to be integer");
+        operand_type = ir_operand_type(index);
+        if (!ir_type_is_kind(operand_type, IR_TYPE_INTEGER)) {
+            region_t region = expr->u.array_subscript_expr.expr->region;
+            msg_t *msg = new_msg(analyzer->source, region,
+                MSG_ERROR, "arrays cannot be indexed by `%s`", ir_type_str(operand_type));
+            msg_add_inline_entry(msg, region, "array indices are of type integer");
             msg_emit(msg);
             exit(1);
         }
@@ -234,7 +238,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
     }
 }
 
-ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
+ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_expr_t *bin_expr)
 {
     ir_operand_t *lhs, *rhs;
     ir_type_t ltype, rtype;
@@ -242,16 +246,18 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
     ir_place_t *place;
     ir_type_instance_t *instance;
     ir_type_t type;
-    assert(analyzer && expr);
+    ast_binary_expr_t *expr;
+    assert(analyzer && bin_expr);
 
+    expr = &bin_expr->u.binary_expr;
     rhs = analyze_expr(analyzer, expr->rhs);
     rtype = ir_operand_type(rhs);
 
     if (expr->lhs->kind == AST_EXPR_EMPTY) {
-        assert(expr->kind == AST_BINARY_OP_PLUS || expr->kind == AST_BINARY_OP_MINUS);
         if (!ir_type_is_kind(rtype, IR_TYPE_INTEGER)) {
-            /* エラー */
-            fprintf(stderr, "the type of the operand needs to be integer.\n");
+            msg_t *msg = new_msg(analyzer->source, bin_expr->region,
+                MSG_ERROR, "`%s` cannot be prefixed by `%s`", ir_type_str(rtype), ast_binop_str(expr->kind));
+            msg_emit(msg);
             exit(1);
         }
 
@@ -414,7 +420,7 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ast_expr_t *expr)
         return new_ir_place_operand(place);
     }
     case AST_EXPR_BINARY_OP:
-        return analyze_binary_expr(analyzer, &expr->u.binary_expr);
+        return analyze_binary_expr(analyzer, expr);
     case AST_EXPR_UNARY_OP:
         return analyze_unary_expr(analyzer, &expr->u.unary_expr);
     case AST_EXPR_PAREN:

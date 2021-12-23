@@ -14,6 +14,7 @@ typedef enum {
     IR_TYPE_CHAR
 } ir_type_kind_t;
 
+const char *ir_type_kind_str(ir_type_kind_t kind);
 int ir_type_is_kind(ir_type_t type, ir_type_kind_t kind);
 int ir_type_is_std(ir_type_t type);
 
@@ -42,6 +43,8 @@ ir_type_instance_t *new_ir_boolean_type_instance();
 ir_type_instance_t *new_ir_char_type_instance();
 ir_type_instance_t *new_ir_type_ref(ir_type_t type);
 void delete_ir_type_instance(ir_type_instance_t *type);
+
+const char *ir_type_str(ir_type_t type);
 
 typedef struct {
     hash_table_t *table;

@@ -366,7 +366,7 @@ ast_expr_t *parse_simple_expr(parser_t *parser)
     assert(parser);
 
     if (check(parser, TOKEN_PLUS) || check(parser, TOKEN_MINUS)) {
-        size_t pos = parser->current_token.region.pos;
+        size_t pos = parser->next_token.region.pos;
         ret = new_ast_empty_expr(region_from(pos, pos));
     } else {
         ret = parse_term(parser);
