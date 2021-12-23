@@ -97,6 +97,7 @@ const char *ast_binop_str(ast_binary_op_kind_t kind);
 
 typedef struct {
     ast_binary_op_kind_t kind;
+    region_t op_region;
     ast_expr_t *lhs;
     ast_expr_t *rhs;
 } ast_binary_expr_t;
@@ -107,6 +108,7 @@ typedef enum {
 
 typedef struct {
     ast_unary_op_kind_t kind;
+    region_t op_region;
     ast_expr_t *expr;
 } ast_unary_expr_t;
 
@@ -159,8 +161,12 @@ struct impl_ast_expr {
     } u;
 };
 
-ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs, region_t region);
-ast_expr_t *new_ast_unary_expr(ast_unary_op_kind_t kind, ast_expr_t *expr, region_t region);
+ast_expr_t *new_ast_binary_expr(
+    ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs,
+    region_t expr_region, region_t op_region);
+ast_expr_t *new_ast_unary_expr(
+    ast_unary_op_kind_t kind, ast_expr_t *expr,
+    region_t region, region_t op_region);
 ast_expr_t *new_ast_paren_expr(ast_expr_t *expr, region_t region);
 ast_expr_t *new_ast_cast_expr(ast_type_t *type, ast_expr_t *expr, region_t region);
 ast_expr_t *new_ast_decl_ref_expr(ast_ident_t *decl, region_t region);

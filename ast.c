@@ -136,19 +136,25 @@ const char *ast_binop_str(ast_binary_op_kind_t kind)
     }
 }
 
-ast_expr_t *new_ast_binary_expr(ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs, region_t region)
+ast_expr_t *new_ast_binary_expr(
+    ast_binary_op_kind_t kind, ast_expr_t *lhs, ast_expr_t *rhs,
+    region_t region, region_t op_region)
 {
     ast_expr_t *ret = new_expr(AST_EXPR_BINARY_OP, region);
     ret->u.binary_expr.kind = kind;
+    ret->u.binary_expr.op_region = op_region;
     ret->u.binary_expr.lhs = lhs;
     ret->u.binary_expr.rhs = rhs;
     return ret;
 }
 
-ast_expr_t *new_ast_unary_expr(ast_unary_op_kind_t kind, ast_expr_t *expr, region_t region)
+ast_expr_t *new_ast_unary_expr(
+    ast_unary_op_kind_t kind, ast_expr_t *expr,
+    region_t region, region_t op_region)
 {
     ast_expr_t *ret = new_expr(AST_EXPR_UNARY_OP, region);
     ret->u.unary_expr.kind = kind;
+    ret->u.unary_expr.op_region = op_region;
     ret->u.unary_expr.expr = expr;
     return ret;
 }

@@ -311,22 +311,20 @@ ast_expr_t *parse_factor(parser_t *parser)
     } else if (check(parser, TOKEN_NUMBER) || check(parser, TOKEN_TRUE)
         || check(parser, TOKEN_FALSE) || check(parser, TOKEN_STRING))
     {
-        ast_lit_t *lit;
-        lit = parse_lit(parser);
+        ast_lit_t *lit = parse_lit(parser);
         return new_ast_constant_expr(lit, region_unite(begin, parser->current_token.region));
     } else if (eat(parser, TOKEN_LPAREN)) {
-        ast_expr_t *expr;
-        expr = parse_expr(parser);
+        ast_expr_t *expr = parse_expr(parser);
         expect(parser, TOKEN_RPAREN);
         return new_ast_paren_expr(expr, region_unite(begin, parser->current_token.region));
     } else if (eat(parser, TOKEN_NOT)) {
-        ast_expr_t *expr;
-        expr = parse_factor(parser);
-        return new_ast_unary_expr(AST_UNARY_OP_NOT, expr, region_unite(begin, parser->current_token.region));
+        region_t op_region = parser->current_token.region;
+        ast_expr_t *expr = parse_factor(parser);
+        return new_ast_unary_expr(AST_UNARY_OP_NOT, expr,
+            region_unite(begin, parser->current_token.region), op_region);
     } else if (check(parser, TOKEN_INTEGER) || check(parser, TOKEN_BOOLEAN) || check(parser, TOKEN_CHAR)) {
-        ast_type_t *type;
         ast_expr_t *expr;
-        type = parse_std_type(parser);
+        ast_type_t *type = parse_std_type(parser);
         expect(parser, TOKEN_LPAREN);
         expr = parse_expr(parser);
         expect(parser, TOKEN_RPAREN);
@@ -345,6 +343,7 @@ ast_expr_t *parse_term(parser_t *parser)
     while (1) {
         ast_expr_t *factor;
         ast_expr_kind_t kind;
+        region_t op_region;
         if (eat(parser, TOKEN_STAR)) {
             kind = AST_BINARY_OP_STAR;
         } else if (eat(parser, TOKEN_DIV)) {
@@ -354,8 +353,10 @@ ast_expr_t *parse_term(parser_t *parser)
         } else {
             break;
         }
+        op_region = parser->current_token.region;
         factor = parse_factor(parser);
-        ret = new_ast_binary_expr(kind, ret, factor, region_unite(ret->region, factor->region));
+        ret = new_ast_binary_expr(kind, ret, factor,
+            region_unite(ret->region, factor->region), op_region);
     }
     return ret;
 }
@@ -374,6 +375,7 @@ ast_expr_t *parse_simple_expr(parser_t *parser)
     while (1) {
         ast_expr_t *term;
         ast_expr_kind_t kind;
+        region_t op_region;
         if (eat(parser, TOKEN_PLUS)) {
             kind = AST_BINARY_OP_PLUS;
         } else if (eat(parser, TOKEN_MINUS)) {
@@ -383,8 +385,10 @@ ast_expr_t *parse_simple_expr(parser_t *parser)
         } else {
             break;
         }
+        op_region = parser->current_token.region;
         term = parse_term(parser);
-        ret = new_ast_binary_expr(kind, ret, term, region_unite(ret->region, term->region));
+        ret = new_ast_binary_expr(kind, ret, term,
+            region_unite(ret->region, term->region), op_region);
     }
     return ret;
 }
@@ -398,6 +402,7 @@ ast_expr_t *parse_expr(parser_t *parser)
     while (1) {
         ast_expr_t *simple;
         ast_expr_kind_t kind;
+        region_t op_region;
         if (eat(parser, TOKEN_EQUAL)) {
             kind = AST_BINARY_OP_EQUAL;
         } else if (eat(parser, TOKEN_NOTEQ)) {
@@ -413,8 +418,10 @@ ast_expr_t *parse_expr(parser_t *parser)
         } else {
             break;
         }
+        op_region = parser->current_token.region;
         simple = parse_term(parser);
-        ret = new_ast_binary_expr(kind, ret, simple, region_unite(ret->region, simple->region));
+        ret = new_ast_binary_expr(kind, ret, simple,
+            region_unite(ret->region, simple->region), op_region);
     }
     return ret;
 }
