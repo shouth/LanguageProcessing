@@ -152,7 +152,6 @@ void analyzer_connect_tail(analyzer_tails_t *tails, ir_block_t *block)
 
 static ir_type_instance_t *internal_analyze_type(analyzer_t *analyzer, ast_type_t *type)
 {
-    ir_type_instance_t *instance;
     assert(analyzer && type);
 
     switch (type->kind) {
@@ -199,11 +198,9 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         ir_item_t *lookup;
         ir_local_t *local;
         ast_ident_t *ident;
-        const symbol_instance_t *instance;
 
         ident = expr->u.decl_ref_expr.decl;
         lookup = analyzer_lookup_item(analyzer, ident);
-        instance = symbol_get_instance(ident->symbol);
         local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
         return new_ir_place(local, NULL);
     }
@@ -239,7 +236,6 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
 
 ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
 {
-    ir_rvalue_t *ret;
     ir_operand_t *lhs, *rhs;
     ir_type_kind_t ltype, rtype;
     ir_local_t *result;
@@ -316,7 +312,6 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
 
 ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
 {
-    ir_rvalue_t *ret;
     ir_operand_t *operand;
     ir_type_kind_t type_kind;
     ir_local_t *result;
@@ -352,11 +347,8 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
     ir_type_kind_t type_kind;
     ir_type_kind_t cast_kind;
     ir_type_t cast;
-    ir_rvalue_t *rvalue;
     ir_local_t *result;
     ir_place_t *place;
-    ir_type_instance_t *instance;
-    ir_type_t type;
 
     operand = analyze_expr(analyzer, expr->expr);
     type_kind = ir_operand_type_kind(operand);
@@ -374,23 +366,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
         exit(1);
     }
 
-    switch (cast_kind) {
-    case IR_TYPE_INTEGER:
-        instance = new_ir_integer_type_instance();
-        break;
-    case IR_TYPE_BOOLEAN:
-        instance = new_ir_boolean_type_instance();
-        break;
-    case IR_TYPE_CHAR:
-        instance = new_ir_char_type_instance();
-        break;
-    default:
-        unreachable();
-    }
-
-    type = ir_type_intern(analyzer->type_storage, instance);
-    rvalue = new_ir_cast_rvalue(cast, operand);
-    result = analyzer_create_temp_local(analyzer, type);
+    result = analyzer_create_temp_local(analyzer, cast);
     /* [課題4] 現在のブロックに追加する */
     place = new_ir_place(result, NULL);
     return new_ir_place_operand(place);
@@ -730,10 +706,8 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
 
 void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 {
-    ir_item_table_t *table;
     assert(analyzer && decl_part);
 
-    table = new_ir_item_table();
     while (decl_part) {
         switch (decl_part->kind) {
         case AST_DECL_PART_VARIABLE: {
