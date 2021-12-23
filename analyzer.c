@@ -300,7 +300,6 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
             instance = new_ir_boolean_type_instance();
             break;
         }
-
     }
 
     type = ir_type_intern(analyzer->type_storage, instance);
@@ -532,25 +531,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 if (operand->kind == IR_OPERAND_PLACE) {
                     *place_back = operand->u.place_operand.place;
                 } else {
-                    ir_local_t *tmp;
-                    ir_type_instance_t *instance;
-                    ir_type_t type;
-
-                    switch (operand->u.constant_operand.constant->kind) {
-                    case IR_CONSTANT_BOOLEAN:
-                        instance = new_ir_boolean_type_instance();
-                        break;
-                    case IR_CONSTANT_NUMBER:
-                        instance = new_ir_integer_type_instance();
-                        break;
-                    case IR_CONSTANT_CHAR:
-                        instance = new_ir_char_type_instance();
-                        break;
-                    default:
-                        unreachable();
-                    }
-                    type = ir_type_intern(analyzer->type_storage, instance);
-                    tmp = analyzer_create_temp_local(analyzer, type);
+                    ir_local_t *tmp = analyzer_create_temp_local(
+                        analyzer, operand->u.constant_operand.constant->type);
                     *place_back = new_ir_place(tmp, NULL);
                 }
                 operand->kind = -1;
