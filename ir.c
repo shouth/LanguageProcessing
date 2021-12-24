@@ -325,6 +325,7 @@ void delete_ir_local(ir_local_t *local)
     if (!local) {
         return;
     }
+    delete_ir_local(local->next);
     free(local);
 }
 
@@ -669,15 +670,14 @@ void delete_ir_block(ir_block_t *block)
     free(block);
 }
 
-ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items)
+ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items, ir_local_t *locals)
 {
     ir_body_t *ret = new(ir_body_t);
     ret->inner = inner;
     ret->items = items;
+    ret->locals = locals;
     return ret;
 }
-
-void delete_ir_item(ir_item_t *item);
 
 void delete_ir_body(ir_body_t *body)
 {
@@ -686,6 +686,7 @@ void delete_ir_body(ir_body_t *body)
     }
     delete_ir_block(body->inner);
     delete_ir_item(body->items);
+    delete_ir_local(body->locals);
     free(body);
 }
 

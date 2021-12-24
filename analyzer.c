@@ -49,27 +49,29 @@ void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner)
     analyzer->scope = scope;
 }
 
-ir_item_t *analyzer_pop_scope(analyzer_t *analyzer)
+void analyzer_pop_scope(analyzer_t *analyzer, ir_item_t **items, ir_local_t **locals)
 {
     analyzer_scope_t *scope;
     ir_item_t *ret;
     assert(analyzer);
 
     scope = analyzer->scope;
-    ret = scope->items.head;
+    *items = scope->items.head;
+    *locals = scope->locals.head;
     analyzer->scope = scope->next;
     delete_hash_table(scope->items.table, NULL, NULL);
     delete_hash_table(scope->locals.table, NULL, NULL);
     free(scope);
-    return ret;
 }
 
 void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
 {
     const hash_table_entry_t *entry;
+    analyzer_scope_t *scope;
     assert(analyzer && item);
 
-    if (entry = hash_table_find(analyzer->scope->items.table, (void *) item->symbol)) {
+    scope = analyzer->scope;
+    if (entry = hash_table_find(scope->items.table, (void *) item->symbol)) {
         msg_t *msg = new_msg(analyzer->source, item->name_region, MSG_ERROR, "conflicting names");
         ir_item_t *registered = (ir_item_t *) entry->value;
         msg_add_inline_entry(msg, registered->name_region, "first used here");
@@ -77,9 +79,9 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
         msg_emit(msg);
         exit(1);
     }
-    hash_table_insert_unchecked(analyzer->scope->items.table, (void *) item->symbol, item);
-    *analyzer->scope->items.tail = item;
-    analyzer->scope->items.tail = &item->next;
+    hash_table_insert_unchecked(scope->items.table, (void *) item->symbol, item);
+    *scope->items.tail = item;
+    scope->items.tail = &item->next;
 }
 
 ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
@@ -757,6 +759,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_type_t type;
             ir_block_t *inner;
             ir_item_t *item, *inner_item;
+            ir_local_t *inner_local;
 
             decl = &decl_part->u.procedure_decl_part;
             param_types = analyze_param_types(analyzer, decl->params);
@@ -773,8 +776,8 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 }
                 inner = analyze_stmt(analyzer, decl->stmt);
             }
-            inner_item = analyzer_pop_scope(analyzer);
-            item->body = new_ir_body(inner, inner_item);
+            analyzer_pop_scope(analyzer, &inner_item, &inner_local);
+            item->body = new_ir_body(inner, inner_item, inner_local);
             break;
         }
         }
@@ -785,6 +788,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 {
     ir_item_t *ret, *inner_item;
+    ir_local_t *inner_local;
     ir_block_t *inner;
     ir_type_t type;
     assert(analyzer && program);
@@ -796,8 +800,8 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
         analyze_decl_part(analyzer, program->decl_part);
         inner = analyze_stmt(analyzer, program->stmt);
     }
-    inner_item = analyzer_pop_scope(analyzer);
-    ret->body = new_ir_body(inner, inner_item);
+    analyzer_pop_scope(analyzer, &inner_item, &inner_local);
+    ret->body = new_ir_body(inner, inner_item, inner_local);
     return ret;
 }
 
