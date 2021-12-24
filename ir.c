@@ -43,42 +43,17 @@ static ir_type_instance_t *new_ir_type_instance(ir_type_kind_t kind)
     return ret;
 }
 
-ir_type_instance_t *new_ir_program_type_instance()
+ir_type_instance_t *new_ir_type_ref(ir_type_t type)
 {
-    return new_ir_type_instance(IR_TYPE_PROGRAM);
-}
+    ir_type_instance_t *ret;
+    assert(type);
 
-ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *param_types)
-{
-    ir_type_instance_t *ret = new_ir_type_instance(IR_TYPE_PROCEDURE);
-    ret->u.procedure_type.param_types = param_types;
+    ret = new_ir_type_instance(-1);
+    ret->u.ref = type;
     return ret;
 }
 
-ir_type_instance_t *new_ir_array_type_instance(ir_type_instance_t *base_type, size_t size)
-{
-    ir_type_instance_t *ret = new_ir_type_instance(IR_TYPE_ARRAY);
-    ret->u.array_type.base_type = base_type;
-    ret->u.array_type.size = size;
-    return ret;
-}
-
-ir_type_instance_t *new_ir_integer_type_instance()
-{
-    return new_ir_type_instance(IR_TYPE_INTEGER);
-}
-
-ir_type_instance_t *new_ir_boolean_type_instance()
-{
-    return new_ir_type_instance(IR_TYPE_BOOLEAN);
-}
-
-ir_type_instance_t *new_ir_char_type_instance()
-{
-    return new_ir_type_instance(IR_TYPE_CHAR);
-}
-
-void delete_ir_type_instance(ir_type_instance_t *type)
+static void delete_ir_type_instance(ir_type_instance_t *type)
 {
     if (!type) {
         return;
@@ -186,6 +161,7 @@ ir_type_storage_t *new_ir_type_storage()
 {
     ir_type_storage_t *ret = new(ir_type_storage_t);
     ret->table = new_hash_table(ir_type_instance_comparator, ir_type_instance_hasher);
+    ret->program = ir_type_intern(ret, new_ir_type_instance(IR_TYPE_PROGRAM));
     ret->std_integer = ir_type_intern(ret, new_ir_type_instance(IR_TYPE_INTEGER));
     ret->std_char = ir_type_intern(ret, new_ir_type_instance(IR_TYPE_CHAR));
     ret->std_boolean = ir_type_intern(ret, new_ir_type_instance(IR_TYPE_BOOLEAN));
@@ -199,13 +175,6 @@ void delete_ir_type_storage(ir_type_storage_t *storage)
     }
     delete_hash_table(storage->table, free, NULL);
     free(storage);
-}
-
-ir_type_instance_t *new_ir_type_ref(ir_type_t type)
-{
-    ir_type_instance_t *ret = new_ir_type_instance(-1);
-    ret->u.ref = type;
-    return ret;
 }
 
 static ir_type_instance_t *ir_type_intern_chaining(ir_type_storage_t *storage, ir_type_instance_t *types)
@@ -251,6 +220,56 @@ ir_type_t ir_type_intern(ir_type_storage_t *storage, ir_type_instance_t *instanc
     }
     hash_table_insert_unchecked(storage->table, instance, instance);
     return (ir_type_t) instance;
+}
+
+ir_type_t ir_type_program(ir_type_storage_t *storage)
+{
+    return storage->program;
+}
+
+ir_type_t ir_type_procedure(ir_type_storage_t *storage, ir_type_instance_t *params)
+{
+    ir_type_instance_t *procedure;
+    assert(storage && params);
+    {
+        ir_type_instance_t *cur = params;
+        while (cur) {
+            assert(cur->kind == -1);
+            cur = cur->next;
+        }
+    }
+
+    procedure = new_ir_type_instance(IR_TYPE_PROCEDURE);
+    procedure->u.procedure_type.param_types = params;
+    return ir_type_intern(storage, procedure);
+}
+
+ir_type_t ir_type_array(ir_type_storage_t *storage, ir_type_instance_t *base, size_t size)
+{
+    ir_type_instance_t *array;
+    assert(storage && base);
+    assert(size > 0);
+    assert(base->kind == -1);
+
+    array = new_ir_type_instance(IR_TYPE_ARRAY);
+    array->u.array_type.base_type = base;
+    array->u.array_type.size = size;
+    return ir_type_intern(storage, array);
+}
+
+ir_type_t ir_type_integer(ir_type_storage_t *storage)
+{
+    return storage->std_integer;
+}
+
+ir_type_t ir_type_char(ir_type_storage_t *storage)
+{
+    return storage->std_char;
+}
+
+ir_type_t ir_type_boolean(ir_type_storage_t *storage)
+{
+    return storage->std_boolean;
 }
 
 const ir_type_instance_t *ir_type_get_instance(ir_type_t type)

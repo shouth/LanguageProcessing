@@ -150,19 +150,20 @@ void analyzer_connect_tail(analyzer_tails_t *tails, ir_block_t *block)
     }
 }
 
-static ir_type_instance_t *internal_analyze_type(analyzer_t *analyzer, ast_type_t *type)
+ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
 {
     assert(analyzer && type);
 
     switch (type->kind) {
     case AST_TYPE_BOOLEAN:
-        return new_ir_boolean_type_instance();
+        return ir_type_boolean(analyzer->type_storage);
     case AST_TYPE_CHAR:
-        return new_ir_char_type_instance();
+        return ir_type_char(analyzer->type_storage);
     case AST_TYPE_INTEGER:
-        return new_ir_integer_type_instance();
+        return ir_type_integer(analyzer->type_storage);
     case AST_TYPE_ARRAY: {
-        ir_type_instance_t *base_type = internal_analyze_type(analyzer, type->u.array_type.base);
+        ir_type_t base_type = analyze_type(analyzer, type->u.array_type.base);
+        ir_type_instance_t *base_type_ref = new_ir_type_ref(base_type);
         size_t size = type->u.array_type.size->u.number_lit.value;
         if (size == 0) {
             msg_t *msg = new_msg(analyzer->source, type->u.array_type.size->region,
@@ -170,20 +171,11 @@ static ir_type_instance_t *internal_analyze_type(analyzer_t *analyzer, ast_type_
             msg_emit(msg);
             exit(1);
         }
-        return new_ir_array_type_instance(base_type, size);
+        return ir_type_array(analyzer->type_storage, base_type_ref, size);
     }
     }
 
     unreachable();
-}
-
-ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
-{
-    ir_type_instance_t *instance;
-    assert(analyzer && type);
-
-    instance = internal_analyze_type(analyzer, type);
-    return ir_type_intern(analyzer->type_storage, instance);
 }
 
 ir_operand_t *analyze_expr(analyzer_t *analyzer, ast_expr_t *expr);
@@ -259,7 +251,6 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
     ir_type_t ltype, rtype;
     ir_local_t *result;
     ir_place_t *place;
-    ir_type_instance_t *instance;
     ir_type_t type;
     assert(analyzer && expr);
 
@@ -274,7 +265,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
             exit(1);
         }
 
-        instance = new_ir_integer_type_instance();
+        type = ir_type_integer(analyzer->type_storage);
     } else {
         lhs = analyze_expr(analyzer, expr->lhs);
         ltype = ir_operand_type(lhs);
@@ -290,7 +281,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "the same standard type");
                 exit(1);
             }
-            instance = new_ir_boolean_type_instance();
+            type = ir_type_boolean(analyzer->type_storage);
             break;
         case AST_BINARY_OP_PLUS:
         case AST_BINARY_OP_MINUS:
@@ -300,7 +291,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type integer");
                 exit(1);
             }
-            instance = new_ir_integer_type_instance();
+            type = ir_type_integer(analyzer->type_storage);
             break;
         case AST_BINARY_OP_OR:
         case AST_BINARY_OP_AND:
@@ -308,12 +299,11 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type boolean");
                 exit(1);
             }
-            instance = new_ir_boolean_type_instance();
+            type = ir_type_boolean(analyzer->type_storage);
             break;
         }
     }
 
-    type = ir_type_intern(analyzer->type_storage, instance);
     result = analyzer_create_temp_local(analyzer, type);
     place = new_ir_place(result, NULL);
     /* [課題4] 現在のブロックに追加する */
@@ -326,7 +316,6 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
     ir_type_t operand_type;
     ir_local_t *result;
     ir_place_t *place;
-    ir_type_instance_t *instance;
     ir_type_t type;
     assert(analyzer && expr);
 
@@ -343,11 +332,10 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
             msg_emit(msg);
             exit(1);
         }
-        instance = new_ir_boolean_type_instance();
+        type = ir_type_boolean(analyzer->type_storage);
         break;
     }
 
-    type = ir_type_intern(analyzer->type_storage, instance);
     result = analyzer_create_temp_local(analyzer, type);
     place = new_ir_place(result, NULL);
     /* [課題4] 現在のブロックに追加する */
@@ -521,7 +509,6 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             ast_ident_t *ident;
             ir_place_t *place, **place_back;
             ir_type_instance_t *type, **type_back;
-            ir_type_instance_t *procedure_instance;
             ir_type_t interned;
             analyzer_scope_t *scope;
 
@@ -567,8 +554,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 args = args->next;
             }
 
-            procedure_instance = new_ir_procedure_type_instance(type);
-            interned = ir_type_intern(analyzer->type_storage, procedure_instance);
+            interned = ir_type_procedure(analyzer->type_storage, type);
 
             if (ir_local_type(func) != interned) {
                 const symbol_instance_t *instance = symbol_get_instance(item->symbol);
@@ -744,15 +730,13 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
         case AST_DECL_PART_PROCEDURE: {
             ast_procedure_decl_part_t *decl;
             ir_type_instance_t *param_types;
-            ir_type_instance_t *instance;
             ir_type_t type;
             ir_block_t *inner;
             ir_item_t *item, *inner_item;
 
             decl = &decl_part->u.procedure_decl_part;
             param_types = analyze_param_types(analyzer, decl->params);
-            instance = new_ir_procedure_type_instance(param_types);
-            type = ir_type_intern(analyzer->type_storage, instance);
+            type = ir_type_procedure(analyzer->type_storage, param_types);
             item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
             analyzer_register_item(analyzer, item);
 
@@ -778,12 +762,10 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 {
     ir_item_t *ret, *inner_item;
     ir_block_t *inner;
-    ir_type_instance_t *instance;
     ir_type_t type;
     assert(analyzer && program);
 
-    instance = new_ir_program_type_instance();
-    type = ir_type_intern(analyzer->type_storage, instance);
+    type = ir_type_program(analyzer->type_storage);
     ret = new_ir_program_item(type, program->name->symbol, program->name->region);
     analyzer_push_scope(analyzer, ret);
     {

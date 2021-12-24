@@ -35,19 +35,12 @@ struct impl_ir_type_instance {
     } u;
 };
 
-ir_type_instance_t *new_ir_program_type_instance();
-ir_type_instance_t *new_ir_procedure_type_instance(ir_type_instance_t *param_types);
-ir_type_instance_t *new_ir_array_type_instance(ir_type_instance_t *base_type, size_t size);
-ir_type_instance_t *new_ir_integer_type_instance();
-ir_type_instance_t *new_ir_boolean_type_instance();
-ir_type_instance_t *new_ir_char_type_instance();
 ir_type_instance_t *new_ir_type_ref(ir_type_t type);
-void delete_ir_type_instance(ir_type_instance_t *type);
-
 const char *ir_type_str(ir_type_t type);
 
 typedef struct {
     hash_table_t *table;
+    ir_type_t program;
     ir_type_t std_integer;
     ir_type_t std_char;
     ir_type_t std_boolean;
@@ -56,6 +49,12 @@ typedef struct {
 ir_type_storage_t *new_ir_type_storage();
 void delete_ir_type_storage(ir_type_storage_t *storage);
 ir_type_t ir_type_intern(ir_type_storage_t *storage, ir_type_instance_t *instance);
+ir_type_t ir_type_program(ir_type_storage_t *storage);
+ir_type_t ir_type_procedure(ir_type_storage_t *storage, ir_type_instance_t *params);
+ir_type_t ir_type_array(ir_type_storage_t *storage, ir_type_instance_t *base, size_t size);
+ir_type_t ir_type_integer(ir_type_storage_t *storage);
+ir_type_t ir_type_char(ir_type_storage_t *storage);
+ir_type_t ir_type_boolean(ir_type_storage_t *storage);
 const ir_type_instance_t *ir_type_get_instance(ir_type_t type);
 
 typedef struct impl_ir_item ir_item_t;
