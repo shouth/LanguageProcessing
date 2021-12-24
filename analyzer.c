@@ -5,7 +5,7 @@
 typedef struct impl_analyzer_scope analyzer_scope_t;
 struct impl_analyzer_scope {
     const ir_item_t *owner;
-    ir_item_table_t *table;
+    hash_table_t *item_table;
     struct {
         ir_item_t *head;
         ir_item_t **tail;
@@ -34,7 +34,7 @@ void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner)
 
     scope = new(analyzer_scope_t);
     scope->owner = owner;
-    scope->table = new_ir_item_table();
+    scope->item_table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     scope->next = analyzer->scope;
     scope->items.head = NULL;
     scope->items.tail = &scope->items.head;
@@ -50,23 +50,25 @@ ir_item_t *analyzer_pop_scope(analyzer_t *analyzer)
     scope = analyzer->scope;
     ret = scope->items.head;
     analyzer->scope = scope->next;
-    delete_ir_item_table(scope->table);
+    delete_hash_table(scope->item_table, NULL, NULL);
     free(scope);
     return ret;
 }
 
 void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
 {
-    ir_item_t *ret;
+    const hash_table_entry_t *entry;
     assert(analyzer && item);
 
-    if (ret = ir_item_table_try_register(analyzer->scope->table, item)) {
+    if (entry = hash_table_find(analyzer->scope->item_table, (void *) item->symbol)) {
         msg_t *msg = new_msg(analyzer->source, item->name_region, MSG_ERROR, "conflicting names");
-        msg_add_inline_entry(msg, ret->name_region, "first used here");
+        ir_item_t *registered = (ir_item_t *) entry->value;
+        msg_add_inline_entry(msg, registered->name_region, "first used here");
         msg_add_inline_entry(msg, item->name_region, "second used here");
         msg_emit(msg);
         exit(1);
     }
+    hash_table_insert_unchecked(analyzer->scope->item_table, (void *) item->symbol, item);
     *analyzer->scope->items.tail = item;
     analyzer->scope->items.tail = &item->next;
 }
@@ -78,9 +80,9 @@ ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
 
     scope = analyzer->scope;
     while (scope) {
-        ir_item_t *item;
-        if (item = ir_item_table_lookup(scope->table, ident->symbol)) {
-            return item;
+        const hash_table_entry_t *entry;
+        if (entry = hash_table_find(scope->item_table, (void *) ident->symbol)) {
+            return entry->value;
         }
         scope = scope->next;
     }

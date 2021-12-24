@@ -230,7 +230,7 @@ ir_type_t ir_type_program(ir_type_storage_t *storage)
 ir_type_t ir_type_procedure(ir_type_storage_t *storage, ir_type_instance_t *params)
 {
     ir_type_instance_t *procedure;
-    assert(storage && params);
+    assert(storage);
     {
         ir_type_instance_t *cur = params;
         while (cur) {
@@ -667,41 +667,6 @@ void delete_ir_block(ir_block_t *block)
     delete_ir_stmt(block->stmt);
     delete_ir_termn(block->termn);
     free(block);
-}
-
-ir_item_table_t *new_ir_item_table()
-{
-    ir_item_table_t *ret = new(ir_item_table_t);
-    ret->table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    return ret;
-}
-
-void delete_ir_item_table(ir_item_table_t *table)
-{
-    if (!table) {
-        return;
-    }
-    delete_hash_table(table->table, NULL, NULL);
-    free(table);
-}
-
-ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item)
-{
-    const hash_table_entry_t *entry;
-    if (entry = hash_table_find(table->table, (void *) item->symbol)) {
-        return entry->value;
-    }
-    hash_table_insert_unchecked(table->table, (void *) item->symbol, item);
-    return NULL;
-}
-
-ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol)
-{
-    const hash_table_entry_t *entry;
-    assert(table && symbol);
-
-    entry = hash_table_find(table->table, (void *) symbol);
-    return entry ? entry->value : NULL;
 }
 
 ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items)

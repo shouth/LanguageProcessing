@@ -278,8 +278,6 @@ struct impl_ir_block {
 ir_block_t *new_ir_block(ir_stmt_t *stmt, ir_termn_t *termn);
 void delete_ir_block(ir_block_t *block);
 
-typedef struct impl_ir_item_table ir_item_table_t;
-
 typedef struct {
     ir_block_t *inner;
     ir_item_t *items;
@@ -323,15 +321,6 @@ ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, region_t name_
 ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, region_t name_region);
 void delete_ir_item(ir_item_t *item);
 void ir_item_add_ref(ir_item_t *item, size_t pos);
-
-struct impl_ir_item_table {
-    hash_table_t *table;
-};
-
-ir_item_table_t *new_ir_item_table();
-void delete_ir_item_table(ir_item_table_t *table);
-ir_item_t *ir_item_table_try_register(ir_item_table_t *table, ir_item_t *item);
-ir_item_t *ir_item_table_lookup(ir_item_table_t *table, symbol_t symbol);
 
 typedef struct {
     const source_t *source;
