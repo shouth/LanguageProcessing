@@ -172,8 +172,8 @@ const char *level_str(msg_level_t level)
 
 void msg_emit(msg_t *msg)
 {
-    msg_inline_entry_t **cur0;
-    msg_entry_t **cur1;
+    msg_inline_entry_t *cur0;
+    msg_entry_t *cur1;
     int left_margin;
     size_t tmp;
     size_t offset;
@@ -185,8 +185,8 @@ void msg_emit(msg_t *msg)
     assert(msg);
 
     has_primary = 0;
-    for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
-        if (region_compare((*cur0)->region, msg->region) == 0) {
+    for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
+        if (region_compare(cur0->region, msg->region) == 0) {
             has_primary = 1;
         }
     }
@@ -194,8 +194,8 @@ void msg_emit(msg_t *msg)
         msg_add_inline_entry(msg, msg->region, "");
     }
 
-    for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
-        if ((*cur0)->next == NULL) {
+    for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
+        if (cur0->next == NULL) {
             loc = source_location(msg->src, msg->region.pos);
             tmp = loc.line;
             left_margin = 0;
@@ -222,10 +222,10 @@ void msg_emit(msg_t *msg)
     reset();
     printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
 
-    for (cur0 = &msg->inline_entries; *cur0; cur0 = &(*cur0)->next) {
+    for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
         preloc = loc;
-        loc = source_location(msg->src, (*cur0)->region.pos);
-        if (cur0 == &msg->inline_entries) {
+        loc = source_location(msg->src, cur0->region.pos);
+        if (cur0 == msg->inline_entries) {
             set_bold();
             printf("\033[94m");
             printf("%*.s |\n", left_margin, "");
@@ -250,16 +250,16 @@ void msg_emit(msg_t *msg)
         }
         offset += loc.col - 1;
 
-        has_primary = region_compare((*cur0)->region, msg->region) == 0;
+        has_primary = region_compare(cur0->region, msg->region) == 0;
         if (has_primary) {
             set_level_color(msg->level);
         } else {
             set_level_color(MSG_NOTE);
         }
-        for (i = 0; i < (*cur0)->region.len; i++) {
+        for (i = 0; i < cur0->region.len; i++) {
             put_sanitized(msg->src->src_ptr[offset + i]);
         }
-        offset += (*cur0)->region.len;
+        offset += cur0->region.len;
         reset();
         for (; offset < msg->src->lines_ptr[loc.line]; offset++) {
             put_sanitized(msg->src->src_ptr[offset]);
@@ -285,7 +285,7 @@ void msg_emit(msg_t *msg)
             set_level_color(MSG_NOTE);
             m = '-';
         }
-        for (i = 0; i < (*cur0)->region.len; i++) {
+        for (i = 0; i < cur0->region.len; i++) {
             putchar(m);
             c = msg->src->src_ptr[offset + i];
             if (c == '\t' || !isprint(c)) {
@@ -294,17 +294,17 @@ void msg_emit(msg_t *msg)
                 putchar(m);
             }
         }
-        printf(" %s\n", (*cur0)->msg);
+        printf(" %s\n", cur0->msg);
         reset();
     }
 
-    for (cur1 = &msg->entries; *cur1; cur1 = &(*cur1)->next) {
+    for (cur1 = msg->entries; cur1; cur1 = cur1->next) {
         printf("%*.s = ", left_margin, "");
-        set_level_color((*cur1)->level);
+        set_level_color(cur1->level);
         set_bold();
-        printf("%s", level_str((*cur1)->level));
+        printf("%s", level_str(cur1->level));
         reset();
-        printf(": %s\n", (*cur1)->msg);
+        printf(": %s\n", cur1->msg);
     }
 
     putchar('\n');
