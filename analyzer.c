@@ -242,8 +242,9 @@ void error_invalid_binary_expr(
     analyzer_t *analyzer, ast_binary_expr_t *expr,
     ir_type_t lhs_type, ir_type_t rhs_type, const char *expected)
 {
+    msg_t *msg;
     assert(analyzer && expr);
-    msg_t *msg = new_msg(analyzer->source, expr->op_region,
+    msg = new_msg(analyzer->source, expr->op_region,
         MSG_ERROR, "invalid operands for `%s`", ast_binop_str(expr->kind));
     msg_add_inline_entry(msg, expr->lhs->region, "%s", ir_type_str(lhs_type));
     msg_add_inline_entry(msg, expr->op_region,
@@ -570,9 +571,10 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             interned = ir_type_intern(analyzer->type_storage, procedure_instance);
 
             if (ir_local_type(func) != interned) {
-                /* エラー */
                 const symbol_instance_t *instance = symbol_get_instance(item->symbol);
-                fprintf(stderr, "arguments are not suitable for procedure `%.*s`.\n", (int) instance->len, instance->ptr);
+                msg_t *msg = new_msg(analyzer->source, ident->region,
+                    MSG_ERROR, "mismatching arguments for procedure `%.*s`", (int) instance->len, instance->ptr);
+                msg_emit(msg);
                 exit(1);
             }
 
@@ -591,16 +593,22 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             while (args) {
                 ir_type_t type;
                 if (args->kind != AST_EXPR_DECL_REF && args->kind != AST_EXPR_ARRAY_SUBSCRIPT) {
-                    /* エラー */
-                    fprintf(stderr, "arguments for input statement needs to be references.\n");
+                    msg_t *msg = new_msg(analyzer->source, args->region,
+                        MSG_ERROR, "cannot read value for expression");
+                    msg_add_inline_entry(msg, args->region,
+                        "arguments for read statements are of reference and of type integer or char");
+                    msg_emit(msg);
                     exit(1);
                 }
 
                 *place_back = analyze_lvalue(analyzer, args);
                 type = ir_place_type(*place_back);
                 if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
-                    /* エラー */
-                    fprintf(stderr, "types of arguments for input statement needs to be integer or char.\n");
+                    msg_t *msg = new_msg(analyzer->source, args->region,
+                        MSG_ERROR, "cannot read value for reference of type `%s`", ir_type_str(type));
+                    msg_add_inline_entry(msg, args->region,
+                        "arguments for read statements are of reference and of type integer or char");
+                    msg_emit(msg);
                     exit(1);
                 }
 
@@ -615,6 +623,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
 
             while (formats) {
                 ir_operand_t *operand;
+                ir_type_t type;
                 if (formats->expr->kind == AST_EXPR_CONSTANT) {
                     if (formats->expr->u.constant_expr.lit->kind == AST_LIT_STRING) {
                         formats = formats->next;
@@ -623,9 +632,13 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 }
 
                 operand = analyze_expr(analyzer, formats->expr);
-                if (!ir_type_is_std(ir_operand_type(operand))) {
-                    /* エラー */
-                    fprintf(stderr, "arguments for output statement needs to be standard types.\n");
+                type = ir_operand_type(operand);
+                if (!ir_type_is_std(type)) {
+                    msg_t *msg = new_msg(analyzer->source, formats->expr->region,
+                        MSG_ERROR, "cannot write value of type `%s`", ir_type_str(type));
+                    msg_add_inline_entry(msg, formats->expr->region,
+                        "arguments for write statements are of standard types");
+                    msg_emit(msg);
                     exit(1);
                 }
                 formats = formats->next;
@@ -658,8 +671,11 @@ ir_type_instance_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *
         ast_ident_t *ident = decl->names;
         ir_type_t type = analyze_type(analyzer, decl->type);
         if (!ir_type_is_std(type)) {
-            /* エラー */
-            fprintf(stderr, "parameters needs to be standard types.\n");
+            msg_t *msg = new_msg(analyzer->source, decl->type->region,
+                MSG_ERROR, "invalid parameter of type `%s`", ir_type_str(type));
+            msg_add_inline_entry(msg, decl->type->region,
+                "parameters are of standard types");
+            msg_emit(msg);
             exit(1);
         }
         while (ident) {
@@ -698,8 +714,11 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
         ast_ident_t *ident = decl->names;
         ir_type_t type = analyze_type(analyzer, decl->type);
         if (!ir_type_is_std(type)) {
-            /* エラー */
-            fprintf(stderr, "parameters needs to be standard types.\n");
+            msg_t *msg = new_msg(analyzer->source, decl->type->region,
+                MSG_ERROR, "invalid parameter of type `%s`", ir_type_str(type));
+            msg_add_inline_entry(msg, decl->type->region,
+                "parameters are of standard types");
+            msg_emit(msg);
             exit(1);
         }
         while (ident) {

@@ -262,7 +262,7 @@ ast_expr_t *parse_expr(parser_t *parser);
 
 ast_expr_t *parse_ref(parser_t *parser)
 {
-    region_t begin, end;
+    region_t begin;
     ast_ident_t *ident;
     assert(parser);
 
@@ -273,7 +273,7 @@ ast_expr_t *parse_ref(parser_t *parser)
         expect(parser, TOKEN_RSQPAREN);
         return new_ast_array_subscript_expr(ident, expr, region_unite(begin, parser->current_token.region));
     }
-    return new_ast_decl_ref_expr(ident, ident->region);
+    return new_ast_decl_ref_expr(ident, region_unite(begin, parser->current_token.region));
 }
 
 ast_expr_t *parse_ref_seq(parser_t *parser)

@@ -114,7 +114,7 @@ static char *internal_ir_type_str(char *buf, ir_type_t type)
         break;
     }
     case IR_TYPE_ARRAY:
-        sprintf(buf, "[%ld] of ", instance->u.array_type.size);
+        buf += sprintf(buf, "[%ld] of ", instance->u.array_type.size);
         internal_ir_type_str(buf, instance->u.array_type.base_type->u.ref);
         break;
     }
