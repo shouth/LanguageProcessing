@@ -7,12 +7,10 @@ struct impl_analyzer_scope {
     const ir_item_t *owner;
     struct {
         hash_table_t *table;
-        ir_item_t *head;
         ir_item_t **tail;
     } items;
     struct {
         hash_table_t *table;
-        ir_local_t *head;
         ir_local_t **tail;
     } locals;
     analyzer_scope_t *next;
@@ -32,7 +30,7 @@ typedef struct {
     ir_type_storage_t *type_storage;
 } analyzer_t;
 
-void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner)
+void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
 {
     analyzer_scope_t *scope;
     assert(analyzer);
@@ -41,23 +39,19 @@ void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner)
     scope->owner = owner;
     scope->next = analyzer->scope;
     scope->items.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    scope->items.head = NULL;
-    scope->items.tail = &scope->items.head;
+    scope->items.tail = items;
     scope->locals.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    scope->locals.head = NULL;
-    scope->locals.tail = &scope->locals.head;
+    scope->locals.tail = locals;
     analyzer->scope = scope;
 }
 
-void analyzer_pop_scope(analyzer_t *analyzer, ir_item_t **items, ir_local_t **locals)
+void analyzer_pop_scope(analyzer_t *analyzer)
 {
     analyzer_scope_t *scope;
     ir_item_t *ret;
     assert(analyzer);
 
     scope = analyzer->scope;
-    *items = scope->items.head;
-    *locals = scope->locals.head;
     analyzer->scope = scope->next;
     delete_hash_table(scope->items.table, NULL, NULL);
     delete_hash_table(scope->locals.table, NULL, NULL);
@@ -767,7 +761,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
             analyzer_register_item(analyzer, item);
 
-            analyzer_push_scope(analyzer, item);
+            analyzer_push_scope(analyzer, item, &inner_item, &inner_local);
             {
                 ast_decl_part_t *decl_part = decl->variables;
                 analyze_param_decl(analyzer, decl->params);
@@ -776,7 +770,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 }
                 inner = analyze_stmt(analyzer, decl->stmt);
             }
-            analyzer_pop_scope(analyzer, &inner_item, &inner_local);
+            analyzer_pop_scope(analyzer);
             item->body = new_ir_body(inner, inner_item, inner_local);
             break;
         }
@@ -795,12 +789,12 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 
     type = ir_type_program(analyzer->type_storage);
     ret = new_ir_program_item(type, program->name->symbol, program->name->region);
-    analyzer_push_scope(analyzer, ret);
+    analyzer_push_scope(analyzer, ret, &inner_item, &inner_local);
     {
         analyze_decl_part(analyzer, program->decl_part);
         inner = analyze_stmt(analyzer, program->stmt);
     }
-    analyzer_pop_scope(analyzer, &inner_item, &inner_local);
+    analyzer_pop_scope(analyzer);
     ret->body = new_ir_body(inner, inner_item, inner_local);
     return ret;
 }
