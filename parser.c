@@ -431,12 +431,14 @@ ast_stmt_t *parse_stmt(parser_t *parser);
 ast_stmt_t *parse_assign_stmt(parser_t *parser)
 {
     ast_expr_t *lhs, *rhs;
+    region_t op_region;
     assert(parser);
 
     lhs = parse_ref(parser);
     expect(parser, TOKEN_ASSIGN);
+    op_region = parser->current_token.region;
     rhs = parse_expr(parser);
-    return new_ast_assign_stmt(lhs, rhs);
+    return new_ast_assign_stmt(lhs, rhs, op_region);
 }
 
 ast_stmt_t *parse_if_stmt(parser_t *parser)

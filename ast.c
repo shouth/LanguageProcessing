@@ -244,11 +244,12 @@ static ast_stmt_t *new_stmt(ast_stmt_kind_t kind)
     return ret;
 }
 
-ast_stmt_t *new_ast_assign_stmt(ast_expr_t *lhs, ast_expr_t *rhs)
+ast_stmt_t *new_ast_assign_stmt(ast_expr_t *lhs, ast_expr_t *rhs, region_t op_region)
 {
     ast_stmt_t *ret = new_stmt(AST_STMT_ASSIGN);
     ret->u.assign_stmt.lhs = lhs;
     ret->u.assign_stmt.rhs = rhs;
+    ret->u.assign_stmt.op_region = op_region;
     return ret;
 }
 

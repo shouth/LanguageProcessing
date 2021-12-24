@@ -180,6 +180,7 @@ typedef struct impl_ast_stmt ast_stmt_t;
 typedef struct {
     ast_expr_t *lhs;
     ast_expr_t *rhs;
+    region_t op_region;
 } ast_assign_stmt_t;
 
 typedef struct {
@@ -252,7 +253,7 @@ struct impl_ast_stmt {
     } u;
 };
 
-ast_stmt_t *new_ast_assign_stmt(ast_expr_t *lhs, ast_expr_t *rhs);
+ast_stmt_t *new_ast_assign_stmt(ast_expr_t *lhs, ast_expr_t *rhs, region_t op_region);
 ast_stmt_t *new_ast_if_stmt(ast_expr_t *cond, ast_stmt_t *then_stmt, ast_stmt_t *else_stmt);
 ast_stmt_t *new_ast_while_stmt(ast_expr_t *cond, ast_stmt_t *do_stmt);
 ast_stmt_t *new_ast_break_stmt();

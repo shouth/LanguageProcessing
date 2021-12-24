@@ -238,7 +238,21 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
     }
 }
 
-ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_expr_t *bin_expr)
+void error_invalid_binary_expr(
+    analyzer_t *analyzer, ast_binary_expr_t *expr,
+    ir_type_t lhs_type, ir_type_t rhs_type, const char *expected)
+{
+    assert(analyzer && expr);
+    msg_t *msg = new_msg(analyzer->source, expr->op_region,
+        MSG_ERROR, "invalid operands for `%s`", ast_binop_str(expr->kind));
+    msg_add_inline_entry(msg, expr->lhs->region, "%s", ir_type_str(lhs_type));
+    msg_add_inline_entry(msg, expr->op_region,
+        "operator `%s` takes two operands of %s", ast_binop_str(expr->kind), expected);
+    msg_add_inline_entry(msg, expr->rhs->region, "%s", ir_type_str(rhs_type));
+    msg_emit(msg);
+}
+
+ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
 {
     ir_operand_t *lhs, *rhs;
     ir_type_t ltype, rtype;
@@ -246,16 +260,14 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_expr_t *bin_expr)
     ir_place_t *place;
     ir_type_instance_t *instance;
     ir_type_t type;
-    ast_binary_expr_t *expr;
-    assert(analyzer && bin_expr);
+    assert(analyzer && expr);
 
-    expr = &bin_expr->u.binary_expr;
     rhs = analyze_expr(analyzer, expr->rhs);
     rtype = ir_operand_type(rhs);
 
     if (expr->lhs->kind == AST_EXPR_EMPTY) {
         if (!ir_type_is_kind(rtype, IR_TYPE_INTEGER)) {
-            msg_t *msg = new_msg(analyzer->source, bin_expr->region,
+            msg_t *msg = new_msg(analyzer->source, expr->op_region,
                 MSG_ERROR, "`%s` cannot be prefixed by `%s`", ir_type_str(rtype), ast_binop_str(expr->kind));
             msg_emit(msg);
             exit(1);
@@ -273,14 +285,8 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_expr_t *bin_expr)
         case AST_BINARY_OP_LEEQ:
         case AST_BINARY_OP_GR:
         case AST_BINARY_OP_GREQ:
-            if (ltype != rtype) {
-                /* エラー */
-                fprintf(stderr, "the types of the operands need to be same.\n");
-                exit(1);
-            }
-            if (!ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
-                /* エラー */
-                fprintf(stderr, "the types of the operands need to be standard types.\n");
+            if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
+                error_invalid_binary_expr(analyzer, expr, ltype, rtype, "the same standard type");
                 exit(1);
             }
             instance = new_ir_boolean_type_instance();
@@ -290,8 +296,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_expr_t *bin_expr)
         case AST_BINARY_OP_STAR:
         case AST_BINARY_OP_DIV:
             if (!ir_type_is_kind(ltype, IR_TYPE_INTEGER) || !ir_type_is_kind(rtype, IR_TYPE_INTEGER)) {
-                /* エラー */
-                fprintf(stderr, "the type of the operands need to be integer.\n");
+                error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type integer");
                 exit(1);
             }
             instance = new_ir_integer_type_instance();
@@ -299,8 +304,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_expr_t *bin_expr)
         case AST_BINARY_OP_OR:
         case AST_BINARY_OP_AND:
             if (!ir_type_is_kind(ltype, IR_TYPE_BOOLEAN) || !ir_type_is_kind(rtype, IR_TYPE_BOOLEAN)) {
-                /* エラー */
-                fprintf(stderr, "the type of the operands need to be boolean.\n");
+                error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type boolean");
                 exit(1);
             }
             instance = new_ir_boolean_type_instance();
@@ -331,8 +335,11 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
     switch (expr->kind) {
     case AST_UNARY_OP_NOT:
         if (!ir_type_is_kind(operand_type, IR_TYPE_BOOLEAN)) {
-            /* エラー */
-            fprintf(stderr, "the types of the operands need to be boolean.\n");
+            msg_t *msg = new_msg(analyzer->source, expr->op_region,
+                MSG_ERROR, "invalid operands for `not`");
+            msg_add_inline_entry(msg, expr->op_region, "operator `not` takes one operand of type boolean");
+            msg_add_inline_entry(msg, expr->expr->region, "%s", ir_type_str(operand_type));
+            msg_emit(msg);
             exit(1);
         }
         instance = new_ir_boolean_type_instance();
@@ -359,13 +366,17 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
     cast_type = analyze_type(analyzer, expr->type);
 
     if (!ir_type_is_std(operand_type)) {
-        /* エラー */
-        fprintf(stderr, "operand needs to be a standard type.\n");
+        msg_t *msg = new_msg(analyzer->source, expr->expr->region,
+            MSG_ERROR, "expression of type `%s` cannot be cast", ir_type_str(operand_type));
+        msg_add_inline_entry(msg, expr->expr->region, "expressions to be cast are of standard types");
+        msg_emit(msg);
         exit(1);
     }
     if (!ir_type_is_std(cast_type)) {
-        /* エラー */
-        fprintf(stderr, "casting to non-standard types is not allowed.\n");
+        msg_t *msg = new_msg(analyzer->source, expr->expr->region,
+            MSG_ERROR, "expression cannot be cast to `%s`", ir_type_str(cast_type));
+        msg_add_inline_entry(msg, expr->type->region, "expressions can be cast to standard types");
+        msg_emit(msg);
         exit(1);
     }
 
@@ -420,7 +431,7 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ast_expr_t *expr)
         return new_ir_place_operand(place);
     }
     case AST_EXPR_BINARY_OP:
-        return analyze_binary_expr(analyzer, expr);
+        return analyze_binary_expr(analyzer, &expr->u.binary_expr);
     case AST_EXPR_UNARY_OP:
         return analyze_unary_expr(analyzer, &expr->u.unary_expr);
     case AST_EXPR_PAREN:
@@ -442,20 +453,21 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
     while (stmt) {
         switch (stmt->kind) {
         case AST_STMT_ASSIGN: {
-            ir_place_t *lhs = analyze_lvalue(analyzer, stmt->u.assign_stmt.lhs);
-            ir_operand_t *rhs_operand = analyze_expr(analyzer, stmt->u.assign_stmt.rhs);
+            ast_assign_stmt_t *assign_stmt = &stmt->u.assign_stmt;
+            ir_place_t *lhs = analyze_lvalue(analyzer, assign_stmt->lhs);
+            ir_operand_t *rhs_operand = analyze_expr(analyzer, assign_stmt->rhs);
             ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
             ir_type_t ltype = ir_place_type(lhs);
             ir_type_t rtype = ir_operand_type(rhs_operand);
 
-            if (ltype != rtype) {
-                /* エラー */
-                fprintf(stderr, "types of operands need to be same.\n");
-                exit(1);
-            }
-            if (!ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
-                /* エラー */
-                fprintf(stderr, "operands need to be a standard type.\n");
+            if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
+                msg_t *msg = new_msg(analyzer->source, stmt->u.assign_stmt.op_region,
+                    MSG_ERROR, "invalid operands for `:=`");
+                msg_add_inline_entry(msg, assign_stmt->lhs->region, "%s", ir_type_str(ltype));
+                msg_add_inline_entry(msg, assign_stmt->op_region,
+                    "operator `:=` takes two operands of the same standard type");
+                msg_add_inline_entry(msg, assign_stmt->rhs->region, "%s", ir_type_str(rtype));
+                msg_emit(msg);
                 exit(1);
             }
 
@@ -463,14 +475,17 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             break;
         }
         case AST_STMT_IF: {
+            ast_if_stmt_t *if_stmt = &stmt->u.if_stmt;
             ir_operand_t *cond = analyze_expr(analyzer, stmt->u.if_stmt.cond);
             ir_type_t type = ir_operand_type(cond);
             ir_block_t *then = analyze_stmt(analyzer, stmt->u.if_stmt.then_stmt);
             ir_block_t *els = stmt->u.if_stmt.else_stmt ? analyze_stmt(analyzer, stmt->u.if_stmt.else_stmt) : NULL;
 
             if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
-                /* エラー */
-                fprintf(stderr, "type of condition expression needs to be boolean.\n");
+                msg_t *msg = new_msg(analyzer->source, if_stmt->cond->region,
+                    MSG_ERROR, "expression of type `%s` cannot be condition", ir_type_str(type));
+                msg_add_inline_entry(msg, if_stmt->cond->region, "condition expressions are of type boolean");
+                msg_emit(msg);
                 exit(1);
             }
 
@@ -478,13 +493,16 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             break;
         }
         case AST_STMT_WHILE: {
-            ir_operand_t *cond = analyze_expr(analyzer, stmt->u.while_stmt.cond);
+            ast_while_stmt_t *while_stmt = &stmt->u.while_stmt;
+            ir_operand_t *cond = analyze_expr(analyzer, while_stmt->cond);
             ir_type_t type = ir_operand_type(cond);
-            ir_block_t *block = analyze_stmt(analyzer, stmt->u.while_stmt.do_stmt);
+            ir_block_t *block = analyze_stmt(analyzer, while_stmt->do_stmt);
 
             if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
-                /* エラー */
-                fprintf(stderr, "type of condition expression needs to be boolean.\n");
+                msg_t *msg = new_msg(analyzer->source, while_stmt->cond->region,
+                    MSG_ERROR, "expression of type `%s` cannot be condition", ir_type_str(type));
+                msg_add_inline_entry(msg, while_stmt->cond->region, "condition expressions are of type boolean");
+                msg_emit(msg);
                 exit(1);
             }
 
@@ -509,7 +527,6 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             ident = stmt->u.call_stmt.name;
             item = analyzer_lookup_item(analyzer, ident);
             if (item->kind != IR_ITEM_PROCEDURE) {
-                /* エラー */
                 const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
                 msg_t *msg = new_msg(analyzer->source, ident->region,
                     MSG_ERROR, "`%.*s` is not a procedure", (int) instance->len, instance->ptr);
