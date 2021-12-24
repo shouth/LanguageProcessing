@@ -748,19 +748,14 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             break;
         }
         case AST_DECL_PART_PROCEDURE: {
-            ast_procedure_decl_part_t *decl;
-            ir_type_instance_t *param_types;
-            ir_type_t type;
             ir_block_t *inner;
-            ir_item_t *item, *inner_item;
+            ir_item_t *inner_item;
             ir_local_t *inner_local;
-
-            decl = &decl_part->u.procedure_decl_part;
-            param_types = analyze_param_types(analyzer, decl->params);
-            type = ir_type_procedure(analyzer->type_storage, param_types);
-            item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
+            ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
+            ir_type_instance_t *param_types = analyze_param_types(analyzer, decl->params);
+            ir_type_t type = ir_type_procedure(analyzer->type_storage, param_types);
+            ir_item_t *item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
             analyzer_register_item(analyzer, item);
-
             analyzer_push_scope(analyzer, item, &inner_item, &inner_local);
             {
                 ast_decl_part_t *decl_part = decl->variables;
