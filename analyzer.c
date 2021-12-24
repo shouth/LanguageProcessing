@@ -5,11 +5,16 @@
 typedef struct impl_analyzer_scope analyzer_scope_t;
 struct impl_analyzer_scope {
     const ir_item_t *owner;
-    hash_table_t *item_table;
     struct {
+        hash_table_t *table;
         ir_item_t *head;
         ir_item_t **tail;
     } items;
+    struct {
+        hash_table_t *table;
+        ir_local_t *head;
+        ir_local_t **tail;
+    } locals;
     analyzer_scope_t *next;
 };
 
@@ -34,10 +39,13 @@ void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner)
 
     scope = new(analyzer_scope_t);
     scope->owner = owner;
-    scope->item_table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     scope->next = analyzer->scope;
+    scope->items.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     scope->items.head = NULL;
     scope->items.tail = &scope->items.head;
+    scope->locals.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+    scope->locals.head = NULL;
+    scope->locals.tail = &scope->locals.head;
     analyzer->scope = scope;
 }
 
@@ -50,7 +58,8 @@ ir_item_t *analyzer_pop_scope(analyzer_t *analyzer)
     scope = analyzer->scope;
     ret = scope->items.head;
     analyzer->scope = scope->next;
-    delete_hash_table(scope->item_table, NULL, NULL);
+    delete_hash_table(scope->items.table, NULL, NULL);
+    delete_hash_table(scope->locals.table, NULL, NULL);
     free(scope);
     return ret;
 }
@@ -60,7 +69,7 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
     const hash_table_entry_t *entry;
     assert(analyzer && item);
 
-    if (entry = hash_table_find(analyzer->scope->item_table, (void *) item->symbol)) {
+    if (entry = hash_table_find(analyzer->scope->items.table, (void *) item->symbol)) {
         msg_t *msg = new_msg(analyzer->source, item->name_region, MSG_ERROR, "conflicting names");
         ir_item_t *registered = (ir_item_t *) entry->value;
         msg_add_inline_entry(msg, registered->name_region, "first used here");
@@ -68,7 +77,7 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
         msg_emit(msg);
         exit(1);
     }
-    hash_table_insert_unchecked(analyzer->scope->item_table, (void *) item->symbol, item);
+    hash_table_insert_unchecked(analyzer->scope->items.table, (void *) item->symbol, item);
     *analyzer->scope->items.tail = item;
     analyzer->scope->items.tail = &item->next;
 }
@@ -81,7 +90,7 @@ ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
     scope = analyzer->scope;
     while (scope) {
         const hash_table_entry_t *entry;
-        if (entry = hash_table_find(scope->item_table, (void *) ident->symbol)) {
+        if (entry = hash_table_find(scope->items.table, (void *) ident->symbol)) {
             return entry->value;
         }
         scope = scope->next;
@@ -96,26 +105,39 @@ ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
     }
 }
 
+static ir_local_t *analyzer_append_local(analyzer_t *analyzer, ir_local_t *local)
+{
+    *analyzer->scope->locals.tail = local;
+    analyzer->scope->locals.tail = &local->next;
+    return local;
+}
+
 ir_local_t *analyzer_create_local_for(analyzer_t *analyzer, ir_item_t *item, size_t pos)
 {
+    const hash_table_entry_t *entry;
+    ir_local_t *local;
     assert(analyzer && item);
 
     ir_item_add_ref(item, pos);
+    if (entry = hash_table_find(analyzer->scope->locals.table, item)) {
+        return entry->value;
+    }
+
     switch (item->kind) {
     case IR_ITEM_ARG_VAR:
     case IR_ITEM_LOCAL_VAR:
-        return new_ir_normal_local(item);
+        local = new_ir_normal_local(item);
     default:
-        return new_ir_ref_local(item);
+        local = new_ir_ref_local(item);
     }
-
-    unreachable();
+    hash_table_insert_unchecked(analyzer->scope->locals.table, item, local);
+    return analyzer_append_local(analyzer, local);
 }
 
 ir_local_t *analyzer_create_temp_local(analyzer_t *analyzer, ir_type_t type)
 {
     assert(analyzer && type);
-    return new_ir_temp_local(type);
+    return analyzer_append_local(analyzer, new_ir_temp_local(type));
 }
 
 analyzer_tails_t *analyzer_push_tail(analyzer_tails_t *tails, ir_block_t *block)
