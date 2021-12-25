@@ -175,11 +175,9 @@ void msg_emit(msg_t *msg)
     msg_inline_entry_t *cur0;
     msg_entry_t *cur1;
     int left_margin;
-    size_t tmp;
-    size_t offset;
-    size_t i;
+    size_t i, j;
     int has_primary;
-    location_t loc, preloc;
+    location_t preloc;
     int c, m;
 
     assert(msg);
@@ -196,8 +194,8 @@ void msg_emit(msg_t *msg)
 
     for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
         if (cur0->next == NULL) {
-            loc = source_location(msg->src, msg->region.pos);
-            tmp = loc.line;
+            location_t loc = source_location(msg->src, msg->region.pos);
+            size_t tmp = loc.line;
             left_margin = 0;
             while (tmp > 0) {
                 left_margin++;
@@ -206,31 +204,35 @@ void msg_emit(msg_t *msg)
         }
     }
 
-    set_level_color(msg->level);
-    set_bold();
-    printf("%s", level_str(msg->level));
-    reset();
-    set_bold();
-    printf(": %s\n", msg->msg);
-    reset();
+    {
+        set_level_color(msg->level);
+        set_bold();
+        printf("%s", level_str(msg->level));
+        reset();
+        set_bold();
+        printf(": %s\n", msg->msg);
+        reset();
+    }
 
-    loc = source_location(msg->src, msg->region.pos);
-    printf("%*.s", left_margin, "");
-    set_bold();
-    printf("\033[94m");
-    printf("--> ");
-    reset();
-    printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
+    {
+        location_t loc = source_location(msg->src, msg->region.pos);
+        printf("%*.s", left_margin, "");
+        set_bold();
+        printf("\033[94m");
+        printf("--> ");
+        reset();
+        printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
+    }
 
     for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
-        preloc = loc;
-        loc = source_location(msg->src, cur0->region.pos);
+        location_t begin = source_location(msg->src, cur0->region.pos);
+        location_t end = source_location(msg->src, cur0->region.pos + cur0->region.len);
         if (cur0 == msg->inline_entries) {
             set_bold();
             printf("\033[94m");
             printf("%*.s |\n", left_margin, "");
             reset();
-        } else if (loc.line - preloc.line > 1) {
+        } else if (begin.line - preloc.line > 1) {
             set_bold();
             printf("\033[94m");
             for (i = 0; i < left_margin + 2; i++) {
@@ -240,62 +242,141 @@ void msg_emit(msg_t *msg)
             reset();
         }
 
-        offset = msg->src->lines_ptr[loc.line - 1];
-        set_bold();
-        printf("\033[94m");
-        printf("%*.ld | ", left_margin, loc.line);
-        reset();
-        for (i = 0; i < loc.col - 1; i++) {
-            put_sanitized(msg->src->src_ptr[offset + i]);
-        }
-        offset += loc.col - 1;
-
-        has_primary = region_compare(cur0->region, msg->region) == 0;
-        if (has_primary) {
-            set_level_color(msg->level);
-        } else {
-            set_level_color(MSG_NOTE);
-        }
-        for (i = 0; i < cur0->region.len; i++) {
-            put_sanitized(msg->src->src_ptr[offset + i]);
-        }
-        offset += cur0->region.len;
-        reset();
-        for (; offset < msg->src->lines_ptr[loc.line]; offset++) {
-            put_sanitized(msg->src->src_ptr[offset]);
-        }
-        putchar('\n');
-
-        offset = msg->src->lines_ptr[loc.line - 1];
-        set_bold();
-        printf("\033[94m");
-        printf("%*.s | ", left_margin, "");
-        reset();
-        for (i = 0; i < loc.col - 1; i++) {
-            c = msg->src->src_ptr[offset + i];
-            put_sanitized(c == '\t' ? c : ' ');
-        }
-        offset += loc.col - 1;
-
-        set_bold();
-        if (has_primary) {
-            set_level_color(msg->level);
-            m = '^';
-        } else {
-            set_level_color(MSG_NOTE);
-            m = '-';
-        }
-        for (i = 0; i < cur0->region.len; i++) {
-            putchar(m);
-            c = msg->src->src_ptr[offset + i];
-            if (c == '\t' || !isprint(c)) {
-                putchar(m);
-                putchar(m);
-                putchar(m);
+        if (begin.line == end.line) {
+            size_t offset = msg->src->lines_ptr[begin.line - 1];
+            set_bold();
+            printf("\033[94m");
+            printf("%*.ld |  ", left_margin, begin.line);
+            reset();
+            for (i = 0; i < begin.col - 1; i++) {
+                put_sanitized(msg->src->src_ptr[offset + i]);
             }
+            offset += begin.col - 1;
+
+            has_primary = region_compare(cur0->region, msg->region) == 0;
+            set_level_color(has_primary ? msg->level : MSG_NOTE);
+            for (i = 0; i < cur0->region.len; i++) {
+                put_sanitized(msg->src->src_ptr[offset + i]);
+            }
+            offset += cur0->region.len;
+            reset();
+            for (; offset < msg->src->lines_ptr[begin.line]; offset++) {
+                put_sanitized(msg->src->src_ptr[offset]);
+            }
+            putchar('\n');
+
+            offset = msg->src->lines_ptr[begin.line - 1];
+            set_bold();
+            printf("\033[94m");
+            printf("%*.s |  ", left_margin, "");
+            reset();
+            for (i = 0; i < begin.col - 1; i++) {
+                c = msg->src->src_ptr[offset + i];
+                put_sanitized(c == '\t' ? c : ' ');
+            }
+            offset += begin.col - 1;
+
+            set_bold();
+            set_level_color(has_primary ? msg->level : MSG_NOTE);
+            m = has_primary ? '^' : '-';
+            for (i = 0; i < cur0->region.len; i++) {
+                putchar(m);
+                c = msg->src->src_ptr[offset + i];
+                if (c == '\t' || !isprint(c)) {
+                    putchar(m);
+                    putchar(m);
+                    putchar(m);
+                }
+            }
+            printf(" %s\n", cur0->msg);
+            reset();
+        } else {
+            size_t offset = msg->src->lines_ptr[begin.line - 1];
+            set_bold();
+            printf("\033[94m");
+            printf("%*.ld |  ", left_margin, begin.line);
+            reset();
+            for (i = 0; i < begin.col - 1; i++) {
+                put_sanitized(msg->src->src_ptr[offset + i]);
+            }
+            offset += i;
+
+            has_primary = region_compare(cur0->region, msg->region) == 0;
+            set_level_color(has_primary ? msg->level : MSG_NOTE);
+            for (; offset < msg->src->lines_ptr[begin.line]; offset++) {
+                put_sanitized(msg->src->src_ptr[offset]);
+            }
+            putchar('\n');
+
+            set_bold();
+            printf("\033[94m");
+            printf("%*.s | ", left_margin, "");
+            reset();
+
+            offset = msg->src->lines_ptr[begin.line - 1];
+            m = has_primary ? '^' : '-';
+            set_bold();
+            set_level_color(has_primary ? msg->level : MSG_NOTE);
+            for (i = 0; i < begin.col; i++) {
+                putchar('_');
+                c = msg->src->src_ptr[offset + i];
+                if (c == '\t' || !isprint(c)) {
+                    putchar('_');
+                    putchar('_');
+                    putchar('_');
+                }
+            }
+            putchar(m);
+            reset();
+            putchar('\n');
+
+            for (i = begin.line; i < end.line; i++) {
+                size_t line_len = msg->src->lines_ptr[i + 1] - msg->src->lines_ptr[i];
+                set_bold();
+                set_level_color(has_primary ? msg->level : MSG_NOTE);
+                printf("%*.ld | |", left_margin, i + 1);
+                reset();
+
+                set_level_color(has_primary ? msg->level : MSG_NOTE);
+                j = 0;
+                offset = msg->src->lines_ptr[i];
+                if (i == end.line - 1) {
+                    for (; j < end.col - 1; j++) {
+                        put_sanitized(msg->src->src_ptr[offset + j]);
+                    }
+                    reset();
+                }
+                for (; j < line_len; j++) {
+                    put_sanitized(msg->src->src_ptr[offset + j]);
+                }
+                reset();
+                putchar('\n');
+            }
+
+            set_bold();
+            printf("\033[94m");
+            printf("%*.s | ", left_margin, "");
+            reset();
+
+            set_bold();
+            set_level_color(has_primary ? msg->level : MSG_NOTE);
+            offset = msg->src->lines_ptr[end.line - 1];
+            for (i = 0; i < end.col - 1; i++) {
+                putchar(i == 0 ? '|' : '_');
+                c = msg->src->src_ptr[offset + i];
+                if (c == '\t' || !isprint(c)) {
+                    putchar('_');
+                    putchar('_');
+                    putchar('_');
+                }
+            }
+            putchar(m);
+            putchar(' ');
+            printf("%s", cur0->msg);
+            reset();
+            putchar('\n');
         }
-        printf(" %s\n", cur0->msg);
-        reset();
+        preloc = begin;
     }
 
     for (cur1 = msg->entries; cur1; cur1 = cur1->next) {
