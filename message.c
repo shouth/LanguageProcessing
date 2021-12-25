@@ -246,7 +246,7 @@ void msg_emit(msg_t *msg)
             size_t offset = msg->src->lines_ptr[begin.line - 1];
             set_bold();
             printf("\033[94m");
-            printf("%*.ld |  ", left_margin, begin.line);
+            printf("%*.ld |   ", left_margin, begin.line);
             reset();
             for (i = 0; i < begin.col - 1; i++) {
                 put_sanitized(msg->src->src_ptr[offset + i]);
@@ -268,7 +268,7 @@ void msg_emit(msg_t *msg)
             offset = msg->src->lines_ptr[begin.line - 1];
             set_bold();
             printf("\033[94m");
-            printf("%*.s |  ", left_margin, "");
+            printf("%*.s |   ", left_margin, "");
             reset();
             for (i = 0; i < begin.col - 1; i++) {
                 c = msg->src->src_ptr[offset + i];
@@ -294,7 +294,7 @@ void msg_emit(msg_t *msg)
             size_t offset = msg->src->lines_ptr[begin.line - 1];
             set_bold();
             printf("\033[94m");
-            printf("%*.ld |  ", left_margin, begin.line);
+            printf("%*.ld |   ", left_margin, begin.line);
             reset();
             for (i = 0; i < begin.col - 1; i++) {
                 put_sanitized(msg->src->src_ptr[offset + i]);
@@ -310,7 +310,7 @@ void msg_emit(msg_t *msg)
 
             set_bold();
             printf("\033[94m");
-            printf("%*.s | ", left_margin, "");
+            printf("%*.s | _", left_margin, "");
             reset();
 
             offset = msg->src->lines_ptr[begin.line - 1];
@@ -334,7 +334,7 @@ void msg_emit(msg_t *msg)
                 size_t line_len = msg->src->lines_ptr[i + 1] - msg->src->lines_ptr[i];
                 set_bold();
                 set_level_color(has_primary ? msg->level : MSG_NOTE);
-                printf("%*.ld | |", left_margin, i + 1);
+                printf("%*.ld | | ", left_margin, i + 1);
                 reset();
 
                 set_level_color(has_primary ? msg->level : MSG_NOTE);
@@ -361,8 +361,9 @@ void msg_emit(msg_t *msg)
             set_bold();
             set_level_color(has_primary ? msg->level : MSG_NOTE);
             offset = msg->src->lines_ptr[end.line - 1];
+            putchar('|');
             for (i = 0; i < end.col - 1; i++) {
-                putchar(i == 0 ? '|' : '_');
+                putchar('_');
                 c = msg->src->src_ptr[offset + i];
                 if (c == '\t' || !isprint(c)) {
                     putchar('_');
