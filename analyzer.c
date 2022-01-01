@@ -207,27 +207,19 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
 
     switch (expr->kind) {
     case AST_EXPR_DECL_REF: {
-        ir_item_t *lookup;
-        ir_local_t *local;
-        ast_ident_t *ident;
-
-        ident = expr->u.decl_ref_expr.decl;
-        lookup = analyzer_lookup_item(analyzer, ident);
-        local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
+        ast_ident_t *ident = expr->u.decl_ref_expr.decl;
+        ir_item_t *lookup = analyzer_lookup_item(analyzer, ident);
+        ir_local_t *local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
         return new_ir_place(local, NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
-        ir_operand_t *index;
-        ir_place_access_t *access;
-        ir_item_t *lookup;
+        ir_operand_t *index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
+        ir_place_access_t *access = new_ir_index_place_access(index);
+        ast_ident_t *ident = expr->u.array_subscript_expr.decl;
+        ir_item_t *lookup = analyzer_lookup_item(analyzer, ident);
         ir_local_t *local;
         ir_type_t operand_type;
-        ast_ident_t *ident;
 
-        index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
-        access = new_ir_index_place_access(index);
-        ident = expr->u.array_subscript_expr.decl;
-        lookup = analyzer_lookup_item(analyzer, ident);
         if (!ir_type_is_kind(lookup->type, IR_TYPE_ARRAY)) {
             const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
             msg_t *msg = new_msg(analyzer->source, ident->region,
