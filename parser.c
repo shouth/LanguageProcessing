@@ -419,7 +419,7 @@ ast_expr_t *parse_expr(parser_t *parser)
             break;
         }
         op_region = parser->current_token.region;
-        simple = parse_term(parser);
+        simple = parse_simple_expr(parser);
         ret = new_ast_binary_expr(kind, ret, simple,
             region_unite(ret->region, simple->region), op_region);
     }
