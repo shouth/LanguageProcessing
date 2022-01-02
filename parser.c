@@ -529,7 +529,7 @@ ast_stmt_t *parse_read_stmt(parser_t *parser)
     } else if (eat(parser, TOKEN_READLN)) {
         newline = 1;
     } else {
-        error_unexpected(parser);
+        maybe_error_unreachable(parser);
     }
     if (eat(parser, TOKEN_LPAREN)) {
         args = parse_ref_seq(parser);
