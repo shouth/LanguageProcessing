@@ -515,17 +515,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             break;
         }
         case AST_STMT_CALL: {
-            ir_item_t *item;
-            ir_local_t *func;
-            ast_expr_t *args;
-            ast_ident_t *ident;
-            ir_place_t *place, **place_back;
-            ir_type_instance_t *type, **type_back;
-            ir_type_t interned;
-            analyzer_scope_t *scope;
-
-            ident = stmt->u.call_stmt.name;
-            item = analyzer_lookup_item(analyzer, ident);
+            ast_ident_t *ident = stmt->u.call_stmt.name;
+            ir_item_t *item = analyzer_lookup_item(analyzer, ident);
             if (item->kind != IR_ITEM_PROCEDURE) {
                 const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
                 msg_t *msg = new_msg(analyzer->source, ident->region,
@@ -534,46 +525,48 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 exit(1);
             }
 
-            scope = analyzer->scope;
-            while (scope) {
-                if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
+            {
+                analyzer_scope_t *scope = analyzer->scope;
+                while (scope) {
+                    if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
+                        msg_t *msg = new_msg(analyzer->source, ident->region,
+                            MSG_ERROR, "recursive call of procedure is not allowed");
+                        msg_emit(msg);
+                        exit(1);
+                    }
+                    scope = scope->next;
+                }
+            }
+
+            {
+                ir_local_t *func = analyzer_create_local_for(analyzer, item, ident->region.pos);
+                ast_expr_t *args = stmt->u.call_stmt.args;
+                ir_type_instance_t *type = NULL, **type_back = &type;
+                ir_place_t *place = NULL, **place_back = &place;
+                while (args) {
+                    ir_operand_t *operand = analyze_expr(analyzer, args);
+                    if (operand->kind == IR_OPERAND_PLACE) {
+                        *place_back = operand->u.place_operand.place;
+                    } else {
+                        ir_local_t *tmp = analyzer_create_temp_local(
+                            analyzer, operand->u.constant_operand.constant->type);
+                        *place_back = new_ir_place(tmp, NULL);
+                    }
+                    operand->kind = -1;
+                    delete_ir_operand(operand);
+                    *type_back = new_ir_type_ref(ir_local_type((*place_back)->local));
+                    type_back = &(*type_back)->next;
+                    place_back = &(*place_back)->next;
+                    args = args->next;
+                }
+
+                if (ir_local_type(func) != ir_type_procedure(analyzer->type_storage, type)) {
+                    const symbol_instance_t *instance = symbol_get_instance(item->symbol);
                     msg_t *msg = new_msg(analyzer->source, ident->region,
-                        MSG_ERROR, "recursive call of procedure is not allowed");
+                        MSG_ERROR, "mismatching arguments for procedure `%.*s`", (int) instance->len, instance->ptr);
                     msg_emit(msg);
                     exit(1);
                 }
-                scope = scope->next;
-            }
-
-            func = analyzer_create_local_for(analyzer, item, ident->region.pos);
-            args = stmt->u.call_stmt.args;
-            type = NULL, type_back = &type;
-            place = NULL, place_back = &place;
-            while (args) {
-                ir_operand_t *operand = analyze_expr(analyzer, args);
-                if (operand->kind == IR_OPERAND_PLACE) {
-                    *place_back = operand->u.place_operand.place;
-                } else {
-                    ir_local_t *tmp = analyzer_create_temp_local(
-                        analyzer, operand->u.constant_operand.constant->type);
-                    *place_back = new_ir_place(tmp, NULL);
-                }
-                operand->kind = -1;
-                delete_ir_operand(operand);
-                *type_back = new_ir_type_ref(ir_local_type((*place_back)->local));
-                type_back = &(*type_back)->next;
-                place_back = &(*place_back)->next;
-                args = args->next;
-            }
-
-            interned = ir_type_procedure(analyzer->type_storage, type);
-
-            if (ir_local_type(func) != interned) {
-                const symbol_instance_t *instance = symbol_get_instance(item->symbol);
-                msg_t *msg = new_msg(analyzer->source, ident->region,
-                    MSG_ERROR, "mismatching arguments for procedure `%.*s`", (int) instance->len, instance->ptr);
-                msg_emit(msg);
-                exit(1);
             }
 
             /* [課題4] 現在のブロックに追加する */
@@ -585,9 +578,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
         }
         case AST_STMT_READ: {
             ast_expr_t *args = stmt->u.read_stmt.args;
-            ir_place_t *place, **place_back;
+            ir_place_t *place = NULL, **place_back = &place;
 
-            place = NULL, place_back = &place;
             while (args) {
                 ir_type_t type;
                 if (args->kind != AST_EXPR_DECL_REF && args->kind != AST_EXPR_ARRAY_SUBSCRIPT) {
