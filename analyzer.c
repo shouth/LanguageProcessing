@@ -16,17 +16,9 @@ struct impl_analyzer_scope {
     analyzer_scope_t *next;
 };
 
-typedef struct impl_analyzer_tails analyzer_tails_t;
-struct impl_analyzer_tails {
-    ir_block_t *tail;
-    analyzer_tails_t *next;
-};
-
 typedef struct {
     const source_t *source;
     analyzer_scope_t *scope;
-    analyzer_tails_t *tails;
-    analyzer_tails_t *breaks;
     ir_type_storage_t *type_storage;
 } analyzer_t;
 
@@ -134,40 +126,6 @@ ir_local_t *analyzer_create_temp_local(analyzer_t *analyzer, ir_type_t type)
 {
     assert(analyzer && type);
     return analyzer_append_local(analyzer, new_ir_temp_local(type));
-}
-
-analyzer_tails_t *analyzer_push_tail(analyzer_tails_t *tails, ir_block_t *block)
-{
-    analyzer_tails_t *tail;
-    assert(tails && block);
-
-    tail = new(analyzer_tails_t);
-    tail->tail = block;
-    tail->next = tails;
-    return tail;
-}
-
-void analyzer_connect_tail(analyzer_tails_t *tails, ir_block_t *block)
-{
-    analyzer_tails_t *cur;
-    assert(tails && block);
-
-    while (cur = tails) {
-        ir_termn_t *termn = cur->tail->termn;
-        switch (termn->kind) {
-        case IR_TERMN_GOTO:
-            termn->u.goto_termn.next = block;
-            break;
-        case IR_TERMN_IF:
-            assert(termn->u.if_termn.then);
-            termn->u.if_termn.els = block;
-            break;
-        case IR_TERMN_RETURN:
-            unreachable();
-        }
-        tails = cur->next;
-        free(cur);
-    }
 }
 
 ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
