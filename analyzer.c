@@ -394,13 +394,13 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ast_constant_expr_t *e
     switch (expr->lit->kind) {
     case AST_LIT_NUMBER: {
         ir_constant_t *constant = new_ir_number_constant(
-            analyzer->type_storage->std_integer,
+            ir_type_integer(analyzer->type_storage),
             expr->lit->u.number_lit.value);
         return new_ir_constant_operand(constant);
     }
     case AST_LIT_BOOLEAN: {
         ir_constant_t *constant = new_ir_boolean_constant(
-            analyzer->type_storage->std_boolean,
+            ir_type_boolean(analyzer->type_storage),
             expr->lit->u.boolean_lit.value);
         return new_ir_constant_operand(constant);
     }
@@ -408,12 +408,15 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ast_constant_expr_t *e
         const symbol_instance_t *instance;
         ir_constant_t *constant;
         if (expr->lit->u.string_lit.str_len != 1) {
-            msg_t *msg = new_msg(analyzer->source, expr->lit->region, MSG_ERROR, "string is not a valid expression");
+            msg_t *msg = new_msg(analyzer->source, expr->lit->region,
+                MSG_ERROR, "string is not a valid expression");
             msg_emit(msg);
             exit(1);
         }
         instance = symbol_get_instance(expr->lit->u.string_lit.symbol);
-        constant = new_ir_char_constant(analyzer->type_storage->std_char, instance->ptr[0]);
+        constant = new_ir_char_constant(
+            ir_type_char(analyzer->type_storage),
+            instance->ptr[0]);
         return new_ir_constant_operand(constant);
     }
     }
