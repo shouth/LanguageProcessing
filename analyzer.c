@@ -797,5 +797,5 @@ ir_t *analyze_ast(ast_t *ast)
     analyzer.blocks.head = NULL;
     analyzer.blocks.tail = &analyzer.blocks.head;
     items = analyze_program(&analyzer, ast->program);
-    return new_ir(analyzer.source, items, analyzer.blocks.head);
+    return new_ir(analyzer.source, items, analyzer.blocks.head, analyzer.type_storage);
 }

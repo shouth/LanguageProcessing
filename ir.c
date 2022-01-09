@@ -168,12 +168,18 @@ ir_type_storage_t *new_ir_type_storage()
     return ret;
 }
 
+static ir_type_storage_key_deleter(void *key)
+{
+    ir_type_instance_t *instance = (ir_type_instance_t *) key;
+    delete_ir_type_instance(instance);
+}
+
 void delete_ir_type_storage(ir_type_storage_t *storage)
 {
     if (!storage) {
         return;
     }
-    delete_hash_table(storage->table, free, NULL);
+    delete_hash_table(storage->table, ir_type_storage_key_deleter, NULL);
     free(storage);
 }
 
@@ -756,12 +762,13 @@ void ir_item_add_ref(ir_item_t *item, size_t pos)
     item->refs.tail = &item_pos->next;
 }
 
-ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks)
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_type_storage_t *types)
 {
     ir_t *ret = new(ir_t);
     ret->source = source;
     ret->items = items;
     ret->blocks = blocks;
+    ret->types = types;
     return ret;
 }
 
@@ -772,5 +779,6 @@ void delete_ir(ir_t *ir)
     }
     delete_ir_item(ir->items);
     delete_ir_block(ir->blocks);
+    delete_ir_type_storage(ir->types);
     free(ir);
 }

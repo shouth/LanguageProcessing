@@ -331,9 +331,10 @@ typedef struct {
     const source_t *source;
     ir_item_t *items;
     ir_block_t *blocks;
+    ir_type_storage_t *types;
 } ir_t;
 
-ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks);
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_type_storage_t *types);
 void delete_ir(ir_t *ir);
 
 #endif
