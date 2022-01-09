@@ -20,6 +20,10 @@ typedef struct {
     const source_t *source;
     analyzer_scope_t *scope;
     ir_type_storage_t *type_storage;
+    struct {
+        ir_block_t *head;
+        ir_block_t **tail;
+    } blocks;
 } analyzer_t;
 
 void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
@@ -128,6 +132,16 @@ ir_local_t *analyzer_create_temp_local(analyzer_t *analyzer, ir_type_t type)
     return analyzer_append_local(analyzer, new_ir_temp_local(type));
 }
 
+ir_block_t *analyzer_create_block(analyzer_t *analyzer)
+{
+    ir_block_t *ret;
+    assert(analyzer);
+    ret = new_ir_block(NULL, NULL);
+    *analyzer->blocks.tail = ret;
+    analyzer->blocks.tail = &ret->next;
+    return ret;
+}
+
 ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
 {
     assert(analyzer && type);
@@ -156,9 +170,9 @@ ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
     unreachable();
 }
 
-ir_operand_t *analyze_expr(analyzer_t *analyzer, ast_expr_t *expr);
+ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *expr);
 
-ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
+ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *expr)
 {
     assert(analyzer && expr);
     assert(expr->kind == AST_EXPR_DECL_REF || expr->kind == AST_EXPR_ARRAY_SUBSCRIPT);
@@ -171,7 +185,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ast_expr_t *expr)
         return new_ir_place(local, NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
-        ir_operand_t *index = analyze_expr(analyzer, expr->u.array_subscript_expr.expr);
+        ir_operand_t *index = analyze_expr(analyzer, block, expr->u.array_subscript_expr.expr);
         ir_place_access_t *access = new_ir_index_place_access(index);
         ast_ident_t *ident = expr->u.array_subscript_expr.decl;
         ir_item_t *lookup = analyzer_lookup_item(analyzer, ident);
@@ -215,7 +229,7 @@ void error_invalid_binary_expr(
     msg_emit(msg);
 }
 
-ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
+ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_binary_expr_t *expr)
 {
     ir_operand_t *lhs, *rhs;
     ir_type_t ltype, rtype;
@@ -224,7 +238,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
     ir_type_t type;
     assert(analyzer && expr);
 
-    rhs = analyze_expr(analyzer, expr->rhs);
+    rhs = analyze_expr(analyzer, block, expr->rhs);
     rtype = ir_operand_type(rhs);
 
     if (expr->lhs->kind == AST_EXPR_EMPTY) {
@@ -236,8 +250,9 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
         }
 
         type = ir_type_integer(analyzer->type_storage);
+        lhs = new_ir_constant_operand(new_ir_number_constant(ir_type_integer(analyzer->type_storage), 0));
     } else {
-        lhs = analyze_expr(analyzer, expr->lhs);
+        lhs = analyze_expr(analyzer, block, expr->lhs);
         ltype = ir_operand_type(lhs);
 
         switch (expr->kind) {
@@ -276,11 +291,11 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ast_binary_expr_t *expr)
 
     result = analyzer_create_temp_local(analyzer, type);
     place = new_ir_place(result, NULL);
-    /* [課題4] 現在のブロックに追加する */
+    ir_block_push(block, new_ir_assign_stmt(place, new_ir_binary_op_rvalue(expr->kind, lhs, rhs)));
     return new_ir_place_operand(place);
 }
 
-ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
+ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_unary_expr_t *expr)
 {
     ir_operand_t *operand;
     ir_type_t operand_type;
@@ -289,7 +304,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
     ir_type_t type;
     assert(analyzer && expr);
 
-    operand = analyze_expr(analyzer, expr->expr);
+    operand = analyze_expr(analyzer, block, expr->expr);
     operand_type = ir_operand_type(operand);
 
     switch (expr->kind) {
@@ -308,11 +323,11 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ast_unary_expr_t *expr)
 
     result = analyzer_create_temp_local(analyzer, type);
     place = new_ir_place(result, NULL);
-    /* [課題4] 現在のブロックに追加する */
+    ir_block_push(block, new_ir_assign_stmt(place, new_ir_unary_op_rvalue(expr->kind, operand)));
     return new_ir_place_operand(place);
 }
 
-ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
+ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cast_expr_t *expr)
 {
     ir_operand_t *operand;
     ir_type_t operand_type;
@@ -320,7 +335,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
     ir_local_t *result;
     ir_place_t *place;
 
-    operand = analyze_expr(analyzer, expr->expr);
+    operand = analyze_expr(analyzer, block, expr->expr);
     operand_type = ir_operand_type(operand);
     cast_type = analyze_type(analyzer, expr->type);
 
@@ -340,12 +355,12 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ast_cast_expr_t *expr)
     }
 
     result = analyzer_create_temp_local(analyzer, cast_type);
-    /* [課題4] 現在のブロックに追加する */
     place = new_ir_place(result, NULL);
+    ir_block_push(block, new_ir_assign_stmt(place, new_ir_cast_rvalue(cast_type, operand)));
     return new_ir_place_operand(place);
 }
 
-ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ast_constant_expr_t *expr)
+ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast_constant_expr_t *expr)
 {
     assert(analyzer && expr);
 
@@ -382,42 +397,41 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ast_constant_expr_t *e
     unreachable();
 }
 
-ir_operand_t *analyze_expr(analyzer_t *analyzer, ast_expr_t *expr)
+ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *expr)
 {
     assert(analyzer && expr);
 
     switch (expr->kind) {
     case AST_EXPR_DECL_REF:
     case AST_EXPR_ARRAY_SUBSCRIPT: {
-        ir_place_t *place = analyze_lvalue(analyzer, expr);
+        ir_place_t *place = analyze_lvalue(analyzer, block, expr);
         return new_ir_place_operand(place);
     }
     case AST_EXPR_BINARY_OP:
-        return analyze_binary_expr(analyzer, &expr->u.binary_expr);
+        return analyze_binary_expr(analyzer, block, &expr->u.binary_expr);
     case AST_EXPR_UNARY_OP:
-        return analyze_unary_expr(analyzer, &expr->u.unary_expr);
+        return analyze_unary_expr(analyzer, block, &expr->u.unary_expr);
     case AST_EXPR_PAREN:
-        return analyze_expr(analyzer, expr->u.paren_expr.expr);
+        return analyze_expr(analyzer, block, expr->u.paren_expr.expr);
     case AST_EXPR_CAST:
-        return analyze_cast_expr(analyzer, &expr->u.cast_expr);
+        return analyze_cast_expr(analyzer, block, &expr->u.cast_expr);
     case AST_EXPR_CONSTANT:
-        return analyze_constant_expr(analyzer, &expr->u.constant_expr);
+        return analyze_constant_expr(analyzer, block, &expr->u.constant_expr);
     }
 
     unreachable();
 }
 
-ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
+ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *stmt)
 {
-    ir_block_t *ret;
     assert(analyzer && stmt);
 
     while (stmt) {
         switch (stmt->kind) {
         case AST_STMT_ASSIGN: {
             ast_assign_stmt_t *assign_stmt = &stmt->u.assign_stmt;
-            ir_place_t *lhs = analyze_lvalue(analyzer, assign_stmt->lhs);
-            ir_operand_t *rhs_operand = analyze_expr(analyzer, assign_stmt->rhs);
+            ir_place_t *lhs = analyze_lvalue(analyzer, block, assign_stmt->lhs);
+            ir_operand_t *rhs_operand = analyze_expr(analyzer, block, assign_stmt->rhs);
             ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
             ir_type_t ltype = ir_place_type(lhs);
             ir_type_t rtype = ir_operand_type(rhs_operand);
@@ -433,15 +447,14 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 exit(1);
             }
 
-            /* [課題4] 現在のブロックに追加する */
+            ir_block_push(block, new_ir_assign_stmt(lhs, rhs));
             break;
         }
-        case AST_STMT_IF: {
+        case AST_STMT_IF:
+        {
             ast_if_stmt_t *if_stmt = &stmt->u.if_stmt;
-            ir_operand_t *cond = analyze_expr(analyzer, stmt->u.if_stmt.cond);
+            ir_operand_t *cond = analyze_expr(analyzer, block, stmt->u.if_stmt.cond);
             ir_type_t type = ir_operand_type(cond);
-            ir_block_t *then = analyze_stmt(analyzer, stmt->u.if_stmt.then_stmt);
-            ir_block_t *els = stmt->u.if_stmt.else_stmt ? analyze_stmt(analyzer, stmt->u.if_stmt.else_stmt) : NULL;
 
             if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
                 msg_t *msg = new_msg(analyzer->source, if_stmt->cond->region,
@@ -451,14 +464,31 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 exit(1);
             }
 
-            /* [課題4] 現在のブロックをifで終端し分岐する */
+            {
+                ir_block_t *then_begin = analyzer_create_block(analyzer);
+                ir_block_t *then_end = analyze_stmt(analyzer, then_begin, stmt->u.if_stmt.then_stmt);
+                ir_block_t *join_block = analyzer_create_block(analyzer);
+
+                if (stmt->u.if_stmt.else_stmt) {
+                    ir_block_t *else_begin = analyzer_create_block(analyzer);
+                    ir_block_t *else_end = analyze_stmt(analyzer, else_begin, stmt->u.if_stmt.else_stmt);
+                    ir_block_terminate(block, new_ir_if_termn(cond, then_begin, else_begin));
+                    ir_block_terminate(then_end, new_ir_goto_termn(join_block));
+                    ir_block_terminate(else_end, new_ir_goto_termn(join_block));
+                } else {
+                    ir_block_terminate(block, new_ir_if_termn(cond, then_begin, join_block));
+                    ir_block_terminate(then_end, new_ir_goto_termn(join_block));
+                }
+
+                block = join_block;
+            }
             break;
         }
         case AST_STMT_WHILE: {
+            ir_block_t *cond_block = analyzer_create_block(analyzer);
             ast_while_stmt_t *while_stmt = &stmt->u.while_stmt;
-            ir_operand_t *cond = analyze_expr(analyzer, while_stmt->cond);
+            ir_operand_t *cond = analyze_expr(analyzer, cond_block, while_stmt->cond);
             ir_type_t type = ir_operand_type(cond);
-            ir_block_t *block = analyze_stmt(analyzer, while_stmt->do_stmt);
 
             if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
                 msg_t *msg = new_msg(analyzer->source, while_stmt->cond->region,
@@ -468,7 +498,14 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 exit(1);
             }
 
-            /* [課題4] 別のブロックに区切りループする */
+            {
+                ir_block_t *do_begin = analyzer_create_block(analyzer);
+                ir_block_t *do_end = analyze_stmt(analyzer, do_begin, while_stmt->do_stmt);
+                ir_block_terminate(block, new_ir_goto_termn(cond_block));
+                block = analyzer_create_block(analyzer);
+                ir_block_terminate(cond_block, new_ir_if_termn(cond, do_begin, block));
+                ir_block_terminate(do_end, new_ir_goto_termn(cond_block));
+            }
             break;
         }
         case AST_STMT_BREAK: {
@@ -505,7 +542,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                 ir_type_instance_t *type = NULL, **type_back = &type;
                 ir_place_t *place = NULL, **place_back = &place;
                 while (args) {
-                    ir_operand_t *operand = analyze_expr(analyzer, args);
+                    ir_operand_t *operand = analyze_expr(analyzer, block, args);
                     if (operand->kind == IR_OPERAND_PLACE) {
                         *place_back = operand->u.place_operand.place;
                     } else {
@@ -528,13 +565,14 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                     msg_emit(msg);
                     exit(1);
                 }
-            }
 
-            /* [課題4] 現在のブロックに追加する */
+                ir_block_push(block, new_ir_call_stmt(new_ir_place(func, NULL), place));
+            }
             break;
         }
         case AST_STMT_RETURN: {
-            /* [課題4] 現在のブロックをreturnで終端し処理を続行する */
+            ir_block_terminate(block, new_ir_return_termn());
+            block = analyzer_create_block(analyzer);
             break;
         }
         case AST_STMT_READ: {
@@ -552,7 +590,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                     exit(1);
                 }
 
-                *place_back = analyze_lvalue(analyzer, args);
+                *place_back = analyze_lvalue(analyzer, block, args);
                 type = ir_place_type(*place_back);
                 if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
                     msg_t *msg = new_msg(analyzer->source, args->region,
@@ -582,7 +620,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
                     }
                 }
 
-                operand = analyze_expr(analyzer, formats->expr);
+                operand = analyze_expr(analyzer, block, formats->expr);
                 type = ir_operand_type(operand);
                 if (!ir_type_is_std(type)) {
                     msg_t *msg = new_msg(analyzer->source, formats->expr->region,
@@ -598,8 +636,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
             break;
         }
         case AST_STMT_COMPOUND: {
-            ir_block_t *block = analyze_stmt(analyzer, stmt->u.compound_stmt.stmts);
-            /* [課題4] 現在のブロックに接続する */
+            block = analyze_stmt(analyzer, block, stmt->u.compound_stmt.stmts);
             break;
         }
         case AST_STMT_EMPTY:
@@ -608,7 +645,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ast_stmt_t *stmt)
         stmt = stmt->next;
     }
 
-    return ret;
+    return block;
 }
 
 ir_type_instance_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
@@ -693,9 +730,9 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             break;
         }
         case AST_DECL_PART_PROCEDURE: {
-            ir_block_t *inner;
             ir_item_t *inner_item;
             ir_local_t *inner_local;
+            ir_block_t *inner = analyzer_create_block(analyzer);
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
             ir_type_instance_t *param_types = analyze_param_types(analyzer, decl->params);
             ir_type_t type = ir_type_procedure(analyzer->type_storage, param_types);
@@ -708,7 +745,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 if (decl_part) {
                     analyze_variable_decl(analyzer, decl_part->u.variable_decl_part.decls, 1);
                 }
-                inner = analyze_stmt(analyzer, decl->stmt);
+                analyze_stmt(analyzer, inner, decl->stmt);
             }
             analyzer_pop_scope(analyzer);
             item->body = new_ir_body(inner, inner_item, inner_local);
@@ -729,10 +766,11 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 
     type = ir_type_program(analyzer->type_storage);
     ret = new_ir_program_item(type, program->name->symbol, program->name->region);
+    inner = analyzer_create_block(analyzer);
     analyzer_push_scope(analyzer, ret, &inner_item, &inner_local);
     {
         analyze_decl_part(analyzer, program->decl_part);
-        inner = analyze_stmt(analyzer, program->stmt);
+        analyze_stmt(analyzer, inner, program->stmt);
     }
     analyzer_pop_scope(analyzer);
     ret->body = new_ir_body(inner, inner_item, inner_local);
@@ -741,13 +779,15 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 
 ir_t *analyze_ast(ast_t *ast)
 {
-    ir_item_t *program;
+    ir_item_t *items;
     analyzer_t analyzer;
     assert(ast);
 
     analyzer.source = ast->source;
     analyzer.scope = NULL;
     analyzer.type_storage = new_ir_type_storage();
-    program = analyze_program(&analyzer, ast->program);
-    return new_ir(analyzer.source, program);
+    analyzer.blocks.head = NULL;
+    analyzer.blocks.tail = &analyzer.blocks.head;
+    items = analyze_program(&analyzer, ast->program);
+    return new_ir(analyzer.source, items, analyzer.blocks.head);
 }

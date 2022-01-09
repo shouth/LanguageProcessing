@@ -255,36 +255,40 @@ typedef struct {
 
     union {
         struct {
-            ir_block_t *next;
+            const ir_block_t *next;
         } goto_termn;
         struct {
             ir_operand_t *cond;
-            ir_block_t *then;
-            ir_block_t *els;
+            const ir_block_t *then;
+            const ir_block_t *els;
         } if_termn;
     } u;
 } ir_termn_t;
 
-ir_termn_t *new_ir_goto_termn(ir_block_t *next);
-ir_termn_t *new_ir_if_termn(ir_operand_t *cond, ir_block_t *then, ir_block_t *els);
+ir_termn_t *new_ir_goto_termn(const ir_block_t *next);
+ir_termn_t *new_ir_if_termn(ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
 ir_termn_t *new_ir_return_termn();
 void delete_ir_termn(ir_termn_t *termn);
 
 struct impl_ir_block {
+    ir_block_t *next;
     ir_stmt_t *stmt;
+    ir_stmt_t **stmt_tail;
     ir_termn_t *termn;
 };
 
-ir_block_t *new_ir_block(ir_stmt_t *stmt, ir_termn_t *termn);
+ir_block_t *new_ir_block();
+void ir_block_push(ir_block_t *block, ir_stmt_t *stmt);
+void ir_block_terminate(ir_block_t *block, ir_termn_t *termn);
 void delete_ir_block(ir_block_t *block);
 
 typedef struct {
-    ir_block_t *inner;
+    const ir_block_t *inner;
     ir_item_t *items;
     ir_local_t *locals;
 } ir_body_t;
 
-ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items, ir_local_t *locals);
+ir_body_t *new_ir_body(const ir_block_t *inner, ir_item_t *items, ir_local_t *locals);
 void delete_ir_body(ir_body_t *body);
 
 typedef struct impl_ir_item_pos ir_item_pos_t;
@@ -325,10 +329,11 @@ void ir_item_add_ref(ir_item_t *item, size_t pos);
 
 typedef struct {
     const source_t *source;
-    ir_item_t *program;
+    ir_item_t *items;
+    ir_block_t *blocks;
 } ir_t;
 
-ir_t *new_ir(const source_t *source, ir_item_t *program);
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks);
 void delete_ir(ir_t *ir);
 
 #endif

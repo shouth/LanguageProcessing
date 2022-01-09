@@ -611,14 +611,14 @@ static ir_termn_t *new_ir_termn(ir_termn_kind_t kind)
     return ret;
 }
 
-ir_termn_t *new_ir_goto_termn(ir_block_t *next)
+ir_termn_t *new_ir_goto_termn(const ir_block_t *next)
 {
     ir_termn_t *ret = new_ir_termn(IR_TERMN_GOTO);
     ret->u.goto_termn.next = next;
     return ret;
 }
 
-ir_termn_t *new_ir_if_termn(ir_operand_t *cond, ir_block_t *then, ir_block_t *els)
+ir_termn_t *new_ir_if_termn(ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els)
 {
     ir_termn_t *ret = new_ir_termn(IR_TERMN_IF);
     ret->u.if_termn.cond = cond;
@@ -640,24 +640,32 @@ void delete_ir_termn(ir_termn_t *termn)
         return;
     }
     switch (termn->kind) {
-    case IR_TERMN_GOTO:
-        delete_ir_block(termn->u.goto_termn.next);
-        break;
     case IR_TERMN_IF:
         delete_ir_operand(termn->u.if_termn.cond);
-        delete_ir_block(termn->u.if_termn.then);
-        delete_ir_block(termn->u.if_termn.els);
         break;
     }
     free(termn);
 }
 
-ir_block_t *new_ir_block(ir_stmt_t *stmt, ir_termn_t *termn)
+ir_block_t *new_ir_block()
 {
     ir_block_t *ret = new(ir_block_t);
-    ret->stmt = stmt;
-    ret->termn = termn;
+    ret->stmt = NULL;
+    ret->stmt_tail = &ret->stmt;
+    ret->termn = NULL;
+    ret->next = NULL;
     return ret;
+}
+
+void ir_block_push(ir_block_t *block, ir_stmt_t *stmt)
+{
+    *block->stmt_tail = stmt;
+    block->stmt_tail = &stmt->next;
+}
+
+void ir_block_terminate(ir_block_t *block, ir_termn_t *termn)
+{
+    block->termn = termn;
 }
 
 void delete_ir_block(ir_block_t *block)
@@ -667,10 +675,11 @@ void delete_ir_block(ir_block_t *block)
     }
     delete_ir_stmt(block->stmt);
     delete_ir_termn(block->termn);
+    delete_ir_block(block->next);
     free(block);
 }
 
-ir_body_t *new_ir_body(ir_block_t *inner, ir_item_t *items, ir_local_t *locals)
+ir_body_t *new_ir_body(const ir_block_t *inner, ir_item_t *items, ir_local_t *locals)
 {
     ir_body_t *ret = new(ir_body_t);
     ret->inner = inner;
@@ -684,7 +693,6 @@ void delete_ir_body(ir_body_t *body)
     if (!body) {
         return;
     }
-    delete_ir_block(body->inner);
     delete_ir_item(body->items);
     delete_ir_local(body->locals);
     free(body);
@@ -748,11 +756,12 @@ void ir_item_add_ref(ir_item_t *item, size_t pos)
     item->refs.tail = &item_pos->next;
 }
 
-ir_t *new_ir(const source_t *source, ir_item_t *program)
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks)
 {
     ir_t *ret = new(ir_t);
     ret->source = source;
-    ret->program = program;
+    ret->items = items;
+    ret->blocks = blocks;
     return ret;
 }
 
@@ -761,6 +770,7 @@ void delete_ir(ir_t *ir)
     if (!ir) {
         return;
     }
-    delete_ir_item(ir->program);
+    delete_ir_item(ir->items);
+    delete_ir_block(ir->blocks);
     free(ir);
 }
