@@ -89,5 +89,5 @@ void print_cross_ref(const ir_t *ir)
     cross_ref_t cross_ref;
     cross_ref.source = ir->source;
     cross_ref.ns = NULL;
-    internal_print_cross_ref(&cross_ref, ir->program);
+    internal_print_cross_ref(&cross_ref, ir->items);
 }
