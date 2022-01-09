@@ -24,6 +24,7 @@ typedef struct {
         ir_block_t *head;
         ir_block_t **tail;
     } blocks;
+    ir_block_t *break_dest;
 } analyzer_t;
 
 void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
@@ -486,6 +487,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         }
         case AST_STMT_WHILE: {
             ir_block_t *cond_block = analyzer_create_block(analyzer);
+            ir_block_t *join_block = analyzer_create_block(analyzer);
             ast_while_stmt_t *while_stmt = &stmt->u.while_stmt;
             ir_operand_t *cond = analyze_expr(analyzer, cond_block, while_stmt->cond);
             ir_type_t type = ir_operand_type(cond);
@@ -499,17 +501,23 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             }
 
             {
-                ir_block_t *do_begin = analyzer_create_block(analyzer);
-                ir_block_t *do_end = analyze_stmt(analyzer, do_begin, while_stmt->do_stmt);
-                ir_block_terminate(block, new_ir_goto_termn(cond_block));
-                block = analyzer_create_block(analyzer);
-                ir_block_terminate(cond_block, new_ir_if_termn(cond, do_begin, block));
-                ir_block_terminate(do_end, new_ir_goto_termn(cond_block));
+                ir_block_t *pre_break_dest = analyzer->break_dest;
+                analyzer->break_dest = join_block;
+                {
+                    ir_block_t *do_begin = analyzer_create_block(analyzer);
+                    ir_block_t *do_end = analyze_stmt(analyzer, do_begin, while_stmt->do_stmt);
+                    ir_block_terminate(block, new_ir_goto_termn(cond_block));
+                    ir_block_terminate(cond_block, new_ir_if_termn(cond, do_begin, join_block));
+                    ir_block_terminate(do_end, new_ir_goto_termn(cond_block));
+                }
+                analyzer->break_dest = pre_break_dest;
+                block = join_block;
             }
             break;
         }
         case AST_STMT_BREAK: {
-            /* [課題4] 現在のブロックを未終端で区切り処理を続行する */
+            ir_block_terminate(block, new_ir_goto_termn(analyzer->break_dest));
+            block = analyzer_create_block(analyzer);
             break;
         }
         case AST_STMT_CALL: {
