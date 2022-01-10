@@ -235,7 +235,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
     ir_operand_t *lhs, *rhs;
     ir_type_t ltype, rtype;
     ir_local_t *result;
-    ir_place_t *place;
+    ir_stmt_t *stmt;
     ir_type_t type;
     assert(analyzer && expr);
 
@@ -291,9 +291,9 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
     }
 
     result = analyzer_create_temp_local(analyzer, type);
-    place = new_ir_place(result, NULL);
-    ir_block_push(block, new_ir_assign_stmt(place, new_ir_binary_op_rvalue(expr->kind, lhs, rhs)));
-    return new_ir_place_operand(place);
+    stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
+    ir_block_push(block, stmt);
+    return new_ir_place_operand(new_ir_place(result, NULL));
 }
 
 ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_unary_expr_t *expr)
