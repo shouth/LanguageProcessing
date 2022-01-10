@@ -301,7 +301,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
     ir_operand_t *operand;
     ir_type_t operand_type;
     ir_local_t *result;
-    ir_place_t *place;
+    ir_stmt_t *stmt;
     ir_type_t type;
     assert(analyzer && expr);
 
@@ -323,9 +323,9 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
     }
 
     result = analyzer_create_temp_local(analyzer, type);
-    place = new_ir_place(result, NULL);
-    ir_block_push(block, new_ir_assign_stmt(place, new_ir_unary_op_rvalue(expr->kind, operand)));
-    return new_ir_place_operand(place);
+    stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_unary_op_rvalue(expr->kind, operand));
+    ir_block_push(block, stmt);
+    return new_ir_place_operand(new_ir_place(result, NULL));
 }
 
 ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cast_expr_t *expr)
@@ -334,7 +334,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     ir_type_t operand_type;
     ir_type_t cast_type;
     ir_local_t *result;
-    ir_place_t *place;
+    ir_stmt_t *stmt;
 
     operand = analyze_expr(analyzer, block, expr->expr);
     operand_type = ir_operand_type(operand);
@@ -356,9 +356,9 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     }
 
     result = analyzer_create_temp_local(analyzer, cast_type);
-    place = new_ir_place(result, NULL);
-    ir_block_push(block, new_ir_assign_stmt(place, new_ir_cast_rvalue(cast_type, operand)));
-    return new_ir_place_operand(place);
+    stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_cast_rvalue(cast_type, operand));
+    ir_block_push(block, stmt);
+    return new_ir_place_operand(new_ir_place(result, NULL));
 }
 
 ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast_constant_expr_t *expr)
