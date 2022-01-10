@@ -112,12 +112,12 @@ void delete_ir_place_access(ir_place_access_t *place_access);
 
 typedef struct impl_ir_place ir_place_t;
 struct impl_ir_place {
-    ir_local_t *local;
+    const ir_local_t *local;
     ir_place_access_t *place_access;
     ir_place_t *next;
 };
 
-ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access);
+ir_place_t *new_ir_place(const ir_local_t *local, ir_place_access_t *place_access);
 ir_type_t ir_place_type(ir_place_t *place);
 void delete_ir_place(ir_place_t *place);
 

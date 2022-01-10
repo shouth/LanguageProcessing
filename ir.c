@@ -359,7 +359,7 @@ void delete_ir_place_access(ir_place_access_t *place_access)
     free(place_access);
 }
 
-ir_place_t *new_ir_place(ir_local_t *local, ir_place_access_t *place_access)
+ir_place_t *new_ir_place(const ir_local_t *local, ir_place_access_t *place_access)
 {
     ir_place_t *ret = new(ir_place_t);
     ret->local = local;
@@ -400,7 +400,6 @@ void delete_ir_place(ir_place_t *place)
     if (!place) {
         return;
     }
-    delete_ir_local(place->local);
     delete_ir_place_access(place->place_access);
     delete_ir_place(place->next);
     free(place);
