@@ -168,7 +168,7 @@ ir_type_storage_t *new_ir_type_storage()
     return ret;
 }
 
-static ir_type_storage_key_deleter(void *key)
+static void ir_type_storage_key_deleter(void *key)
 {
     ir_type_instance_t *instance = (ir_type_instance_t *) key;
     delete_ir_type_instance(instance);
