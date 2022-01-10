@@ -237,11 +237,20 @@ struct impl_ir_stmt {
             ir_place_t *func;
             ir_place_t *args;
         } call_stmt;
+        struct {
+            ir_place_t *ref;
+        } read_stmt;
+        struct {
+            ir_operand_t *value;
+            size_t len;
+        } write_stmt;
     } u;
 };
 
 ir_stmt_t *new_ir_assign_stmt(ir_place_t *lhs, ir_rvalue_t *rhs);
 ir_stmt_t *new_ir_call_stmt(ir_place_t *func, ir_place_t *args);
+ir_stmt_t *new_ir_read_stmt(ir_place_t *ref);
+ir_stmt_t *new_ir_write_stmt(ir_operand_t *value, size_t len);
 void delete_ir_stmt(ir_stmt_t *stmt);
 
 typedef enum {

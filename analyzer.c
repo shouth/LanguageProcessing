@@ -585,10 +585,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         }
         case AST_STMT_READ: {
             ast_expr_t *args = stmt->u.read_stmt.args;
-            ir_place_t *place = NULL, **place_back = &place;
 
             while (args) {
-                ir_type_t type;
                 if (args->kind != AST_EXPR_DECL_REF && args->kind != AST_EXPR_ARRAY_SUBSCRIPT) {
                     msg_t *msg = new_msg(analyzer->source, args->region,
                         MSG_ERROR, "cannot read value for expression");
@@ -598,49 +596,56 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     exit(1);
                 }
 
-                *place_back = analyze_lvalue(analyzer, block, args);
-                type = ir_place_type(*place_back);
-                if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
-                    msg_t *msg = new_msg(analyzer->source, args->region,
-                        MSG_ERROR, "cannot read value for reference of type `%s`", ir_type_str(type));
-                    msg_add_inline_entry(msg, args->region,
-                        "arguments for read statements are of reference and of type integer or char");
-                    msg_emit(msg);
-                    exit(1);
-                }
+                {
+                    ir_place_t *ref = analyze_lvalue(analyzer, block, args);
+                    ir_type_t type = ir_place_type(ref);
+                    if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
+                        msg_t *msg = new_msg(analyzer->source, args->region,
+                            MSG_ERROR, "cannot read value for reference of type `%s`", ir_type_str(type));
+                        msg_add_inline_entry(msg, args->region,
+                            "arguments for read statements are of reference and of type integer or char");
+                        msg_emit(msg);
+                        exit(1);
+                    }
 
-                place_back = &(*place_back)->next;
+                    ir_block_push(block, new_ir_read_stmt(ref));
+                }
                 args = args->next;
             }
-            /* [課題4] 現在のブロックに追加する */
             break;
         }
         case AST_STMT_WRITE: {
             ast_output_format_t *formats = stmt->u.write_stmt.formats;
 
             while (formats) {
-                ir_operand_t *operand;
-                ir_type_t type;
-                if (formats->expr->kind == AST_EXPR_CONSTANT) {
-                    if (formats->expr->u.constant_expr.lit->kind == AST_LIT_STRING) {
-                        formats = formats->next;
-                        continue;
+                ast_expr_t *expr = formats->expr;
+                ast_constant_expr_t *constant = &expr->u.constant_expr;
+                ast_string_lit_t *string = &constant->lit->u.string_lit;
+                if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len > 1) {
+                    ir_type_t char_type = ir_type_char(analyzer->type_storage);
+                    ir_type_t type = ir_type_array(analyzer->type_storage, new_ir_type_ref(char_type), string->str_len);
+                    ir_operand_t *value = new_ir_constant_operand(new_ir_string_constant(type, string->symbol));
+                    ir_block_push(block, new_ir_write_stmt(value, SIZE_MAX));
+                } else {
+                    ir_operand_t *value = analyze_expr(analyzer, block, formats->expr);
+                    ir_type_t type = ir_operand_type(value);
+                    if (!ir_type_is_std(type)) {
+                        msg_t *msg = new_msg(analyzer->source, formats->expr->region,
+                            MSG_ERROR, "cannot write value of type `%s`", ir_type_str(type));
+                        msg_add_inline_entry(msg, formats->expr->region,
+                            "arguments for write statements are of standard types");
+                        msg_emit(msg);
+                        exit(1);
                     }
-                }
 
-                operand = analyze_expr(analyzer, block, formats->expr);
-                type = ir_operand_type(operand);
-                if (!ir_type_is_std(type)) {
-                    msg_t *msg = new_msg(analyzer->source, formats->expr->region,
-                        MSG_ERROR, "cannot write value of type `%s`", ir_type_str(type));
-                    msg_add_inline_entry(msg, formats->expr->region,
-                        "arguments for write statements are of standard types");
-                    msg_emit(msg);
-                    exit(1);
+                    if (formats->len) {
+                        ir_block_push(block, new_ir_write_stmt(value, formats->len->u.number_lit.value));
+                    } else {
+                        ir_block_push(block, new_ir_write_stmt(value, SIZE_MAX));
+                    }
                 }
                 formats = formats->next;
             }
-            /* [課題4] 現在のブロックに追加する */
             break;
         }
         case AST_STMT_COMPOUND: {

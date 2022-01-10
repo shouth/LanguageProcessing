@@ -589,6 +589,21 @@ ir_stmt_t *new_ir_call_stmt(ir_place_t *func, ir_place_t *args)
     return ret;
 }
 
+ir_stmt_t *new_ir_read_stmt(ir_place_t *ref)
+{
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_READ);
+    ret->u.read_stmt.ref = ref;
+    return ret;
+}
+
+ir_stmt_t *new_ir_write_stmt(ir_operand_t *value, size_t len)
+{
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_WRITE);
+    ret->u.write_stmt.value = value;
+    ret->u.write_stmt.len = len;
+    return ret;
+}
+
 void delete_ir_stmt(ir_stmt_t *stmt)
 {
     if (!stmt) {
