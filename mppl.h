@@ -140,7 +140,8 @@ static uint64_t hash_table_default_hasher(const void *ptr)
 /* source.c */
 
 typedef struct {
-    char *filename;
+    char *input_filename;
+    char *output_filename;
     char *src_ptr;
     size_t src_size;
     size_t *lines_ptr;
@@ -306,6 +307,10 @@ ir_t *analyze_ast(ast_t *ast);
 /* cross_ref.c */
 
 void print_cross_ref(const ir_t *ir);
+
+/* codegen.c */
+
+void casl2_codegen(ir_t *ir);
 
 /* msg.c */
 

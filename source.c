@@ -81,13 +81,29 @@ static const char *nextline(const char *str)
 source_t *new_source(const char *filename)
 {
     source_t *src;
+    size_t filename_len;
     assert(filename);
 
     src = new(source_t);
+    src->input_filename = NULL;
+    src->output_filename = NULL;
+    src->lines_ptr = NULL;
+    src->src_ptr = NULL;
 
-    src->filename = new_arr(char, strlen(filename) + 1);
+    filename_len = strlen(filename);
+
+    src->input_filename = new_arr(char, filename_len + 1);
     {
-        strcpy(src->filename, filename);
+        strcpy(src->input_filename, filename);
+    }
+
+    src->output_filename = new_arr(char, filename_len + 1);
+    {
+        if (strncmp(filename + filename_len - 4, ".mpl", 4) != 0) {
+            delete_source(src);
+            return NULL;
+        }
+        sprintf(src->output_filename, "%.*s.csl", (int) (filename_len - 4), filename);
     }
 
     src->src_size = filesize(filename);
@@ -138,7 +154,8 @@ source_t *new_source(const char *filename)
 
 void delete_source(source_t *src)
 {
-    free(src->filename);
+    free(src->input_filename);
+    free(src->output_filename);
     free(src->src_ptr);
     free(src->lines_ptr);
     free(src);

@@ -221,7 +221,7 @@ void msg_emit(msg_t *msg)
         printf("\033[94m");
         printf("--> ");
         reset();
-        printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
+        printf("%s:%ld:%ld\n", msg->src->input_filename, loc.line, loc.col);
     }
 
     for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
