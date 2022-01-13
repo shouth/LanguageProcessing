@@ -451,6 +451,7 @@ void delete_ir_constant(ir_constant_t *constant)
     if (!constant) {
         return;
     }
+    delete_ir_constant(constant->next);
     free(constant);
 }
 
@@ -468,7 +469,7 @@ ir_operand_t *new_ir_place_operand(ir_place_t *place)
     return ret;
 }
 
-ir_operand_t *new_ir_constant_operand(ir_constant_t *constant)
+ir_operand_t *new_ir_constant_operand(const ir_constant_t *constant)
 {
     ir_operand_t *ret = new_ir_operand(IR_OPERAND_CONSTANT);
     ret->u.constant_operand.constant = constant;
@@ -495,9 +496,6 @@ void delete_ir_operand(ir_operand_t *operand)
     switch (operand->kind) {
     case IR_OPERAND_PLACE:
         delete_ir_place(operand->u.place_operand.place);
-        break;
-    case IR_OPERAND_CONSTANT:
-        delete_ir_constant(operand->u.constant_operand.constant);
         break;
     }
     free(operand);
@@ -776,12 +774,13 @@ void ir_item_add_ref(ir_item_t *item, size_t pos)
     item->refs.tail = &item_pos->next;
 }
 
-ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_type_storage_t *types)
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_constant_t *constants, ir_type_storage_t *types)
 {
     ir_t *ret = new(ir_t);
     ret->source = source;
     ret->items = items;
     ret->blocks = blocks;
+    ret->constants = constants;
     ret->types = types;
     return ret;
 }

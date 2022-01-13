@@ -128,9 +128,11 @@ typedef enum {
     IR_CONSTANT_STRING
 } ir_constant_kind_t;
 
-typedef struct {
+typedef struct impl_ir_constant ir_constant_t;
+struct impl_ir_constant {
     ir_constant_kind_t kind;
     ir_type_t type;
+    ir_constant_t *next;
 
     union {
         struct {
@@ -146,7 +148,7 @@ typedef struct {
             symbol_t value;
         } string_constant;
     } u;
-} ir_constant_t;
+};
 
 ir_constant_t *new_ir_number_constant(ir_type_t type, unsigned long value);
 ir_constant_t *new_ir_boolean_constant(ir_type_t type, int value);
@@ -168,13 +170,13 @@ struct impl_ir_operand {
             ir_place_t *place;
         } place_operand;
         struct {
-            ir_constant_t *constant;
+            const ir_constant_t *constant;
         } constant_operand;
     } u;
 };
 
 ir_operand_t *new_ir_place_operand(ir_place_t *place);
-ir_operand_t *new_ir_constant_operand(ir_constant_t *constant);
+ir_operand_t *new_ir_constant_operand(const ir_constant_t *constant);
 ir_type_t ir_operand_type(ir_operand_t *operand);
 void delete_ir_operand(ir_operand_t *operand);
 
@@ -340,10 +342,11 @@ typedef struct {
     const source_t *source;
     ir_item_t *items;
     ir_block_t *blocks;
+    ir_constant_t *constants;
     ir_type_storage_t *types;
 } ir_t;
 
-ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_type_storage_t *types);
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_constant_t *constants, ir_type_storage_t *types);
 void delete_ir(ir_t *ir);
 
 #endif
