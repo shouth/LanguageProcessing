@@ -64,11 +64,12 @@ typedef struct impl_ir_scope ir_scope_t;
 typedef struct {
     ir_block_t **blocks;
     ir_constant_t **constants;
+    ir_type_instance_t **types;
     ir_scope_t *scope;
-} ir_builder_t;
+} ir_factory_t;
 
-ir_builder_t *new_ir_builder(ir_block_t **blocks, ir_constant_t **constants);
-void delete_ir_builder(ir_builder_t *builder);
+ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_instance_t **types);
+void delete_ir_factory(ir_factory_t *factory);
 
 typedef struct impl_ir_item ir_item_t;
 typedef struct impl_ir_local ir_local_t;
@@ -86,8 +87,8 @@ struct impl_ir_scope {
     } locals;
 };
 
-void ir_scope_push(ir_builder_t *builder, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals);
-void ir_scope_pop(ir_builder_t *builder);
+void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals);
+void ir_scope_pop(ir_factory_t *factory);
 
 typedef enum {
     IR_LOCAL_NORMAL,
@@ -112,8 +113,8 @@ struct impl_ir_local {
     } u;
 };
 
-ir_local_t *ir_local_for(ir_builder_t *builder, ir_item_t *item, size_t pos);
-ir_local_t *ir_local_temp(ir_builder_t *builder, ir_type_t type);
+ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos);
+ir_local_t *ir_local_temp(ir_factory_t *factory, ir_type_t type);
 
 ir_type_t ir_local_type(const ir_local_t *local);
 void delete_ir_local(ir_local_t *local);

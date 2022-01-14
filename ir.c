@@ -283,30 +283,31 @@ const ir_type_instance_t *ir_type_get_instance(ir_type_t type)
     return (ir_type_instance_t *) type;
 }
 
-ir_builder_t *new_ir_builder(ir_block_t **blocks, ir_constant_t **constants)
+ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_instance_t **types)
 {
-    ir_builder_t *ret;
+    ir_factory_t *ret;
     assert(blocks && constants);
-    ret = new(ir_builder_t);
+    ret = new(ir_factory_t);
     ret->scope = NULL;
     ret->blocks = blocks;
     ret->constants = constants;
+    ret->types = types;
     return ret;
 }
 
-void delete_ir_builder(ir_builder_t *builder)
+void delete_ir_factory(ir_factory_t *factory)
 {
-    free(builder);
+    free(factory);
 }
 
-void ir_scope_push(ir_builder_t *builder, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
+void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
 {
     ir_scope_t *scope;
-    assert(builder && owner);
+    assert(factory && owner);
 
     scope = new(ir_scope_t);
-    scope->next = builder->scope;
-    builder->scope = scope;
+    scope->next = factory->scope;
+    factory->scope = scope;
     scope->owner = owner;
     scope->items.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     scope->items.tail = items;
@@ -314,13 +315,13 @@ void ir_scope_push(ir_builder_t *builder, const ir_item_t *owner, ir_item_t **it
     scope->locals.tail = locals;
 }
 
-void ir_scope_pop(ir_builder_t *builder)
+void ir_scope_pop(ir_factory_t *factory)
 {
     ir_scope_t *scope;
-    assert(builder);
+    assert(factory);
 
-    scope = builder->scope;
-    builder->scope = scope->next;
+    scope = factory->scope;
+    factory->scope = scope->next;
     delete_hash_table(scope->items.table, NULL, NULL);
     delete_hash_table(scope->locals.table, NULL, NULL);
     free(scope);
@@ -341,14 +342,14 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
     return ret;
 }
 
-ir_local_t *ir_local_for(ir_builder_t *builder, ir_item_t *item, size_t pos)
+ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos)
 {
     const hash_table_entry_t *entry;
     ir_local_t *local;
-    assert(builder && item);
+    assert(factory && item);
 
     ir_item_add_ref(item, pos);
-    if (entry = hash_table_find(builder->scope->locals.table, item)) {
+    if (entry = hash_table_find(factory->scope->locals.table, item)) {
         return entry->value;
     }
 
@@ -361,18 +362,18 @@ ir_local_t *ir_local_for(ir_builder_t *builder, ir_item_t *item, size_t pos)
         local = new_ir_local(IR_LOCAL_REF);
         local->u.ref.item = item;
     }
-    hash_table_insert_unchecked(builder->scope->locals.table, item, local);
-    return ir_scope_append_local(builder->scope, local);
+    hash_table_insert_unchecked(factory->scope->locals.table, item, local);
+    return ir_scope_append_local(factory->scope, local);
 }
 
-ir_local_t *ir_local_temp(ir_builder_t *builder, ir_type_t type)
+ir_local_t *ir_local_temp(ir_factory_t *factory, ir_type_t type)
 {
     ir_local_t *local;
-    assert(builder && type);
+    assert(factory && type);
 
     local = new_ir_local(IR_LOCAL_TEMP);
     local->u.temp.type = type;
-    return ir_scope_append_local(builder->scope, local);
+    return ir_scope_append_local(factory->scope, local);
 }
 
 ir_type_t ir_local_type(const ir_local_t *local)
