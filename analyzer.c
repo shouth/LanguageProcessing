@@ -57,16 +57,16 @@ ir_block_t *analyzer_create_block(analyzer_t *analyzer)
     ir_block_t *ret;
     assert(analyzer);
     ret = new_ir_block(NULL, NULL);
-    *analyzer->builder->block_tail = ret;
-    analyzer->builder->block_tail = &ret->next;
+    *analyzer->builder->blocks = ret;
+    analyzer->builder->blocks = &ret->next;
     return ret;
 }
 
 static ir_constant_t *analyzer_append_constant(analyzer_t *analyzer, ir_constant_t *constant)
 {
     assert(analyzer && constant);
-    *analyzer->builder->constant_tail = constant;
-    analyzer->builder->constant_tail = &constant->next;
+    *analyzer->builder->constants = constant;
+    analyzer->builder->constants = &constant->next;
     return constant;
 }
 

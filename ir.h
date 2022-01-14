@@ -62,8 +62,8 @@ typedef struct impl_ir_constant ir_constant_t;
 typedef struct impl_ir_scope ir_scope_t;
 
 typedef struct {
-    ir_block_t **block_tail;
-    ir_constant_t **constant_tail;
+    ir_block_t **blocks;
+    ir_constant_t **constants;
     ir_scope_t *scope;
 } ir_builder_t;
 

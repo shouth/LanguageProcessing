@@ -289,8 +289,8 @@ ir_builder_t *new_ir_builder(ir_block_t **blocks, ir_constant_t **constants)
     assert(blocks && constants);
     ret = new(ir_builder_t);
     ret->scope = NULL;
-    ret->block_tail = blocks;
-    ret->constant_tail = constants;
+    ret->blocks = blocks;
+    ret->constants = constants;
     return ret;
 }
 
