@@ -5,7 +5,6 @@
 typedef struct {
     const source_t *source;
     ir_factory_t *factory;
-    ir_type_storage_t *type_storage;
     ir_block_t *break_dest;
 } analyzer_t;
 
@@ -72,42 +71,42 @@ static ir_constant_t *analyzer_append_constant(analyzer_t *analyzer, ir_constant
 
 ir_constant_t *analyzer_create_number_constant(analyzer_t *analyzer, unsigned long value)
 {
-    ir_constant_t *constant = new_ir_number_constant(ir_type_integer(analyzer->type_storage), value);
+    ir_constant_t *constant = new_ir_number_constant(ir_type_integer(analyzer->factory), value);
     return analyzer_append_constant(analyzer, constant);
 }
 
 ir_constant_t *analyzer_create_boolean_constant(analyzer_t *analyzer, int value)
 {
-    ir_constant_t *constant = new_ir_boolean_constant(ir_type_boolean(analyzer->type_storage), value);
+    ir_constant_t *constant = new_ir_boolean_constant(ir_type_boolean(analyzer->factory), value);
     return analyzer_append_constant(analyzer, constant);
 }
 
 ir_constant_t *analyzer_create_char_constant(analyzer_t *analyzer, int value)
 {
-    ir_constant_t *constant = new_ir_char_constant(ir_type_char(analyzer->type_storage), value);
+    ir_constant_t *constant = new_ir_char_constant(ir_type_char(analyzer->factory), value);
     return analyzer_append_constant(analyzer, constant);
 }
 
 ir_constant_t *analyzer_create_string_constant(analyzer_t *analyzer, symbol_t value, size_t len)
 {
-    ir_type_t type = ir_type_array(analyzer->type_storage, new_ir_type_ref(ir_type_char(analyzer->type_storage)), len);
+    const ir_type_t *type = ir_type_array(analyzer->factory, new_ir_type_ref(ir_type_char(analyzer->factory)), len);
     return analyzer_append_constant(analyzer, new_ir_string_constant(type, value));
 }
 
-ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
+const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
 {
     assert(analyzer && type);
 
     switch (type->kind) {
     case AST_TYPE_BOOLEAN:
-        return ir_type_boolean(analyzer->type_storage);
+        return ir_type_boolean(analyzer->factory);
     case AST_TYPE_CHAR:
-        return ir_type_char(analyzer->type_storage);
+        return ir_type_char(analyzer->factory);
     case AST_TYPE_INTEGER:
-        return ir_type_integer(analyzer->type_storage);
+        return ir_type_integer(analyzer->factory);
     case AST_TYPE_ARRAY: {
-        ir_type_t base_type = analyze_type(analyzer, type->u.array_type.base);
-        ir_type_instance_t *base_type_ref = new_ir_type_ref(base_type);
+        const ir_type_t *base_type = analyze_type(analyzer, type->u.array_type.base);
+        ir_type_t *base_type_ref = new_ir_type_ref(base_type);
         size_t size = type->u.array_type.size->u.number_lit.value;
         if (size == 0) {
             msg_t *msg = new_msg(analyzer->source, type->u.array_type.size->region,
@@ -115,7 +114,7 @@ ir_type_t analyze_type(analyzer_t *analyzer, ast_type_t *type)
             msg_emit(msg);
             exit(1);
         }
-        return ir_type_array(analyzer->type_storage, base_type_ref, size);
+        return ir_type_array(analyzer->factory, base_type_ref, size);
     }
     }
 
@@ -142,7 +141,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
         ast_ident_t *ident = expr->u.array_subscript_expr.decl;
         ir_item_t *lookup = analyzer_lookup_item(analyzer, ident);
         ir_local_t *local;
-        ir_type_t operand_type;
+        const ir_type_t *operand_type;
 
         if (!ir_type_is_kind(lookup->type, IR_TYPE_ARRAY)) {
             const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
@@ -168,7 +167,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
 
 void error_invalid_binary_expr(
     analyzer_t *analyzer, ast_binary_expr_t *expr,
-    ir_type_t lhs_type, ir_type_t rhs_type, const char *expected)
+    const ir_type_t *lhs_type, const ir_type_t *rhs_type, const char *expected)
 {
     msg_t *msg;
     assert(analyzer && expr);
@@ -184,10 +183,10 @@ void error_invalid_binary_expr(
 ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_binary_expr_t *expr)
 {
     ir_operand_t *lhs, *rhs;
-    ir_type_t ltype, rtype;
+    const ir_type_t *ltype, *rtype;
     ir_local_t *result;
     ir_stmt_t *stmt;
-    ir_type_t type;
+    const ir_type_t *type;
     assert(analyzer && expr);
 
     rhs = analyze_expr(analyzer, block, expr->rhs);
@@ -201,7 +200,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
             exit(1);
         }
 
-        type = ir_type_integer(analyzer->type_storage);
+        type = ir_type_integer(analyzer->factory);
         lhs = new_ir_constant_operand(analyzer_create_number_constant(analyzer, 0));
     } else {
         lhs = analyze_expr(analyzer, block, expr->lhs);
@@ -218,7 +217,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "the same standard type");
                 exit(1);
             }
-            type = ir_type_boolean(analyzer->type_storage);
+            type = ir_type_boolean(analyzer->factory);
             break;
         case AST_BINARY_OP_PLUS:
         case AST_BINARY_OP_MINUS:
@@ -228,7 +227,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type integer");
                 exit(1);
             }
-            type = ir_type_integer(analyzer->type_storage);
+            type = ir_type_integer(analyzer->factory);
             break;
         case AST_BINARY_OP_OR:
         case AST_BINARY_OP_AND:
@@ -236,7 +235,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type boolean");
                 exit(1);
             }
-            type = ir_type_boolean(analyzer->type_storage);
+            type = ir_type_boolean(analyzer->factory);
             break;
         }
     }
@@ -250,10 +249,10 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
 ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_unary_expr_t *expr)
 {
     ir_operand_t *operand;
-    ir_type_t operand_type;
+    const ir_type_t *operand_type;
     ir_local_t *result;
     ir_stmt_t *stmt;
-    ir_type_t type;
+    const ir_type_t *type;
     assert(analyzer && expr);
 
     operand = analyze_expr(analyzer, block, expr->expr);
@@ -269,7 +268,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
             msg_emit(msg);
             exit(1);
         }
-        type = ir_type_boolean(analyzer->type_storage);
+        type = ir_type_boolean(analyzer->factory);
         break;
     }
 
@@ -282,8 +281,8 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
 ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cast_expr_t *expr)
 {
     ir_operand_t *operand;
-    ir_type_t operand_type;
-    ir_type_t cast_type;
+    const ir_type_t *operand_type;
+    const ir_type_t *cast_type;
     ir_local_t *result;
     ir_stmt_t *stmt;
 
@@ -379,8 +378,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             ir_place_t *lhs = analyze_lvalue(analyzer, block, assign_stmt->lhs);
             ir_operand_t *rhs_operand = analyze_expr(analyzer, block, assign_stmt->rhs);
             ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
-            ir_type_t ltype = ir_place_type(lhs);
-            ir_type_t rtype = ir_operand_type(rhs_operand);
+            const ir_type_t *ltype = ir_place_type(lhs);
+            const ir_type_t *rtype = ir_operand_type(rhs_operand);
 
             if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
                 msg_t *msg = new_msg(analyzer->source, stmt->u.assign_stmt.op_region,
@@ -400,7 +399,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         {
             ast_if_stmt_t *if_stmt = &stmt->u.if_stmt;
             ir_operand_t *cond = analyze_expr(analyzer, block, stmt->u.if_stmt.cond);
-            ir_type_t type = ir_operand_type(cond);
+            const ir_type_t *type = ir_operand_type(cond);
 
             if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
                 msg_t *msg = new_msg(analyzer->source, if_stmt->cond->region,
@@ -435,7 +434,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             ir_block_t *join_block = analyzer_create_block(analyzer);
             ast_while_stmt_t *while_stmt = &stmt->u.while_stmt;
             ir_operand_t *cond = analyze_expr(analyzer, cond_block, while_stmt->cond);
-            ir_type_t type = ir_operand_type(cond);
+            const ir_type_t *type = ir_operand_type(cond);
 
             if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
                 msg_t *msg = new_msg(analyzer->source, while_stmt->cond->region,
@@ -492,7 +491,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             {
                 ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
                 ast_expr_t *args = stmt->u.call_stmt.args;
-                ir_type_instance_t *type = NULL, **type_back = &type;
+                ir_type_t *type = NULL, **type_back = &type;
                 ir_place_t *place = NULL, **place_back = &place;
                 while (args) {
                     ir_operand_t *operand = analyze_expr(analyzer, block, args);
@@ -510,7 +509,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     args = args->next;
                 }
 
-                if (ir_local_type(func) != ir_type_procedure(analyzer->type_storage, type)) {
+                if (ir_local_type(func) != ir_type_procedure(analyzer->factory, type)) {
                     const symbol_instance_t *instance = symbol_get_instance(item->symbol);
                     msg_t *msg = new_msg(analyzer->source, ident->region,
                         MSG_ERROR, "mismatching arguments for procedure `%.*s`", (int) instance->len, instance->ptr);
@@ -542,7 +541,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
 
                 {
                     ir_place_t *ref = analyze_lvalue(analyzer, block, args);
-                    ir_type_t type = ir_place_type(ref);
+                    const ir_type_t *type = ir_place_type(ref);
                     if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
                         msg_t *msg = new_msg(analyzer->source, args->region,
                             MSG_ERROR, "cannot read value for reference of type `%s`", ir_type_str(type));
@@ -571,7 +570,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     ir_block_push(block, new_ir_write_stmt(value, SIZE_MAX));
                 } else {
                     ir_operand_t *value = analyze_expr(analyzer, block, formats->expr);
-                    ir_type_t type = ir_operand_type(value);
+                    const ir_type_t *type = ir_operand_type(value);
                     if (!ir_type_is_std(type)) {
                         msg_t *msg = new_msg(analyzer->source, formats->expr->region,
                             MSG_ERROR, "cannot write value of type `%s`", ir_type_str(type));
@@ -604,16 +603,16 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
     return block;
 }
 
-ir_type_instance_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
+ir_type_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
 {
-    ir_type_instance_t *ret, **last;
+    ir_type_t *ret, **last;
     assert(analyzer);
 
     ret = NULL;
     last = &ret;
     while (decl) {
         ast_ident_t *ident = decl->names;
-        ir_type_t type = analyze_type(analyzer, decl->type);
+        const ir_type_t *type = analyze_type(analyzer, decl->type);
         if (!ir_type_is_std(type)) {
             msg_t *msg = new_msg(analyzer->source, decl->type->region,
                 MSG_ERROR, "invalid parameter of type `%s`", ir_type_str(type));
@@ -638,7 +637,7 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
 
     while (decl) {
         ast_ident_t *ident = decl->names;
-        ir_type_t type = analyze_type(analyzer, decl->type);
+        const ir_type_t *type = analyze_type(analyzer, decl->type);
         while (ident) {
             ir_item_t *item = local
                 ? new_ir_local_var_item(type, ident->symbol, ident->region)
@@ -656,7 +655,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
 
     while (decl) {
         ast_ident_t *ident = decl->names;
-        ir_type_t type = analyze_type(analyzer, decl->type);
+        const ir_type_t *type = analyze_type(analyzer, decl->type);
         if (!ir_type_is_std(type)) {
             msg_t *msg = new_msg(analyzer->source, decl->type->region,
                 MSG_ERROR, "invalid parameter of type `%s`", ir_type_str(type));
@@ -690,8 +689,8 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_local_t *inner_local;
             ir_block_t *inner = analyzer_create_block(analyzer);
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
-            ir_type_instance_t *param_types = analyze_param_types(analyzer, decl->params);
-            ir_type_t type = ir_type_procedure(analyzer->type_storage, param_types);
+            ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
+            const ir_type_t *type = ir_type_procedure(analyzer->factory, param_types);
             ir_item_t *item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
             analyzer_register_item(analyzer, item);
             ir_scope_push(analyzer->factory, item, &inner_item, &inner_local);
@@ -717,10 +716,10 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     ir_item_t *ret, *inner_item;
     ir_local_t *inner_local;
     ir_block_t *inner;
-    ir_type_t type;
+    const ir_type_t *type;
     assert(analyzer && program);
 
-    type = ir_type_program(analyzer->type_storage);
+    type = ir_type_program(analyzer->factory);
     ret = new_ir_program_item(type, program->name->symbol, program->name->region);
     inner = analyzer_create_block(analyzer);
     ir_scope_push(analyzer->factory, ret, &inner_item, &inner_local);
@@ -738,14 +737,13 @@ ir_t *analyze_ast(ast_t *ast)
     ir_item_t *items;
     ir_block_t *blocks;
     ir_constant_t *constants;
-    ir_type_instance_t *types;
+    ir_type_t *types;
     analyzer_t analyzer;
     assert(ast);
 
     analyzer.source = ast->source;
     analyzer.factory = new_ir_factory(&blocks, &constants, &types);
-    analyzer.type_storage = new_ir_type_storage();
     items = analyze_program(&analyzer, ast->program);
     delete_ir_factory(analyzer.factory);
-    return new_ir(analyzer.source, items, blocks, constants, analyzer.type_storage);
+    return new_ir(analyzer.source, items, blocks, constants, types);
 }

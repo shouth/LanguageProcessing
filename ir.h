@@ -3,8 +3,6 @@
 
 #include "mppl.h"
 
-typedef uintptr_t ir_type_t;
-
 typedef enum {
     IR_TYPE_PROGRAM,
     IR_TYPE_PROCEDURE,
@@ -14,48 +12,28 @@ typedef enum {
     IR_TYPE_CHAR
 } ir_type_kind_t;
 
-const char *ir_type_kind_str(ir_type_kind_t kind);
-int ir_type_is_kind(ir_type_t type, ir_type_kind_t kind);
-int ir_type_is_std(ir_type_t type);
-
-typedef struct impl_ir_type_instance ir_type_instance_t;
-struct impl_ir_type_instance {
+typedef struct impl_ir_type ir_type_t;
+struct impl_ir_type {
     ir_type_kind_t kind;
-    ir_type_instance_t *next;
+    ir_type_t *next;
 
     union {
         struct {
-            ir_type_instance_t *param_types;
+            ir_type_t *param_types;
         } procedure_type;
         struct {
-            ir_type_instance_t *base_type;
+            ir_type_t *base_type;
             size_t size;
         } array_type;
-        ir_type_t ref;
+        const ir_type_t *ref;
     } u;
 };
 
-ir_type_instance_t *new_ir_type_ref(ir_type_t type);
-const char *ir_type_str(ir_type_t type);
-
-typedef struct {
-    hash_table_t *table;
-    ir_type_t program;
-    ir_type_t std_integer;
-    ir_type_t std_char;
-    ir_type_t std_boolean;
-} ir_type_storage_t;
-
-ir_type_storage_t *new_ir_type_storage();
-void delete_ir_type_storage(ir_type_storage_t *storage);
-ir_type_t ir_type_intern(ir_type_storage_t *storage, ir_type_instance_t *instance);
-ir_type_t ir_type_program(ir_type_storage_t *storage);
-ir_type_t ir_type_procedure(ir_type_storage_t *storage, ir_type_instance_t *params);
-ir_type_t ir_type_array(ir_type_storage_t *storage, ir_type_instance_t *base, size_t size);
-ir_type_t ir_type_integer(ir_type_storage_t *storage);
-ir_type_t ir_type_char(ir_type_storage_t *storage);
-ir_type_t ir_type_boolean(ir_type_storage_t *storage);
-const ir_type_instance_t *ir_type_get_instance(ir_type_t type);
+const char *ir_type_kind_str(ir_type_kind_t kind);
+int ir_type_is_kind(const ir_type_t *type, ir_type_kind_t kind);
+int ir_type_is_std(const ir_type_t *type);
+ir_type_t *new_ir_type_ref(const ir_type_t *type);
+const char *ir_type_str(const ir_type_t *type);
 
 typedef struct impl_ir_block ir_block_t;
 typedef struct impl_ir_constant ir_constant_t;
@@ -64,11 +42,28 @@ typedef struct impl_ir_scope ir_scope_t;
 typedef struct {
     ir_block_t **blocks;
     ir_constant_t **constants;
-    ir_type_instance_t **types;
+    struct {
+        hash_table_t *table;
+        ir_type_t **tail;
+        const ir_type_t *program;
+        const ir_type_t *std_integer;
+        const ir_type_t *std_char;
+        const ir_type_t *std_boolean;
+    } types;
     ir_scope_t *scope;
 } ir_factory_t;
 
-ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_instance_t **types);
+const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *instance);
+const ir_type_t *ir_type_program(ir_factory_t *factory);
+const ir_type_t *ir_type_procedure(ir_factory_t *factory, ir_type_t *params);
+const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, size_t size);
+const ir_type_t *ir_type_integer(ir_factory_t *factory);
+const ir_type_t *ir_type_char(ir_factory_t *factory);
+const ir_type_t *ir_type_boolean(ir_factory_t *factory);
+const ir_type_t *ir_type_get_instance(const ir_type_t *type);
+
+
+ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_t **types);
 void delete_ir_factory(ir_factory_t *factory);
 
 typedef struct impl_ir_item ir_item_t;
@@ -102,7 +97,7 @@ struct impl_ir_local {
 
     union {
         struct {
-            ir_type_t type;
+            const ir_type_t *type;
         } temp;
         struct {
             const ir_item_t *item;
@@ -114,9 +109,9 @@ struct impl_ir_local {
 };
 
 ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos);
-ir_local_t *ir_local_temp(ir_factory_t *factory, ir_type_t type);
+ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type);
 
-ir_type_t ir_local_type(const ir_local_t *local);
+const ir_type_t *ir_local_type(const ir_local_t *local);
 void delete_ir_local(ir_local_t *local);
 
 typedef struct impl_ir_operand ir_operand_t;
@@ -148,7 +143,7 @@ struct impl_ir_place {
 };
 
 ir_place_t *new_ir_place(const ir_local_t *local, ir_place_access_t *place_access);
-ir_type_t ir_place_type(ir_place_t *place);
+const ir_type_t *ir_place_type(ir_place_t *place);
 void delete_ir_place(ir_place_t *place);
 
 typedef enum {
@@ -160,7 +155,7 @@ typedef enum {
 
 struct impl_ir_constant {
     ir_constant_kind_t kind;
-    ir_type_t type;
+    const ir_type_t *type;
     ir_constant_t *next;
 
     union {
@@ -179,11 +174,11 @@ struct impl_ir_constant {
     } u;
 };
 
-ir_constant_t *new_ir_number_constant(ir_type_t type, unsigned long value);
-ir_constant_t *new_ir_boolean_constant(ir_type_t type, int value);
-ir_constant_t *new_ir_char_constant(ir_type_t type, int value);
-ir_constant_t *new_ir_string_constant(ir_type_t type, symbol_t value);
-ir_type_t ir_constant_type(const ir_constant_t *constant);
+ir_constant_t *new_ir_number_constant(const ir_type_t *type, unsigned long value);
+ir_constant_t *new_ir_boolean_constant(const ir_type_t *type, int value);
+ir_constant_t *new_ir_char_constant(const ir_type_t *type, int value);
+ir_constant_t *new_ir_string_constant(const ir_type_t *type, symbol_t value);
+const ir_type_t *ir_constant_type(const ir_constant_t *constant);
 void delete_ir_constant(ir_constant_t *constant);
 
 typedef enum {
@@ -206,7 +201,7 @@ struct impl_ir_operand {
 
 ir_operand_t *new_ir_place_operand(ir_place_t *place);
 ir_operand_t *new_ir_constant_operand(const ir_constant_t *constant);
-ir_type_t ir_operand_type(ir_operand_t *operand);
+const ir_type_t *ir_operand_type(ir_operand_t *operand);
 void delete_ir_operand(ir_operand_t *operand);
 
 typedef enum {
@@ -233,7 +228,7 @@ typedef struct {
             ir_operand_t *value;
         } unary_op_rvalue;
         struct {
-            ir_type_t type;
+            const ir_type_t *type;
             ir_operand_t *value;
         } cast_rvalue;
     } u;
@@ -242,7 +237,7 @@ typedef struct {
 ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *operand);
 ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs);
 ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *value);
-ir_rvalue_t *new_ir_cast_rvalue(ir_type_t type, ir_operand_t *value);
+ir_rvalue_t *new_ir_cast_rvalue(const ir_type_t *type, ir_operand_t *value);
 void delete_ir_rvalue(ir_rvalue_t *rvalue);
 
 typedef struct impl_ir_stmt ir_stmt_t;
@@ -346,7 +341,7 @@ typedef enum {
 
 struct impl_ir_item {
     ir_item_kind_t kind;
-    ir_type_t type;
+    const ir_type_t *type;
     symbol_t symbol;
     ir_body_t *body;
     ir_item_t *next;
@@ -358,11 +353,11 @@ struct impl_ir_item {
     } refs;
 };
 
-ir_item_t *new_ir_program_item(ir_type_t type, symbol_t symbol, region_t name_region);
-ir_item_t *new_ir_procedure_item(ir_type_t type, symbol_t symbol, region_t name_region);
-ir_item_t *new_ir_var_item(ir_type_t type, symbol_t symbol, region_t name_region);
-ir_item_t *new_ir_param_var_item(ir_type_t type, symbol_t symbol, region_t name_region);
-ir_item_t *new_ir_local_var_item(ir_type_t type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_program_item(const ir_type_t *type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_procedure_item(const ir_type_t *type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_var_item(const ir_type_t *type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_param_var_item(const ir_type_t *type, symbol_t symbol, region_t name_region);
+ir_item_t *new_ir_local_var_item(const ir_type_t *type, symbol_t symbol, region_t name_region);
 void delete_ir_item(ir_item_t *item);
 void ir_item_add_ref(ir_item_t *item, size_t pos);
 
@@ -371,10 +366,10 @@ typedef struct {
     ir_item_t *items;
     ir_block_t *blocks;
     ir_constant_t *constants;
-    ir_type_storage_t *types;
+    ir_type_t *types;
 } ir_t;
 
-ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_constant_t *constants, ir_type_storage_t *types);
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_constant_t *constants, ir_type_t *types);
 void delete_ir(ir_t *ir);
 
 #endif
