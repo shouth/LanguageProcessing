@@ -57,18 +57,22 @@ ir_type_t ir_type_char(ir_type_storage_t *storage);
 ir_type_t ir_type_boolean(ir_type_storage_t *storage);
 const ir_type_instance_t *ir_type_get_instance(ir_type_t type);
 
-typedef struct impl_ir_item ir_item_t;
-
-typedef enum {
-    IR_LOCAL_NORMAL,
-    IR_LOCAL_TEMP,
-    IR_LOCAL_REF
-} ir_local_kind_t;
-
-typedef struct impl_ir_local ir_local_t;
+typedef struct impl_ir_block ir_block_t;
 typedef struct impl_ir_constant ir_constant_t;
-
 typedef struct impl_ir_scope ir_scope_t;
+
+typedef struct {
+    ir_block_t **block_tail;
+    ir_constant_t **constant_tail;
+    ir_scope_t *scope;
+} ir_builder_t;
+
+ir_builder_t *new_ir_builder(ir_block_t **blocks, ir_constant_t **constants);
+void delete_ir_builder(ir_builder_t *builder);
+
+typedef struct impl_ir_item ir_item_t;
+typedef struct impl_ir_local ir_local_t;
+
 struct impl_ir_scope {
     ir_scope_t *next;
     const ir_item_t *owner;
@@ -82,8 +86,14 @@ struct impl_ir_scope {
     } locals;
 };
 
-void ir_scope_push(ir_scope_t **stack, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals);
-void ir_scope_pop(ir_scope_t **stack);
+void ir_scope_push(ir_builder_t *builder, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals);
+void ir_scope_pop(ir_builder_t *builder);
+
+typedef enum {
+    IR_LOCAL_NORMAL,
+    IR_LOCAL_TEMP,
+    IR_LOCAL_REF
+} ir_local_kind_t;
 
 struct impl_ir_local {
     ir_local_kind_t kind;
@@ -102,8 +112,8 @@ struct impl_ir_local {
     } u;
 };
 
-ir_local_t *ir_local_for(ir_scope_t *scope, ir_item_t *item, size_t pos);
-ir_local_t *ir_local_temp(ir_scope_t *scope, ir_type_t type);
+ir_local_t *ir_local_for(ir_builder_t *builder, ir_item_t *item, size_t pos);
+ir_local_t *ir_local_temp(ir_builder_t *builder, ir_type_t type);
 
 ir_type_t ir_local_type(const ir_local_t *local);
 void delete_ir_local(ir_local_t *local);
@@ -235,7 +245,6 @@ ir_rvalue_t *new_ir_cast_rvalue(ir_type_t type, ir_operand_t *value);
 void delete_ir_rvalue(ir_rvalue_t *rvalue);
 
 typedef struct impl_ir_stmt ir_stmt_t;
-typedef struct impl_ir_block ir_block_t;
 
 typedef enum {
     IR_STMT_ASSIGN,

@@ -4,16 +4,8 @@
 
 typedef struct {
     const source_t *source;
-    ir_scope_t *scope;
+    ir_builder_t *builder;
     ir_type_storage_t *type_storage;
-    struct {
-        ir_block_t *head;
-        ir_block_t **tail;
-    } blocks;
-    struct {
-        ir_constant_t *head;
-        ir_constant_t **tail;
-    } constants;
     ir_block_t *break_dest;
 } analyzer_t;
 
@@ -23,7 +15,7 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
     ir_scope_t *scope;
     assert(analyzer && item);
 
-    scope = analyzer->scope;
+    scope = analyzer->builder->scope;
     if (entry = hash_table_find(scope->items.table, (void *) item->symbol)) {
         msg_t *msg = new_msg(analyzer->source, item->name_region, MSG_ERROR, "conflicting names");
         ir_item_t *registered = (ir_item_t *) entry->value;
@@ -42,7 +34,7 @@ ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
     ir_scope_t *scope;
     assert(analyzer && ident);
 
-    scope = analyzer->scope;
+    scope = analyzer->builder->scope;
     while (scope) {
         const hash_table_entry_t *entry;
         if (entry = hash_table_find(scope->items.table, (void *) ident->symbol)) {
@@ -65,16 +57,16 @@ ir_block_t *analyzer_create_block(analyzer_t *analyzer)
     ir_block_t *ret;
     assert(analyzer);
     ret = new_ir_block(NULL, NULL);
-    *analyzer->blocks.tail = ret;
-    analyzer->blocks.tail = &ret->next;
+    *analyzer->builder->block_tail = ret;
+    analyzer->builder->block_tail = &ret->next;
     return ret;
 }
 
 static ir_constant_t *analyzer_append_constant(analyzer_t *analyzer, ir_constant_t *constant)
 {
     assert(analyzer && constant);
-    *analyzer->constants.tail = constant;
-    analyzer->constants.tail = &constant->next;
+    *analyzer->builder->constant_tail = constant;
+    analyzer->builder->constant_tail = &constant->next;
     return constant;
 }
 
@@ -141,7 +133,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
     case AST_EXPR_DECL_REF: {
         ast_ident_t *ident = expr->u.decl_ref_expr.decl;
         ir_item_t *lookup = analyzer_lookup_item(analyzer, ident);
-        ir_local_t *local = ir_local_for(analyzer->scope, lookup, ident->region.pos);
+        ir_local_t *local = ir_local_for(analyzer->builder, lookup, ident->region.pos);
         return new_ir_place(local, NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
@@ -168,7 +160,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
             msg_emit(msg);
             exit(1);
         }
-        local = ir_local_for(analyzer->scope, lookup, ident->region.pos);
+        local = ir_local_for(analyzer->builder, lookup, ident->region.pos);
         return new_ir_place(local, access);
     }
     }
@@ -249,7 +241,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
         }
     }
 
-    result = ir_local_temp(analyzer->scope, type);
+    result = ir_local_temp(analyzer->builder, type);
     stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
     ir_block_push(block, stmt);
     return new_ir_place_operand(new_ir_place(result, NULL));
@@ -281,7 +273,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
         break;
     }
 
-    result = ir_local_temp(analyzer->scope, type);
+    result = ir_local_temp(analyzer->builder, type);
     stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_unary_op_rvalue(expr->kind, operand));
     ir_block_push(block, stmt);
     return new_ir_place_operand(new_ir_place(result, NULL));
@@ -314,7 +306,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
         exit(1);
     }
 
-    result = ir_local_temp(analyzer->scope, cast_type);
+    result = ir_local_temp(analyzer->builder, cast_type);
     stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_cast_rvalue(cast_type, operand));
     ir_block_push(block, stmt);
     return new_ir_place_operand(new_ir_place(result, NULL));
@@ -485,7 +477,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             }
 
             {
-                ir_scope_t *scope = analyzer->scope;
+                ir_scope_t *scope = analyzer->builder->scope;
                 while (scope) {
                     if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
                         msg_t *msg = new_msg(analyzer->source, ident->region,
@@ -498,7 +490,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             }
 
             {
-                ir_local_t *func = ir_local_for(analyzer->scope, item, ident->region.pos);
+                ir_local_t *func = ir_local_for(analyzer->builder, item, ident->region.pos);
                 ast_expr_t *args = stmt->u.call_stmt.args;
                 ir_type_instance_t *type = NULL, **type_back = &type;
                 ir_place_t *place = NULL, **place_back = &place;
@@ -507,7 +499,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     if (operand->kind == IR_OPERAND_PLACE) {
                         *place_back = operand->u.place_operand.place;
                     } else {
-                        ir_local_t *tmp = ir_local_temp(analyzer->scope, operand->u.constant_operand.constant->type);
+                        ir_local_t *tmp = ir_local_temp(analyzer->builder, operand->u.constant_operand.constant->type);
                         *place_back = new_ir_place(tmp, NULL);
                     }
                     operand->kind = -1;
@@ -702,7 +694,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_type_t type = ir_type_procedure(analyzer->type_storage, param_types);
             ir_item_t *item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
             analyzer_register_item(analyzer, item);
-            ir_scope_push(&analyzer->scope, item, &inner_item, &inner_local);
+            ir_scope_push(analyzer->builder, item, &inner_item, &inner_local);
             {
                 ast_decl_part_t *decl_part = decl->variables;
                 analyze_param_decl(analyzer, decl->params);
@@ -711,7 +703,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 }
                 analyze_stmt(analyzer, inner, decl->stmt);
             }
-            ir_scope_pop(&analyzer->scope);
+            ir_scope_pop(analyzer->builder);
             item->body = new_ir_body(inner, inner_item, inner_local);
             break;
         }
@@ -731,12 +723,12 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     type = ir_type_program(analyzer->type_storage);
     ret = new_ir_program_item(type, program->name->symbol, program->name->region);
     inner = analyzer_create_block(analyzer);
-    ir_scope_push(&analyzer->scope, ret, &inner_item, &inner_local);
+    ir_scope_push(analyzer->builder, ret, &inner_item, &inner_local);
     {
         analyze_decl_part(analyzer, program->decl_part);
         analyze_stmt(analyzer, inner, program->stmt);
     }
-    ir_scope_pop(&analyzer->scope);
+    ir_scope_pop(analyzer->builder);
     ret->body = new_ir_body(inner, inner_item, inner_local);
     return ret;
 }
@@ -744,16 +736,15 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 ir_t *analyze_ast(ast_t *ast)
 {
     ir_item_t *items;
+    ir_block_t *blocks;
+    ir_constant_t *constants;
     analyzer_t analyzer;
     assert(ast);
 
     analyzer.source = ast->source;
-    analyzer.scope = NULL;
+    analyzer.builder = new_ir_builder(&blocks, &constants);
     analyzer.type_storage = new_ir_type_storage();
-    analyzer.blocks.head = NULL;
-    analyzer.blocks.tail = &analyzer.blocks.head;
-    analyzer.constants.head = NULL;
-    analyzer.constants.tail = &analyzer.constants.head;
     items = analyze_program(&analyzer, ast->program);
-    return new_ir(analyzer.source, items, analyzer.blocks.head, analyzer.constants.head, analyzer.type_storage);
+    delete_ir_builder(analyzer.builder);
+    return new_ir(analyzer.source, items, blocks, constants, analyzer.type_storage);
 }
