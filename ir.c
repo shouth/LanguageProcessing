@@ -224,7 +224,7 @@ const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
     }
     if (entry = hash_table_find(factory->types.table, type)) {
         delete_ir_type(type);
-        return (const ir_type_t *) entry->value;
+        return entry->value;
     }
     hash_table_insert_unchecked(factory->types.table, type, type);
     *factory->types.tail = type;
