@@ -66,6 +66,25 @@ typedef enum {
 } ir_local_kind_t;
 
 typedef struct impl_ir_local ir_local_t;
+typedef struct impl_ir_constant ir_constant_t;
+
+typedef struct impl_ir_scope ir_scope_t;
+struct impl_ir_scope {
+    ir_scope_t *next;
+    const ir_item_t *owner;
+    struct {
+        hash_table_t *table;
+        ir_item_t **tail;
+    } items;
+    struct {
+        hash_table_t *table;
+        ir_local_t **tail;
+    } locals;
+};
+
+void ir_scope_push(ir_scope_t **stack, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals);
+void ir_scope_pop(ir_scope_t **stack);
+
 struct impl_ir_local {
     ir_local_kind_t kind;
     ir_local_t *next;
@@ -83,9 +102,9 @@ struct impl_ir_local {
     } u;
 };
 
-ir_local_t *new_ir_normal_local(const ir_item_t *item);
-ir_local_t *new_ir_temp_local(ir_type_t type);
-ir_local_t *new_ir_ref_local(const ir_item_t *item);
+ir_local_t *ir_local_for(ir_scope_t *scope, ir_item_t *item, size_t pos);
+ir_local_t *ir_local_temp(ir_scope_t *scope, ir_type_t type);
+
 ir_type_t ir_local_type(const ir_local_t *local);
 void delete_ir_local(ir_local_t *local);
 
@@ -128,7 +147,6 @@ typedef enum {
     IR_CONSTANT_STRING
 } ir_constant_kind_t;
 
-typedef struct impl_ir_constant ir_constant_t;
 struct impl_ir_constant {
     ir_constant_kind_t kind;
     ir_type_t type;

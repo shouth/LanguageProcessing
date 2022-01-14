@@ -283,6 +283,40 @@ const ir_type_instance_t *ir_type_get_instance(ir_type_t type)
     return (ir_type_instance_t *) type;
 }
 
+void ir_scope_push(ir_scope_t **stack, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
+{
+    ir_scope_t *scope;
+    assert(stack && owner);
+
+    scope = new(ir_scope_t);
+    scope->next = *stack;
+    *stack = scope;
+    scope->owner = owner;
+    scope->items.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+    scope->items.tail = items;
+    scope->locals.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+    scope->locals.tail = locals;
+}
+
+void ir_scope_pop(ir_scope_t **stack)
+{
+    ir_scope_t *scope;
+    assert(stack);
+
+    scope = *stack;
+    *stack = scope->next;
+    delete_hash_table(scope->items.table, NULL, NULL);
+    delete_hash_table(scope->locals.table, NULL, NULL);
+    free(scope);
+}
+
+static ir_local_t *ir_scope_append_local(ir_scope_t *scope, ir_local_t *local)
+{
+    *scope->locals.tail = local;
+    scope->locals.tail = &local->next;
+    return local;
+}
+
 static ir_local_t *new_ir_local(ir_local_kind_t kind)
 {
     ir_local_t *ret = new(ir_local_t);
@@ -291,25 +325,38 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
     return ret;
 }
 
-ir_local_t *new_ir_normal_local(const ir_item_t *item)
+ir_local_t *ir_local_for(ir_scope_t *scope, ir_item_t *item, size_t pos)
 {
-    ir_local_t *ret = new_ir_local(IR_LOCAL_NORMAL);
-    ret->u.normal.item = item;
-    return ret;
+    const hash_table_entry_t *entry;
+    ir_local_t *local;
+    assert(scope && item);
+
+    ir_item_add_ref(item, pos);
+    if (entry = hash_table_find(scope->locals.table, item)) {
+        return entry->value;
+    }
+
+    switch (item->kind) {
+    case IR_ITEM_ARG_VAR:
+    case IR_ITEM_LOCAL_VAR:
+        local = new_ir_local(IR_LOCAL_NORMAL);
+        local->u.normal.item = item;
+    default:
+        local = new_ir_local(IR_LOCAL_REF);
+        local->u.ref.item = item;
+    }
+    hash_table_insert_unchecked(scope->locals.table, item, local);
+    return ir_scope_append_local(scope, local);
 }
 
-ir_local_t *new_ir_temp_local(ir_type_t type)
+ir_local_t *ir_local_temp(ir_scope_t *scope, ir_type_t type)
 {
-    ir_local_t *ret = new_ir_local(IR_LOCAL_TEMP);
-    ret->u.temp.type = type;
-    return ret;
-}
+    ir_local_t *local;
+    assert(scope && type);
 
-ir_local_t *new_ir_ref_local(const ir_item_t *item)
-{
-    ir_local_t *ret = new_ir_local(IR_LOCAL_REF);
-    ret->u.ref.item = item;
-    return ret;
+    local = new_ir_local(IR_LOCAL_TEMP);
+    local->u.temp.type = type;
+    return ir_scope_append_local(scope, local);
 }
 
 ir_type_t ir_local_type(const ir_local_t *local)

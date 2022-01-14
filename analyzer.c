@@ -2,23 +2,9 @@
 
 #include "mppl.h"
 
-typedef struct impl_analyzer_scope analyzer_scope_t;
-struct impl_analyzer_scope {
-    const ir_item_t *owner;
-    struct {
-        hash_table_t *table;
-        ir_item_t **tail;
-    } items;
-    struct {
-        hash_table_t *table;
-        ir_local_t **tail;
-    } locals;
-    analyzer_scope_t *next;
-};
-
 typedef struct {
     const source_t *source;
-    analyzer_scope_t *scope;
+    ir_scope_t *scope;
     ir_type_storage_t *type_storage;
     struct {
         ir_block_t *head;
@@ -31,38 +17,10 @@ typedef struct {
     ir_block_t *break_dest;
 } analyzer_t;
 
-void analyzer_push_scope(analyzer_t *analyzer, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
-{
-    analyzer_scope_t *scope;
-    assert(analyzer);
-
-    scope = new(analyzer_scope_t);
-    scope->owner = owner;
-    scope->next = analyzer->scope;
-    scope->items.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    scope->items.tail = items;
-    scope->locals.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    scope->locals.tail = locals;
-    analyzer->scope = scope;
-}
-
-void analyzer_pop_scope(analyzer_t *analyzer)
-{
-    analyzer_scope_t *scope;
-    ir_item_t *ret;
-    assert(analyzer);
-
-    scope = analyzer->scope;
-    analyzer->scope = scope->next;
-    delete_hash_table(scope->items.table, NULL, NULL);
-    delete_hash_table(scope->locals.table, NULL, NULL);
-    free(scope);
-}
-
 void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
 {
     const hash_table_entry_t *entry;
-    analyzer_scope_t *scope;
+    ir_scope_t *scope;
     assert(analyzer && item);
 
     scope = analyzer->scope;
@@ -81,7 +39,7 @@ void analyzer_register_item(analyzer_t *analyzer, ir_item_t *item)
 
 ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
 {
-    analyzer_scope_t *scope;
+    ir_scope_t *scope;
     assert(analyzer && ident);
 
     scope = analyzer->scope;
@@ -100,41 +58,6 @@ ir_item_t *analyzer_lookup_item(analyzer_t *analyzer, ast_ident_t *ident)
         msg_emit(msg);
         exit(1);
     }
-}
-
-static ir_local_t *analyzer_append_local(analyzer_t *analyzer, ir_local_t *local)
-{
-    *analyzer->scope->locals.tail = local;
-    analyzer->scope->locals.tail = &local->next;
-    return local;
-}
-
-ir_local_t *analyzer_create_local_for(analyzer_t *analyzer, ir_item_t *item, size_t pos)
-{
-    const hash_table_entry_t *entry;
-    ir_local_t *local;
-    assert(analyzer && item);
-
-    ir_item_add_ref(item, pos);
-    if (entry = hash_table_find(analyzer->scope->locals.table, item)) {
-        return entry->value;
-    }
-
-    switch (item->kind) {
-    case IR_ITEM_ARG_VAR:
-    case IR_ITEM_LOCAL_VAR:
-        local = new_ir_normal_local(item);
-    default:
-        local = new_ir_ref_local(item);
-    }
-    hash_table_insert_unchecked(analyzer->scope->locals.table, item, local);
-    return analyzer_append_local(analyzer, local);
-}
-
-ir_local_t *analyzer_create_temp_local(analyzer_t *analyzer, ir_type_t type)
-{
-    assert(analyzer && type);
-    return analyzer_append_local(analyzer, new_ir_temp_local(type));
 }
 
 ir_block_t *analyzer_create_block(analyzer_t *analyzer)
@@ -218,7 +141,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
     case AST_EXPR_DECL_REF: {
         ast_ident_t *ident = expr->u.decl_ref_expr.decl;
         ir_item_t *lookup = analyzer_lookup_item(analyzer, ident);
-        ir_local_t *local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
+        ir_local_t *local = ir_local_for(analyzer->scope, lookup, ident->region.pos);
         return new_ir_place(local, NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
@@ -245,7 +168,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
             msg_emit(msg);
             exit(1);
         }
-        local = analyzer_create_local_for(analyzer, lookup, ident->region.pos);
+        local = ir_local_for(analyzer->scope, lookup, ident->region.pos);
         return new_ir_place(local, access);
     }
     }
@@ -326,7 +249,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
         }
     }
 
-    result = analyzer_create_temp_local(analyzer, type);
+    result = ir_local_temp(analyzer->scope, type);
     stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
     ir_block_push(block, stmt);
     return new_ir_place_operand(new_ir_place(result, NULL));
@@ -358,7 +281,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
         break;
     }
 
-    result = analyzer_create_temp_local(analyzer, type);
+    result = ir_local_temp(analyzer->scope, type);
     stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_unary_op_rvalue(expr->kind, operand));
     ir_block_push(block, stmt);
     return new_ir_place_operand(new_ir_place(result, NULL));
@@ -391,7 +314,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
         exit(1);
     }
 
-    result = analyzer_create_temp_local(analyzer, cast_type);
+    result = ir_local_temp(analyzer->scope, cast_type);
     stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_cast_rvalue(cast_type, operand));
     ir_block_push(block, stmt);
     return new_ir_place_operand(new_ir_place(result, NULL));
@@ -562,7 +485,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             }
 
             {
-                analyzer_scope_t *scope = analyzer->scope;
+                ir_scope_t *scope = analyzer->scope;
                 while (scope) {
                     if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
                         msg_t *msg = new_msg(analyzer->source, ident->region,
@@ -575,7 +498,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             }
 
             {
-                ir_local_t *func = analyzer_create_local_for(analyzer, item, ident->region.pos);
+                ir_local_t *func = ir_local_for(analyzer->scope, item, ident->region.pos);
                 ast_expr_t *args = stmt->u.call_stmt.args;
                 ir_type_instance_t *type = NULL, **type_back = &type;
                 ir_place_t *place = NULL, **place_back = &place;
@@ -584,8 +507,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     if (operand->kind == IR_OPERAND_PLACE) {
                         *place_back = operand->u.place_operand.place;
                     } else {
-                        ir_local_t *tmp = analyzer_create_temp_local(
-                            analyzer, operand->u.constant_operand.constant->type);
+                        ir_local_t *tmp = ir_local_temp(analyzer->scope, operand->u.constant_operand.constant->type);
                         *place_back = new_ir_place(tmp, NULL);
                     }
                     operand->kind = -1;
@@ -780,7 +702,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_type_t type = ir_type_procedure(analyzer->type_storage, param_types);
             ir_item_t *item = new_ir_procedure_item(type, decl->name->symbol, decl->name->region);
             analyzer_register_item(analyzer, item);
-            analyzer_push_scope(analyzer, item, &inner_item, &inner_local);
+            ir_scope_push(&analyzer->scope, item, &inner_item, &inner_local);
             {
                 ast_decl_part_t *decl_part = decl->variables;
                 analyze_param_decl(analyzer, decl->params);
@@ -789,7 +711,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 }
                 analyze_stmt(analyzer, inner, decl->stmt);
             }
-            analyzer_pop_scope(analyzer);
+            ir_scope_pop(&analyzer->scope);
             item->body = new_ir_body(inner, inner_item, inner_local);
             break;
         }
@@ -809,12 +731,12 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     type = ir_type_program(analyzer->type_storage);
     ret = new_ir_program_item(type, program->name->symbol, program->name->region);
     inner = analyzer_create_block(analyzer);
-    analyzer_push_scope(analyzer, ret, &inner_item, &inner_local);
+    ir_scope_push(&analyzer->scope, ret, &inner_item, &inner_local);
     {
         analyze_decl_part(analyzer, program->decl_part);
         analyze_stmt(analyzer, inner, program->stmt);
     }
-    analyzer_pop_scope(analyzer);
+    ir_scope_pop(&analyzer->scope);
     ret->body = new_ir_body(inner, inner_item, inner_local);
     return ret;
 }
