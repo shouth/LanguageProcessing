@@ -23,10 +23,7 @@ const char *ir_type_kind_str(ir_type_kind_t kind)
 }
 
 int ir_type_is_kind(const ir_type_t *type, ir_type_kind_t kind)
-{
-    const ir_type_t *instance = ir_type_get_instance(type);
-    return instance->kind == kind;
-}
+{ return type->kind == kind; }
 
 int ir_type_is_std(const ir_type_t *type)
 {
@@ -72,12 +69,10 @@ static void delete_ir_type(ir_type_t *type)
 
 static char *internal_ir_type_str(char *buf, const ir_type_t *type)
 {
-    const ir_type_t *instance = ir_type_get_instance(type);
-
-    buf += sprintf(buf, "%s", ir_type_kind_str(instance->kind));
-    switch (instance->kind) {
+    buf += sprintf(buf, "%s", ir_type_kind_str(type->kind));
+    switch (type->kind) {
     case IR_TYPE_PROCEDURE: {
-        const ir_type_t *cur = instance->u.procedure_type.param_types;
+        const ir_type_t *cur = type->u.procedure_type.param_types;
         buf += sprintf(buf, "(");
         while (cur) {
             buf = internal_ir_type_str(buf, cur->u.ref);
@@ -89,8 +84,8 @@ static char *internal_ir_type_str(char *buf, const ir_type_t *type)
         break;
     }
     case IR_TYPE_ARRAY:
-        buf += sprintf(buf, "[%ld] of ", instance->u.array_type.size);
-        internal_ir_type_str(buf, instance->u.array_type.base_type->u.ref);
+        buf += sprintf(buf, "[%ld] of ", type->u.array_type.size);
+        internal_ir_type_str(buf, type->u.array_type.base_type->u.ref);
         break;
     }
     return buf;
@@ -144,13 +139,13 @@ static uint64_t ir_type_hasher(const void *ptr)
     case IR_TYPE_PROCEDURE:
         cur = p->u.procedure_type.param_types;
         while (cur) {
-            ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.ref));
+            ret = 31 * ret + fnv1_ptr(cur->u.ref);
             cur = cur->next;
         }
         break;
     case IR_TYPE_ARRAY:
         cur = p->u.array_type.base_type;
-        ret = 31 * ret + fnv1_ptr(ir_type_get_instance(cur->u.ref));
+        ret = 31 * ret + fnv1_ptr(cur->u.ref);
         ret = 31 * ret + fnv1_int(p->u.array_type.size);
         break;
     }
@@ -278,9 +273,6 @@ const ir_type_t *ir_type_char(ir_factory_t *factory)
 
 const ir_type_t *ir_type_boolean(ir_factory_t *factory)
 { return factory->types.std_boolean; }
-
-const ir_type_t *ir_type_get_instance(const ir_type_t *type)
-{ return (ir_type_t *) type; }
 
 void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
 {
@@ -417,16 +409,14 @@ ir_place_t *new_ir_place(const ir_local_t *local, ir_place_access_t *place_acces
 const ir_type_t *ir_place_type(ir_place_t *place)
 {
     const ir_type_t *type;
-    const ir_type_t *instance;
     assert(place);
 
     type = ir_local_type(place->local);
-    instance = ir_type_get_instance(type);
 
-    switch (instance->kind) {
+    switch (type->kind) {
     case IR_TYPE_ARRAY:
         if (place->place_access != NULL) {
-            const ir_type_t *base_instance = instance->u.array_type.base_type;
+            const ir_type_t *base_instance = type->u.array_type.base_type;
             return base_instance->u.ref;
         } else {
             return type;

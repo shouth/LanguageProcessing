@@ -60,8 +60,6 @@ const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, size_t si
 const ir_type_t *ir_type_integer(ir_factory_t *factory);
 const ir_type_t *ir_type_char(ir_factory_t *factory);
 const ir_type_t *ir_type_boolean(ir_factory_t *factory);
-const ir_type_t *ir_type_get_instance(const ir_type_t *type);
-
 
 ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_t **types);
 void delete_ir_factory(ir_factory_t *factory);
