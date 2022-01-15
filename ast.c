@@ -444,7 +444,6 @@ ast_decl_part_t *new_procedure_decl_part(ast_ident_t *name, ast_param_decl_t *pa
 
 void delete_decl_part(ast_decl_part_t *decl)
 {
-    ast_decl_part_t *cur;
     if (!decl) {
         return;
     }

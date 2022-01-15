@@ -54,7 +54,6 @@ void error_expected(parser_t *parser, const char *str)
 
 void error_unexpected(parser_t *parser)
 {
-    token_kind_t i;
     char buf[256], *ptr;
     uint8_t m, l;
 

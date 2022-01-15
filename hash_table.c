@@ -23,7 +23,6 @@ static void hash_table_init_buckets(hash_table_t *table)
 hash_table_t *new_hash_table(hash_table_comparator_t *comparator, hash_table_hasher_t *hasher)
 {
     hash_table_t *ret;
-    size_t i;
     assert(comparator && hasher);
 
     ret = new(hash_table_t);

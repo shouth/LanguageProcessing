@@ -176,7 +176,6 @@ static ir_type_t *ir_type_intern_chaining(ir_factory_t *factory, ir_type_t *type
 
 static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
 {
-    ir_type_t *cur;
     const hash_table_entry_t *entry;
     assert(factory && type);
     assert(type->kind != -1);
@@ -584,8 +583,6 @@ void delete_ir_stmt(ir_stmt_t *stmt)
     free(stmt);
 }
 
-void delete_ir_block(ir_block_t *block);
-
 ir_block_t *ir_block(ir_factory_t *factory)
 {
     ir_block_t *ret = new(ir_block_t);
@@ -736,20 +733,6 @@ ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol)
         scope = scope->next;
     }
     return NULL;
-}
-
-static ir_item_t *new_ir_item(ir_item_kind_t kind, const ir_type_t *type, symbol_t symbol, region_t name_region)
-{
-    ir_item_t *ret = new(ir_item_t);
-    ret->kind = kind;
-    ret->type = type;
-    ret->symbol = symbol;
-    ret->body = 0;
-    ret->next = NULL;
-    ret->name_region = name_region;
-    ret->refs.head = NULL;
-    ret->refs.tail = &ret->refs.head;
-    return ret;
 }
 
 void delete_ir_item(ir_item_t *item)

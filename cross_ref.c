@@ -58,7 +58,6 @@ static void internal_print_cross_ref(cross_ref_t *cross_ref, const ir_item_t *it
     inner_item = item->body->items;
     while (inner_item) {
         const symbol_instance_t *symbol_instance;
-        const ir_type_t *type;
         cross_ref_ns_t ns;
 
         symbol_instance = symbol_get_instance(inner_item->symbol);

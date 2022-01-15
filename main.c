@@ -16,7 +16,6 @@ int main(int argc, char **argv)
     ast = parse_source(src);
     if (ast) {
         ir_t *ir;
-        ir_item_t *item;
 
         /* pretty_print(ast); */
         ir = analyze_ast(ast);
