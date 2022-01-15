@@ -631,6 +631,7 @@ ir_block_t *ir_block(ir_factory_t *factory)
 
 void ir_block_push(ir_block_t *block, ir_stmt_t *stmt)
 {
+    assert(block->termn.kind == -1);
     *block->stmt_tail = stmt;
     block->stmt_tail = &stmt->next;
 }
