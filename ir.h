@@ -270,7 +270,7 @@ struct impl_ir_block {
     } termn;
 };
 
-ir_block_t *new_ir_block();
+ir_block_t *ir_block(ir_factory_t *factory);
 void ir_block_push(ir_block_t *block, ir_stmt_t *stmt);
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);

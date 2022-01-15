@@ -646,12 +646,14 @@ void delete_ir_stmt(ir_stmt_t *stmt)
 
 void delete_ir_block(ir_block_t *block);
 
-ir_block_t *new_ir_block()
+ir_block_t *ir_block(ir_factory_t *factory)
 {
     ir_block_t *ret = new(ir_block_t);
     ret->stmt = NULL;
     ret->stmt_tail = &ret->stmt;
     ret->next = NULL;
+    *factory->blocks = ret;
+    factory->blocks = &ret->next;
     return ret;
 }
 

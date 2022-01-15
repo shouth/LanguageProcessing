@@ -31,16 +31,6 @@ void maybe_error_undeclared(analyzer_t *analyzer, symbol_t symbol, region_t regi
     }
 }
 
-ir_block_t *analyzer_create_block(analyzer_t *analyzer)
-{
-    ir_block_t *ret;
-    assert(analyzer);
-    ret = new_ir_block(NULL, NULL);
-    *analyzer->factory->blocks = ret;
-    analyzer->factory->blocks = &ret->next;
-    return ret;
-}
-
 const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
 {
     assert(analyzer && type);
@@ -357,12 +347,12 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             }
 
             {
-                ir_block_t *then_begin = analyzer_create_block(analyzer);
+                ir_block_t *then_begin = ir_block(analyzer->factory);
                 ir_block_t *then_end = analyze_stmt(analyzer, then_begin, stmt->u.if_stmt.then_stmt);
-                ir_block_t *join_block = analyzer_create_block(analyzer);
+                ir_block_t *join_block = ir_block(analyzer->factory);
 
                 if (stmt->u.if_stmt.else_stmt) {
-                    ir_block_t *else_begin = analyzer_create_block(analyzer);
+                    ir_block_t *else_begin = ir_block(analyzer->factory);
                     ir_block_t *else_end = analyze_stmt(analyzer, else_begin, stmt->u.if_stmt.else_stmt);
                     ir_block_terminate_if(block, cond, then_begin, else_begin);
                     ir_block_terminate_goto(then_end, join_block);
@@ -377,8 +367,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             break;
         }
         case AST_STMT_WHILE: {
-            ir_block_t *cond_block = analyzer_create_block(analyzer);
-            ir_block_t *join_block = analyzer_create_block(analyzer);
+            ir_block_t *cond_block = ir_block(analyzer->factory);
+            ir_block_t *join_block = ir_block(analyzer->factory);
             ast_while_stmt_t *while_stmt = &stmt->u.while_stmt;
             ir_operand_t *cond = analyze_expr(analyzer, cond_block, while_stmt->cond);
             const ir_type_t *type = ir_operand_type(cond);
@@ -395,7 +385,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ir_block_t *pre_break_dest = analyzer->break_dest;
                 analyzer->break_dest = join_block;
                 {
-                    ir_block_t *do_begin = analyzer_create_block(analyzer);
+                    ir_block_t *do_begin = ir_block(analyzer->factory);
                     ir_block_t *do_end = analyze_stmt(analyzer, do_begin, while_stmt->do_stmt);
                     ir_block_terminate_goto(block, cond_block);
                     ir_block_terminate_if(cond_block, cond, do_begin, join_block);
@@ -408,7 +398,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         }
         case AST_STMT_BREAK: {
             ir_block_terminate_goto(block, analyzer->break_dest);
-            block = analyzer_create_block(analyzer);
+            block = ir_block(analyzer->factory);
             break;
         }
         case AST_STMT_CALL: {
@@ -472,7 +462,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         }
         case AST_STMT_RETURN: {
             ir_block_terminate_return(block);
-            block = analyzer_create_block(analyzer);
+            block = ir_block(analyzer->factory);
             break;
         }
         case AST_STMT_READ: {
@@ -638,7 +628,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
         case AST_DECL_PART_PROCEDURE: {
             ir_item_t *item, *inner_item;
             ir_local_t *inner_local;
-            ir_block_t *inner = analyzer_create_block(analyzer);
+            ir_block_t *inner = ir_block(analyzer->factory);
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
             ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
 
@@ -670,7 +660,7 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     assert(analyzer && program);
 
     ret = ir_program_item(analyzer->factory, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
-    inner = analyzer_create_block(analyzer);
+    inner = ir_block(analyzer->factory);
     ir_scope_push(analyzer->factory, ret, &inner_item, &inner_local);
     {
         analyze_decl_part(analyzer, program->decl_part);
