@@ -41,38 +41,6 @@ ir_block_t *analyzer_create_block(analyzer_t *analyzer)
     return ret;
 }
 
-static ir_constant_t *analyzer_append_constant(analyzer_t *analyzer, ir_constant_t *constant)
-{
-    assert(analyzer && constant);
-    *analyzer->factory->constants = constant;
-    analyzer->factory->constants = &constant->next;
-    return constant;
-}
-
-ir_constant_t *analyzer_create_number_constant(analyzer_t *analyzer, unsigned long value)
-{
-    ir_constant_t *constant = new_ir_number_constant(ir_type_integer(analyzer->factory), value);
-    return analyzer_append_constant(analyzer, constant);
-}
-
-ir_constant_t *analyzer_create_boolean_constant(analyzer_t *analyzer, int value)
-{
-    ir_constant_t *constant = new_ir_boolean_constant(ir_type_boolean(analyzer->factory), value);
-    return analyzer_append_constant(analyzer, constant);
-}
-
-ir_constant_t *analyzer_create_char_constant(analyzer_t *analyzer, int value)
-{
-    ir_constant_t *constant = new_ir_char_constant(ir_type_char(analyzer->factory), value);
-    return analyzer_append_constant(analyzer, constant);
-}
-
-ir_constant_t *analyzer_create_string_constant(analyzer_t *analyzer, symbol_t value, size_t len)
-{
-    const ir_type_t *type = ir_type_array(analyzer->factory, new_ir_type_ref(ir_type_char(analyzer->factory)), len);
-    return analyzer_append_constant(analyzer, new_ir_string_constant(type, value));
-}
-
 const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
 {
     assert(analyzer && type);
@@ -180,7 +148,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
         }
 
         type = ir_type_integer(analyzer->factory);
-        lhs = new_ir_constant_operand(analyzer_create_number_constant(analyzer, 0));
+        lhs = new_ir_constant_operand(ir_number_constant(analyzer->factory, 0));
     } else {
         lhs = analyze_expr(analyzer, block, expr->lhs);
         ltype = ir_operand_type(lhs);
@@ -296,11 +264,11 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast
 
     switch (expr->lit->kind) {
     case AST_LIT_NUMBER: {
-        ir_constant_t *constant = analyzer_create_number_constant(analyzer, expr->lit->u.number_lit.value);
+        ir_constant_t *constant = ir_number_constant(analyzer->factory, expr->lit->u.number_lit.value);
         return new_ir_constant_operand(constant);
     }
     case AST_LIT_BOOLEAN: {
-        ir_constant_t *constant = analyzer_create_boolean_constant(analyzer, expr->lit->u.boolean_lit.value);
+        ir_constant_t *constant = ir_boolean_constant(analyzer->factory, expr->lit->u.boolean_lit.value);
         return new_ir_constant_operand(constant);
     }
     case AST_LIT_STRING: {
@@ -313,7 +281,7 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast
             exit(1);
         }
         instance = symbol_get_instance(expr->lit->u.string_lit.symbol);
-        constant = analyzer_create_char_constant(analyzer, instance->ptr[0]);
+        constant = ir_char_constant(analyzer->factory, instance->ptr[0]);
         return new_ir_constant_operand(constant);
     }
     }
@@ -546,7 +514,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ast_constant_expr_t *constant = &expr->u.constant_expr;
                 ast_string_lit_t *string = &constant->lit->u.string_lit;
                 if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len > 1) {
-                    ir_constant_t *constant = analyzer_create_string_constant(analyzer, string->symbol, string->str_len);
+                    ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
                     ir_operand_t *value = new_ir_constant_operand(constant);
                     ir_block_push(block, new_ir_write_stmt(value, SIZE_MAX));
                 } else {
