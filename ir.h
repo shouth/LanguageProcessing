@@ -232,13 +232,8 @@ struct impl_ir_stmt {
     } u;
 };
 
-ir_stmt_t *new_ir_assign_stmt(ir_place_t *lhs, ir_rvalue_t *rhs);
-ir_stmt_t *new_ir_call_stmt(ir_place_t *func, ir_place_t *args);
-ir_stmt_t *new_ir_read_stmt(ir_place_t *ref);
-ir_stmt_t *new_ir_write_stmt(ir_operand_t *value, size_t len);
 void delete_ir_stmt(ir_stmt_t *stmt);
 
-typedef struct impl_ir_block ir_block_t;
 
 typedef enum {
     IR_TERMN_GOTO,
@@ -246,6 +241,7 @@ typedef enum {
     IR_TERMN_RETURN
 } ir_termn_kind_t;
 
+typedef struct impl_ir_block ir_block_t;
 struct impl_ir_block {
     ir_block_t *next;
     ir_stmt_t *stmt;
@@ -267,7 +263,10 @@ struct impl_ir_block {
 };
 
 ir_block_t *ir_block(ir_factory_t *factory);
-void ir_block_push(ir_block_t *block, ir_stmt_t *stmt);
+void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs);
+void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_place_t *args);
+void ir_block_push_read(ir_block_t *block, ir_place_t *ref);
+void ir_block_push_write(ir_block_t *block, ir_operand_t *value, size_t len);
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
 void ir_block_terminate_return(ir_block_t *block);

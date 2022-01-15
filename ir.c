@@ -564,37 +564,6 @@ static ir_stmt_t *new_ir_stmt(ir_stmt_kind_t kind)
     return ret;
 }
 
-ir_stmt_t *new_ir_assign_stmt(ir_place_t *lhs, ir_rvalue_t *rhs)
-{
-    ir_stmt_t *ret = new_ir_stmt(IR_STMT_ASSIGN);
-    ret->u.assign_stmt.lhs = lhs;
-    ret->u.assign_stmt.rhs = rhs;
-    return ret;
-}
-
-ir_stmt_t *new_ir_call_stmt(ir_place_t *func, ir_place_t *args)
-{
-    ir_stmt_t *ret = new_ir_stmt(IR_STMT_CALL);
-    ret->u.call_stmt.func = func;
-    ret->u.call_stmt.args = args;
-    return ret;
-}
-
-ir_stmt_t *new_ir_read_stmt(ir_place_t *ref)
-{
-    ir_stmt_t *ret = new_ir_stmt(IR_STMT_READ);
-    ret->u.read_stmt.ref = ref;
-    return ret;
-}
-
-ir_stmt_t *new_ir_write_stmt(ir_operand_t *value, size_t len)
-{
-    ir_stmt_t *ret = new_ir_stmt(IR_STMT_WRITE);
-    ret->u.write_stmt.value = value;
-    ret->u.write_stmt.len = len;
-    return ret;
-}
-
 void delete_ir_stmt(ir_stmt_t *stmt)
 {
     if (!stmt) {
@@ -629,11 +598,41 @@ ir_block_t *ir_block(ir_factory_t *factory)
     return ret;
 }
 
-void ir_block_push(ir_block_t *block, ir_stmt_t *stmt)
+void ir_block_append_block(ir_block_t *block, ir_stmt_t *stmt)
 {
     assert(block->termn.kind == -1);
     *block->stmt_tail = stmt;
     block->stmt_tail = &stmt->next;
+}
+
+void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs)
+{
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_ASSIGN);
+    ret->u.assign_stmt.lhs = lhs;
+    ret->u.assign_stmt.rhs = rhs;
+    ir_block_append_block(block, ret);
+}
+
+void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_place_t *args)
+{
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_CALL);
+    ret->u.call_stmt.func = func;
+    ret->u.call_stmt.args = args;
+    ir_block_append_block(block, ret);
+}
+
+void ir_block_push_read(ir_block_t *block, ir_place_t *ref)
+{
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_READ);
+    ret->u.read_stmt.ref = ref;
+    ir_block_append_block(block, ret);
+}
+
+void ir_block_push_write(ir_block_t *block, ir_operand_t *value, size_t len)
+{
+    ir_stmt_t *ret = new_ir_stmt(IR_STMT_WRITE);
+    ret->u.write_stmt.value = value;
+    ret->u.write_stmt.len = len;
 }
 
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next)

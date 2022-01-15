@@ -121,7 +121,6 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
     ir_operand_t *lhs, *rhs;
     const ir_type_t *ltype, *rtype;
     ir_local_t *result;
-    ir_stmt_t *stmt;
     const ir_type_t *type;
     assert(analyzer && expr);
 
@@ -177,8 +176,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
     }
 
     result = ir_local_temp(analyzer->factory, type);
-    stmt = new_ir_assign_stmt(new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
-    ir_block_push(block, stmt);
+    ir_block_push_assign(block, new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
     return new_ir_place_operand(new_ir_place(result));
 }
 
@@ -187,7 +185,6 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
     ir_operand_t *operand;
     const ir_type_t *operand_type;
     ir_local_t *result;
-    ir_stmt_t *stmt;
     const ir_type_t *type;
     assert(analyzer && expr);
 
@@ -209,8 +206,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
     }
 
     result = ir_local_temp(analyzer->factory, type);
-    stmt = new_ir_assign_stmt(new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
-    ir_block_push(block, stmt);
+    ir_block_push_assign(block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
     return new_ir_place_operand(new_ir_place(result));
 }
 
@@ -220,7 +216,6 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     const ir_type_t *operand_type;
     const ir_type_t *cast_type;
     ir_local_t *result;
-    ir_stmt_t *stmt;
 
     operand = analyze_expr(analyzer, block, expr->expr);
     operand_type = ir_operand_type(operand);
@@ -242,8 +237,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     }
 
     result = ir_local_temp(analyzer->factory, cast_type);
-    stmt = new_ir_assign_stmt(new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
-    ir_block_push(block, stmt);
+    ir_block_push_assign(block, new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
     return new_ir_place_operand(new_ir_place(result));
 }
 
@@ -328,7 +322,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 exit(1);
             }
 
-            ir_block_push(block, new_ir_assign_stmt(lhs, rhs));
+            ir_block_push_assign(block, lhs, rhs);
             break;
         }
         case AST_STMT_IF:
@@ -455,7 +449,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     exit(1);
                 }
 
-                ir_block_push(block, new_ir_call_stmt(new_ir_place(func), place));
+                ir_block_push_call(block, new_ir_place(func), place);
             }
             break;
         }
@@ -489,7 +483,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                         exit(1);
                     }
 
-                    ir_block_push(block, new_ir_read_stmt(ref));
+                    ir_block_push_read(block, ref);
                 }
                 args = args->next;
             }
@@ -504,8 +498,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ast_string_lit_t *string = &constant->lit->u.string_lit;
                 if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len > 1) {
                     ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
-                    ir_operand_t *value = new_ir_constant_operand(constant);
-                    ir_block_push(block, new_ir_write_stmt(value, SIZE_MAX));
+                    ir_block_push_write(block, new_ir_constant_operand(constant), SIZE_MAX);
                 } else {
                     ir_operand_t *value = analyze_expr(analyzer, block, formats->expr);
                     const ir_type_t *type = ir_operand_type(value);
@@ -519,9 +512,9 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     }
 
                     if (formats->len) {
-                        ir_block_push(block, new_ir_write_stmt(value, formats->len->u.number_lit.value));
+                        ir_block_push_write(block, value, formats->len->u.number_lit.value);
                     } else {
-                        ir_block_push(block, new_ir_write_stmt(value, SIZE_MAX));
+                        ir_block_push_write(block, value, SIZE_MAX);
                     }
                 }
                 formats = formats->next;
