@@ -683,7 +683,7 @@ void delete_ir_body(ir_body_t *body)
     free(body);
 }
 
-static ir_item_t *ir_item_for(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, region_t name_region, const ir_type_t *type)
+ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, region_t name_region, const ir_type_t *type)
 {
     ir_item_t *ret = new(ir_item_t);
     ret->kind = kind;
@@ -703,21 +703,6 @@ static ir_item_t *ir_item_for(ir_factory_t *factory, ir_item_kind_t kind, symbol
     }
     return ret;
 }
-
-ir_item_t *ir_program_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type)
-{ return ir_item_for(factory, IR_ITEM_PROGRAM, symbol, name_region, type); }
-
-ir_item_t *ir_procedure_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type)
-{ return ir_item_for(factory, IR_ITEM_PROCEDURE, symbol, name_region, type); }
-
-ir_item_t *ir_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type)
-{ return ir_item_for(factory, IR_ITEM_VAR, symbol, name_region, type); }
-
-ir_item_t *ir_arg_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type)
-{ return ir_item_for(factory, IR_ITEM_ARG_VAR, symbol, name_region, type); }
-
-ir_item_t *ir_local_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type)
-{ return ir_item_for(factory, IR_ITEM_LOCAL_VAR, symbol, name_region, type); }
 
 ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol)
 {

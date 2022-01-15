@@ -571,9 +571,9 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
         while (ident) {
             maybe_error_conflict(analyzer, ident->symbol, ident->region);
             if (local) {
-                ir_local_var_item(analyzer->factory, ident->symbol, ident->region, type);
+                ir_item(analyzer->factory, IR_ITEM_LOCAL_VAR, ident->symbol, ident->region, type);
             } else {
-                ir_var_item(analyzer->factory, ident->symbol, ident->region, type);
+                ir_item(analyzer->factory, IR_ITEM_VAR, ident->symbol, ident->region, type);
             }
             ident = ident->next;
         }
@@ -598,7 +598,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
         }
         while (ident) {
             maybe_error_conflict(analyzer, ident->symbol, ident->region);
-            ir_arg_var_item(analyzer->factory, ident->symbol, ident->region, type);
+            ir_item(analyzer->factory, IR_ITEM_ARG_VAR, ident->symbol, ident->region, type);
             ident = ident->next;
         }
         decl = decl->next;
@@ -624,7 +624,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
 
             maybe_error_conflict(analyzer, decl->name->symbol, decl->name->region);
-            item = ir_procedure_item(analyzer->factory, decl->name->symbol, decl->name->region, ir_type_procedure(analyzer->factory, param_types));
+            item = ir_item(analyzer->factory, IR_ITEM_PROCEDURE, decl->name->symbol, decl->name->region, ir_type_procedure(analyzer->factory, param_types));
             ir_scope_push(analyzer->factory, item, &inner_item, &inner_local);
             {
                 ast_decl_part_t *decl_part = decl->variables;
@@ -652,7 +652,7 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     ir_block_t *inner;
     assert(analyzer && program);
 
-    ret = ir_program_item(analyzer->factory, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
+    ret = ir_item(analyzer->factory, IR_ITEM_PROGRAM, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
     inner = ir_block(analyzer->factory);
     ir_scope_push(analyzer->factory, ret, &inner_item, &inner_local);
     {

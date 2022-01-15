@@ -308,11 +308,7 @@ struct impl_ir_item {
     } refs;
 };
 
-ir_item_t *ir_program_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type);
-ir_item_t *ir_procedure_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type);
-ir_item_t *ir_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type);
-ir_item_t *ir_arg_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type);
-ir_item_t *ir_local_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type);
+ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, region_t name_region, const ir_type_t *type);
 ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol);
 void delete_ir_item(ir_item_t *item);
 
