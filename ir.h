@@ -80,7 +80,6 @@ void delete_ir_local(ir_local_t *local);
 typedef struct impl_ir_operand ir_operand_t;
 
 typedef enum {
-    IR_PLACE_ACCESS_NORMAL,
     IR_PLACE_ACCESS_INDEX
 } ir_place_access_kind_t;
 
@@ -94,10 +93,6 @@ typedef struct {
     } u;
 } ir_place_access_t;
 
-ir_place_access_t *new_ir_normal_place_access();
-ir_place_access_t *new_ir_index_place_access(ir_operand_t *index);
-void delete_ir_place_access(ir_place_access_t *place_access);
-
 typedef struct impl_ir_place ir_place_t;
 struct impl_ir_place {
     const ir_local_t *local;
@@ -105,7 +100,8 @@ struct impl_ir_place {
     ir_place_t *next;
 };
 
-ir_place_t *new_ir_place(const ir_local_t *local, ir_place_access_t *place_access);
+ir_place_t *new_ir_place(const ir_local_t *local);
+ir_place_t *new_ir_place_index(const ir_local_t *local, ir_operand_t *index);
 const ir_type_t *ir_place_type(ir_place_t *place);
 void delete_ir_place(ir_place_t *place);
 

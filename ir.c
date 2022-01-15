@@ -350,36 +350,21 @@ void delete_ir_local(ir_local_t *local)
     free(local);
 }
 
-static ir_place_access_t *new_ir_place_access(ir_place_access_kind_t kind)
-{
-    ir_place_access_t *ret = new(ir_place_access_t);
-    ret->kind = kind;
-    return ret;
-}
-
-ir_place_access_t *new_ir_normal_place_access()
-{
-    return new_ir_place_access(IR_PLACE_ACCESS_NORMAL);
-}
-
-ir_place_access_t *new_ir_index_place_access(ir_operand_t *index)
-{
-    ir_place_access_t *ret = new_ir_place_access(IR_PLACE_ACCESS_INDEX);
-    ret->u.index_place_access.index = index;
-    return ret;
-}
-
-void delete_ir_place_access(ir_place_access_t *place_access)
-{
-    free(place_access);
-}
-
-ir_place_t *new_ir_place(const ir_local_t *local, ir_place_access_t *place_access)
+ir_place_t *new_ir_place(const ir_local_t *local)
 {
     ir_place_t *ret = new(ir_place_t);
     ret->local = local;
-    ret->place_access = place_access;
+    ret->place_access = NULL;
     ret->next = NULL;
+    return ret;
+}
+
+ir_place_t *new_ir_place_index(const ir_local_t *local, ir_operand_t *index)
+{
+    ir_place_t *ret = new_ir_place(local);
+    ret->place_access = new(ir_place_access_t);
+    ret->place_access->kind = IR_PLACE_ACCESS_INDEX;
+    ret->place_access->u.index_place_access.index = index;
     return ret;
 }
 
@@ -390,22 +375,10 @@ const ir_type_t *ir_place_type(ir_place_t *place)
 
     type = ir_local_type(place->local);
 
-    switch (type->kind) {
-    case IR_TYPE_ARRAY:
-        if (place->place_access != NULL) {
-            const ir_type_t *base_instance = type->u.array_type.base_type;
-            return base_instance->u.ref;
-        } else {
-            return type;
-        }
-
-    default:
-        if (place->place_access == NULL) {
-            return type;
-        }
+    if (type->kind == IR_TYPE_ARRAY && place->place_access && place->place_access->kind == IR_PLACE_ACCESS_INDEX) {
+        return type->u.array_type.base_type;
     }
-
-    unreachable();
+    return type;
 }
 
 void delete_ir_place(ir_place_t *place)
@@ -413,7 +386,6 @@ void delete_ir_place(ir_place_t *place)
     if (!place) {
         return;
     }
-    delete_ir_place_access(place->place_access);
     delete_ir_place(place->next);
     free(place);
 }

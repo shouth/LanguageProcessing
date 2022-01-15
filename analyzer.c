@@ -71,11 +71,10 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
         ast_ident_t *ident = expr->u.decl_ref_expr.decl;
         ir_item_t *lookup = ir_item_lookup(analyzer->factory, ident->symbol);
         maybe_error_undeclared(analyzer, ident->symbol, ident->region);
-        return new_ir_place(ir_local_for(analyzer->factory, lookup, ident->region.pos), NULL);
+        return new_ir_place(ir_local_for(analyzer->factory, lookup, ident->region.pos));
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
         ir_operand_t *index = analyze_expr(analyzer, block, expr->u.array_subscript_expr.expr);
-        ir_place_access_t *access = new_ir_index_place_access(index);
         ast_ident_t *ident = expr->u.array_subscript_expr.decl;
         ir_item_t *lookup = ir_item_lookup(analyzer->factory, ident->symbol);
         const ir_type_t *operand_type;
@@ -97,7 +96,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
             msg_emit(msg);
             exit(1);
         }
-        return new_ir_place(ir_local_for(analyzer->factory, lookup, ident->region.pos), access);
+        return new_ir_place_index(ir_local_for(analyzer->factory, lookup, ident->region.pos), index);
     }
     }
 }
@@ -178,9 +177,9 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
     }
 
     result = ir_local_temp(analyzer->factory, type);
-    stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
+    stmt = new_ir_assign_stmt(new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
     ir_block_push(block, stmt);
-    return new_ir_place_operand(new_ir_place(result, NULL));
+    return new_ir_place_operand(new_ir_place(result));
 }
 
 ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_unary_expr_t *expr)
@@ -210,9 +209,9 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
     }
 
     result = ir_local_temp(analyzer->factory, type);
-    stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_unary_op_rvalue(expr->kind, operand));
+    stmt = new_ir_assign_stmt(new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
     ir_block_push(block, stmt);
-    return new_ir_place_operand(new_ir_place(result, NULL));
+    return new_ir_place_operand(new_ir_place(result));
 }
 
 ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cast_expr_t *expr)
@@ -243,9 +242,9 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     }
 
     result = ir_local_temp(analyzer->factory, cast_type);
-    stmt = new_ir_assign_stmt(new_ir_place(result, NULL), new_ir_cast_rvalue(cast_type, operand));
+    stmt = new_ir_assign_stmt(new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
     ir_block_push(block, stmt);
-    return new_ir_place_operand(new_ir_place(result, NULL));
+    return new_ir_place_operand(new_ir_place(result));
 }
 
 ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast_constant_expr_t *expr)
@@ -438,7 +437,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                         *place_back = operand->u.place_operand.place;
                     } else {
                         ir_local_t *tmp = ir_local_temp(analyzer->factory, operand->u.constant_operand.constant->type);
-                        *place_back = new_ir_place(tmp, NULL);
+                        *place_back = new_ir_place(tmp);
                     }
                     operand->kind = -1;
                     delete_ir_operand(operand);
@@ -456,7 +455,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     exit(1);
                 }
 
-                ir_block_push(block, new_ir_call_stmt(new_ir_place(func, NULL), place));
+                ir_block_push(block, new_ir_call_stmt(new_ir_place(func), place));
             }
             break;
         }
