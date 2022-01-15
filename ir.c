@@ -152,12 +152,6 @@ static uint64_t ir_type_hasher(const void *ptr)
     return ret;
 }
 
-static void ir_type_storage_key_deleter(void *key)
-{
-    ir_type_t *instance = (ir_type_t *) key;
-    delete_ir_type(instance);
-}
-
 ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_t **types)
 {
     ir_factory_t *ret;
