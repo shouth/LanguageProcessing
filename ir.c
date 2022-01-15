@@ -652,6 +652,7 @@ ir_block_t *ir_block(ir_factory_t *factory)
     ret->stmt = NULL;
     ret->stmt_tail = &ret->stmt;
     ret->next = NULL;
+    ret->termn.kind = -1;
     *factory->blocks = ret;
     factory->blocks = &ret->next;
     return ret;
@@ -665,12 +666,14 @@ void ir_block_push(ir_block_t *block, ir_stmt_t *stmt)
 
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next)
 {
+    assert(block->termn.kind == -1);
     block->termn.kind = IR_TERMN_GOTO;
     block->termn.u.goto_termn.next = next;
 }
 
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els)
 {
+    assert(block->termn.kind == -1);
     block->termn.kind = IR_TERMN_IF;
     block->termn.u.if_termn.cond = cond;
     block->termn.u.if_termn.then = then;
@@ -678,7 +681,10 @@ void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block
 }
 
 void ir_block_terminate_return(ir_block_t *block)
-{ block->termn.kind = IR_TERMN_RETURN; }
+{
+    assert(block->termn.kind == -1);
+    block->termn.kind = IR_TERMN_RETURN;
+}
 
 void delete_ir_block(ir_block_t *block)
 {
