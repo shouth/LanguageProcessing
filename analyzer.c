@@ -325,8 +325,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             ir_block_push_assign(block, lhs, rhs);
             break;
         }
-        case AST_STMT_IF:
-        {
+        case AST_STMT_IF: {
             ast_if_stmt_t *if_stmt = &stmt->u.if_stmt;
             ir_operand_t *cond = analyze_expr(analyzer, block, stmt->u.if_stmt.cond);
             const ir_type_t *type = ir_operand_type(cond);
@@ -629,11 +628,13 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_scope_push(analyzer->factory, item, &inner_item, &inner_local);
             {
                 ast_decl_part_t *decl_part = decl->variables;
+                ir_block_t *block;
                 analyze_param_decl(analyzer, decl->params);
                 if (decl_part) {
                     analyze_variable_decl(analyzer, decl_part->u.variable_decl_part.decls, 1);
                 }
-                analyze_stmt(analyzer, inner, decl->stmt);
+                block = analyze_stmt(analyzer, inner, decl->stmt);
+                ir_block_terminate_return(block);
             }
             ir_scope_pop(analyzer->factory);
             item->body = new_ir_body(inner, inner_item, inner_local);
@@ -655,8 +656,10 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     inner = ir_block(analyzer->factory);
     ir_scope_push(analyzer->factory, ret, &inner_item, &inner_local);
     {
+        ir_block_t *block;
         analyze_decl_part(analyzer, program->decl_part);
-        analyze_stmt(analyzer, inner, program->stmt);
+        block = analyze_stmt(analyzer, inner, program->stmt);
+        ir_block_terminate_return(block);
     }
     ir_scope_pop(analyzer->factory);
     ret->body = new_ir_body(inner, inner_item, inner_local);
