@@ -172,7 +172,7 @@ static ir_type_t *ir_type_intern_chaining(ir_factory_t *factory, ir_type_t *type
     return ret;
 }
 
-const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
+static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
 {
     ir_type_t *cur;
     const hash_table_entry_t *entry;

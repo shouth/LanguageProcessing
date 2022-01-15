@@ -40,7 +40,6 @@ int ir_type_is_std(const ir_type_t *type);
 ir_type_t *new_ir_type_ref(const ir_type_t *type);
 const char *ir_type_str(const ir_type_t *type);
 
-const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *instance);
 const ir_type_t *ir_type_program(ir_factory_t *factory);
 const ir_type_t *ir_type_procedure(ir_factory_t *factory, ir_type_t *params);
 const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, size_t size);
