@@ -325,7 +325,6 @@ ir_item_t *ir_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_reg
 ir_item_t *ir_arg_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type);
 ir_item_t *ir_local_var_item(ir_factory_t *factory, symbol_t symbol, region_t name_region, const ir_type_t *type);
 ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol);
-void ir_item_add_ref(ir_item_t *item, size_t pos);
 void delete_ir_item(ir_item_t *item);
 
 struct impl_ir_scope {

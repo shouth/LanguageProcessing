@@ -291,9 +291,15 @@ ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos)
 {
     const hash_table_entry_t *entry;
     ir_local_t *local;
+    ir_item_pos_t *item_pos;
     assert(factory && item);
 
-    ir_item_add_ref(item, pos);
+    item_pos = new(ir_item_pos_t);
+    item_pos->pos = pos;
+    item_pos->next = NULL;
+    *item->refs.tail = item_pos;
+    item->refs.tail = &item_pos->next;
+
     if (entry = hash_table_find(factory->scope->locals.table, item)) {
         return entry->value;
     }
@@ -806,15 +812,6 @@ void delete_ir_item(ir_item_t *item)
     delete_ir_body(item->body);
     delete_ir_item(item->next);
     free(item);
-}
-
-void ir_item_add_ref(ir_item_t *item, size_t pos)
-{
-    ir_item_pos_t *item_pos = new(ir_item_pos_t);
-    item_pos->pos = pos;
-    item_pos->next = NULL;
-    *item->refs.tail = item_pos;
-    item->refs.tail = &item_pos->next;
 }
 
 ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_t **types)
