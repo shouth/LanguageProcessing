@@ -8,23 +8,27 @@ typedef struct {
     ir_block_t *break_dest;
 } analyzer_t;
 
-void error_conflict(analyzer_t *analyzer, symbol_t symbol, region_t region)
+void maybe_error_conflict(analyzer_t *analyzer, symbol_t symbol, region_t region)
 {
-    msg_t *msg = new_msg(analyzer->source, region, MSG_ERROR, "conflicting names");
-    ir_item_t *registered = ir_item_lookup(analyzer->factory, symbol);
-    msg_add_inline_entry(msg, registered->name_region, "first used here");
-    msg_add_inline_entry(msg, region, "second used here");
-    msg_emit(msg);
-    exit(1);
+    ir_item_t *item;
+    if (item = ir_item_lookup(analyzer->factory, symbol)) {
+        msg_t *msg = new_msg(analyzer->source, region, MSG_ERROR, "conflicting names");
+        msg_add_inline_entry(msg, item->name_region, "first used here");
+        msg_add_inline_entry(msg, region, "second used here");
+        msg_emit(msg);
+        exit(1);
+    }
 }
 
-void error_undeclared(analyzer_t *analyzer, symbol_t symbol, region_t region)
+void maybe_error_undeclared(analyzer_t *analyzer, symbol_t symbol, region_t region)
 {
-    const symbol_instance_t *instance = symbol_get_instance(symbol);
-    msg_t *msg = new_msg(analyzer->source, region,
-        MSG_ERROR, "`%.*s` is not declared", (int) instance->len, instance->ptr);
-    msg_emit(msg);
-    exit(1);
+    if (!ir_item_lookup(analyzer->factory, symbol)) {
+        const symbol_instance_t *instance = symbol_get_instance(symbol);
+        msg_t *msg = new_msg(analyzer->source, region,
+            MSG_ERROR, "`%.*s` is not declared", (int) instance->len, instance->ptr);
+        msg_emit(msg);
+        exit(1);
+    }
 }
 
 ir_block_t *analyzer_create_block(analyzer_t *analyzer)
@@ -108,17 +112,17 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
     case AST_EXPR_DECL_REF: {
         ast_ident_t *ident = expr->u.decl_ref_expr.decl;
         ir_item_t *lookup = ir_item_lookup(analyzer->factory, ident->symbol);
-        ir_local_t *local = ir_local_for(analyzer->factory, lookup, ident->region.pos);
-        return new_ir_place(local, NULL);
+        maybe_error_undeclared(analyzer, ident->symbol, ident->region);
+        return new_ir_place(ir_local_for(analyzer->factory, lookup, ident->region.pos), NULL);
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
         ir_operand_t *index = analyze_expr(analyzer, block, expr->u.array_subscript_expr.expr);
         ir_place_access_t *access = new_ir_index_place_access(index);
         ast_ident_t *ident = expr->u.array_subscript_expr.decl;
         ir_item_t *lookup = ir_item_lookup(analyzer->factory, ident->symbol);
-        ir_local_t *local;
         const ir_type_t *operand_type;
 
+        maybe_error_undeclared(analyzer, ident->symbol, ident->region);
         if (!ir_type_is_kind(lookup->type, IR_TYPE_ARRAY)) {
             const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
             msg_t *msg = new_msg(analyzer->source, ident->region,
@@ -135,8 +139,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
             msg_emit(msg);
             exit(1);
         }
-        local = ir_local_for(analyzer->factory, lookup, ident->region.pos);
-        return new_ir_place(local, access);
+        return new_ir_place(ir_local_for(analyzer->factory, lookup, ident->region.pos), access);
     }
     }
 }
@@ -443,6 +446,8 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         case AST_STMT_CALL: {
             ast_ident_t *ident = stmt->u.call_stmt.name;
             ir_item_t *item = ir_item_lookup(analyzer->factory, ident->symbol);
+
+            maybe_error_undeclared(analyzer, ident->symbol, ident->region);
             if (item->kind != IR_ITEM_PROCEDURE) {
                 const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
                 msg_t *msg = new_msg(analyzer->source, ident->region,
@@ -615,11 +620,7 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
         ast_ident_t *ident = decl->names;
         const ir_type_t *type = analyze_type(analyzer, decl->type);
         while (ident) {
-            if (ir_item_lookup(analyzer->factory, ident->symbol)) {
-                error_conflict(analyzer, ident->symbol, ident->region);
-                exit(1);
-            }
-
+            maybe_error_conflict(analyzer, ident->symbol, ident->region);
             if (local) {
                 ir_local_var_item(analyzer->factory, ident->symbol, ident->region, type);
             } else {
@@ -647,10 +648,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
             exit(1);
         }
         while (ident) {
-            if (ir_item_lookup(analyzer->factory, ident->symbol)) {
-                error_conflict(analyzer, ident->symbol, ident->region);
-                exit(1);
-            }
+            maybe_error_conflict(analyzer, ident->symbol, ident->region);
             ir_arg_var_item(analyzer->factory, ident->symbol, ident->region, type);
             ident = ident->next;
         }
@@ -676,10 +674,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
             ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
 
-            if (ir_item_lookup(analyzer->factory, decl->name->symbol)) {
-                error_conflict(analyzer, decl->name->symbol, decl->name->region);
-                exit(1);
-            }
+            maybe_error_conflict(analyzer, decl->name->symbol, decl->name->region);
             item = ir_procedure_item(analyzer->factory, decl->name->symbol, decl->name->region, ir_type_procedure(analyzer->factory, param_types));
             ir_scope_push(analyzer->factory, item, &inner_item, &inner_local);
             {
