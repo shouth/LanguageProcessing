@@ -330,7 +330,10 @@ void ir_scope_pop(ir_factory_t *factory);
 
 struct impl_ir_factory {
     ir_block_t **blocks;
-    ir_constant_t **constants;
+    struct {
+        hash_table_t *table;
+        ir_constant_t **tail;
+    } constants;
     struct {
         hash_table_t *table;
         ir_type_t **tail;

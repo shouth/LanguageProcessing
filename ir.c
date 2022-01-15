@@ -388,11 +388,20 @@ void delete_ir_place(ir_place_t *place)
     free(place);
 }
 
-static ir_constant_t *ir_append_constant(ir_factory_t *factory, ir_constant_t *constant)
+static const ir_constant_t *ir_constant_intern(ir_factory_t *factory, ir_constant_t *constant)
 {
+    const hash_table_entry_t *entry;
     assert(factory && constant);
-    *factory->constants = constant;
-    factory->constants = &constant->next;
+
+    if (entry = hash_table_find(factory->constants.table, constant)) {
+        if (entry->value != constant) {
+            delete_ir_constant(constant);
+        }
+        return entry->value;
+    }
+    hash_table_insert_unchecked(factory->constants.table, constant, constant);
+    *factory->constants.tail = constant;
+    factory->constants.tail = &constant->next;
     return constant;
 }
 
@@ -401,6 +410,7 @@ static ir_constant_t *new_ir_constant(ir_constant_kind_t kind, const ir_type_t *
     ir_constant_t *ret = new(ir_constant_t);
     ret->kind = kind;
     ret->type = type;
+    ret->next = NULL;
     return ret;
 }
 
@@ -408,21 +418,21 @@ const ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long val
 {
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_NUMBER, ir_type_integer(factory));
     ret->u.number_constant.value = value;
-    return ir_append_constant(factory, ret);
+    return ir_constant_intern(factory, ret);
 }
 
 const ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value)
 {
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_BOOLEAN, ir_type_boolean(factory));
     ret->u.boolean_constant.value = value;
-    return ir_append_constant(factory, ret);
+    return ir_constant_intern(factory, ret);
 }
 
 const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value)
 {
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_CHAR, ir_type_char(factory));
     ret->u.char_constant.value = value;
-    return ir_append_constant(factory, ret);
+    return ir_constant_intern(factory, ret);
 }
 
 const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len)
@@ -430,7 +440,46 @@ const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, s
     ir_type_t *base = new_ir_type_ref(ir_type_char(factory));
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_STRING, ir_type_array(factory, base, len));
     ret->u.string_constant.value = value;
-    return ir_append_constant(factory, ret);
+    return ir_constant_intern(factory, ret);
+}
+
+static int ir_constant_comparator(const void *lhs, const void *rhs)
+{
+    const ir_constant_t *l = lhs, *r = rhs;
+    if (l->kind != r->kind) {
+        return 0;
+    }
+    switch (l->kind) {
+    case IR_CONSTANT_NUMBER:
+        return l->u.number_constant.value == r->u.number_constant.value;
+    case IR_CONSTANT_BOOLEAN:
+        return l->u.boolean_constant.value == r->u.boolean_constant.value;
+    case IR_CONSTANT_CHAR:
+        return l->u.char_constant.value == r->u.char_constant.value;
+    case IR_CONSTANT_STRING:
+        return l->u.string_constant.value == r->u.string_constant.value;
+    }
+}
+
+static uint64_t ir_constant_hasher(const void *ptr)
+{
+    const ir_constant_t *p = ptr;
+    uint64_t ret = fnv1_int(p->kind);
+    switch (p->kind) {
+    case IR_CONSTANT_NUMBER:
+        ret = 31 * ret + fnv1_int(p->u.number_constant.value);
+        break;
+    case IR_CONSTANT_BOOLEAN:
+        ret = 31 * ret + fnv1_int(p->u.boolean_constant.value);
+        break;
+    case IR_CONSTANT_CHAR:
+        ret = 31 * ret + fnv1_int(p->u.char_constant.value);
+        break;
+    case IR_CONSTANT_STRING:
+        ret = 31 * ret + fnv1_ptr(symbol_get_instance(p->u.string_constant.value));
+        break;
+    }
+    return ret;
 }
 
 const ir_type_t *ir_constant_type(const ir_constant_t *constant)
@@ -737,7 +786,9 @@ ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_
     ret = new(ir_factory_t);
     ret->scope = NULL;
     ret->blocks = blocks;
-    ret->constants = constants;
+
+    ret->constants.tail = constants;
+    ret->constants.table = new_hash_table(ir_constant_comparator, ir_constant_hasher);
 
     ret->types.tail = types;
     ret->types.table = new_hash_table(ir_type_comparator, ir_type_hasher);
@@ -753,6 +804,7 @@ void delete_ir_factory(ir_factory_t *factory)
     if (!factory) {
         return;
     }
+    delete_hash_table(factory->constants.table, NULL, NULL);
     delete_hash_table(factory->types.table, NULL, NULL);
     free(factory);
 }
