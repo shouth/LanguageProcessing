@@ -152,6 +152,8 @@ static uint64_t ir_type_hasher(const void *ptr)
     return ret;
 }
 
+static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type);
+
 static ir_type_t *ir_type_intern_chaining(ir_factory_t *factory, ir_type_t *types)
 {
     ir_type_t *ret, *next;
