@@ -250,36 +250,31 @@ typedef enum {
     IR_TERMN_RETURN
 } ir_termn_kind_t;
 
-typedef struct {
-    ir_termn_kind_t kind;
-
-    union {
-        struct {
-            const ir_block_t *next;
-        } goto_termn;
-        struct {
-            ir_operand_t *cond;
-            const ir_block_t *then;
-            const ir_block_t *els;
-        } if_termn;
-    } u;
-} ir_termn_t;
-
-ir_termn_t *new_ir_goto_termn(const ir_block_t *next);
-ir_termn_t *new_ir_if_termn(ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
-ir_termn_t *new_ir_return_termn();
-void delete_ir_termn(ir_termn_t *termn);
-
 struct impl_ir_block {
     ir_block_t *next;
     ir_stmt_t *stmt;
     ir_stmt_t **stmt_tail;
-    ir_termn_t *termn;
+
+    struct {
+        ir_termn_kind_t kind;
+        union {
+            struct {
+                const ir_block_t *next;
+            } goto_termn;
+            struct {
+                ir_operand_t *cond;
+                const ir_block_t *then;
+                const ir_block_t *els;
+            } if_termn;
+        } u;
+    } termn;
 };
 
 ir_block_t *new_ir_block();
 void ir_block_push(ir_block_t *block, ir_stmt_t *stmt);
-void ir_block_terminate(ir_block_t *block, ir_termn_t *termn);
+void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);
+void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
+void ir_block_terminate_return(ir_block_t *block);
 void delete_ir_block(ir_block_t *block);
 
 typedef struct {
@@ -290,7 +285,6 @@ typedef struct {
 
 ir_body_t *new_ir_body(const ir_block_t *inner, ir_item_t *items, ir_local_t *locals);
 void delete_ir_body(ir_body_t *body);
-
 typedef struct impl_ir_item_pos ir_item_pos_t;
 struct impl_ir_item_pos {
     size_t pos;

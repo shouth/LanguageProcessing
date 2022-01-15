@@ -644,55 +644,13 @@ void delete_ir_stmt(ir_stmt_t *stmt)
     free(stmt);
 }
 
-static ir_termn_t *new_ir_termn(ir_termn_kind_t kind)
-{
-    ir_termn_t *ret = new(ir_termn_t);
-    ret->kind = kind;
-    return ret;
-}
-
-ir_termn_t *new_ir_goto_termn(const ir_block_t *next)
-{
-    ir_termn_t *ret = new_ir_termn(IR_TERMN_GOTO);
-    ret->u.goto_termn.next = next;
-    return ret;
-}
-
-ir_termn_t *new_ir_if_termn(ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els)
-{
-    ir_termn_t *ret = new_ir_termn(IR_TERMN_IF);
-    ret->u.if_termn.cond = cond;
-    ret->u.if_termn.then = then;
-    ret->u.if_termn.els = els;
-    return ret;
-}
-
-ir_termn_t *new_ir_return_termn()
-{
-    return new_ir_termn(IR_TERMN_RETURN);
-}
-
 void delete_ir_block(ir_block_t *block);
-
-void delete_ir_termn(ir_termn_t *termn)
-{
-    if (!termn) {
-        return;
-    }
-    switch (termn->kind) {
-    case IR_TERMN_IF:
-        delete_ir_operand(termn->u.if_termn.cond);
-        break;
-    }
-    free(termn);
-}
 
 ir_block_t *new_ir_block()
 {
     ir_block_t *ret = new(ir_block_t);
     ret->stmt = NULL;
     ret->stmt_tail = &ret->stmt;
-    ret->termn = NULL;
     ret->next = NULL;
     return ret;
 }
@@ -703,10 +661,22 @@ void ir_block_push(ir_block_t *block, ir_stmt_t *stmt)
     block->stmt_tail = &stmt->next;
 }
 
-void ir_block_terminate(ir_block_t *block, ir_termn_t *termn)
+void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next)
 {
-    block->termn = termn;
+    block->termn.kind = IR_TERMN_GOTO;
+    block->termn.u.goto_termn.next = next;
 }
+
+void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els)
+{
+    block->termn.kind = IR_TERMN_IF;
+    block->termn.u.if_termn.cond = cond;
+    block->termn.u.if_termn.then = then;
+    block->termn.u.if_termn.els = els;
+}
+
+void ir_block_terminate_return(ir_block_t *block)
+{ block->termn.kind = IR_TERMN_RETURN; }
 
 void delete_ir_block(ir_block_t *block)
 {
@@ -714,7 +684,6 @@ void delete_ir_block(ir_block_t *block)
         return;
     }
     delete_ir_stmt(block->stmt);
-    delete_ir_termn(block->termn);
     delete_ir_block(block->next);
     free(block);
 }

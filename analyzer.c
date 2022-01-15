@@ -364,12 +364,12 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 if (stmt->u.if_stmt.else_stmt) {
                     ir_block_t *else_begin = analyzer_create_block(analyzer);
                     ir_block_t *else_end = analyze_stmt(analyzer, else_begin, stmt->u.if_stmt.else_stmt);
-                    ir_block_terminate(block, new_ir_if_termn(cond, then_begin, else_begin));
-                    ir_block_terminate(then_end, new_ir_goto_termn(join_block));
-                    ir_block_terminate(else_end, new_ir_goto_termn(join_block));
+                    ir_block_terminate_if(block, cond, then_begin, else_begin);
+                    ir_block_terminate_goto(then_end, join_block);
+                    ir_block_terminate_goto(else_end, join_block);
                 } else {
-                    ir_block_terminate(block, new_ir_if_termn(cond, then_begin, join_block));
-                    ir_block_terminate(then_end, new_ir_goto_termn(join_block));
+                    ir_block_terminate_if(block, cond, then_begin, join_block);
+                    ir_block_terminate_goto(then_end, join_block);
                 }
 
                 block = join_block;
@@ -397,9 +397,9 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 {
                     ir_block_t *do_begin = analyzer_create_block(analyzer);
                     ir_block_t *do_end = analyze_stmt(analyzer, do_begin, while_stmt->do_stmt);
-                    ir_block_terminate(block, new_ir_goto_termn(cond_block));
-                    ir_block_terminate(cond_block, new_ir_if_termn(cond, do_begin, join_block));
-                    ir_block_terminate(do_end, new_ir_goto_termn(cond_block));
+                    ir_block_terminate_goto(block, cond_block);
+                    ir_block_terminate_if(cond_block, cond, do_begin, join_block);
+                    ir_block_terminate_goto(do_end, cond_block);
                 }
                 analyzer->break_dest = pre_break_dest;
                 block = join_block;
@@ -407,7 +407,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             break;
         }
         case AST_STMT_BREAK: {
-            ir_block_terminate(block, new_ir_goto_termn(analyzer->break_dest));
+            ir_block_terminate_goto(block, analyzer->break_dest);
             block = analyzer_create_block(analyzer);
             break;
         }
@@ -471,7 +471,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             break;
         }
         case AST_STMT_RETURN: {
-            ir_block_terminate(block, new_ir_return_termn());
+            ir_block_terminate_return(block);
             block = analyzer_create_block(analyzer);
             break;
         }
