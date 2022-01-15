@@ -247,16 +247,16 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast
 
     switch (expr->lit->kind) {
     case AST_LIT_NUMBER: {
-        ir_constant_t *constant = ir_number_constant(analyzer->factory, expr->lit->u.number_lit.value);
+        const ir_constant_t *constant = ir_number_constant(analyzer->factory, expr->lit->u.number_lit.value);
         return new_ir_constant_operand(constant);
     }
     case AST_LIT_BOOLEAN: {
-        ir_constant_t *constant = ir_boolean_constant(analyzer->factory, expr->lit->u.boolean_lit.value);
+        const ir_constant_t *constant = ir_boolean_constant(analyzer->factory, expr->lit->u.boolean_lit.value);
         return new_ir_constant_operand(constant);
     }
     case AST_LIT_STRING: {
         const symbol_instance_t *instance;
-        ir_constant_t *constant;
+        const ir_constant_t *constant;
         if (expr->lit->u.string_lit.str_len != 1) {
             msg_t *msg = new_msg(analyzer->source, expr->lit->region,
                 MSG_ERROR, "string is not a valid expression");
@@ -496,7 +496,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ast_constant_expr_t *constant = &expr->u.constant_expr;
                 ast_string_lit_t *string = &constant->lit->u.string_lit;
                 if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len > 1) {
-                    ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
+                    const ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
                     ir_block_push_write(block, new_ir_constant_operand(constant), SIZE_MAX);
                 } else {
                     ir_operand_t *value = analyze_expr(analyzer, block, formats->expr);

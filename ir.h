@@ -134,10 +134,10 @@ struct impl_ir_constant {
     } u;
 };
 
-ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value);
-ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value);
-ir_constant_t *ir_char_constant(ir_factory_t *factory, int value);
-ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len);
+const ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value);
+const ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value);
+const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value);
+const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len);
 const ir_type_t *ir_constant_type(const ir_constant_t *constant);
 void delete_ir_constant(ir_constant_t *constant);
 

@@ -404,28 +404,28 @@ static ir_constant_t *new_ir_constant(ir_constant_kind_t kind, const ir_type_t *
     return ret;
 }
 
-ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value)
+const ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value)
 {
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_NUMBER, ir_type_integer(factory));
     ret->u.number_constant.value = value;
     return ir_append_constant(factory, ret);
 }
 
-ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value)
+const ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value)
 {
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_BOOLEAN, ir_type_boolean(factory));
     ret->u.boolean_constant.value = value;
     return ir_append_constant(factory, ret);
 }
 
-ir_constant_t *ir_char_constant(ir_factory_t *factory, int value)
+const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value)
 {
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_CHAR, ir_type_char(factory));
     ret->u.char_constant.value = value;
     return ir_append_constant(factory, ret);
 }
 
-ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len)
+const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len)
 {
     ir_type_t *base = new_ir_type_ref(ir_type_char(factory));
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_STRING, ir_type_array(factory, base, len));
