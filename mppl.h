@@ -310,7 +310,7 @@ void print_cross_ref(const ir_t *ir);
 
 /* codegen.c */
 
-void casl2_codegen(ir_t *ir);
+void casl2_codegen(const ir_t *ir);
 
 /* msg.c */
 
