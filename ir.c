@@ -783,12 +783,22 @@ ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol)
     return NULL;
 }
 
+static delete_ir_item_pos(ir_item_pos_t *pos)
+{
+    if (!pos) {
+        return;
+    }
+    delete_ir_item_pos(pos->next);
+    free(pos);
+}
+
 void delete_ir_item(ir_item_t *item)
 {
     if (!item) {
         return;
     }
     delete_ir_body(item->body);
+    delete_ir_item_pos(item->refs.head);
     delete_ir_item(item->next);
     free(item);
 }
