@@ -96,7 +96,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
             msg_emit(msg);
             exit(1);
         }
-        return new_ir_place_index(ir_local_for(analyzer->factory, lookup, ident->region.pos), index);
+        return new_ir_index_place(ir_local_for(analyzer->factory, lookup, ident->region.pos), index);
     }
     }
 }

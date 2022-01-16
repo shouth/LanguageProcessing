@@ -101,7 +101,7 @@ struct impl_ir_place {
 };
 
 ir_place_t *new_ir_place(const ir_local_t *local);
-ir_place_t *new_ir_place_index(const ir_local_t *local, ir_operand_t *index);
+ir_place_t *new_ir_index_place(const ir_local_t *local, ir_operand_t *index);
 const ir_type_t *ir_place_type(ir_place_t *place);
 void delete_ir_place(ir_place_t *place);
 

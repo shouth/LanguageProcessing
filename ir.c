@@ -358,7 +358,7 @@ ir_place_t *new_ir_place(const ir_local_t *local)
     return ret;
 }
 
-ir_place_t *new_ir_place_index(const ir_local_t *local, ir_operand_t *index)
+ir_place_t *new_ir_index_place(const ir_local_t *local, ir_operand_t *index)
 {
     ir_place_t *ret = new_ir_place(local);
     ret->place_access = new(ir_place_access_t);
