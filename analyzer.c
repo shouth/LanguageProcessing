@@ -44,7 +44,7 @@ const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
         return ir_type_integer(analyzer->factory);
     case AST_TYPE_ARRAY: {
         const ir_type_t *base_type = analyze_type(analyzer, type->u.array_type.base);
-        ir_type_t *base_type_ref = new_ir_type_ref(base_type);
+        ir_type_t *base_type_ref = ir_type_ref(base_type);
         size_t size = type->u.array_type.size->u.number_lit.value;
         if (size == 0) {
             msg_t *msg = new_msg(analyzer->source, type->u.array_type.size->region,
@@ -426,7 +426,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ir_operand_t *arg = NULL, **arg_back = &arg;
                 while (args) {
                     *arg_back = analyze_expr(analyzer, block, args);
-                    *type_back = new_ir_type_ref(ir_operand_type(*arg_back));
+                    *type_back = ir_type_ref(ir_operand_type(*arg_back));
                     arg_back = &(*arg_back)->next;
                     type_back = &(*type_back)->next;
                     args = args->next;
@@ -544,7 +544,7 @@ ir_type_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
             exit(1);
         }
         while (ident) {
-            *last = new_ir_type_ref(type);
+            *last = ir_type_ref(type);
             last = &(*last)->next;
             ident = ident->next;
         }

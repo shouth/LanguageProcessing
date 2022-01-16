@@ -40,7 +40,7 @@ static ir_type_t *new_ir_type(ir_type_kind_t kind)
     return ret;
 }
 
-ir_type_t *new_ir_type_ref(const ir_type_t *type)
+ir_type_t *ir_type_ref(const ir_type_t *type)
 {
     ir_type_t *ret;
     assert(type);
@@ -166,7 +166,7 @@ static ir_type_t *ir_type_intern_chaining(ir_factory_t *factory, ir_type_t *type
     next = ir_type_intern_chaining(factory, types->next);
     if (types->kind != -1) {
         type = ir_type_intern(factory, types);
-        ret = new_ir_type_ref(type);
+        ret = ir_type_ref(type);
     } else {
         ret = types;
     }
@@ -390,6 +390,24 @@ void delete_ir_place(ir_place_t *place)
     free(place);
 }
 
+static ir_constant_t *new_ir_constant(ir_constant_kind_t kind, const ir_type_t *type)
+{
+    ir_constant_t *ret = new(ir_constant_t);
+    ret->kind = kind;
+    ret->type = type;
+    ret->next = NULL;
+    return ret;
+}
+
+static void delete_ir_constant(ir_constant_t *constant)
+{
+    if (!constant) {
+        return;
+    }
+    delete_ir_constant(constant->next);
+    free(constant);
+}
+
 static const ir_constant_t *ir_constant_intern(ir_factory_t *factory, ir_constant_t *constant)
 {
     const hash_table_entry_t *entry;
@@ -405,15 +423,6 @@ static const ir_constant_t *ir_constant_intern(ir_factory_t *factory, ir_constan
     *factory->constants.tail = constant;
     factory->constants.tail = &constant->next;
     return constant;
-}
-
-static ir_constant_t *new_ir_constant(ir_constant_kind_t kind, const ir_type_t *type)
-{
-    ir_constant_t *ret = new(ir_constant_t);
-    ret->kind = kind;
-    ret->type = type;
-    ret->next = NULL;
-    return ret;
 }
 
 const ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value)
@@ -439,7 +448,7 @@ const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value)
 
 const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len)
 {
-    ir_type_t *base = new_ir_type_ref(ir_type_char(factory));
+    ir_type_t *base = ir_type_ref(ir_type_char(factory));
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_STRING, ir_type_array(factory, base, len));
     ret->u.string_constant.value = value;
     return ir_constant_intern(factory, ret);
@@ -487,15 +496,6 @@ static uint64_t ir_constant_hasher(const void *ptr)
 const ir_type_t *ir_constant_type(const ir_constant_t *constant)
 {
     return constant->type;
-}
-
-void delete_ir_constant(ir_constant_t *constant)
-{
-    if (!constant) {
-        return;
-    }
-    delete_ir_constant(constant->next);
-    free(constant);
 }
 
 static ir_operand_t *new_ir_operand(ir_operand_kind_t kind)
@@ -736,6 +736,8 @@ ir_body_t *new_ir_body(const ir_block_t *inner, ir_item_t *items, ir_local_t *lo
     return ret;
 }
 
+static void delete_ir_item(ir_item_t *item);
+
 void delete_ir_body(ir_body_t *body)
 {
     if (!body) {
@@ -792,7 +794,7 @@ static delete_ir_item_pos(ir_item_pos_t *pos)
     free(pos);
 }
 
-void delete_ir_item(ir_item_t *item)
+static void delete_ir_item(ir_item_t *item)
 {
     if (!item) {
         return;
@@ -848,6 +850,7 @@ void delete_ir(ir_t *ir)
     }
     delete_ir_item(ir->items);
     delete_ir_block(ir->blocks);
+    delete_ir_constant(ir->constants);
     delete_ir_type(ir->types);
     free(ir);
 }

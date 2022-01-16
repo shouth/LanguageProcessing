@@ -37,7 +37,7 @@ struct impl_ir_type {
 const char *ir_type_kind_str(ir_type_kind_t kind);
 int ir_type_is_kind(const ir_type_t *type, ir_type_kind_t kind);
 int ir_type_is_std(const ir_type_t *type);
-ir_type_t *new_ir_type_ref(const ir_type_t *type);
+ir_type_t *ir_type_ref(const ir_type_t *type);
 const char *ir_type_str(const ir_type_t *type);
 
 const ir_type_t *ir_type_program(ir_factory_t *factory);
@@ -73,9 +73,7 @@ struct impl_ir_local {
 
 ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos);
 ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type);
-
 const ir_type_t *ir_local_type(const ir_local_t *local);
-void delete_ir_local(ir_local_t *local);
 
 typedef struct impl_ir_operand ir_operand_t;
 
@@ -138,7 +136,6 @@ const ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value);
 const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value);
 const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len);
 const ir_type_t *ir_constant_type(const ir_constant_t *constant);
-void delete_ir_constant(ir_constant_t *constant);
 
 typedef enum {
     IR_OPERAND_PLACE,
@@ -232,9 +229,6 @@ struct impl_ir_stmt {
     } u;
 };
 
-void delete_ir_stmt(ir_stmt_t *stmt);
-
-
 typedef enum {
     IR_TERMN_GOTO,
     IR_TERMN_IF,
@@ -270,7 +264,6 @@ void ir_block_push_write(ir_block_t *block, ir_operand_t *value, size_t len);
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
 void ir_block_terminate_return(ir_block_t *block);
-void delete_ir_block(ir_block_t *block);
 
 typedef struct {
     const ir_block_t *inner;
@@ -310,7 +303,6 @@ struct impl_ir_item {
 
 ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, region_t name_region, const ir_type_t *type);
 ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol);
-void delete_ir_item(ir_item_t *item);
 
 struct impl_ir_scope {
     ir_scope_t *next;
