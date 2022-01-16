@@ -20,6 +20,7 @@ int main(int argc, char **argv)
         /* pretty_print(ast); */
         ir = analyze_ast(ast);
         print_cross_ref(ir);
+        delete_ir(ir);
     }
     delete_ast(ast);
     delete_source(src);
