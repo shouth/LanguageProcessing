@@ -423,20 +423,12 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
                 ast_expr_t *args = stmt->u.call_stmt.args;
                 ir_type_t *type = NULL, **type_back = &type;
-                ir_place_t *place = NULL, **place_back = &place;
+                ir_operand_t *arg = NULL, **arg_back = &arg;
                 while (args) {
-                    ir_operand_t *operand = analyze_expr(analyzer, block, args);
-                    if (operand->kind == IR_OPERAND_PLACE) {
-                        *place_back = operand->u.place_operand.place;
-                    } else {
-                        ir_local_t *tmp = ir_local_temp(analyzer->factory, operand->u.constant_operand.constant->type);
-                        *place_back = new_ir_place(tmp);
-                    }
-                    operand->kind = -1;
-                    delete_ir_operand(operand);
-                    *type_back = new_ir_type_ref(ir_local_type((*place_back)->local));
+                    *arg_back = analyze_expr(analyzer, block, args);
+                    *type_back = new_ir_type_ref(ir_operand_type(*arg_back));
+                    arg_back = &(*arg_back)->next;
                     type_back = &(*type_back)->next;
-                    place_back = &(*place_back)->next;
                     args = args->next;
                 }
 
@@ -448,7 +440,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     exit(1);
                 }
 
-                ir_block_push_call(block, new_ir_place(func), place);
+                ir_block_push_call(block, new_ir_place(func), arg);
             }
             break;
         }

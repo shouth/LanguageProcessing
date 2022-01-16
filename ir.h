@@ -97,7 +97,6 @@ typedef struct impl_ir_place ir_place_t;
 struct impl_ir_place {
     const ir_local_t *local;
     ir_place_access_t *place_access;
-    ir_place_t *next;
 };
 
 ir_place_t *new_ir_place(const ir_local_t *local);
@@ -148,6 +147,7 @@ typedef enum {
 
 struct impl_ir_operand {
     ir_operand_kind_t kind;
+    ir_operand_t *next;
 
     union {
         struct {
@@ -220,7 +220,7 @@ struct impl_ir_stmt {
         } assign_stmt;
         struct {
             ir_place_t *func;
-            ir_place_t *args;
+            ir_operand_t *args;
         } call_stmt;
         struct {
             ir_place_t *ref;
@@ -264,7 +264,7 @@ struct impl_ir_block {
 
 ir_block_t *ir_block(ir_factory_t *factory);
 void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs);
-void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_place_t *args);
+void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_operand_t *args);
 void ir_block_push_read(ir_block_t *block, ir_place_t *ref);
 void ir_block_push_write(ir_block_t *block, ir_operand_t *value, size_t len);
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);

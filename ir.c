@@ -354,7 +354,6 @@ ir_place_t *new_ir_place(const ir_local_t *local)
     ir_place_t *ret = new(ir_place_t);
     ret->local = local;
     ret->place_access = NULL;
-    ret->next = NULL;
     return ret;
 }
 
@@ -384,7 +383,10 @@ void delete_ir_place(ir_place_t *place)
     if (!place) {
         return;
     }
-    delete_ir_place(place->next);
+    if (place->place_access) {
+        delete_ir_operand(place->place_access->u.index_place_access.index);
+        free(place->place_access);
+    }
     free(place);
 }
 
@@ -500,6 +502,7 @@ static ir_operand_t *new_ir_operand(ir_operand_kind_t kind)
 {
     ir_operand_t *ret = new(ir_operand_t);
     ret->kind = kind;
+    ret->next = NULL;
     return ret;
 }
 
@@ -539,6 +542,7 @@ void delete_ir_operand(ir_operand_t *operand)
         delete_ir_place(operand->u.place_operand.place);
         break;
     }
+    delete_ir_operand(operand->next);
     free(operand);
 }
 
@@ -625,7 +629,7 @@ void delete_ir_stmt(ir_stmt_t *stmt)
         break;
     case IR_STMT_CALL:
         delete_ir_place(stmt->u.call_stmt.func);
-        delete_ir_place(stmt->u.call_stmt.args);
+        delete_ir_operand(stmt->u.call_stmt.args);
         break;
     }
     delete_ir_stmt(stmt->next);
@@ -659,7 +663,7 @@ void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs)
     ir_block_append_block(block, ret);
 }
 
-void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_place_t *args)
+void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_operand_t *args)
 {
     ir_stmt_t *ret = new_ir_stmt(IR_STMT_CALL);
     ret->u.call_stmt.func = func;
