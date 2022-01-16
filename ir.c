@@ -631,6 +631,12 @@ void delete_ir_stmt(ir_stmt_t *stmt)
         delete_ir_place(stmt->u.call_stmt.func);
         delete_ir_operand(stmt->u.call_stmt.args);
         break;
+    case IR_STMT_READ:
+        delete_ir_place(stmt->u.read_stmt.ref);
+        break;
+    case IR_STMT_WRITE:
+        delete_ir_operand(stmt->u.write_stmt.value);
+        break;
     }
     delete_ir_stmt(stmt->next);
     free(stmt);
@@ -711,6 +717,10 @@ void delete_ir_block(ir_block_t *block)
 {
     if (!block) {
         return;
+    }
+    switch (block->termn.kind) {
+    case IR_TERMN_IF:
+        delete_ir_operand(block->termn.u.if_termn.cond);
     }
     delete_ir_stmt(block->stmt);
     delete_ir_block(block->next);
