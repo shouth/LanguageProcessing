@@ -649,8 +649,8 @@ ir_block_t *ir_block(ir_factory_t *factory)
     ret->stmt_tail = &ret->stmt;
     ret->next = NULL;
     ret->termn.kind = -1;
-    *factory->blocks = ret;
-    factory->blocks = &ret->next;
+    *factory->blocks.tail = ret;
+    factory->blocks.tail = &ret->next;
     return ret;
 }
 
@@ -803,18 +803,20 @@ void delete_ir_item(ir_item_t *item)
     free(item);
 }
 
-ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_t **types)
+ir_factory_t *new_ir_factory()
 {
-    ir_factory_t *ret;
-    assert(blocks && constants);
-    ret = new(ir_factory_t);
+    ir_factory_t *ret = new(ir_factory_t);
     ret->scope = NULL;
-    ret->blocks = blocks;
 
-    ret->constants.tail = constants;
+    ret->blocks.head = NULL;
+    ret->blocks.tail = &ret->blocks.head;
+
+    ret->constants.head = NULL;
+    ret->constants.tail = &ret->constants.head;
     ret->constants.table = new_hash_table(ir_constant_comparator, ir_constant_hasher);
 
-    ret->types.tail = types;
+    ret->types.head = NULL;
+    ret->types.tail = &ret->types.head;
     ret->types.table = new_hash_table(ir_type_comparator, ir_type_hasher);
     ret->types.program = ir_type_intern(ret, new_ir_type(IR_TYPE_PROGRAM));
     ret->types.std_integer = ir_type_intern(ret, new_ir_type(IR_TYPE_INTEGER));
@@ -823,24 +825,19 @@ ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_
     return ret;
 }
 
-void delete_ir_factory(ir_factory_t *factory)
-{
-    if (!factory) {
-        return;
-    }
-    delete_hash_table(factory->constants.table, NULL, NULL);
-    delete_hash_table(factory->types.table, NULL, NULL);
-    free(factory);
-}
-
-ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_constant_t *constants, ir_type_t *types)
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_factory_t *factory)
 {
     ir_t *ret = new(ir_t);
     ret->source = source;
     ret->items = items;
-    ret->blocks = blocks;
-    ret->constants = constants;
-    ret->types = types;
+    ret->blocks = factory->blocks.head;
+    ret->constants = factory->constants.head;
+    ret->types = factory->types.head;
+
+    delete_hash_table(factory->constants.table, NULL, NULL);
+    delete_hash_table(factory->types.table, NULL, NULL);
+    free(factory);
+
     return ret;
 }
 

@@ -661,15 +661,11 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 ir_t *analyze_ast(ast_t *ast)
 {
     ir_item_t *items;
-    ir_block_t *blocks;
-    ir_constant_t *constants;
-    ir_type_t *types;
     analyzer_t analyzer;
     assert(ast);
 
     analyzer.source = ast->source;
-    analyzer.factory = new_ir_factory(&blocks, &constants, &types);
+    analyzer.factory = new_ir_factory();
     items = analyze_program(&analyzer, ast->program);
-    delete_ir_factory(analyzer.factory);
-    return new_ir(analyzer.source, items, blocks, constants, types);
+    return new_ir(analyzer.source, items, analyzer.factory);
 }

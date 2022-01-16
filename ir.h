@@ -329,13 +329,18 @@ void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner, ir_item_t **it
 void ir_scope_pop(ir_factory_t *factory);
 
 struct impl_ir_factory {
-    ir_block_t **blocks;
+    struct {
+        ir_block_t *head;
+        ir_block_t **tail;
+    } blocks;
     struct {
         hash_table_t *table;
+        ir_constant_t *head;
         ir_constant_t **tail;
     } constants;
     struct {
         hash_table_t *table;
+        ir_type_t *head;
         ir_type_t **tail;
         const ir_type_t *program;
         const ir_type_t *std_integer;
@@ -345,8 +350,7 @@ struct impl_ir_factory {
     ir_scope_t *scope;
 };
 
-ir_factory_t *new_ir_factory(ir_block_t **blocks, ir_constant_t **constants, ir_type_t **types);
-void delete_ir_factory(ir_factory_t *factory);
+ir_factory_t *new_ir_factory();
 
 typedef struct {
     const source_t *source;
@@ -356,7 +360,7 @@ typedef struct {
     ir_type_t *types;
 } ir_t;
 
-ir_t *new_ir(const source_t *source, ir_item_t *items, ir_block_t *blocks, ir_constant_t *constants, ir_type_t *types);
+ir_t *new_ir(const source_t *source, ir_item_t *items, ir_factory_t *factory);
 void delete_ir(ir_t *ir);
 
 #endif
