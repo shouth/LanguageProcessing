@@ -247,15 +247,17 @@ const ir_type_t *ir_type_boolean(ir_factory_t *factory)
 void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
 {
     ir_scope_t *scope;
-    assert(factory && owner);
+    assert(factory && owner && items && locals);
 
     scope = new(ir_scope_t);
     scope->next = factory->scope;
     factory->scope = scope;
     scope->owner = owner;
     scope->items.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+    *items = NULL;
     scope->items.tail = items;
     scope->locals.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+    *locals = NULL;
     scope->locals.tail = locals;
 }
 
