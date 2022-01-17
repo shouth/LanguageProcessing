@@ -14,6 +14,17 @@ typedef struct {
     } addr;
 } codegen_t;
 
+codegen_addr_t codegen_addr_lookup(codegen_t *codegen, const void *ptr)
+{
+    const hash_table_entry_t *entry;
+    assert(codegen);
+    if (entry = hash_table_find(codegen->addr.table, ptr)) {
+        return (codegen_addr_t) entry->value;
+    } else {
+        return 0;
+    }
+}
+
 codegen_addr_t codegen_addr_for(codegen_t *codegen, const void *ptr)
 {
     const hash_table_entry_t *entry;
@@ -67,6 +78,49 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
 
     addr = codegen_addr_for(codegen, block);
     /* コード生成 */
+    codegen_stmt(codegen, block->stmt);
+    switch (block->termn.kind) {
+    case IR_TERMN_GOTO: {
+        ir_block_t *next = block->termn.u.goto_termn.next;
+        /* コード生成 */
+        if (codegen_addr_lookup(codegen, next)) {
+            codegen_addr_t jmp = codegen_addr_for(codegen, next);
+        } else {
+            codegen_block(codegen, next);
+        }
+        break;
+    }
+    case IR_TERMN_IF: {
+        ir_block_t *then = block->termn.u.if_termn.then;
+        ir_block_t *els = block->termn.u.if_termn.els;
+
+        if (codegen_addr_lookup(codegen, then)) {
+            codegen_addr_t then_jmp = codegen_addr_for(codegen, then);
+            /* コード生成 */
+            if (codegen_addr_lookup(codegen, els)) {
+                codegen_addr_t els_jmp = codegen_addr_for(codegen, els);
+                /* コード生成 */
+            } else {
+                codegen_block(codegen, els);
+            }
+        } else {
+            if (codegen_addr_lookup(codegen, els)) {
+                codegen_addr_t els_jmp = codegen_addr_for(codegen, els);
+                /* コード生成 */
+                codegen_block(codegen, then);
+            } else {
+                codegen_addr_t els_jmp = codegen_addr_for(codegen, els);
+                /* コード生成 */
+                codegen_block(codegen, then);
+                codegen_block(codegen, els);
+            }
+        }
+        break;
+    }
+    case IR_TERMN_RETURN:
+        /* コード生成 */
+        break;
+    }
 }
 
 void codegen_body(codegen_t *codegen, const ir_body_t *body)
@@ -120,7 +174,7 @@ void casl2_codegen(const ir_t *ir)
     assert(ir);
 
     codegen.file = fopen(ir->source->output_filename, "w");
-    codegen.addr.cnt = 0;
+    codegen.addr.cnt = 1;
     codegen.addr.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     codegen_ir(&codegen, ir);
     delete_hash_table(codegen.addr.table, NULL, NULL);
