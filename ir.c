@@ -310,9 +310,11 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t po
     case IR_ITEM_LOCAL_VAR:
         local = new_ir_local(IR_LOCAL_NORMAL);
         local->u.normal.item = item;
+        break;
     default:
         local = new_ir_local(IR_LOCAL_REF);
         local->u.ref.item = item;
+        break;
     }
     hash_table_insert_unchecked(factory->scope->locals.table, item, local);
     return ir_scope_append_local(factory->scope, local);
