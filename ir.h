@@ -48,9 +48,9 @@ const ir_type_t *ir_type_char(ir_factory_t *factory);
 const ir_type_t *ir_type_boolean(ir_factory_t *factory);
 
 typedef enum {
-    IR_LOCAL_NORMAL,
-    IR_LOCAL_TEMP,
-    IR_LOCAL_REF
+    IR_LOCAL_VAR,
+    IR_LOCAL_ARG,
+    IR_LOCAL_TEMP
 } ir_local_kind_t;
 
 typedef struct impl_ir_local ir_local_t;
@@ -60,14 +60,14 @@ struct impl_ir_local {
 
     union {
         struct {
+            const ir_item_t *item;
+        } var;
+        struct {
+            const ir_item_t *item;
+        } arg;
+        struct {
             const ir_type_t *type;
         } temp;
-        struct {
-            const ir_item_t *item;
-        } normal;
-        struct {
-            const ir_item_t *item;
-        } ref;
     } u;
 };
 

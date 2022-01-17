@@ -306,15 +306,17 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t po
     }
 
     switch (item->kind) {
-    case IR_ITEM_ARG_VAR:
+    case IR_ITEM_VAR:
     case IR_ITEM_LOCAL_VAR:
-        local = new_ir_local(IR_LOCAL_NORMAL);
-        local->u.normal.item = item;
+        local = new_ir_local(IR_LOCAL_VAR);
+        local->u.var.item = item;
+        break;
+    case IR_ITEM_ARG_VAR:
+        local = new_ir_local(IR_LOCAL_ARG);
+        local->u.arg.item = item;
         break;
     default:
-        local = new_ir_local(IR_LOCAL_REF);
-        local->u.ref.item = item;
-        break;
+        unreachable();
     }
     hash_table_insert_unchecked(factory->scope->locals.table, item, local);
     return ir_scope_append_local(factory->scope, local);
@@ -333,12 +335,12 @@ const ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type)
 const ir_type_t *ir_local_type(const ir_local_t *local)
 {
     switch (local->kind) {
+    case IR_LOCAL_VAR:
+        return local->u.var.item->type;
+    case IR_LOCAL_ARG:
+        return local->u.arg.item->type;
     case IR_LOCAL_TEMP:
         return local->u.temp.type;
-    case IR_LOCAL_REF:
-        return local->u.ref.item->type;
-    case IR_LOCAL_NORMAL:
-        return local->u.normal.item->type;
     }
 
     unreachable();
