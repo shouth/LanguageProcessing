@@ -71,8 +71,8 @@ struct impl_ir_local {
     } u;
 };
 
-ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos);
-ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type);
+const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos);
+const ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type);
 const ir_type_t *ir_local_type(const ir_local_t *local);
 
 typedef struct impl_ir_operand ir_operand_t;
@@ -206,26 +206,34 @@ typedef enum {
     IR_STMT_WRITE
 } ir_stmt_kind_t;
 
+typedef struct {
+    ir_place_t *lhs;
+    ir_rvalue_t *rhs;
+} ir_assign_stmt_t;
+
+typedef struct {
+    ir_place_t *func;
+    ir_operand_t *args;
+} ir_call_stmt_t;
+
+typedef struct {
+    ir_place_t *ref;
+} ir_read_stmt_t;
+
+typedef struct {
+    ir_operand_t *value;
+    size_t len;
+} ir_write_stmt_t;
+
 struct impl_ir_stmt {
     ir_stmt_kind_t kind;
     ir_stmt_t *next;
 
     union {
-        struct {
-            ir_place_t *lhs;
-            ir_rvalue_t *rhs;
-        } assign_stmt;
-        struct {
-            ir_place_t *func;
-            ir_operand_t *args;
-        } call_stmt;
-        struct {
-            ir_place_t *ref;
-        } read_stmt;
-        struct {
-            ir_operand_t *value;
-            size_t len;
-        } write_stmt;
+        ir_assign_stmt_t assign_stmt;
+        ir_call_stmt_t call_stmt;
+        ir_read_stmt_t read_stmt;
+        ir_write_stmt_t write_stmt;
     } u;
 };
 

@@ -286,7 +286,7 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
     return ret;
 }
 
-ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos)
+const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos)
 {
     const hash_table_entry_t *entry;
     ir_local_t *local;
@@ -316,7 +316,7 @@ ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos)
     return ir_scope_append_local(factory->scope, local);
 }
 
-ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type)
+const ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type)
 {
     ir_local_t *local;
     assert(factory && type);

@@ -120,7 +120,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
 {
     ir_operand_t *lhs, *rhs;
     const ir_type_t *ltype, *rtype;
-    ir_local_t *result;
+    const ir_local_t *result;
     const ir_type_t *type;
     assert(analyzer && expr);
 
@@ -184,7 +184,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
 {
     ir_operand_t *operand;
     const ir_type_t *operand_type;
-    ir_local_t *result;
+    const ir_local_t *result;
     const ir_type_t *type;
     assert(analyzer && expr);
 
@@ -215,7 +215,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     ir_operand_t *operand;
     const ir_type_t *operand_type;
     const ir_type_t *cast_type;
-    ir_local_t *result;
+    const ir_local_t *result;
 
     operand = analyze_expr(analyzer, block, expr->expr);
     operand_type = ir_operand_type(operand);
@@ -420,7 +420,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             }
 
             {
-                ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
+                const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
                 ast_expr_t *args = stmt->u.call_stmt.args;
                 ir_type_t *type = NULL, **type_back = &type;
                 ir_operand_t *arg = NULL, **arg_back = &arg;
