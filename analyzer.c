@@ -609,15 +609,14 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             break;
         }
         case AST_DECL_PART_PROCEDURE: {
-            ir_item_t *item, *inner_item;
-            ir_local_t *inner_local;
+            ir_item_t *item;
             ir_block_t *inner = ir_block(analyzer->factory);
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
             ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
 
             maybe_error_conflict(analyzer, decl->name->symbol, decl->name->region);
             item = ir_item(analyzer->factory, IR_ITEM_PROCEDURE, decl->name->symbol, decl->name->region, ir_type_procedure(analyzer->factory, param_types));
-            ir_scope_push(analyzer->factory, item, &inner_item, &inner_local);
+            ir_scope_push(analyzer->factory, item);
             {
                 ast_decl_part_t *decl_part = decl->variables;
                 ir_block_t *block;
@@ -628,8 +627,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 block = analyze_stmt(analyzer, inner, decl->stmt);
                 ir_block_terminate_return(block);
             }
-            ir_scope_pop(analyzer->factory);
-            item->body = new_ir_body(inner, inner_item, inner_local);
+            item->body = new_ir_body(inner, ir_scope_pop(analyzer->factory));
             break;
         }
         }
@@ -639,22 +637,20 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 
 ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 {
-    ir_item_t *ret, *inner_item;
-    ir_local_t *inner_local;
+    ir_item_t *ret;
     ir_block_t *inner;
     assert(analyzer && program);
 
     ret = ir_item(analyzer->factory, IR_ITEM_PROGRAM, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
     inner = ir_block(analyzer->factory);
-    ir_scope_push(analyzer->factory, ret, &inner_item, &inner_local);
+    ir_scope_push(analyzer->factory, ret);
     {
         ir_block_t *block;
         analyze_decl_part(analyzer, program->decl_part);
         block = analyze_stmt(analyzer, inner, program->stmt);
         ir_block_terminate_return(block);
     }
-    ir_scope_pop(analyzer->factory);
-    ret->body = new_ir_body(inner, inner_item, inner_local);
+    ret->body = new_ir_body(inner, ir_scope_pop(analyzer->factory));
     return ret;
 }
 

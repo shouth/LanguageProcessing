@@ -244,33 +244,31 @@ const ir_type_t *ir_type_char(ir_factory_t *factory)
 const ir_type_t *ir_type_boolean(ir_factory_t *factory)
 { return factory->types.std_boolean; }
 
-void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner, ir_item_t **items, ir_local_t **locals)
+void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner)
 {
     ir_scope_t *scope;
-    assert(factory && owner && items && locals);
+    assert(factory && owner);
 
     scope = new(ir_scope_t);
     scope->next = factory->scope;
     factory->scope = scope;
     scope->owner = owner;
     scope->items.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    *items = NULL;
-    scope->items.tail = items;
+    scope->items.head = NULL;
+    scope->items.tail = &scope->items.head;
     scope->locals.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
-    *locals = NULL;
-    scope->locals.tail = locals;
+    scope->locals.head = NULL;
+    scope->locals.tail = &scope->locals.head;
 }
 
-void ir_scope_pop(ir_factory_t *factory)
+ir_scope_t *ir_scope_pop(ir_factory_t *factory)
 {
     ir_scope_t *scope;
     assert(factory);
 
     scope = factory->scope;
     factory->scope = scope->next;
-    delete_hash_table(scope->items.table, NULL, NULL);
-    delete_hash_table(scope->locals.table, NULL, NULL);
-    free(scope);
+    return scope;
 }
 
 static ir_local_t *ir_scope_append_local(ir_scope_t *scope, ir_local_t *local)
@@ -308,6 +306,7 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t po
     switch (item->kind) {
     case IR_ITEM_VAR:
     case IR_ITEM_LOCAL_VAR:
+    case IR_ITEM_PROCEDURE:
         local = new_ir_local(IR_LOCAL_VAR);
         local->u.var.item = item;
         break;
@@ -734,12 +733,16 @@ void delete_ir_block(ir_block_t *block)
     free(block);
 }
 
-ir_body_t *new_ir_body(const ir_block_t *inner, ir_item_t *items, ir_local_t *locals)
+ir_body_t *new_ir_body(const ir_block_t *inner, ir_scope_t *scope)
 {
     ir_body_t *ret = new(ir_body_t);
     ret->inner = inner;
-    ret->items = items;
-    ret->locals = locals;
+    ret->items = scope->items.head;
+    ret->locals = scope->locals.head;
+
+    delete_hash_table(scope->items.table, NULL, NULL);
+    delete_hash_table(scope->locals.table, NULL, NULL);
+    free(scope);
     return ret;
 }
 
