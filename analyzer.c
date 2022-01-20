@@ -216,6 +216,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     const ir_type_t *operand_type;
     const ir_type_t *cast_type;
     const ir_local_t *result;
+    assert(analyzer && block && expr);
 
     operand = analyze_expr(analyzer, block, expr->expr);
     operand_type = ir_operand_type(operand);
@@ -243,7 +244,7 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
 
 ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast_constant_expr_t *expr)
 {
-    assert(analyzer && expr);
+    assert(analyzer && block && expr);
 
     switch (expr->lit->kind) {
     case AST_LIT_NUMBER: {
@@ -274,7 +275,7 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast
 
 ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *expr)
 {
-    assert(analyzer && expr);
+    assert(analyzer && block && expr);
 
     switch (expr->kind) {
     case AST_EXPR_DECL_REF:
@@ -299,7 +300,7 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
 
 ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *stmt)
 {
-    assert(analyzer && stmt);
+    assert(analyzer && block && stmt);
 
     while (stmt) {
         switch (stmt->kind) {
