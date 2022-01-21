@@ -279,8 +279,6 @@ typedef struct {
     ir_local_t *locals;
 } ir_body_t;
 
-ir_body_t *new_ir_body(const ir_block_t *inner, ir_scope_t *scope);
-void delete_ir_body(ir_body_t *body);
 typedef struct impl_ir_item_pos ir_item_pos_t;
 struct impl_ir_item_pos {
     size_t pos;
@@ -314,7 +312,7 @@ ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol);
 
 struct impl_ir_scope {
     ir_scope_t *next;
-    const ir_item_t *owner;
+    ir_item_t *owner;
     struct {
         hash_table_t *table;
         ir_item_t *head;
@@ -327,8 +325,8 @@ struct impl_ir_scope {
     } locals;
 };
 
-void ir_scope_push(ir_factory_t *factory, const ir_item_t *owner);
-ir_scope_t *ir_scope_pop(ir_factory_t *factory);
+void ir_scope_start(ir_factory_t *factory, ir_item_t *owner);
+void ir_scope_end(ir_factory_t *factory, const ir_block_t *block);
 
 struct impl_ir_factory {
     struct {

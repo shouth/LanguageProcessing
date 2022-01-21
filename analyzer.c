@@ -617,7 +617,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 
             maybe_error_conflict(analyzer, decl->name->symbol, decl->name->region);
             item = ir_item(analyzer->factory, IR_ITEM_PROCEDURE, decl->name->symbol, decl->name->region, ir_type_procedure(analyzer->factory, param_types));
-            ir_scope_push(analyzer->factory, item);
+            ir_scope_start(analyzer->factory, item);
             {
                 ast_decl_part_t *decl_part = decl->variables;
                 ir_block_t *block;
@@ -628,7 +628,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
                 block = analyze_stmt(analyzer, inner, decl->stmt);
                 ir_block_terminate_return(block);
             }
-            item->body = new_ir_body(inner, ir_scope_pop(analyzer->factory));
+            ir_scope_end(analyzer->factory, inner);
             break;
         }
         }
@@ -644,14 +644,14 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 
     ret = ir_item(analyzer->factory, IR_ITEM_PROGRAM, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
     inner = ir_block(analyzer->factory);
-    ir_scope_push(analyzer->factory, ret);
+    ir_scope_start(analyzer->factory, ret);
     {
         ir_block_t *block;
         analyze_decl_part(analyzer, program->decl_part);
         block = analyze_stmt(analyzer, inner, program->stmt);
         ir_block_terminate_return(block);
     }
-    ret->body = new_ir_body(inner, ir_scope_pop(analyzer->factory));
+    ir_scope_end(analyzer->factory, inner);
     return ret;
 }
 
