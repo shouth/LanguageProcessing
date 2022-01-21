@@ -22,14 +22,10 @@ static uint64_t fnv1(const uint8_t *ptr, size_t len)
 }
 
 static uint64_t fnv1_int(uint64_t value)
-{
-    return fnv1((uint8_t *) &value, sizeof(value));
-}
+{ return fnv1((uint8_t *) &value, sizeof(value)); }
 
 static uint64_t fnv1_ptr(const void *ptr)
-{
-    return fnv1((uint8_t *) &ptr, sizeof(ptr));
-}
+{ return fnv1((uint8_t *) &ptr, sizeof(ptr)); }
 
 static uint8_t popcount(uint64_t n)
 {
@@ -128,14 +124,10 @@ hash_table_entry_t *hash_table_insert(hash_table_t *table, void *key, void *valu
 hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key);
 
 static int hash_table_default_comparator(const void *lhs, const void *rhs)
-{
-    return lhs == rhs;
-}
+{ return lhs == rhs; }
 
 static uint64_t hash_table_default_hasher(const void *ptr)
-{
-    return fnv1_ptr(ptr);
-}
+{ return fnv1_ptr(ptr); }
 
 /* source.c */
 

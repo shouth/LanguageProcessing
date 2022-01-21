@@ -120,14 +120,10 @@ void set_level_color(msg_level_t level)
 }
 
 void set_bold()
-{
-    printf("\033[1m");
-}
+{ printf("\033[1m"); }
 
 void reset()
-{
-    printf("\033[0m");
-}
+{ printf("\033[0m"); }
 
 void put_sanitized(int c)
 {

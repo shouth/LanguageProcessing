@@ -507,9 +507,7 @@ static uint64_t ir_constant_hasher(const void *ptr)
 }
 
 const ir_type_t *ir_constant_type(const ir_constant_t *constant)
-{
-    return constant->type;
-}
+{ return constant->type; }
 
 static ir_operand_t *new_ir_operand(ir_operand_kind_t kind)
 {

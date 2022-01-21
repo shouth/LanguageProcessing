@@ -52,6 +52,4 @@ symbol_t symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len)
 }
 
 const symbol_instance_t *symbol_get_instance(symbol_t symbol)
-{
-    return (symbol_instance_t *) symbol;
-}
+{ return (symbol_instance_t *) symbol; }
