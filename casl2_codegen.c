@@ -274,21 +274,38 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
     codegen_store(codegen, "GR1", stmt->lhs);
 }
 
+void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
+{
+
+}
+
+void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
+{
+
+}
+
+void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
+{
+
+}
+
 void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
 {
     assert(codegen && stmt);
 
-    /* コード生成 */
     while (stmt) {
         switch (stmt->kind) {
         case IR_STMT_ASSIGN:
             codegen_assign_stmt(codegen, &stmt->u.assign_stmt);
             break;
         case IR_STMT_CALL:
+            codegen_call_stmt(codegen, &stmt->u.call_stmt);
             break;
         case IR_STMT_READ:
+            codegen_read_stmt(codegen, &stmt->u.read_stmt);
             break;
         case IR_STMT_WRITE:
+            codegen_write_stmt(codegen, &stmt->u.write_stmt);
             break;
         }
         stmt = stmt->next;
