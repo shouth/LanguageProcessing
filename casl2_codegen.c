@@ -257,7 +257,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
         break;
     case IR_RVALUE_UNARY_OP:
         switch (stmt->rhs->u.unary_op_rvalue.kind) {
-        case IR_RVALUE_UNARY_OP:
+        case AST_UNARY_OP_NOT:
             codegen_load(codegen, "GR1", stmt->rhs->u.unary_op_rvalue.value);
             fprintf(codegen->file, "\tLAD\tGR2,1\n");
             fprintf(codegen->file, "\tXOR\tGR1,GR2");
@@ -351,7 +351,7 @@ void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
 
 void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
 {
-    assert(codegen && stmt);
+    assert(codegen);
 
     while (stmt) {
         switch (stmt->kind) {
