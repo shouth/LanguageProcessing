@@ -50,8 +50,8 @@ const char *codegen_label_for(codegen_t *codegen, const void *ptr)
 const char *codegen_tmp_label(codegen_t *codegen)
 {
     static char buf[16];
-    codegen->addr.cnt++;
-    sprintf(buf, "L%ld", codegen->addr.cnt);
+    codegen_addr_t addr = codegen->addr.cnt++;
+    sprintf(buf, "L%ld", addr);
     return buf;
 }
 
@@ -112,7 +112,7 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
         } else {
             switch (local->kind) {
             case IR_LOCAL_VAR:
-                fprintf(codegen->file, "\tLD\t %s, %s\n", reg, codegen_label_for(codegen, local->u.var.item));
+                fprintf(codegen->file, "\tLD\t%s, %s\n", reg, codegen_label_for(codegen, local->u.var.item));
                 break;
             case IR_LOCAL_ARG:
                 fprintf(codegen->file, "\tLAD\tGR7, %s\n", codegen_label_for(codegen, local->u.arg.item));
