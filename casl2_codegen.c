@@ -502,7 +502,7 @@ void codegen_body(codegen_t *codegen, const ir_body_t *body)
 void codegen_item(codegen_t *codegen, const ir_item_t *item)
 {
     codegen_addr_t addr;
-    assert(codegen && item);
+    assert(codegen);
 
     while (item) {
         switch (item->kind) {
