@@ -60,8 +60,23 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
     assert(codegen && constant);
 
     while (constant) {
-        codegen_addr_t addr = codegen_addr_for(codegen, constant);
-        /* コード生成 */
+        fprintf(codegen->file, "%s\n", codegen_label_for(codegen, constant));
+        switch (constant->kind) {
+        case IR_CONSTANT_NUMBER:
+            fprintf(codegen->file, "\tDC\t%ld\n", constant->u.number_constant.value);
+            break;
+        case IR_CONSTANT_CHAR:
+            fprintf(codegen->file, "\tDC\t%d\n", constant->u.char_constant.value);
+            break;
+        case IR_CONSTANT_BOOLEAN:
+            fprintf(codegen->file, "\tDC\t%d\n", constant->u.boolean_constant.value);
+            break;
+        case IR_CONSTANT_STRING: {
+            const symbol_instance_t *instance = symbol_get_instance(constant->u.string_constant.value);
+            size_t i;
+            fprintf(codegen->file, "\tDC\t\'%.*s\'\n", (int) instance->len, instance->ptr);
+        }
+        }
         constant = constant->next;
     }
 }
@@ -431,17 +446,14 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
             fprintf(codegen->file, "%s\n", label);
             switch (constant->kind) {
             case IR_CONSTANT_NUMBER:
-                fprintf(codegen->file, "\tDC\t%ld\n", constant->u.number_constant.value);
-                break;
             case IR_CONSTANT_CHAR:
-                fprintf(codegen->file, "\tDC\t%d\n", constant->u.char_constant.value);
-                break;
             case IR_CONSTANT_BOOLEAN:
-                fprintf(codegen->file, "\tDC\t%d\n", constant->u.boolean_constant.value);
-                break;
+                fprintf(codegen->file, "\tDS\t1\n");
             default:
                 unreachable();
             }
+            fprintf(codegen->file, "\tLD\tGR1, %s\n", codegen_label_for(codegen, constant));
+            fprintf(codegen->file, "\tST\tGR1, %s\n", label);
             fprintf(codegen->file, "\tPUSH\t%s\n", label);
             break;
         }
@@ -550,8 +562,8 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
 {
-    codegen_constant(codegen, ir->constants);
     codegen_item(codegen, ir->items);
+    codegen_constant(codegen, ir->constants);
 }
 
 void casl2_codegen(const ir_t *ir)
