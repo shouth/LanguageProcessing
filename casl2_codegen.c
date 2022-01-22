@@ -276,7 +276,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             case IR_TYPE_BOOLEAN: {
                 const char *jmp = codegen_tmp_label(codegen);
                 fprintf(codegen->file, "\tLAD\tGR2, 0\n");
-                fprintf(codegen->file, "\tCMP\tGR1, GR2");
+                fprintf(codegen->file, "\tCPA\tGR1, GR2");
                 fprintf(codegen->file, "\tJZE\t%s\n", jmp);
                 fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "%s\n", jmp);
@@ -298,7 +298,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             case IR_TYPE_BOOLEAN: {
                 const char *jmp = codegen_tmp_label(codegen);
                 fprintf(codegen->file, "\tLAD\tGR2, 0\n");
-                fprintf(codegen->file, "\tCMP\tGR1, GR2");
+                fprintf(codegen->file, "\tCPA\tGR1, GR2");
                 fprintf(codegen->file, "\tJZE\t%s\n", jmp);
                 fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "%s\n", jmp);
@@ -397,7 +397,7 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
 
         codegen_load(codegen, "GR1", cond);
         fprintf(codegen->file, "\tLAD\tGR2, 0\n");
-        fprintf(codegen->file, "\tCMP\tGR1, GR2\n");
+        fprintf(codegen->file, "\tCPA\tGR1, GR2\n");
         if (codegen_addr_lookup(codegen, then)) {
             fprintf(codegen->file, "\tJNZ\t%s\n", codegen_label_for(codegen, then));
             if (codegen_addr_lookup(codegen, els)) {
