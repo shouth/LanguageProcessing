@@ -39,9 +39,9 @@ codegen_addr_t codegen_addr_for(codegen_t *codegen, const void *ptr)
     }
 }
 
-const char *codegen_item_label(codegen_t *codegen, const ir_item_t *item)
+const char *codegen_label_for(codegen_t *codegen, const void *ptr)
 {
-    codegen_addr_t addr = codegen_addr_for(codegen, item);
+    codegen_addr_t addr = codegen_addr_for(codegen, ptr);
     static char buf[16];
     sprintf(buf, "L%ld", addr);
     return buf;
@@ -97,7 +97,7 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
                 codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
                 switch (local->kind) {
                 case IR_LOCAL_VAR:
-                    fprintf(codegen->file, "\tLD\t%s, %s, GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
+                    fprintf(codegen->file, "\tLD\t%s, %s, GR7\n", reg, codegen_label_for(codegen, local->u.var.item));
                     break;
                 default:
                     unreachable();
@@ -109,10 +109,10 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
         } else {
             switch (local->kind) {
             case IR_LOCAL_VAR:
-                fprintf(codegen->file, "\tLD\t %s, %s\n", reg, codegen_item_label(codegen, local->u.var.item));
+                fprintf(codegen->file, "\tLD\t %s, %s\n", reg, codegen_label_for(codegen, local->u.var.item));
                 break;
             case IR_LOCAL_ARG:
-                fprintf(codegen->file, "\tLAD\tGR7, %s\n", codegen_item_label(codegen, local->u.arg.item));
+                fprintf(codegen->file, "\tLAD\tGR7, %s\n", codegen_label_for(codegen, local->u.arg.item));
                 fprintf(codegen->file, "\tLD\t%s, 0, GR7\n", reg);
                 break;
             case IR_LOCAL_TEMP:
@@ -139,7 +139,7 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
         switch (local->kind) {
         case IR_LOCAL_VAR:
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-            fprintf(codegen->file, "\tST\t%s, %s, GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
+            fprintf(codegen->file, "\tST\t%s, %s, GR7\n", reg, codegen_label_for(codegen, local->u.var.item));
             break;
         default:
             unreachable();
@@ -147,10 +147,10 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
     } else {
         switch (local->kind) {
         case IR_LOCAL_VAR:
-            fprintf(codegen->file, "\tST\t%s, %s\n", reg, codegen_item_label(codegen, local->u.var.item));
+            fprintf(codegen->file, "\tST\t%s, %s\n", reg, codegen_label_for(codegen, local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            fprintf(codegen->file, "\tLAD\tGR7, %s\n", codegen_item_label(codegen, local->u.arg.item));
+            fprintf(codegen->file, "\tLAD\tGR7, %s\n", codegen_label_for(codegen, local->u.arg.item));
             fprintf(codegen->file, "\tST\t%s, 0, GR7\n", reg);
             break;
         case IR_LOCAL_TEMP:
@@ -331,7 +331,7 @@ void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
 
     switch (stmt->func->local->kind) {
     case IR_LOCAL_VAR:
-        fprintf(codegen->file, "\tCALL\t%s\n", codegen_item_label(codegen, stmt->func->local->u.var.item));
+        fprintf(codegen->file, "\tCALL\t%s\n", codegen_label_for(codegen, stmt->func->local->u.var.item));
         break;
     default:
         unreachable();
@@ -377,22 +377,21 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     codegen_addr_t addr;
     assert(codegen && block);
 
-    addr = codegen_addr_for(codegen, block);
-    /* コード生成 */
+    fprintf(codegen->file, "%s\n", codegen_label_for(codegen, block));
     codegen->stmt_cnt = 0;
     codegen_stmt(codegen, block->stmt);
     switch (block->termn.kind) {
     case IR_TERMN_GOTO: {
         const ir_block_t *next = block->termn.u.goto_termn.next;
-        /* コード生成 */
         if (codegen_addr_lookup(codegen, next)) {
-            codegen_addr_t jmp = codegen_addr_for(codegen, next);
+            fprintf(codegen->file, "\tJUMP\t%s\n", codegen_label_for(codegen, next));
         } else {
             codegen_block(codegen, next);
         }
         break;
     }
     case IR_TERMN_IF: {
+        const ir_operand_t *cond = block->termn.u.if_termn.cond;
         const ir_block_t *then = block->termn.u.if_termn.then;
         const ir_block_t *els = block->termn.u.if_termn.els;
 
@@ -420,7 +419,7 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
         break;
     }
     case IR_TERMN_RETURN:
-        /* コード生成 */
+        fprintf(codegen->file, "\tRET\n");
         break;
     case IR_TERMN_ARG: {
         const ir_operand_t *arg = block->termn.u.arg_termn.arg;
@@ -453,7 +452,7 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
                 switch (place->local->kind) {
                 case IR_LOCAL_VAR:
                     codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-                    fprintf(codegen->file, "\tPUSH\t%s, GR7\n", codegen_item_label(codegen, place->local->u.var.item));
+                    fprintf(codegen->file, "\tPUSH\t%s, GR7\n", codegen_label_for(codegen, place->local->u.var.item));
                     break;
                 default:
                     unreachable();
@@ -461,10 +460,10 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
             } else {
                 switch (place->local->kind) {
                 case IR_LOCAL_VAR:
-                    fprintf(codegen->file, "\tPUSH\t%s\n", codegen_item_label(codegen, place->local->u.var.item));
+                    fprintf(codegen->file, "\tPUSH\t%s\n", codegen_label_for(codegen, place->local->u.var.item));
                     break;
                 case IR_LOCAL_ARG:
-                    fprintf(codegen->file, "\tLD\tGR7, %s\n", codegen_item_label(codegen, place->local->u.arg.item));
+                    fprintf(codegen->file, "\tLD\tGR7, %s\n", codegen_label_for(codegen, place->local->u.arg.item));
                     fprintf(codegen->file, "\tPUSH\t0, GR7\n");
                     break;
                 case IR_LOCAL_TEMP: {
@@ -518,16 +517,32 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
             codegen_body(codegen, item->body);
             break;
         case IR_ITEM_VAR:
-            addr = codegen_addr_for(codegen, item);
-            /* コード生成 */
+        case IR_ITEM_LOCAL_VAR:
+            fprintf(codegen->file, "%s\n", codegen_label_for(codegen, item));
+            switch (item->type->kind) {
+            case IR_TYPE_INTEGER:
+            case IR_TYPE_BOOLEAN:
+            case IR_TYPE_CHAR:
+                fprintf(codegen->file, "\tDS\t1\n");
+                break;
+            case IR_TYPE_ARRAY:
+                fprintf(codegen->file, "\tDS\t%ld\n", item->type->u.array_type.size);
+                break;
+            default:
+                unreachable();
+            }
             break;
         case IR_ITEM_ARG_VAR:
-            addr = codegen_addr_for(codegen, item);
-            /* コード生成 */
-            break;
-        case IR_ITEM_LOCAL_VAR:
-            addr = codegen_addr_for(codegen, item);
-            /* コード生成 */
+            fprintf(codegen->file, "%s\n", codegen_label_for(codegen, item));
+            switch (item->type->kind) {
+            case IR_TYPE_INTEGER:
+            case IR_TYPE_BOOLEAN:
+            case IR_TYPE_CHAR:
+                fprintf(codegen->file, "\tDS\t1\n");
+                break;
+            default:
+                unreachable();
+            }
             break;
         }
         item = item->next;
