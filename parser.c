@@ -199,6 +199,9 @@ ast_lit_t *parse_string_lit(parser_t *parser)
     return NULL;
 }
 
+int check_lit(parser_t *parser)
+{ return check(parser, TOKEN_NUMBER) || check(parser, TOKEN_TRUE) || check(parser, TOKEN_FALSE) || check(parser, TOKEN_STRING); }
+
 ast_lit_t *parse_lit(parser_t *parser)
 {
     assert(parser);
@@ -213,6 +216,9 @@ ast_lit_t *parse_lit(parser_t *parser)
 
     maybe_error_unreachable(parser);
 }
+
+int check_std_type(parser_t *parser)
+{ return check(parser, TOKEN_INTEGER) || check(parser, TOKEN_BOOLEAN) || check(parser, TOKEN_CHAR); }
 
 ast_type_t *parse_std_type(parser_t *parser)
 {
@@ -231,21 +237,32 @@ ast_type_t *parse_std_type(parser_t *parser)
 
 ast_type_t *parse_array_type(parser_t *parser)
 {
-    ast_lit_t *size;
-    ast_type_t *base;
+    ast_lit_t *size = NULL;
+    ast_type_t *base = NULL;
     size_t begin, end;
     assert(parser);
 
     begin = parser->next_token.region.pos;
     expect(parser, TOKEN_ARRAY);
     expect(parser, TOKEN_LSQPAREN);
-    size = parse_number_lit(parser);
+    if (check_lit(parser)) {
+        size = parse_number_lit(parser);
+    } else {
+        error_unexpected(parser);
+    }
     expect(parser, TOKEN_RSQPAREN);
     expect(parser, TOKEN_OF);
-    base = parse_std_type(parser);
+    if (check_std_type(parser)) {
+        base = parse_std_type(parser);
+    } else {
+        error_unexpected(parser);
+    }
     end = parser->current_token.region.pos + parser->current_token.region.len;
     return new_ast_array_type(base, size, region_from(begin, end - begin));
 }
+
+int check_type(parser_t *parser)
+{ return check(parser, TOKEN_ARRAY) || check_std_type(parser); }
 
 ast_type_t *parse_type(parser_t *parser)
 {
@@ -253,8 +270,11 @@ ast_type_t *parse_type(parser_t *parser)
 
     if (check(parser, TOKEN_ARRAY)) {
         return parse_array_type(parser);
+    } else if (check_std_type(parser)) {
+        return parse_std_type(parser);
     }
-    return parse_std_type(parser);
+
+    maybe_error_unreachable(parser);
 }
 
 ast_expr_t *parse_expr(parser_t *parser);
@@ -307,9 +327,7 @@ ast_expr_t *parse_factor(parser_t *parser)
     begin = parser->next_token.region;
     if (check(parser, TOKEN_NAME)) {
         return parse_ref(parser);
-    } else if (check(parser, TOKEN_NUMBER) || check(parser, TOKEN_TRUE)
-        || check(parser, TOKEN_FALSE) || check(parser, TOKEN_STRING))
-    {
+    } else if (check_lit(parser)) {
         ast_lit_t *lit = parse_lit(parser);
         return new_ast_constant_expr(lit, region_unite(begin, parser->current_token.region));
     } else if (eat(parser, TOKEN_LPAREN)) {
@@ -321,7 +339,7 @@ ast_expr_t *parse_factor(parser_t *parser)
         ast_expr_t *expr = parse_factor(parser);
         return new_ast_unary_expr(AST_UNARY_OP_NOT, expr,
             region_unite(begin, parser->current_token.region), op_region);
-    } else if (check(parser, TOKEN_INTEGER) || check(parser, TOKEN_BOOLEAN) || check(parser, TOKEN_CHAR)) {
+    } else if (check_std_type(parser)) {
         ast_expr_t *expr;
         ast_type_t *type = parse_std_type(parser);
         expect(parser, TOKEN_LPAREN);
@@ -649,20 +667,28 @@ ast_decl_part_t *parse_variable_decl_part(parser_t *parser)
 {
     ast_variable_decl_t *decls, *cur;
     ast_ident_t *names;
-    ast_type_t *type;
+    ast_type_t *type = NULL;
     assert(parser);
 
     expect(parser, TOKEN_VAR);
 
     names = parse_ident_seq(parser);
     expect(parser, TOKEN_COLON);
-    type = parse_type(parser);
+    if (check_type(parser)) {
+        type = parse_type(parser);
+    } else {
+        error_unexpected(parser);
+    }
     expect(parser, TOKEN_SEMI);
     decls = cur = new_ast_variable_decl(names, type);
     while (check(parser, TOKEN_NAME)) {
         names = parse_ident_seq(parser);
         expect(parser, TOKEN_COLON);
-        type = parse_type(parser);
+        if (check_type(parser)) {
+            type = parse_type(parser);
+        } else {
+            error_unexpected(parser);
+        }
         expect(parser, TOKEN_SEMI);
         cur = cur->next = new_ast_variable_decl(names, type);
     }
@@ -672,19 +698,27 @@ ast_decl_part_t *parse_variable_decl_part(parser_t *parser)
 ast_param_decl_t *parse_param_decl(parser_t *parser)
 {
     ast_ident_t *names;
-    ast_type_t *type;
+    ast_type_t *type = NULL;
     ast_param_decl_t *ret, *param;
     assert(parser);
 
     expect(parser, TOKEN_LPAREN);
     names = parse_ident_seq(parser);
     expect(parser, TOKEN_COLON);
-    type = parse_type(parser);
+    if (check_type(parser)) {
+        type = parse_type(parser);
+    } else {
+        error_unexpected(parser);
+    }
     ret = param = new_ast_param_decl(names, type);
     while (eat(parser, TOKEN_SEMI)) {
         names = parse_ident_seq(parser);
         expect(parser, TOKEN_COLON);
-        type = parse_type(parser);
+        if (check_type(parser)) {
+            type = parse_type(parser);
+        } else {
+            error_unexpected(parser);
+        }
         param = param->next = new_ast_param_decl(names, type);
     }
     expect(parser, TOKEN_RPAREN);
