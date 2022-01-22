@@ -547,8 +547,10 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
 {
+    fprintf(codegen->file, "\tSTART\n");
     codegen_item(codegen, ir->items);
     codegen_constant(codegen, ir->constants);
+    fprintf(codegen->file, "\tEND\n");
 }
 
 void casl2_codegen(const ir_t *ir)
