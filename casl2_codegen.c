@@ -395,23 +395,22 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
         const ir_block_t *then = block->termn.u.if_termn.then;
         const ir_block_t *els = block->termn.u.if_termn.els;
 
+        codegen_load(codegen, "GR1", cond);
+        fprintf(codegen->file, "\tLAD\tGR2, 0\n");
+        fprintf(codegen->file, "\tCMP\tGR1, GR2\n");
         if (codegen_addr_lookup(codegen, then)) {
-            codegen_addr_t then_jmp = codegen_addr_for(codegen, then);
-            /* コード生成 */
+            fprintf(codegen->file, "\tJNZ\t%s\n", codegen_label_for(codegen, then));
             if (codegen_addr_lookup(codegen, els)) {
-                codegen_addr_t els_jmp = codegen_addr_for(codegen, els);
-                /* コード生成 */
+                fprintf(codegen->file, "\tJUMP\t%s\n", codegen_label_for(codegen, els));
             } else {
                 codegen_block(codegen, els);
             }
         } else {
             if (codegen_addr_lookup(codegen, els)) {
-                codegen_addr_t els_jmp = codegen_addr_for(codegen, els);
-                /* コード生成 */
+                fprintf(codegen->file, "\tJZE\t%s\n", codegen_label_for(codegen, els));
                 codegen_block(codegen, then);
             } else {
-                codegen_addr_t els_jmp = codegen_addr_for(codegen, els);
-                /* コード生成 */
+                fprintf(codegen->file, "\tJZE\t%s\n", codegen_label_for(codegen, els));
                 codegen_block(codegen, then);
                 codegen_block(codegen, els);
             }
