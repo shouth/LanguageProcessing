@@ -94,10 +94,10 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
         if (place->place_access) {
             switch (place->place_access->kind) {
             case IR_PLACE_ACCESS_INDEX:
-                codegen_load(codegen, "GR8", place->place_access->u.index_place_access.index);
+                codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
                 switch (local->kind) {
                 case IR_LOCAL_VAR:
-                    fprintf(codegen->file, "\tLD\t%s,%s,GR8\n", reg, codegen_item_label(codegen, local->u.var.item));
+                    fprintf(codegen->file, "\tLD\t%s,%s,GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
                     break;
                 default:
                     unreachable();
@@ -112,8 +112,8 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
                 fprintf(codegen->file, "\tLD\t%s,%s\n", reg, codegen_item_label(codegen, local->u.var.item));
                 break;
             case IR_LOCAL_ARG:
-                fprintf(codegen->file, "\tLAD\tGR8,%s\n", codegen_item_label(codegen, local->u.arg.item));
-                fprintf(codegen->file, "\tLD\t%s,0,GR8\n", reg);
+                fprintf(codegen->file, "\tLAD\tGR7,%s\n", codegen_item_label(codegen, local->u.arg.item));
+                fprintf(codegen->file, "\tLD\t%s,0,GR7\n", reg);
                 break;
             case IR_LOCAL_TEMP:
                 fprintf(codegen->file, "\tPOP\t%s\n", reg);
@@ -138,8 +138,8 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
     if (place->place_access) {
         switch (local->kind) {
         case IR_LOCAL_VAR:
-            codegen_load(codegen, "GR8", place->place_access->u.index_place_access.index);
-            fprintf(codegen->file, "\tST\t%s,%s,GR8\n", reg, codegen_item_label(codegen, local->u.var.item));
+            codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
+            fprintf(codegen->file, "\tST\t%s,%s,GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
             break;
         default:
             unreachable();
@@ -150,8 +150,8 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
             fprintf(codegen->file, "\tST\t%s,%s\n", reg, codegen_item_label(codegen, local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            fprintf(codegen->file, "\tLAD\tGR8,%s\n", codegen_item_label(codegen, local->u.arg.item));
-            fprintf(codegen->file, "\tST\t%s,0,GR8\n", reg);
+            fprintf(codegen->file, "\tLAD\tGR7,%s\n", codegen_item_label(codegen, local->u.arg.item));
+            fprintf(codegen->file, "\tST\t%s,0,GR7\n", reg);
             break;
         case IR_LOCAL_TEMP:
             fprintf(codegen->file, "\tPUSH\t0,%s\n", reg);
@@ -453,8 +453,8 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
             if (place->place_access) {
                 switch (place->local->kind) {
                 case IR_LOCAL_VAR:
-                    codegen_load(codegen, "GR8", place->place_access->u.index_place_access.index);
-                    fprintf(codegen->file, "\tPUSH\t%s,GR8\n", codegen_item_label(codegen, place->local->u.var.item));
+                    codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
+                    fprintf(codegen->file, "\tPUSH\t%s,GR7\n", codegen_item_label(codegen, place->local->u.var.item));
                     break;
                 default:
                     unreachable();
@@ -465,8 +465,8 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
                     fprintf(codegen->file, "\tPUSH\t%s\n", codegen_item_label(codegen, place->local->u.var.item));
                     break;
                 case IR_LOCAL_ARG:
-                    fprintf(codegen->file, "\tLD\tGR8,%s\n", codegen_item_label(codegen, place->local->u.arg.item));
-                    fprintf(codegen->file, "\tPUSH\t0,GR8\n");
+                    fprintf(codegen->file, "\tLD\tGR7,%s\n", codegen_item_label(codegen, place->local->u.arg.item));
+                    fprintf(codegen->file, "\tPUSH\t0,GR7\n");
                     break;
                 case IR_LOCAL_TEMP: {
                     const char *label = codegen_tmp_label(codegen);
