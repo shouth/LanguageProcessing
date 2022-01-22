@@ -193,7 +193,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             fprintf(codegen->file, "\tOR\tGR1,GR2\n");
             break;
         default: {
-            fprintf(codegen->file, "\tCPA\tGR1,GR2\n");
             switch (stmt->rhs->u.binary_op_rvalue.kind) {
             case AST_BINARY_OP_EQUAL: {
                 const char *jmp = codegen_tmp_label(codegen);
