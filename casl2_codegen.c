@@ -331,7 +331,7 @@ void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
 
     switch (stmt->func->local->kind) {
     case IR_LOCAL_VAR:
-        fprintf(codegen->file, "\tCALL\t%s\n", codegen_label_for(codegen, stmt->func->local->u.var.item));
+        fprintf(codegen->file, "\tCALL\t%s\n", codegen_label_for(codegen, stmt->func->local->u.var.item->body->inner));
         break;
     default:
         unreachable();
