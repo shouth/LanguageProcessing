@@ -75,13 +75,13 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
         const ir_constant_t *constant = operand->u.constant_operand.constant;
         switch (constant->kind) {
         case IR_CONSTANT_CHAR:
-            fprintf(codegen->file, "\tLAD\t%s,%d\n", reg, constant->u.char_constant.value);
+            fprintf(codegen->file, "\tLAD\t%s, %d\n", reg, constant->u.char_constant.value);
             break;
         case IR_CONSTANT_NUMBER:
-            fprintf(codegen->file, "\tLAD\t%s,%ld\n", reg, constant->u.number_constant.value);
+            fprintf(codegen->file, "\tLAD\t%s, %ld\n", reg, constant->u.number_constant.value);
             break;
         case IR_CONSTANT_BOOLEAN:
-            fprintf(codegen->file, "\tLAD\t%s,%d\n", reg, constant->u.boolean_constant.value);
+            fprintf(codegen->file, "\tLAD\t%s, %d\n", reg, constant->u.boolean_constant.value);
             break;
         default:
             unreachable();
@@ -97,7 +97,7 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
                 codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
                 switch (local->kind) {
                 case IR_LOCAL_VAR:
-                    fprintf(codegen->file, "\tLD\t%s,%s,GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
+                    fprintf(codegen->file, "\tLD\t%s, %s, GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
                     break;
                 default:
                     unreachable();
@@ -109,11 +109,11 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
         } else {
             switch (local->kind) {
             case IR_LOCAL_VAR:
-                fprintf(codegen->file, "\tLD\t%s,%s\n", reg, codegen_item_label(codegen, local->u.var.item));
+                fprintf(codegen->file, "\tLD\t %s, %s\n", reg, codegen_item_label(codegen, local->u.var.item));
                 break;
             case IR_LOCAL_ARG:
-                fprintf(codegen->file, "\tLAD\tGR7,%s\n", codegen_item_label(codegen, local->u.arg.item));
-                fprintf(codegen->file, "\tLD\t%s,0,GR7\n", reg);
+                fprintf(codegen->file, "\tLAD\tGR7, %s\n", codegen_item_label(codegen, local->u.arg.item));
+                fprintf(codegen->file, "\tLD\t%s, 0, GR7\n", reg);
                 break;
             case IR_LOCAL_TEMP:
                 fprintf(codegen->file, "\tPOP\t%s\n", reg);
@@ -139,7 +139,7 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
         switch (local->kind) {
         case IR_LOCAL_VAR:
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-            fprintf(codegen->file, "\tST\t%s,%s,GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
+            fprintf(codegen->file, "\tST\t%s, %s, GR7\n", reg, codegen_item_label(codegen, local->u.var.item));
             break;
         default:
             unreachable();
@@ -147,14 +147,14 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
     } else {
         switch (local->kind) {
         case IR_LOCAL_VAR:
-            fprintf(codegen->file, "\tST\t%s,%s\n", reg, codegen_item_label(codegen, local->u.var.item));
+            fprintf(codegen->file, "\tST\t%s, %s\n", reg, codegen_item_label(codegen, local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            fprintf(codegen->file, "\tLAD\tGR7,%s\n", codegen_item_label(codegen, local->u.arg.item));
-            fprintf(codegen->file, "\tST\t%s,0,GR7\n", reg);
+            fprintf(codegen->file, "\tLAD\tGR7, %s\n", codegen_item_label(codegen, local->u.arg.item));
+            fprintf(codegen->file, "\tST\t%s, 0, GR7\n", reg);
             break;
         case IR_LOCAL_TEMP:
-            fprintf(codegen->file, "\tPUSH\t0,%s\n", reg);
+            fprintf(codegen->file, "\tPUSH\t0, %s\n", reg);
             break;
         default:
             unreachable();
@@ -175,76 +175,76 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
         codegen_load(codegen, "GR2", stmt->rhs->u.binary_op_rvalue.rhs);
         switch (stmt->rhs->u.binary_op_rvalue.kind) {
         case AST_BINARY_OP_PLUS:
-            fprintf(codegen->file, "\tADDA\tGR1,GR2\n");
+            fprintf(codegen->file, "\tADDA\tGR1, GR2\n");
             break;
         case AST_BINARY_OP_MINUS:
-            fprintf(codegen->file, "\tSUBA\tGR1,GR2\n");
+            fprintf(codegen->file, "\tSUBA\tGR1, GR2\n");
             break;
         case AST_BINARY_OP_STAR:
-            fprintf(codegen->file, "\tMULA\tGR1,GR2\n");
+            fprintf(codegen->file, "\tMULA\tGR1, GR2\n");
             break;
         case AST_BINARY_OP_DIV:
-            fprintf(codegen->file, "\tDIVA\tGR1,GR2\n");
+            fprintf(codegen->file, "\tDIVA\tGR1, GR2\n");
             break;
         case AST_BINARY_OP_AND:
-            fprintf(codegen->file, "\tAND\tGR1,GR2\n");
+            fprintf(codegen->file, "\tAND\tGR1, GR2\n");
             break;
         case AST_BINARY_OP_OR:
-            fprintf(codegen->file, "\tOR\tGR1,GR2\n");
+            fprintf(codegen->file, "\tOR\tGR1, GR2\n");
             break;
         default: {
             switch (stmt->rhs->u.binary_op_rvalue.kind) {
             case AST_BINARY_OP_EQUAL: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tCPA\tGR1,GR2\n");
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tCPA\tGR1, GR2\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "\tJZE\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,0\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 0\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
             case AST_BINARY_OP_NOTEQ: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tCPA\tGR1,GR2\n");
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tCPA\tGR1, GR2\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "\tJNZ\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,0\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 0\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
             case AST_BINARY_OP_LE: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tCPA\tGR1,GR2\n");
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tCPA\tGR1, GR2\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "\tJMI\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,0\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 0\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
             case AST_BINARY_OP_LEEQ: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tCPA\tGR2,GR1\n");
-                fprintf(codegen->file, "\tLAD\tGR1,0\n");
+                fprintf(codegen->file, "\tCPA\tGR2, GR1\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 0\n");
                 fprintf(codegen->file, "\tJMI\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
             case AST_BINARY_OP_GR: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tCPA\tGR2,GR1\n");
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tCPA\tGR2, GR1\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "\tJMI\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,0\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 0\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
             case AST_BINARY_OP_GREQ: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tCPA\tGR1,GR2\n");
-                fprintf(codegen->file, "\tLAD\tGR1,0\n");
+                fprintf(codegen->file, "\tCPA\tGR1, GR2\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 0\n");
                 fprintf(codegen->file, "\tJMI\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
@@ -258,8 +258,8 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
         switch (stmt->rhs->u.unary_op_rvalue.kind) {
         case AST_UNARY_OP_NOT:
             codegen_load(codegen, "GR1", stmt->rhs->u.unary_op_rvalue.value);
-            fprintf(codegen->file, "\tLAD\tGR2,1\n");
-            fprintf(codegen->file, "\tXOR\tGR1,GR2");
+            fprintf(codegen->file, "\tLAD\tGR2, 1\n");
+            fprintf(codegen->file, "\tXOR\tGR1, GR2\n");
             break;
         default:
             unreachable();
@@ -275,16 +275,16 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             switch (lhs_type) {
             case IR_TYPE_BOOLEAN: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tLAD\tGR2,0\n");
-                fprintf(codegen->file, "\tCMP\tGR1,GR2");
+                fprintf(codegen->file, "\tLAD\tGR2, 0\n");
+                fprintf(codegen->file, "\tCMP\tGR1, GR2");
                 fprintf(codegen->file, "\tJZE\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
             case IR_TYPE_CHAR:
-                fprintf(codegen->file, "\tLAD\tGR2,127\n");
-                fprintf(codegen->file, "\tAND\tGR1,GR2\n");
+                fprintf(codegen->file, "\tLAD\tGR2, 127\n");
+                fprintf(codegen->file, "\tAND\tGR1, GR2\n");
                 break;
             case IR_TYPE_INTEGER:
                 /* do nothing */
@@ -297,10 +297,10 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             switch (lhs_type) {
             case IR_TYPE_BOOLEAN: {
                 const char *jmp = codegen_tmp_label(codegen);
-                fprintf(codegen->file, "\tLAD\tGR2,0\n");
-                fprintf(codegen->file, "\tCMP\tGR1,GR2");
+                fprintf(codegen->file, "\tLAD\tGR2, 0\n");
+                fprintf(codegen->file, "\tCMP\tGR1, GR2");
                 fprintf(codegen->file, "\tJZE\t%s\n", jmp);
-                fprintf(codegen->file, "\tLAD\tGR1,1\n");
+                fprintf(codegen->file, "\tLAD\tGR1, 1\n");
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
@@ -453,7 +453,7 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
                 switch (place->local->kind) {
                 case IR_LOCAL_VAR:
                     codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-                    fprintf(codegen->file, "\tPUSH\t%s,GR7\n", codegen_item_label(codegen, place->local->u.var.item));
+                    fprintf(codegen->file, "\tPUSH\t%s, GR7\n", codegen_item_label(codegen, place->local->u.var.item));
                     break;
                 default:
                     unreachable();
@@ -464,15 +464,15 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
                     fprintf(codegen->file, "\tPUSH\t%s\n", codegen_item_label(codegen, place->local->u.var.item));
                     break;
                 case IR_LOCAL_ARG:
-                    fprintf(codegen->file, "\tLD\tGR7,%s\n", codegen_item_label(codegen, place->local->u.arg.item));
-                    fprintf(codegen->file, "\tPUSH\t0,GR7\n");
+                    fprintf(codegen->file, "\tLD\tGR7, %s\n", codegen_item_label(codegen, place->local->u.arg.item));
+                    fprintf(codegen->file, "\tPUSH\t0, GR7\n");
                     break;
                 case IR_LOCAL_TEMP: {
                     const char *label = codegen_tmp_label(codegen);
                     fprintf(codegen->file, "%s\n", label);
                     fprintf(codegen->file, "\tDS\t1\n");
                     fprintf(codegen->file, "\tPOP\tGR1\n");
-                    fprintf(codegen->file, "\tST\tGR1,%s\n", label);
+                    fprintf(codegen->file, "\tST\tGR1, %s\n", label);
                     fprintf(codegen->file, "\tPUSH\t%s\n", label);
                     break;
                 }
