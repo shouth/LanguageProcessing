@@ -88,19 +88,7 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
     switch (operand->kind) {
     case IR_OPERAND_CONSTANT: {
         const ir_constant_t *constant = operand->u.constant_operand.constant;
-        switch (constant->kind) {
-        case IR_CONSTANT_CHAR:
-            fprintf(codegen->file, "\tLAD\t%s, %d\n", reg, constant->u.char_constant.value);
-            break;
-        case IR_CONSTANT_NUMBER:
-            fprintf(codegen->file, "\tLAD\t%s, %ld\n", reg, constant->u.number_constant.value);
-            break;
-        case IR_CONSTANT_BOOLEAN:
-            fprintf(codegen->file, "\tLAD\t%s, %d\n", reg, constant->u.boolean_constant.value);
-            break;
-        default:
-            unreachable();
-        }
+        fprintf(codegen->file, "\tLD\t%s, %s\n", reg, codegen_label_for(codegen, constant));
         break;
     }
     case IR_OPERAND_PLACE: {
@@ -297,11 +285,8 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 fprintf(codegen->file, "%s\n", jmp);
                 break;
             }
-            case IR_TYPE_CHAR:
-                fprintf(codegen->file, "\tLAD\tGR2, 127\n");
-                fprintf(codegen->file, "\tAND\tGR1, GR2\n");
-                break;
             case IR_TYPE_INTEGER:
+            case IR_TYPE_CHAR:
                 /* do nothing */
                 break;
             default:
