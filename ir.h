@@ -240,7 +240,8 @@ struct impl_ir_stmt {
 typedef enum {
     IR_TERMN_GOTO,
     IR_TERMN_IF,
-    IR_TERMN_RETURN
+    IR_TERMN_RETURN,
+    IR_TERMN_ARG
 } ir_termn_kind_t;
 
 typedef struct impl_ir_block ir_block_t;
@@ -260,6 +261,10 @@ struct impl_ir_block {
                 const ir_block_t *then;
                 const ir_block_t *els;
             } if_termn;
+            struct {
+                const ir_operand_t *arg;
+                const ir_block_t *next;
+            } arg_termn;
         } u;
     } termn;
 };
@@ -272,6 +277,7 @@ void ir_block_push_write(ir_block_t *block, ir_operand_t *value, size_t len);
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
 void ir_block_terminate_return(ir_block_t *block);
+void ir_block_terminate_arg(ir_block_t *block, const ir_operand_t *arg, const ir_block_t *next);
 
 typedef struct {
     const ir_block_t *inner;

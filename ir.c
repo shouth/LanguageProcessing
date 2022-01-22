@@ -725,6 +725,14 @@ void ir_block_terminate_return(ir_block_t *block)
     block->termn.kind = IR_TERMN_RETURN;
 }
 
+void ir_block_terminate_arg(ir_block_t *block, const ir_operand_t *arg, const ir_block_t *next)
+{
+    assert(block->termn.kind == -1);
+    block->termn.kind = IR_TERMN_ARG;
+    block->termn.u.arg_termn.arg = arg;
+    block->termn.u.arg_termn.next = next;
+}
+
 void delete_ir_block(ir_block_t *block)
 {
     if (!block) {
