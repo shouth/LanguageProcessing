@@ -15,6 +15,10 @@ typedef struct {
         hash_table_t *table;
     } addr;
     char label[16];
+    struct {
+        int r_integer, r_char, r_boolean;
+        int w_integer, w_char, w_boolean;
+    } builtin;
 } codegen_t;
 
 codegen_addr_t codegen_addr_lookup(codegen_t *codegen, const void *ptr)
@@ -366,14 +370,113 @@ void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
     }
 }
 
+void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *constant)
+{
+    assert(codegen && constant);
+    codegen_print(codegen, "PUSH", "%s", codegen_label_for(codegen, constant));
+}
+
+void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
+{
+    assert(codegen && place);
+
+    if (place->place_access) {
+        switch (place->local->kind) {
+        case IR_LOCAL_VAR:
+            codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
+            codegen_print(codegen, "PUSH", "%s, GR7", codegen_label_for(codegen, place->local->u.var.item));
+            break;
+        default:
+            unreachable();
+        }
+    } else {
+        switch (place->local->kind) {
+        case IR_LOCAL_VAR:
+            codegen_print(codegen, "PUSH", "%s", codegen_label_for(codegen, place->local->u.var.item));
+            break;
+        case IR_LOCAL_ARG:
+            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, place->local->u.arg.item));
+            codegen_print(codegen, "PUSH", "0, GR7");
+            break;
+        case IR_LOCAL_TEMP: {
+            const char *label = codegen_tmp_label(codegen);
+            codegen_set_label(codegen, label);
+            codegen_print(codegen, "DS", "1");
+            codegen_print(codegen, "POP", "GR1");
+            codegen_print(codegen, "ST", "GR1, %s", label);
+            codegen_print(codegen, "PUSH", "%s", label);
+            break;
+        }
+        default:
+            unreachable();
+        }
+    }
+}
+
+void codegen_push_operand_address(codegen_t *codegen, const ir_operand_t *operand)
+{
+    assert(codegen && operand);
+
+    switch (operand->kind) {
+    case IR_OPERAND_CONSTANT:
+        codegen_push_constant_address(codegen, operand->u.constant_operand.constant);
+        break;
+    case IR_OPERAND_PLACE:
+        codegen_push_place_address(codegen, operand->u.place_operand.place);
+        break;
+    default:
+        unreachable();
+    }
+}
+
 void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
 {
+    assert(codegen && stmt);
 
+    codegen_push_place_address(codegen, stmt->ref);
+
+    /* call builtin `read` functions for each standard types */
+    switch (ir_place_type(stmt->ref)->kind) {
+    case IR_TYPE_INTEGER:
+        codegen_print(codegen, "CALL", "BRINT");
+        break;
+    case IR_TYPE_BOOLEAN:
+        codegen_print(codegen, "CALL", "BRBOOL");
+        break;
+    case IR_TYPE_CHAR:
+        codegen_print(codegen, "CALL", "BRCHAR");
+        break;
+    default:
+        unreachable();
+    }
 }
 
 void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
 {
+    assert(codegen && stmt);
 
+    codegen_push_operand_address(codegen, stmt->value);
+
+    /* call builtin `write` functions for each standard types */
+    switch (ir_operand_type(stmt->value)->kind) {
+    case IR_TYPE_INTEGER:
+        codegen_push_constant_address(codegen, stmt->len);
+        codegen_print(codegen, "CALL", "BWINT");
+        break;
+    case IR_TYPE_BOOLEAN:
+        codegen_push_constant_address(codegen, stmt->len);
+        codegen_print(codegen, "CALL", "BWBOOL");
+        break;
+    case IR_TYPE_CHAR:
+        codegen_push_constant_address(codegen, stmt->len);
+        codegen_print(codegen, "CALL", "BWCHAR");
+        break;
+    case IR_TYPE_ARRAY:
+        codegen_print(codegen, "CALL", "BWSTR");
+        break;
+    default:
+        unreachable();
+    }
 }
 
 void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
@@ -448,70 +551,10 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     case IR_TERMN_RETURN:
         codegen_print(codegen, "RET", NULL);
         break;
-    case IR_TERMN_ARG: {
-        const ir_operand_t *arg = block->termn.u.arg_termn.arg;
-        const ir_block_t *next = block->termn.u.arg_termn.next;
-
-        switch (arg->kind) {
-        case IR_OPERAND_CONSTANT: {
-            const ir_constant_t *constant = arg->u.constant_operand.constant;
-            const char *label = codegen_tmp_label(codegen);
-            codegen_set_label(codegen, label);
-            switch (constant->kind) {
-            case IR_CONSTANT_NUMBER:
-            case IR_CONSTANT_CHAR:
-            case IR_CONSTANT_BOOLEAN:
-                codegen_print(codegen, "DS", "1");
-            default:
-                unreachable();
-            }
-            codegen_print(codegen, "LD", "GR1, %s", codegen_label_for(codegen, constant));
-            codegen_print(codegen, "ST", "GR1, %s", label);
-            codegen_print(codegen, "PUSH", "%s", label);
-            break;
-        }
-        case IR_OPERAND_PLACE: {
-            ir_place_t *place = arg->u.place_operand.place;
-            if (place->place_access) {
-                switch (place->local->kind) {
-                case IR_LOCAL_VAR:
-                    codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-                    codegen_print(codegen, "PUSH", "%s, GR7", codegen_label_for(codegen, place->local->u.var.item));
-                    break;
-                default:
-                    unreachable();
-                }
-            } else {
-                switch (place->local->kind) {
-                case IR_LOCAL_VAR:
-                    codegen_print(codegen, "PUSH", "%s", codegen_label_for(codegen, place->local->u.var.item));
-                    break;
-                case IR_LOCAL_ARG:
-                    codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, place->local->u.arg.item));
-                    codegen_print(codegen, "PUSH", "0, GR7");
-                    break;
-                case IR_LOCAL_TEMP: {
-                    const char *label = codegen_tmp_label(codegen);
-                    codegen_set_label(codegen, label);
-                    codegen_print(codegen, "DS", "1");
-                    codegen_print(codegen, "POP", "GR1");
-                    codegen_print(codegen, "ST", "GR1, %s", label);
-                    codegen_print(codegen, "PUSH", "%s", label);
-                    break;
-                }
-                default:
-                    unreachable();
-                }
-            }
-            break;
-        }
-        default:
-            unreachable();
-        }
-
-        codegen_block(codegen, next);
+    case IR_TERMN_ARG:
+        codegen_push_operand_address(codegen, block->termn.u.arg_termn.arg);
+        codegen_block(codegen, block->termn.u.arg_termn.next);
         break;
-    }
     default:
         unreachable();
     }
@@ -593,6 +636,12 @@ void casl2_codegen(const ir_t *ir)
     codegen.addr.cnt = 1;
     codegen.addr.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     codegen.label[0] = '\0';
+    codegen.builtin.r_integer = 0;
+    codegen.builtin.r_char = 0;
+    codegen.builtin.r_boolean = 0;
+    codegen.builtin.w_integer = 0;
+    codegen.builtin.w_char = 0;
+    codegen.builtin.w_boolean = 0;
     codegen_ir(&codegen, ir);
     delete_hash_table(codegen.addr.table, NULL, NULL);
     fclose(codegen.file);
