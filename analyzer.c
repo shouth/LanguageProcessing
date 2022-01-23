@@ -482,6 +482,10 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 }
                 args = args->next;
             }
+
+            if (stmt->u.read_stmt.newline) {
+                ir_block_push_readln(block);
+            }
             break;
         }
         case AST_STMT_WRITE: {
@@ -513,6 +517,10 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     }
                 }
                 formats = formats->next;
+            }
+
+            if (stmt->u.write_stmt.newline) {
+                ir_block_push_writeln(block);
             }
             break;
         }

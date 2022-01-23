@@ -203,7 +203,9 @@ typedef enum {
     IR_STMT_ASSIGN,
     IR_STMT_CALL,
     IR_STMT_READ,
-    IR_STMT_WRITE
+    IR_STMT_READLN,
+    IR_STMT_WRITE,
+    IR_STMT_WRITELN
 } ir_stmt_kind_t;
 
 typedef struct {
@@ -273,7 +275,9 @@ ir_block_t *ir_block(ir_factory_t *factory);
 void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs);
 void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_operand_t *args);
 void ir_block_push_read(ir_block_t *block, ir_place_t *ref);
+void ir_block_push_readln(ir_block_t *block);
 void ir_block_push_write(ir_block_t *block, ir_operand_t *value, const ir_constant_t *len);
+void ir_block_push_writeln(ir_block_t *block);
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
 void ir_block_terminate_return(ir_block_t *block);
