@@ -668,20 +668,74 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
 
 void codegen_builtin(codegen_t *codegen)
 {
+    int builtin_write = 0;
+    int builtin_read = 0;
     codegen_set_label(codegen, "BLF");
     codegen_print(codegen, "DC", "#%04X", (int) '\n');
     codegen_set_label(codegen, "BSP");
     codegen_print(codegen, "DC", "#%04X", (int) ' ');
     codegen_set_label(codegen, "BCLEN");
     codegen_print(codegen, "DC", "1");
+
+    if (codegen->builtin.w_int) {
+        builtin_write = 1;
+        codegen_set_label(codegen, "BWINT");
+        codegen_print(codegen, "NOP", NULL);
+    }
+
+    if (codegen->builtin.w_bool) {
+        builtin_write = 1;
+        codegen_set_label(codegen, "BWBOOL");
+        codegen_print(codegen, "NOP", NULL);
+    }
+
+    if (codegen->builtin.w_char) {
+        builtin_write = 1;
+        codegen_set_label(codegen, "BWCHAR");
+        codegen_print(codegen, "NOP", NULL);
+    }
+
+    if (builtin_write) {
+        codegen_set_label(codegen, "BOBUF");
+        codegen_print(codegen, "DS", "8");
+        codegen_set_label(codegen, "BOLEN");
+        codegen_print(codegen, "DS", "1");
+    }
+
+    if (codegen->builtin.r_int) {
+        builtin_read = 1;
+        codegen_set_label(codegen, "BRINT");
+        codegen_print(codegen, "NOP", NULL);
+    }
+
+    if (codegen->builtin.r_char) {
+        builtin_read = 1;
+        codegen_set_label(codegen, "BRCHAR");
+        codegen_print(codegen, "NOP", NULL);
+    }
+
+    if (codegen->builtin.r_ln) {
+        builtin_read = 1;
+        codegen_set_label(codegen, "BRLN");
+        codegen_print(codegen, "NOP", NULL);
+    }
+
+    if (builtin_read) {
+        codegen_set_label(codegen, "BIBUF");
+        codegen_print(codegen, "DS", "256");
+        codegen_set_label(codegen, "BILEN");
+        codegen_print(codegen, "DC", "0");
+        codegen_set_label(codegen, "BICUR");
+        codegen_print(codegen, "DC", "0");
+    }
 }
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
 {
     codegen_print(codegen, "START", NULL);
     codegen_item(codegen, ir->items);
-    codegen_constant(codegen, ir->constants);
     codegen_builtin(codegen);
+    codegen_constant(codegen, ir->constants);
     codegen_print(codegen, "END", NULL);
 }
 
