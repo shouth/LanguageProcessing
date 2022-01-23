@@ -497,8 +497,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ast_string_lit_t *string = &constant->lit->u.string_lit;
                 if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len > 1) {
                     const ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
-                    const ir_constant_t *len = ir_number_constant(analyzer->factory, 32767);
-                    ir_block_push_write(block, new_ir_constant_operand(constant), len);
+                    ir_block_push_write(block, new_ir_constant_operand(constant), NULL);
                 } else {
                     ir_operand_t *value = analyze_expr(analyzer, block, formats->expr);
                     const ir_type_t *type = ir_operand_type(value);
@@ -511,9 +510,10 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                         exit(1);
                     }
 
-                    {
-                        size_t len = formats->len ? formats->len->u.number_lit.value : 32767;
-                        ir_block_push_write(block, value, ir_number_constant(analyzer->factory, len));
+                    if (formats->len) {
+                        ir_block_push_write(block, value, ir_number_constant(analyzer->factory, formats->len->u.number_lit.value));
+                    } else {
+                        ir_block_push_write(block, value, NULL);
                     }
                 }
                 formats = formats->next;

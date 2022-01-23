@@ -495,19 +495,16 @@ void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
     case IR_TYPE_INTEGER:
         codegen->builtin.w_int++;
         codegen_push_operand_address(codegen, stmt->value);
-        codegen_push_constant_address(codegen, stmt->len);
         codegen_print(codegen, "CALL", "BWINT");
         break;
     case IR_TYPE_BOOLEAN:
         codegen->builtin.w_bool++;
         codegen_push_operand_address(codegen, stmt->value);
-        codegen_push_constant_address(codegen, stmt->len);
         codegen_print(codegen, "CALL", "BWBOOL");
         break;
     case IR_TYPE_CHAR:
         codegen->builtin.w_char++;
         codegen_push_operand_address(codegen, stmt->value);
-        codegen_push_constant_address(codegen, stmt->len);
         codegen_print(codegen, "CALL", "BWCHAR");
         break;
     case IR_TYPE_ARRAY: {
