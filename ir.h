@@ -222,7 +222,7 @@ typedef struct {
 
 typedef struct {
     ir_operand_t *value;
-    size_t len;
+    const ir_constant_t *len;
 } ir_write_stmt_t;
 
 struct impl_ir_stmt {
@@ -273,7 +273,7 @@ ir_block_t *ir_block(ir_factory_t *factory);
 void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs);
 void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_operand_t *args);
 void ir_block_push_read(ir_block_t *block, ir_place_t *ref);
-void ir_block_push_write(ir_block_t *block, ir_operand_t *value, size_t len);
+void ir_block_push_write(ir_block_t *block, ir_operand_t *value, const ir_constant_t *len);
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next);
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els);
 void ir_block_terminate_return(ir_block_t *block);

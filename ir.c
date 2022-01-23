@@ -695,7 +695,7 @@ void ir_block_push_read(ir_block_t *block, ir_place_t *ref)
     ir_block_append_block(block, ret);
 }
 
-void ir_block_push_write(ir_block_t *block, ir_operand_t *value, size_t len)
+void ir_block_push_write(ir_block_t *block, ir_operand_t *value, const ir_constant_t *len)
 {
     ir_stmt_t *ret = new_ir_stmt(IR_STMT_WRITE);
     ret->u.write_stmt.value = value;
