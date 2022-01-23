@@ -549,7 +549,7 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
             break;
         case IR_STMT_WRITELN:
             codegen->builtin.w_ln++;
-            codegen_print(codegen, "OUT", "BLF, 1");
+            codegen_print(codegen, "OUT", "BLF, BLFLEN");
             break;
         }
         stmt = stmt->next;
@@ -676,6 +676,8 @@ void codegen_builtin(codegen_t *codegen)
 {
     codegen_set_label(codegen, "BLF");
     codegen_print(codegen, "DC", "#%04X", (int) '\n');
+    codegen_set_label(codegen, "BLFLEN");
+    codegen_print(codegen, "DC", "1");
 }
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
