@@ -16,8 +16,8 @@ typedef struct {
     } addr;
     char label[16];
     struct {
-        int r_int, r_char, r_bool, r_ln;
-        int w_int, w_char, w_bool, w_ln;
+        int r_int, r_char, r_ln;
+        int w_int, w_char, w_bool;
     } builtin;
 } codegen_t;
 
@@ -475,11 +475,6 @@ void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
         codegen_push_place_address(codegen, stmt->ref);
         codegen_print(codegen, "CALL", "BRINT");
         break;
-    case IR_TYPE_BOOLEAN:
-        codegen->builtin.r_bool++;
-        codegen_push_place_address(codegen, stmt->ref);
-        codegen_print(codegen, "CALL", "BRBOOL");
-        break;
     case IR_TYPE_CHAR:
         codegen->builtin.r_char++;
         codegen_push_place_address(codegen, stmt->ref);
@@ -548,8 +543,7 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
             codegen_write_stmt(codegen, &stmt->u.write_stmt);
             break;
         case IR_STMT_WRITELN:
-            codegen->builtin.w_ln++;
-            codegen_print(codegen, "OUT", "BLF, BLFLEN");
+            codegen_print(codegen, "OUT", "BLF, BCLEN");
             break;
         }
         stmt = stmt->next;
@@ -676,7 +670,9 @@ void codegen_builtin(codegen_t *codegen)
 {
     codegen_set_label(codegen, "BLF");
     codegen_print(codegen, "DC", "#%04X", (int) '\n');
-    codegen_set_label(codegen, "BLFLEN");
+    codegen_set_label(codegen, "BSP");
+    codegen_print(codegen, "DC", "#%04X", (int) ' ');
+    codegen_set_label(codegen, "BCLEN");
     codegen_print(codegen, "DC", "1");
 }
 
@@ -701,12 +697,10 @@ void casl2_codegen(const ir_t *ir)
     codegen.label[0] = '\0';
     codegen.builtin.r_int = 0;
     codegen.builtin.r_char = 0;
-    codegen.builtin.r_bool = 0;
     codegen.builtin.r_ln = 0;
     codegen.builtin.w_int = 0;
     codegen.builtin.w_char = 0;
     codegen.builtin.w_bool = 0;
-    codegen.builtin.w_ln = 0;
     codegen_ir(&codegen, ir);
     delete_hash_table(codegen.addr.table, NULL, NULL);
     fclose(codegen.file);
