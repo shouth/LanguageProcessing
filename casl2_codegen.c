@@ -535,6 +535,8 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
     while (item) {
         switch (item->kind) {
         case IR_ITEM_PROGRAM:
+            codegen_print(codegen, "CALL", codegen_label_for(codegen, item->body->inner));
+            codegen_print(codegen, "SVC", "0");
             codegen_body(codegen, item->body);
             break;
         case IR_ITEM_PROCEDURE:
