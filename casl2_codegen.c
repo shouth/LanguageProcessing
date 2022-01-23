@@ -699,7 +699,7 @@ void codegen_builtin(codegen_t *codegen)
         codegen_set_label(codegen, "BOBUF");
         codegen_print(codegen, "DS", "8");
         codegen_set_label(codegen, "BOLEN");
-        codegen_print(codegen, "DS", "1");
+        codegen_print(codegen, "DC", "0");
     }
 
     if (codegen->builtin.r_int) {
