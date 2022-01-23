@@ -56,8 +56,12 @@ const char *codegen_label_for(codegen_t *codegen, const void *ptr)
 const char *codegen_tmp_label(codegen_t *codegen)
 {
     static char buf[16];
-    codegen_addr_t addr = codegen->addr.cnt++;
-    sprintf(buf, "L%ld", addr);
+    if (codegen->label[0]) {
+        strcpy(buf, codegen->label);
+    } else {
+        codegen_addr_t addr = codegen->addr.cnt++;
+        sprintf(buf, "L%ld", addr);
+    }
     return buf;
 }
 
