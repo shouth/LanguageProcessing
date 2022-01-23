@@ -468,16 +468,35 @@ void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
 {
     assert(codegen && stmt);
 
+    if (stmt->ref->place_access) {
+        switch (stmt->ref->local->kind) {
+        case IR_LOCAL_VAR:
+            codegen_load(codegen, "GR7", stmt->ref->place_access->u.index_place_access.index);
+            break;
+        default:
+            unreachable();
+        }
+    } else {
+        switch (stmt->ref->local->kind) {
+        case IR_LOCAL_VAR:
+            codegen_print(codegen, "LAD", "GR7, %s", codegen_label_for(codegen, stmt->ref->local->u.var.item));
+            break;
+        case IR_LOCAL_ARG:
+            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, stmt->ref->local->u.arg.item));
+            break;
+        default:
+            unreachable();
+        }
+    }
+
     /* call builtin `read` functions for each types */
     switch (ir_place_type(stmt->ref)->kind) {
     case IR_TYPE_INTEGER:
         codegen->builtin.r_int++;
-        codegen_push_place_address(codegen, stmt->ref);
         codegen_print(codegen, "CALL", "BRINT");
         break;
     case IR_TYPE_CHAR:
         codegen->builtin.r_char++;
-        codegen_push_place_address(codegen, stmt->ref);
         codegen_print(codegen, "CALL", "BRCHAR");
         break;
     default:
@@ -493,17 +512,17 @@ void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
     switch (ir_operand_type(stmt->value)->kind) {
     case IR_TYPE_INTEGER:
         codegen->builtin.w_int++;
-        codegen_push_operand_address(codegen, stmt->value);
+        codegen_load(codegen, "GR7", stmt->value);
         codegen_print(codegen, "CALL", "BWINT");
         break;
     case IR_TYPE_BOOLEAN:
         codegen->builtin.w_bool++;
-        codegen_push_operand_address(codegen, stmt->value);
+        codegen_load(codegen, "GR7", stmt->value);
         codegen_print(codegen, "CALL", "BWBOOL");
         break;
     case IR_TYPE_CHAR:
         codegen->builtin.w_char++;
-        codegen_push_operand_address(codegen, stmt->value);
+        codegen_load(codegen, "GR7", stmt->value);
         codegen_print(codegen, "CALL", "BWCHAR");
         break;
     case IR_TYPE_ARRAY: {
