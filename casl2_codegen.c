@@ -508,11 +508,12 @@ void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
         codegen_print(codegen, "CALL", "BWCHAR");
         break;
     case IR_TYPE_ARRAY: {
-        const ir_constant_t *constant;
-        const ir_type_t *type;
-        constant = stmt->value->u.constant_operand.constant;
-        type = ir_constant_type(constant);
-        codegen_print(codegen, "OUT", "%s, %ld", codegen_label_for(codegen, constant), type->u.array_type.size);
+        const ir_constant_t *constant = stmt->value->u.constant_operand.constant;
+        const ir_type_t *type = ir_constant_type(constant);
+        const char *label = codegen_tmp_label(codegen);
+        codegen_set_label(codegen, label);
+        codegen_print(codegen, "DC", "%ld", type->u.array_type.size);
+        codegen_print(codegen, "OUT", "%s, %s", codegen_label_for(codegen, constant), label);
         break;
     }
     default:
