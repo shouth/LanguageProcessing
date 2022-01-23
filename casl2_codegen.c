@@ -625,9 +625,9 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
     }
 }
 
-void codegen_builtln(codegen_t *codegen)
+void codegen_builtin(codegen_t *codegen)
 {
-    
+
 }
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
@@ -635,7 +635,7 @@ void codegen_ir(codegen_t *codegen, const ir_t *ir)
     codegen_print(codegen, "START", NULL);
     codegen_item(codegen, ir->items);
     codegen_constant(codegen, ir->constants);
-    codegen_builtln(codegen);
+    codegen_builtin(codegen);
     codegen_print(codegen, "END", NULL);
 }
 
