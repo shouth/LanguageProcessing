@@ -113,7 +113,7 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
             codegen_print(codegen, "LAD", "%s, %ld", reg, constant->u.number_constant.value);
             break;
         case IR_CONSTANT_CHAR:
-            codegen_print(codegen, "LAD", "%s, %d", reg, constant->u.char_constant.value);
+            codegen_print(codegen, "LAD", "%s, #%04X", reg, constant->u.char_constant.value);
             break;
         case IR_CONSTANT_BOOLEAN:
             codegen_print(codegen, "LAD", "%s, %d", reg, constant->u.boolean_constant.value);
@@ -392,7 +392,7 @@ void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *cons
     case IR_CONSTANT_CHAR: {
         const char *label = codegen_tmp_label(codegen);
         codegen_set_label(codegen, label);
-        codegen_print(codegen, "DC", "%d", constant->u.char_constant.value);
+        codegen_print(codegen, "DC", "#%04X", constant->u.char_constant.value);
         codegen_print(codegen, "PUSH", "%s", label);
         break;
     }
@@ -549,7 +549,7 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
             break;
         case IR_STMT_WRITELN:
             codegen->builtin.w_ln++;
-            codegen_print(codegen, "CALL", "BWLN");
+            codegen_print(codegen, "OUT", "BLF, 1");
             break;
         }
         stmt = stmt->next;
@@ -674,7 +674,8 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
 
 void codegen_builtin(codegen_t *codegen)
 {
-
+    codegen_set_label(codegen, "BLF");
+    codegen_print(codegen, "DC", "#%04X", (int) '\n');
 }
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
