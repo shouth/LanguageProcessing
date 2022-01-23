@@ -425,15 +425,12 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ast_expr_t *args = stmt->u.call_stmt.args;
                 ir_type_t *type = NULL, **type_back = &type;
                 ir_operand_t *arg = NULL, **arg_back = &arg;
-                ir_block_t *pre_block = block;
-                block = ir_block(analyzer->factory);
-                ir_block_terminate_goto(pre_block, block);
                 while (args) {
+                    ir_block_t *preblock = block;
                     *arg_back = analyze_expr(analyzer, block, args);
                     *type_back = ir_type_ref(ir_operand_type(*arg_back));
-                    pre_block = block;
                     block = ir_block(analyzer->factory);
-                    ir_block_terminate_arg(pre_block, *arg_back, block);
+                    ir_block_terminate_arg(preblock, *arg_back, block);
                     arg_back = &(*arg_back)->next;
                     type_back = &(*type_back)->next;
                     args = args->next;
