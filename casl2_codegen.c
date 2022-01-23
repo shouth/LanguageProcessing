@@ -16,8 +16,8 @@ typedef struct {
     } addr;
     char label[16];
     struct {
-        int r_int, r_char, r_bool;
-        int w_int, w_char, w_bool, w_str;
+        int r_int, r_char, r_bool, r_ln;
+        int w_int, w_char, w_bool, w_ln;
     } builtin;
 } codegen_t;
 
@@ -87,18 +87,10 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
     while (constant) {
         codegen_set_label(codegen, codegen_label_for(codegen, constant));
         switch (constant->kind) {
-        case IR_CONSTANT_NUMBER:
-            codegen_print(codegen, "DC", "%ld", constant->u.number_constant.value);
-            break;
-        case IR_CONSTANT_CHAR:
-            codegen_print(codegen, "DC", "%d", constant->u.char_constant.value);
-            break;
-        case IR_CONSTANT_BOOLEAN:
-            codegen_print(codegen, "DC", "%d", constant->u.boolean_constant.value);
-            break;
         case IR_CONSTANT_STRING: {
             const symbol_instance_t *instance = symbol_get_instance(constant->u.string_constant.value);
             codegen_print(codegen, "DC", "\'%.*s\'", (int) instance->len, instance->ptr);
+            break;
         }
         }
         constant = constant->next;
@@ -112,7 +104,19 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
     switch (operand->kind) {
     case IR_OPERAND_CONSTANT: {
         const ir_constant_t *constant = operand->u.constant_operand.constant;
-        codegen_print(codegen, "LD", "%s, %s", reg, codegen_label_for(codegen, constant));
+        switch (constant->kind) {
+        case IR_CONSTANT_NUMBER:
+            codegen_print(codegen, "LAD", "%s, %ld", reg, constant->u.number_constant.value);
+            break;
+        case IR_CONSTANT_CHAR:
+            codegen_print(codegen, "LAD", "%s, %d", reg, constant->u.char_constant.value);
+            break;
+        case IR_CONSTANT_BOOLEAN:
+            codegen_print(codegen, "LAD", "%s, %d", reg, constant->u.boolean_constant.value);
+            break;
+        default:
+            unreachable();
+        }
         break;
     }
     case IR_OPERAND_PLACE: {
@@ -373,7 +377,34 @@ void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
 void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *constant)
 {
     assert(codegen && constant);
-    codegen_print(codegen, "PUSH", "%s", codegen_label_for(codegen, constant));
+    switch (constant->kind) {
+    case IR_CONSTANT_NUMBER: {
+        const char *label = codegen_tmp_label(codegen);
+        codegen_set_label(codegen, label);
+        codegen_print(codegen, "DC", "%ld", constant->u.number_constant.value);
+        codegen_print(codegen, "PUSH", "%s", label);
+        break;
+    }
+    case IR_CONSTANT_CHAR: {
+        const char *label = codegen_tmp_label(codegen);
+        codegen_set_label(codegen, label);
+        codegen_print(codegen, "DC", "%d", constant->u.char_constant.value);
+        codegen_print(codegen, "PUSH", "%s", label);
+        break;
+    }
+    case IR_CONSTANT_BOOLEAN: {
+        const char *label = codegen_tmp_label(codegen);
+        codegen_set_label(codegen, label);
+        codegen_print(codegen, "DC", "%d", constant->u.boolean_constant.value);
+        codegen_print(codegen, "PUSH", "%s", label);
+        break;
+    }
+    case IR_CONSTANT_STRING:
+        codegen_print(codegen, "PUSH", codegen_label_for(codegen, constant));
+        break;
+    default:
+        unreachable();
+    }
 }
 
 void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
@@ -433,20 +464,21 @@ void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
 {
     assert(codegen && stmt);
 
-    codegen_push_place_address(codegen, stmt->ref);
-
-    /* call builtin `read` functions for each standard types */
+    /* call builtin `read` functions for each types */
     switch (ir_place_type(stmt->ref)->kind) {
     case IR_TYPE_INTEGER:
         codegen->builtin.r_int++;
+        codegen_push_place_address(codegen, stmt->ref);
         codegen_print(codegen, "CALL", "BRINT");
         break;
     case IR_TYPE_BOOLEAN:
         codegen->builtin.r_bool++;
+        codegen_push_place_address(codegen, stmt->ref);
         codegen_print(codegen, "CALL", "BRBOOL");
         break;
     case IR_TYPE_CHAR:
         codegen->builtin.r_char++;
+        codegen_push_place_address(codegen, stmt->ref);
         codegen_print(codegen, "CALL", "BRCHAR");
         break;
     default:
@@ -458,29 +490,34 @@ void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
 {
     assert(codegen && stmt);
 
-    codegen_push_operand_address(codegen, stmt->value);
-
-    /* call builtin `write` functions for each standard types */
+    /* call builtin `write` functions for each types */
     switch (ir_operand_type(stmt->value)->kind) {
     case IR_TYPE_INTEGER:
         codegen->builtin.w_int++;
+        codegen_push_operand_address(codegen, stmt->value);
         codegen_push_constant_address(codegen, stmt->len);
         codegen_print(codegen, "CALL", "BWINT");
         break;
     case IR_TYPE_BOOLEAN:
         codegen->builtin.w_bool++;
+        codegen_push_operand_address(codegen, stmt->value);
         codegen_push_constant_address(codegen, stmt->len);
         codegen_print(codegen, "CALL", "BWBOOL");
         break;
     case IR_TYPE_CHAR:
         codegen->builtin.w_char++;
+        codegen_push_operand_address(codegen, stmt->value);
         codegen_push_constant_address(codegen, stmt->len);
         codegen_print(codegen, "CALL", "BWCHAR");
         break;
-    case IR_TYPE_ARRAY:
-        codegen->builtin.w_str++;
-        codegen_print(codegen, "CALL", "BWSTR");
+    case IR_TYPE_ARRAY: {
+        const ir_constant_t *constant;
+        const ir_type_t *type;
+        constant = stmt->value->u.constant_operand.constant;
+        type = ir_constant_type(constant);
+        codegen_print(codegen, "OUT", "%s, %ld", codegen_label_for(codegen, constant), type->u.array_type.size);
         break;
+    }
     default:
         unreachable();
     }
@@ -501,8 +538,16 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
         case IR_STMT_READ:
             codegen_read_stmt(codegen, &stmt->u.read_stmt);
             break;
+        case IR_STMT_READLN:
+            codegen->builtin.r_ln++;
+            codegen_print(codegen, "CALL", "BRLN");
+            break;
         case IR_STMT_WRITE:
             codegen_write_stmt(codegen, &stmt->u.write_stmt);
+            break;
+        case IR_STMT_WRITELN:
+            codegen->builtin.w_ln++;
+            codegen_print(codegen, "CALL", "BWLN");
             break;
         }
         stmt = stmt->next;
@@ -652,10 +697,11 @@ void casl2_codegen(const ir_t *ir)
     codegen.builtin.r_int = 0;
     codegen.builtin.r_char = 0;
     codegen.builtin.r_bool = 0;
+    codegen.builtin.r_ln = 0;
     codegen.builtin.w_int = 0;
     codegen.builtin.w_char = 0;
     codegen.builtin.w_bool = 0;
-    codegen.builtin.w_str = 0;
+    codegen.builtin.w_ln = 0;
     codegen_ir(&codegen, ir);
     delete_hash_table(codegen.addr.table, NULL, NULL);
     fclose(codegen.file);
