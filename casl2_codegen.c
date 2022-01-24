@@ -56,17 +56,10 @@ const char *codegen_label_for(codegen_t *codegen, const void *ptr)
 const char *codegen_tmp_label(codegen_t *codegen)
 {
     static char buf[16];
-    if (codegen->label[0]) {
-        strcpy(buf, codegen->label);
-    } else {
-        codegen_addr_t addr = codegen->addr.cnt++;
-        sprintf(buf, "L%ld", addr);
-    }
+    codegen_addr_t addr = codegen->addr.cnt++;
+    sprintf(buf, "L%ld", addr);
     return buf;
 }
-
-void codegen_set_label(codegen_t *codegen, const char *label)
-{ strcpy(codegen->label, label); }
 
 void codegen_print(codegen_t *codegen, const char *instruction, const char *operand_format, ...)
 {
@@ -82,6 +75,14 @@ void codegen_print(codegen_t *codegen, const char *instruction, const char *oper
     fprintf(codegen->file, "\n");
     va_end(arg);
     codegen->label[0] = '\0';
+}
+
+void codegen_set_label(codegen_t *codegen, const char *label)
+{
+    if (codegen->label[0]) {
+        codegen_print(codegen, "DS", "0");
+    }
+    strcpy(codegen->label, label);
 }
 
 void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
@@ -236,7 +237,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JZE", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 0");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             case AST_BINARY_OP_NOTEQ: {
@@ -246,7 +246,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JNZ", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 0");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             case AST_BINARY_OP_LE: {
@@ -256,7 +255,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JMI", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 0");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             case AST_BINARY_OP_LEEQ: {
@@ -266,7 +264,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JMI", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             case AST_BINARY_OP_GR: {
@@ -276,7 +273,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JMI", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 0");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             case AST_BINARY_OP_GREQ: {
@@ -286,7 +282,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JMI", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             default:
@@ -321,7 +316,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JZE", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             case IR_TYPE_INTEGER:
@@ -341,7 +335,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 codegen_print(codegen, "JZE", "%s", jmp);
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_set_label(codegen, jmp);
-                codegen_print(codegen, "NOP", NULL);
                 break;
             }
             case IR_TYPE_INTEGER:
@@ -576,7 +569,6 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     assert(codegen && block);
 
     codegen_set_label(codegen, codegen_label_for(codegen, block));
-    codegen_print(codegen, "NOP", NULL);
     codegen->stmt_cnt = 0;
     codegen_stmt(codegen, block->stmt);
     switch (block->termn.kind) {
@@ -700,19 +692,16 @@ void codegen_builtin(codegen_t *codegen)
     if (codegen->builtin.w_int) {
         builtin_write = 1;
         codegen_set_label(codegen, "BWINT");
-        codegen_print(codegen, "NOP", NULL);
     }
 
     if (codegen->builtin.w_bool) {
         builtin_write = 1;
         codegen_set_label(codegen, "BWBOOL");
-        codegen_print(codegen, "NOP", NULL);
     }
 
     if (codegen->builtin.w_char) {
         builtin_write = 1;
         codegen_set_label(codegen, "BWCHAR");
-        codegen_print(codegen, "NOP", NULL);
     }
 
     if (builtin_write) {
@@ -725,19 +714,16 @@ void codegen_builtin(codegen_t *codegen)
     if (codegen->builtin.r_int) {
         builtin_read = 1;
         codegen_set_label(codegen, "BRINT");
-        codegen_print(codegen, "NOP", NULL);
     }
 
     if (codegen->builtin.r_char) {
         builtin_read = 1;
         codegen_set_label(codegen, "BRCHAR");
-        codegen_print(codegen, "NOP", NULL);
     }
 
     if (codegen->builtin.r_ln) {
         builtin_read = 1;
         codegen_set_label(codegen, "BRLN");
-        codegen_print(codegen, "NOP", NULL);
     }
 
     if (builtin_read) {
