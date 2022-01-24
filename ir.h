@@ -318,7 +318,8 @@ struct impl_ir_item {
 };
 
 ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, region_t name_region, const ir_type_t *type);
-ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol);
+ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, symbol_t symbol);
+ir_item_t *ir_item_lookup(ir_scope_t *scope, symbol_t symbol);
 
 struct impl_ir_scope {
     ir_scope_t *next;

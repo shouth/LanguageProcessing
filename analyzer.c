@@ -11,7 +11,7 @@ typedef struct {
 void maybe_error_conflict(analyzer_t *analyzer, symbol_t symbol, region_t region)
 {
     ir_item_t *item;
-    if (item = ir_item_lookup(analyzer->factory, symbol)) {
+    if (item = ir_item_lookup_scope(analyzer->factory->scope, symbol)) {
         msg_t *msg = new_msg(analyzer->source, region, MSG_ERROR, "conflicting names");
         msg_add_inline_entry(msg, item->name_region, "first used here");
         msg_add_inline_entry(msg, region, "second used here");
@@ -22,7 +22,7 @@ void maybe_error_conflict(analyzer_t *analyzer, symbol_t symbol, region_t region
 
 void maybe_error_undeclared(analyzer_t *analyzer, symbol_t symbol, region_t region)
 {
-    if (!ir_item_lookup(analyzer->factory, symbol)) {
+    if (!ir_item_lookup(analyzer->factory->scope, symbol)) {
         const symbol_instance_t *instance = symbol_get_instance(symbol);
         msg_t *msg = new_msg(analyzer->source, region,
             MSG_ERROR, "`%.*s` is not declared", (int) instance->len, instance->ptr);
@@ -69,14 +69,14 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
     switch (expr->kind) {
     case AST_EXPR_DECL_REF: {
         ast_ident_t *ident = expr->u.decl_ref_expr.decl;
-        ir_item_t *lookup = ir_item_lookup(analyzer->factory, ident->symbol);
+        ir_item_t *lookup = ir_item_lookup(analyzer->factory->scope, ident->symbol);
         maybe_error_undeclared(analyzer, ident->symbol, ident->region);
         return new_ir_place(ir_local_for(analyzer->factory, lookup, ident->region.pos));
     }
     case AST_EXPR_ARRAY_SUBSCRIPT: {
         ir_operand_t *index = analyze_expr(analyzer, block, expr->u.array_subscript_expr.expr);
         ast_ident_t *ident = expr->u.array_subscript_expr.decl;
-        ir_item_t *lookup = ir_item_lookup(analyzer->factory, ident->symbol);
+        ir_item_t *lookup = ir_item_lookup(analyzer->factory->scope, ident->symbol);
         const ir_type_t *operand_type;
 
         maybe_error_undeclared(analyzer, ident->symbol, ident->region);
@@ -396,7 +396,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         }
         case AST_STMT_CALL: {
             ast_ident_t *ident = stmt->u.call_stmt.name;
-            ir_item_t *item = ir_item_lookup(analyzer->factory, ident->symbol);
+            ir_item_t *item = ir_item_lookup(analyzer->factory->scope, ident->symbol);
 
             maybe_error_undeclared(analyzer, ident->symbol, ident->region);
             if (item->kind != IR_ITEM_PROCEDURE) {

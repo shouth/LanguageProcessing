@@ -772,7 +772,7 @@ ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, 
     ret->refs.tail = &ret->refs.head;
 
     if (kind != IR_TYPE_PROGRAM) {
-        assert(!ir_item_lookup(factory, symbol));
+        assert(!ir_item_lookup_scope(factory->scope, symbol));
         hash_table_insert_unchecked(factory->scope->items.table, (void *) symbol, ret);
         *factory->scope->items.tail = ret;
         factory->scope->items.tail = &ret->next;
@@ -780,16 +780,23 @@ ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, 
     return ret;
 }
 
-ir_item_t *ir_item_lookup(ir_factory_t *factory, symbol_t symbol)
+ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, symbol_t symbol)
 {
-    ir_scope_t *scope;
-    assert(factory);
+    const hash_table_entry_t *entry;
+    assert(scope);
 
-    scope = factory->scope;
+    entry = hash_table_find(scope->items.table, (void *) symbol);
+    return entry ? entry->value : NULL;
+}
+
+ir_item_t *ir_item_lookup(ir_scope_t *scope, symbol_t symbol)
+{
+    assert(scope);
+
     while (scope) {
-        const hash_table_entry_t *entry;
-        if (entry = hash_table_find(scope->items.table, (void *) symbol)) {
-            return entry->value;
+        ir_item_t *item = ir_item_lookup_scope(scope, symbol);
+        if (item) {
+            return item;
         }
         scope = scope->next;
     }
