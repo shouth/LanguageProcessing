@@ -758,7 +758,7 @@ void codegen_ir(codegen_t *codegen, const ir_t *ir)
     codegen_print(codegen, "END", NULL);
 }
 
-void casl2_codegen(const ir_t *ir)
+void codegen_casl2(const ir_t *ir)
 {
     codegen_t codegen;
     ir_item_t *item;
