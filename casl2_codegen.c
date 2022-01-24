@@ -751,6 +751,7 @@ void codegen_builtin(codegen_t *codegen)
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
 {
+    codegen_set_label(codegen, "PROGRAM");
     codegen_print(codegen, "START", NULL);
     codegen_item(codegen, ir->items);
     codegen_builtin(codegen);
