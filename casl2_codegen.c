@@ -102,62 +102,73 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
     }
 }
 
+void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *operand);
+
+void codegen_load_constant(codegen_t *codegen, const char *reg, const ir_constant_t *constant)
+{
+    assert(codegen && reg && constant);
+    switch (constant->kind) {
+    case IR_CONSTANT_NUMBER:
+        codegen_print(codegen, "LAD", "%s, %ld", reg, constant->u.number_constant.value);
+        break;
+    case IR_CONSTANT_CHAR:
+        codegen_print(codegen, "LAD", "%s, #%04X", reg, constant->u.char_constant.value);
+        break;
+    case IR_CONSTANT_BOOLEAN:
+        codegen_print(codegen, "LAD", "%s, %d", reg, constant->u.boolean_constant.value);
+        break;
+    default:
+        unreachable();
+    }
+}
+
+void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *place)
+{
+    assert(codegen && reg && place);
+    if (place->place_access) {
+        switch (place->place_access->kind) {
+        case IR_PLACE_ACCESS_INDEX:
+            codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
+            switch (place->local->kind) {
+            case IR_LOCAL_VAR:
+                codegen_print(codegen, "LD", "%s, %s, GR7", reg, codegen_label_for(codegen, place->local->u.var.item));
+                break;
+            default:
+                unreachable();
+            }
+            break;
+        default:
+            unreachable();
+        }
+    } else {
+        switch (place->local->kind) {
+        case IR_LOCAL_VAR:
+            codegen_print(codegen, "LD", "%s, %s", reg, codegen_label_for(codegen, place->local->u.var.item));
+            break;
+        case IR_LOCAL_ARG:
+            codegen_print(codegen, "LAD", "GR7, %s", codegen_label_for(codegen, place->local->u.arg.item));
+            codegen_print(codegen, "LD", "%s, 0, GR7", reg);
+            break;
+        case IR_LOCAL_TEMP:
+            codegen_print(codegen, "POP", "%s", reg);
+            break;
+        default:
+            unreachable();
+        }
+    }
+}
+
 void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *operand)
 {
     assert(codegen && reg && operand);
 
     switch (operand->kind) {
     case IR_OPERAND_CONSTANT: {
-        const ir_constant_t *constant = operand->u.constant_operand.constant;
-        switch (constant->kind) {
-        case IR_CONSTANT_NUMBER:
-            codegen_print(codegen, "LAD", "%s, %ld", reg, constant->u.number_constant.value);
-            break;
-        case IR_CONSTANT_CHAR:
-            codegen_print(codegen, "LAD", "%s, #%04X", reg, constant->u.char_constant.value);
-            break;
-        case IR_CONSTANT_BOOLEAN:
-            codegen_print(codegen, "LAD", "%s, %d", reg, constant->u.boolean_constant.value);
-            break;
-        default:
-            unreachable();
-        }
+        codegen_load_constant(codegen, reg, operand->u.constant_operand.constant);
         break;
     }
     case IR_OPERAND_PLACE: {
-        const ir_place_t *place = operand->u.place_operand.place;
-        const ir_local_t *local = place->local;
-        if (place->place_access) {
-            switch (place->place_access->kind) {
-            case IR_PLACE_ACCESS_INDEX:
-                codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-                switch (local->kind) {
-                case IR_LOCAL_VAR:
-                    codegen_print(codegen, "LD", "%s, %s, GR7", reg, codegen_label_for(codegen, local->u.var.item));
-                    break;
-                default:
-                    unreachable();
-                }
-                break;
-            default:
-                unreachable();
-            }
-        } else {
-            switch (local->kind) {
-            case IR_LOCAL_VAR:
-                codegen_print(codegen, "LD", "%s, %s", reg, codegen_label_for(codegen, local->u.var.item));
-                break;
-            case IR_LOCAL_ARG:
-                codegen_print(codegen, "LAD", "GR7, %s", codegen_label_for(codegen, local->u.arg.item));
-                codegen_print(codegen, "LD", "%s, 0, GR7", reg);
-                break;
-            case IR_LOCAL_TEMP:
-                codegen_print(codegen, "POP", "%s", reg);
-                break;
-            default:
-                unreachable();
-            }
-        }
+        codegen_load_place(codegen, reg, operand->u.place_operand.place);
         break;
     }
     default:
@@ -505,18 +516,38 @@ void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
     switch (ir_operand_type(stmt->value)->kind) {
     case IR_TYPE_INTEGER:
         codegen->builtin.w_int++;
-        codegen_load(codegen, "GR7", stmt->value);
-        codegen_print(codegen, "CALL", "BWINT");
+        codegen_load(codegen, "GR1", stmt->value);
+        codegen_print(codegen, "CALL", "BWINTS");
+        if (stmt->len) {
+            codegen_load_constant(codegen, "GR0", stmt->len);
+        } else {
+            codegen_print(codegen, "LD", "GR0, GR1");
+        }
+        codegen_print(codegen, "CALL", "BWSTR");
         break;
     case IR_TYPE_BOOLEAN:
         codegen->builtin.w_bool++;
-        codegen_load(codegen, "GR7", stmt->value);
-        codegen_print(codegen, "CALL", "BWBOOL");
+        codegen_load(codegen, "GR1", stmt->value);
+        codegen_print(codegen, "CALL", "BWBOOLS");
+        if (stmt->len) {
+            codegen_load_constant(codegen, "GR0", stmt->len);
+        } else {
+            codegen_print(codegen, "LD", "GR0, GR1");
+        }
+        codegen_print(codegen, "CALL", "BWSTR");
         break;
     case IR_TYPE_CHAR:
         codegen->builtin.w_char++;
-        codegen_load(codegen, "GR7", stmt->value);
-        codegen_print(codegen, "CALL", "BWCHAR");
+        codegen_load(codegen, "GR1", stmt->value);
+        codegen_print(codegen, "LD", "GR1, BSTRBUF");
+        codegen_print(codegen, "LAD", "GR2, BSTRBUF");
+        codegen_print(codegen, "LAD", "GR1, 1");
+        if (stmt->len) {
+            codegen_load_constant(codegen, "GR0", stmt->len);
+        } else {
+            codegen_print(codegen, "LAD", "GR0, 1");
+        }
+        codegen_print(codegen, "CALL", "BWSTR");
         break;
     case IR_TYPE_ARRAY: {
         const ir_constant_t *constant = stmt->value->u.constant_operand.constant;
@@ -555,7 +586,7 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
             codegen_write_stmt(codegen, &stmt->u.write_stmt);
             break;
         case IR_STMT_WRITELN:
-            codegen_print(codegen, "OUT", "BLF, BCLEN");
+            codegen_print(codegen, "OUT", "BLF, BC1");
             break;
         }
         stmt = stmt->next;
@@ -686,29 +717,70 @@ void codegen_builtin(codegen_t *codegen)
     codegen_print(codegen, "DC", "#%04X", (int) '\n');
     codegen_set_label(codegen, "BSP");
     codegen_print(codegen, "DC", "#%04X", (int) ' ');
-    codegen_set_label(codegen, "BCLEN");
+    codegen_set_label(codegen, "BC1");
     codegen_print(codegen, "DC", "1");
+    codegen_set_label(codegen, "BC10");
+    codegen_print(codegen, "DC", "10");
+    codegen_set_label(codegen, "BCH30");
+    codegen_print(codegen, "DC", "#30");
 
     if (codegen->builtin.w_int) {
         builtin_write = 1;
-        codegen_set_label(codegen, "BWINT");
+        codegen_set_label(codegen, "BWINTS");
+        codegen_print(codegen, "LAD", "GR4, 5");
+
+        codegen_set_label(codegen, "BWINTS0");
+        codegen_print(codegen, "LD", "GR2, GR1");
+        codegen_print(codegen, "LD", "GR3, GR1");
+        codegen_print(codegen, "DIVA", "GR3, BC10");
+        codegen_print(codegen, "MULA", "GR3, BC10");
+        codegen_print(codegen, "SUBA", "GR2, GR3");
+        codegen_print(codegen, "ADDA", "GR2, BCH30");
+        codegen_print(codegen, "SUBA", "GR4, BC1");
+        codegen_print(codegen, "ST", "GR2, BSTRBUF, GR4");
+        codegen_print(codegen, "DIVA", "GR1, BC10");
+        codegen_print(codegen, "JNZ", "BWINTS0");
+
+        codegen_print(codegen, "LAD", "GR1, 5");
+        codegen_print(codegen, "SUBA", "GR1, GR4");
+        codegen_print(codegen, "LAD", "GR2, BSTRBUF, GR4");
+        codegen_print(codegen, "RET", NULL);
     }
 
     if (codegen->builtin.w_bool) {
         builtin_write = 1;
-        codegen_set_label(codegen, "BWBOOL");
+        codegen_set_label(codegen, "BCTRUE");
+        codegen_print(codegen, "DC", "'TRUE'");
+        codegen_set_label(codegen, "BCFALSE");
+        codegen_print(codegen, "DC", "'FALSE'");
+
+        codegen_set_label(codegen, "BWBOOLS");
+        codegen_print(codegen, "LAD", "GR2, 0");
+        codegen_print(codegen, "CAP", "GR1, GR2");
+        codegen_print(codegen, "JNZ", "BWBOOLS0");
+        codegen_print(codegen, "LAD", "GR2, BCFALSE");
+        codegen_print(codegen, "LAD", "GR1, 5");
+        codegen_print(codegen, "RET", NULL);
+        codegen_set_label(codegen, "BWBOOL0");
+        codegen_print(codegen, "LAD", "GR2, BCTRUE");
+        codegen_print(codegen, "LAD", "GR1, 4");
+        codegen_print(codegen, "RET", NULL);
     }
 
     if (codegen->builtin.w_char) {
         builtin_write = 1;
-        codegen_set_label(codegen, "BWCHAR");
     }
 
     if (builtin_write) {
-        codegen_set_label(codegen, "BOBUF");
-        codegen_print(codegen, "DS", "8");
-        codegen_set_label(codegen, "BOLEN");
+        codegen_set_label(codegen, "BSTRBUF");
+        codegen_print(codegen, "DS", "5");
+        codegen_set_label(codegen, "BOUTBUF");
+        codegen_print(codegen, "DS", "256");
+        codegen_set_label(codegen, "BOUTCUR");
         codegen_print(codegen, "DC", "0");
+
+        codegen_set_label(codegen, "BWSTR");
+        
     }
 
     if (codegen->builtin.r_int) {
