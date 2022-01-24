@@ -89,10 +89,10 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
     assert(codegen && constant);
 
     while (constant) {
-        codegen_set_label(codegen, codegen_label_for(codegen, constant));
         switch (constant->kind) {
         case IR_CONSTANT_STRING: {
             const symbol_instance_t *instance = symbol_get_instance(constant->u.string_constant.value);
+            codegen_set_label(codegen, codegen_label_for(codegen, constant));
             codegen_print(codegen, "DC", "\'%.*s\'", (int) instance->len, instance->ptr);
             break;
         }
@@ -576,6 +576,7 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     assert(codegen && block);
 
     codegen_set_label(codegen, codegen_label_for(codegen, block));
+    codegen_print(codegen, "NOP", NULL);
     codegen->stmt_cnt = 0;
     codegen_stmt(codegen, block->stmt);
     switch (block->termn.kind) {
