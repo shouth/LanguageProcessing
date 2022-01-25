@@ -17,7 +17,7 @@ typedef struct {
     char label[16];
     struct {
         int r_int, r_char, r_ln;
-        int w_int, w_char, w_bool, w_str, w_ln;
+        int w_int, w_char, w_bool, w_str;
     } builtin;
 } codegen_t;
 
@@ -585,7 +585,10 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
             codegen_write_stmt(codegen, &stmt->u.write_stmt);
             break;
         case IR_STMT_WRITELN:
-            codegen_print(codegen, "CALL", "BWLN");
+            codegen_print(codegen, "LD", "GR1, BCLF");
+            codegen_print(codegen, "CALL", "BWCHARS");
+            codegen_print(codegen, "LAD", "GR1, 1");
+            codegen_print(codegen, "CALL", "BWSTR");
             break;
         }
         stmt = stmt->next;
@@ -777,17 +780,6 @@ void codegen_builtin(codegen_t *codegen)
 
     if (codegen->builtin.w_str) {
         builtin_write = 1;
-    }
-
-    if (codegen->builtin.w_ln) {
-        builtin_write = 1;
-        codegen_set_label(codegen, "BWLN");
-        codegen_print(codegen, "LAD", "GR1, BCLF");
-        codegen_print(codegen, "ST", "GR1, BSTRBUF");
-        codegen_print(codegen, "LAD", "GR3, BSTRBUF");
-        codegen_print(codegen, "LAD", "GR2, 1");
-        codegen_print(codegen, "CALL", "BWSTR");
-        codegen_print(codegen, "RET", NULL);
     }
 
     if (builtin_write) {
