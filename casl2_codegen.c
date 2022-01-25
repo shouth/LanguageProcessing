@@ -769,7 +769,7 @@ void codegen_builtin(codegen_t *codegen)
     if (codegen->builtin.w_char) {
         builtin_write = 1;
         codegen_set_label(codegen, "BWCHARS");
-        codegen_print(codegen, "LD", "GR1, BSTRBUF");
+        codegen_print(codegen, "ST", "GR1, BSTRBUF");
         codegen_print(codegen, "LAD", "GR3, BSTRBUF");
         codegen_print(codegen, "LAD", "GR2, 1");
         codegen_print(codegen, "RET", NULL);
@@ -783,7 +783,7 @@ void codegen_builtin(codegen_t *codegen)
         builtin_write = 1;
         codegen_set_label(codegen, "BWLN");
         codegen_print(codegen, "LAD", "GR1, BCLF");
-        codegen_print(codegen, "LD", "GR1, BSTRBUF");
+        codegen_print(codegen, "ST", "GR1, BSTRBUF");
         codegen_print(codegen, "LAD", "GR3, BSTRBUF");
         codegen_print(codegen, "LAD", "GR2, 1");
         codegen_print(codegen, "CALL", "BWSTR");
@@ -815,14 +815,13 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "JMI", "BWSTR1");
         codegen_print(codegen, "LD", "GR4, 0, GR3");
         codegen_print(codegen, "ADDA", "GR3, BC1");
-        codegen_print(codegen, "SUBA", "GR2, BC1");
         codegen_print(codegen, "JUMP", "BWSTR2");
 
         codegen_set_label(codegen, "BWSTR1");
         codegen_print(codegen, "LD", "GR4, BCSP");
-        codegen_print(codegen, "SUBA", "GR1, BC1");
 
         codegen_set_label(codegen, "BWSTR2");
+        codegen_print(codegen, "SUBA", "GR1, BC1");
         codegen_print(codegen, "LD", "GR5, BOUTCUR");
         codegen_print(codegen, "ST", "GR4, BOUTBUF, GR5");
         codegen_print(codegen, "ADDA", "GR5, BC1");
