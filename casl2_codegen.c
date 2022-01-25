@@ -375,7 +375,7 @@ void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
 
     switch (stmt->func->local->kind) {
     case IR_LOCAL_VAR:
-        codegen_print(codegen, "CALL", "%s", codegen_label_for(codegen, stmt->func->local->u.var.item->body->inner));
+        codegen_print(codegen, "CALL", "%s", codegen_label_for(codegen, stmt->func->local->u.var.item->body));
         break;
     default:
         unreachable();
@@ -668,7 +668,18 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
             break;
         case IR_ITEM_PROCEDURE:
             codegen_item(codegen, item->body->items);
-            codegen_block(codegen, item->body->inner);
+            codegen_set_label(codegen, codegen_label_for(codegen, item->body));
+            {
+                ir_item_t *items = item->body->items;
+                while (items) {
+                    if (items->kind == IR_ITEM_ARG_VAR) {
+                        codegen_print(codegen, "POP", "GR1");
+                        codegen_print(codegen, "ST", "GR1, %s", codegen_label_for(codegen, items));
+                    }
+                    items = items->next;
+                }
+                codegen_block(codegen, item->body->inner);
+            }
             break;
         case IR_ITEM_VAR:
         case IR_ITEM_LOCAL_VAR:
@@ -697,8 +708,6 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
             default:
                 unreachable();
             }
-            codegen_print(codegen, "POP", "GR1");
-            codegen_print(codegen, "ST", "GR1, %s", codegen_label_for(codegen, item));
             break;
         }
         item = item->next;
