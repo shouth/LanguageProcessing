@@ -653,16 +653,6 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     }
 }
 
-void codegen_item(codegen_t *codegen, const ir_item_t *item);
-
-void codegen_body(codegen_t *codegen, const ir_body_t *body)
-{
-    assert(codegen && body);
-
-    codegen_item(codegen, body->items);
-    codegen_block(codegen, body->inner);
-}
-
 void codegen_item(codegen_t *codegen, const ir_item_t *item)
 {
     codegen_addr_t addr;
@@ -673,10 +663,12 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
         case IR_ITEM_PROGRAM:
             codegen_print(codegen, "CALL", codegen_label_for(codegen, item->body->inner));
             codegen_print(codegen, "SVC", "0");
-            codegen_body(codegen, item->body);
+            codegen_item(codegen, item->body->items);
+            codegen_block(codegen, item->body->inner);
             break;
         case IR_ITEM_PROCEDURE:
-            codegen_body(codegen, item->body);
+            codegen_item(codegen, item->body->items);
+            codegen_block(codegen, item->body->inner);
             break;
         case IR_ITEM_VAR:
         case IR_ITEM_LOCAL_VAR:
@@ -705,6 +697,8 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
             default:
                 unreachable();
             }
+            codegen_print(codegen, "POP", "GR1");
+            codegen_print(codegen, "ST", "GR1, %s", codegen_label_for(codegen, item));
             break;
         }
         item = item->next;

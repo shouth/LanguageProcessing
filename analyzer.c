@@ -298,6 +298,23 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
     unreachable();
 }
 
+ir_block_t *analyze_call_stmt_param(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *args, ir_operand_t **operand, ir_type_t **type)
+{
+    assert(analyzer && block);
+    if (args) {
+        ir_operand_t *next_op = NULL;
+        ir_type_t *next_type = NULL;
+        ir_block_t *pre = analyze_call_stmt_param(analyzer, block, args->next, &next_op, &next_type);
+        *operand = analyze_expr(analyzer, pre, args);
+        *type = ir_type_ref(ir_operand_type(*operand));
+        (*operand)->next = next_op;
+        (*type)->next = next_type;
+        block = ir_block(analyzer->factory);
+        ir_block_terminate_arg(pre, *operand, block);
+    }
+    return block;
+}
+
 ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *stmt)
 {
     assert(analyzer && block && stmt);
@@ -423,18 +440,9 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
             {
                 const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
                 ast_expr_t *args = stmt->u.call_stmt.args;
-                ir_type_t *type = NULL, **type_back = &type;
-                ir_operand_t *arg = NULL, **arg_back = &arg;
-                while (args) {
-                    ir_block_t *preblock = block;
-                    *arg_back = analyze_expr(analyzer, block, args);
-                    *type_back = ir_type_ref(ir_operand_type(*arg_back));
-                    block = ir_block(analyzer->factory);
-                    ir_block_terminate_arg(preblock, *arg_back, block);
-                    arg_back = &(*arg_back)->next;
-                    type_back = &(*type_back)->next;
-                    args = args->next;
-                }
+                ir_type_t *type = NULL;
+                ir_operand_t *arg = NULL;
+                block = analyze_call_stmt_param(analyzer, block, args, &arg, &type);
 
                 if (ir_local_type(func) != ir_type_procedure(analyzer->factory, type)) {
                     const symbol_instance_t *instance = symbol_get_instance(item->symbol);
