@@ -16,6 +16,7 @@ typedef struct {
     } addr;
     char label[16];
     struct {
+        int e_ov, e_rng, e_div0;
         int r_int, r_char, r_ln;
         int w_int, w_char, w_bool, w_str;
     } builtin;
@@ -96,6 +97,29 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
     }
 }
 
+void codegen_check_range(codegen_t *codegen, const char *reg, const ir_local_t *local)
+{
+    const ir_type_t *type = ir_local_type(local);
+    ++codegen->builtin.e_rng;
+    if (local->kind == IR_LOCAL_VAR
+        && ir_type_is_kind(type, IR_TYPE_ARRAY)
+        && ir_type_is_std(type->u.array_type.base_type))
+    {
+        if (type->u.array_type.size) {
+            codegen_print(codegen, "LAD", "GR1, 0");
+            codegen_print(codegen, "CPA", "GR1, %s", reg);
+            codegen_print(codegen, "JMI", "ERNG");
+            codegen_print(codegen, "LAD", "GR1, %ld", type->u.array_type.size - 1);
+            codegen_print(codegen, "CPA", "%s, GR1", reg);
+            codegen_print(codegen, "JPL", "ERNG");
+        } else {
+            codegen_print(codegen, "JPL", "ERNG");
+        }
+    } else {
+        unreachable();
+    }
+}
+
 void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *operand);
 
 void codegen_load_constant(codegen_t *codegen, const char *reg, const ir_constant_t *constant)
@@ -123,6 +147,7 @@ void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *p
         switch (place->place_access->kind) {
         case IR_PLACE_ACCESS_INDEX:
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
+            codegen_check_range(codegen, "GR7", place->local);
             switch (place->local->kind) {
             case IR_LOCAL_VAR:
                 codegen_print(codegen, "LD", "%s, %s, GR7", reg, codegen_addr_label(codegen, place->local->u.var.item));
@@ -177,11 +202,17 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
 
     local = place->local;
     if (place->place_access) {
-        switch (local->kind) {
-        case IR_LOCAL_VAR:
+        switch (place->place_access->kind) {
+        case IR_PLACE_ACCESS_INDEX:
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-            codegen_print(codegen, "ST", "%s, %s, GR7", reg, codegen_addr_label(codegen, local->u.var.item));
-            break;
+            codegen_check_range(codegen, "GR7", place->local);
+            switch (local->kind) {
+            case IR_LOCAL_VAR:
+                codegen_print(codegen, "ST", "%s, %s, GR7", reg, codegen_addr_label(codegen, local->u.var.item));
+                break;
+            default:
+                unreachable();
+            }
         default:
             unreachable();
         }
@@ -216,15 +247,25 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
         codegen_load(codegen, "GR1", stmt->rhs->u.binary_op_rvalue.lhs);
         switch (stmt->rhs->u.binary_op_rvalue.kind) {
         case AST_BINARY_OP_PLUS:
+            ++codegen->builtin.e_ov;
             codegen_print(codegen, "ADDA", "GR1, GR2");
+            codegen_print(codegen, "JOV", "EOV");
             break;
         case AST_BINARY_OP_MINUS:
+            ++codegen->builtin.e_ov;
             codegen_print(codegen, "SUBA", "GR1, GR2");
+            codegen_print(codegen, "JOV", "EOV");
             break;
         case AST_BINARY_OP_STAR:
+            ++codegen->builtin.e_ov;
             codegen_print(codegen, "MULA", "GR1, GR2");
+            codegen_print(codegen, "JOV", "EOV");
             break;
         case AST_BINARY_OP_DIV:
+            ++codegen->builtin.e_div0;
+            codegen_print(codegen, "LAD", "GR3, 0");
+            codegen_print(codegen, "CPA", "GR3, GR2");
+            codegen_print(codegen, "JZE", "EDIV0");
             codegen_print(codegen, "DIVA", "GR1, GR2");
             break;
         case AST_BINARY_OP_AND:
@@ -381,24 +422,33 @@ void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *cons
     assert(codegen && constant);
     switch (constant->kind) {
     case IR_CONSTANT_NUMBER: {
-        const char *label = codegen_addr_label(codegen, NULL);
-        codegen_set_label(codegen, label);
+        codegen_addr_t tmp = codegen_addr(codegen, NULL);
+        codegen_addr_t label = codegen_addr(codegen, NULL);
+        codegen_print(codegen, "JUMP", codegen_label(label));
+        codegen_set_label(codegen, codegen_label(tmp));
         codegen_print(codegen, "DC", "%ld", constant->u.number_constant.value);
-        codegen_print(codegen, "PUSH", "%s", label);
+        codegen_set_label(codegen, codegen_label(label));
+        codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
         break;
     }
     case IR_CONSTANT_CHAR: {
-        const char *label = codegen_addr_label(codegen, NULL);
-        codegen_set_label(codegen, label);
+        codegen_addr_t tmp = codegen_addr(codegen, NULL);
+        codegen_addr_t label = codegen_addr(codegen, NULL);
+        codegen_print(codegen, "JUMP", codegen_label(label));
+        codegen_set_label(codegen, codegen_label(tmp));
         codegen_print(codegen, "DC", "#%04X", constant->u.char_constant.value);
-        codegen_print(codegen, "PUSH", "%s", label);
+        codegen_set_label(codegen, codegen_label(label));
+        codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
         break;
     }
     case IR_CONSTANT_BOOLEAN: {
-        const char *label = codegen_addr_label(codegen, NULL);
-        codegen_set_label(codegen, label);
+        codegen_addr_t tmp = codegen_addr(codegen, NULL);
+        codegen_addr_t label = codegen_addr(codegen, NULL);
+        codegen_print(codegen, "JUMP", codegen_label(label));
+        codegen_set_label(codegen, codegen_label(tmp));
         codegen_print(codegen, "DC", "%d", constant->u.boolean_constant.value);
-        codegen_print(codegen, "PUSH", "%s", label);
+        codegen_set_label(codegen, codegen_label(label));
+        codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
         break;
     }
     case IR_CONSTANT_STRING:
@@ -414,11 +464,17 @@ void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
     assert(codegen && place);
 
     if (place->place_access) {
-        switch (place->local->kind) {
-        case IR_LOCAL_VAR:
+        switch (place->place_access->kind) {
+        case IR_PLACE_ACCESS_INDEX:
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-            codegen_print(codegen, "PUSH", "%s, GR7", codegen_addr_label(codegen, place->local->u.var.item));
-            break;
+            codegen_check_range(codegen, "GR7", place->local);
+            switch (place->local->kind) {
+            case IR_LOCAL_VAR:
+                codegen_print(codegen, "PUSH", "%s, GR7", codegen_addr_label(codegen, place->local->u.var.item));
+                break;
+            default:
+                unreachable();
+            }
         default:
             unreachable();
         }
@@ -935,7 +991,44 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "RET", NULL);
     }
 
-    codegen_set_label(codegen, "EOV");
+    if (codegen->builtin.e_ov) {
+        const char *msg = "error: overflow";
+        codegen_set_label(codegen, "EMOV");
+        codegen_print(codegen, "DC", "'%s'", msg);
+        codegen_set_label(codegen, "EMLOV");
+        codegen_print(codegen, "DC", "%ld", strlen(msg));
+        codegen_set_label(codegen, "EOV");
+        codegen_print(codegen, "CALL", "BFLUSH");
+        codegen_print(codegen, "OUT", "EMOV, EMLOV");
+        codegen_print(codegen, "OUT", "BCLF, BC1");
+        codegen_print(codegen, "SVC", "-1");
+    }
+
+    if (codegen->builtin.e_rng) {
+        const char *msg = "error: tried to access out of array range";
+        codegen_set_label(codegen, "EMRNG");
+        codegen_print(codegen, "DC", "'%s'", msg);
+        codegen_set_label(codegen, "EMLRNG");
+        codegen_print(codegen, "DC", "%ld", strlen(msg));
+        codegen_set_label(codegen, "ERNG");
+        codegen_print(codegen, "CALL", "BFLUSH");
+        codegen_print(codegen, "OUT", "EMRNG, EMLRNG");
+        codegen_print(codegen, "OUT", "BCLF, BC1");
+        codegen_print(codegen, "SVC", "-1");
+    }
+
+    if (codegen->builtin.e_div0) {
+        const char *msg = "error: division by 0";
+        codegen_set_label(codegen, "EMDIV0");
+        codegen_print(codegen, "DC", "'%s'", msg);
+        codegen_set_label(codegen, "EMLDIV0");
+        codegen_print(codegen, "DC", "%ld", strlen(msg));
+        codegen_set_label(codegen, "EDIV0");
+        codegen_print(codegen, "CALL", "BFLUSH");
+        codegen_print(codegen, "OUT", "EMDIV0, EMLDIV0");
+        codegen_print(codegen, "OUT", "BCLF, BC1");
+        codegen_print(codegen, "SVC", "-1");
+    }
 }
 
 void codegen_ir(codegen_t *codegen, const ir_t *ir)
@@ -958,6 +1051,9 @@ void codegen_casl2(const ir_t *ir)
     codegen.addr.cnt = 0;
     codegen.addr.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     codegen.label[0] = '\0';
+    codegen.builtin.e_rng = 0;
+    codegen.builtin.e_ov = 0;
+    codegen.builtin.e_div0 = 0;
     codegen.builtin.r_int = 0;
     codegen.builtin.r_char = 0;
     codegen.builtin.r_ln = 0;
