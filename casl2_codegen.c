@@ -596,7 +596,6 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
 
 void codegen_block(codegen_t *codegen, const ir_block_t *block)
 {
-    codegen_addr_t addr;
     assert(codegen && block);
 
     codegen_set_label(codegen, codegen_addr_label(codegen, block));
@@ -653,7 +652,6 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
 
 void codegen_item(codegen_t *codegen, const ir_item_t *item)
 {
-    codegen_addr_t addr;
     assert(codegen);
 
     while (item) {
