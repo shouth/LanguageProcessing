@@ -581,12 +581,9 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_variable_decl_t *decl, int 
         ast_ident_t *ident = decl->names;
         const ir_type_t *type = analyze_type(analyzer, decl->type);
         while (ident) {
+            ir_item_kind_t kind = local ? IR_ITEM_LOCAL_VAR : IR_ITEM_VAR;
             maybe_error_conflict(analyzer, ident->symbol, ident->region);
-            if (local) {
-                ir_item(analyzer->factory, IR_ITEM_LOCAL_VAR, ident->symbol, ident->region, type);
-            } else {
-                ir_item(analyzer->factory, IR_ITEM_VAR, ident->symbol, ident->region, type);
-            }
+            ir_item(analyzer->factory, kind, ident->symbol, ident->region, type);
             ident = ident->next;
         }
         decl = decl->next;
