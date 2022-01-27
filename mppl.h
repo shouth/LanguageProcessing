@@ -140,7 +140,7 @@ typedef struct {
     size_t lines_size;
 } source_t;
 
-source_t *new_source(const char *filename);
+source_t *new_source(const char *filename, const char *output);
 void delete_source(source_t *src);
 
 typedef struct {
@@ -281,6 +281,7 @@ ast_t *parse_source(const source_t *src);
 
 /* pretty_print.c */
 
+void pp_colored(int flag);
 void pretty_print(const ast_t *ast);
 
 /* ir.c */
@@ -337,5 +338,6 @@ void delete_msg(msg_t *msg);
 void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
 void msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...);
 void msg_emit(msg_t *msg);
+void msg_colored(int flag);
 
 #endif

@@ -24,14 +24,18 @@ const color_scheme_t monokai = {
 
 typedef struct {
     size_t indent;
-    int colored;
     const color_scheme_t *color_scheme;
 } printer_t;
+
+static int colored = 0;
+
+void pp_colored(int flag)
+{ colored = flag; }
 
 void console_set_color(printer_t *printer, color_t color)
 {
     assert(printer);
-    if (printer->colored) {
+    if (colored) {
         printf("\033[38;2;%ld;%ld;%ldm", (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
     }
 }
@@ -39,7 +43,7 @@ void console_set_color(printer_t *printer, color_t color)
 void console_reset_color(printer_t *printer)
 {
     assert(printer);
-    if (printer->colored) {
+    if (colored) {
         console_set_color(printer, printer->color_scheme->foreground);
     }
 }
@@ -592,7 +596,6 @@ void pretty_print(const ast_t *ast)
     printer.indent = 0;
 
     printer.color_scheme = &monokai;
-    printer.colored = 0; /* ここを1にすると色付きで出力 */
     console_reset_color(&printer);
     pp_program(&printer, ast->program);
     printf("\033[0m");

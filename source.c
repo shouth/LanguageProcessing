@@ -78,7 +78,7 @@ static const char *nextline(const char *str)
     return str + 1;
 }
 
-source_t *new_source(const char *filename)
+source_t *new_source(const char *filename, const char *output)
 {
     source_t *src;
     size_t filename_len;
@@ -97,8 +97,10 @@ source_t *new_source(const char *filename)
         strcpy(src->input_filename, filename);
     }
 
-    src->output_filename = new_arr(char, filename_len + 1);
-    {
+    src->output_filename = new_arr(char, (output ? strlen(output) : filename_len) + 1);
+    if (output) {
+        strcpy(src->output_filename, output);
+    } else {
         if (strncmp(filename + filename_len - 4, ".mpl", 4) != 0) {
             delete_source(src);
             return NULL;

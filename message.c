@@ -6,6 +6,11 @@
 
 #include "mppl.h"
 
+static int colored = 0;
+
+void msg_colored(int flag)
+{ colored = flag; }
+
 msg_t *new_msg(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...)
 {
     msg_t *ret;
@@ -98,32 +103,39 @@ void msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...)
     *cur = entry;
 }
 
+void set_console(int n)
+{
+    if (colored) {
+        printf("\033[%dm", n);
+    }
+}
+
 void set_level_color(msg_level_t level)
 {
     switch (level) {
     case MSG_HELP:
-        printf("\033[97m"); /* bright white */
+        set_console(97); /* bright white */
         break;
     case MSG_NOTE:
-        printf("\033[94m"); /* bright blue */
+        set_console(94); /* bright blue */
         break;
     case MSG_WARN:
-        printf("\033[93m"); /* bright yellow */
+        set_console(93); /* bright yellow */
         break;
     case MSG_ERROR:
-        printf("\033[91m"); /* bright red */
+        set_console(91); /* bright red */
         break;
     case MSG_FATAL:
-        printf("\033[95m"); /* bright magenta */
+        set_console(95); /* bright magenta */
         break;
     }
 }
 
 void set_bold()
-{ printf("\033[1m"); }
+{ set_console(1); }
 
 void reset()
-{ printf("\033[0m"); }
+{ set_console(0); }
 
 void put_sanitized(int c)
 {
@@ -141,7 +153,9 @@ void put_sanitized(int c)
     }
 
     if (!isprint(c)) {
-        printf("\033[2m\\%03o\033[22m", (unsigned char) c);
+        set_console(2);
+        printf("\\%03o", (unsigned char) c);
+        set_console(22);
         return;
     }
 
@@ -214,7 +228,7 @@ void msg_emit(msg_t *msg)
         location_t loc = source_location(msg->src, msg->region.pos);
         printf("%*.s", left_margin, "");
         set_bold();
-        printf("\033[94m");
+        set_console(94);
         printf("--> ");
         reset();
         printf("%s:%ld:%ld\n", msg->src->input_filename, loc.line, loc.col);
@@ -225,12 +239,12 @@ void msg_emit(msg_t *msg)
         location_t end = source_location(msg->src, cur0->region.pos + cur0->region.len);
         if (cur0 == msg->inline_entries) {
             set_bold();
-            printf("\033[94m");
+            set_console(94);
             printf("%*.s |\n", left_margin, "");
             reset();
         } else if (begin.line - preloc.line > 1) {
             set_bold();
-            printf("\033[94m");
+            set_console(94);
             for (i = 0; i < left_margin + 2; i++) {
                 putchar('~');
             }
@@ -241,7 +255,7 @@ void msg_emit(msg_t *msg)
         if (begin.line == end.line) {
             size_t offset = msg->src->lines_ptr[begin.line - 1];
             set_bold();
-            printf("\033[94m");
+            set_console(94);
             printf("%*.ld |   ", left_margin, begin.line);
             reset();
             for (i = 0; i < begin.col - 1; i++) {
@@ -263,7 +277,7 @@ void msg_emit(msg_t *msg)
 
             offset = msg->src->lines_ptr[begin.line - 1];
             set_bold();
-            printf("\033[94m");
+            set_console(94);
             printf("%*.s |   ", left_margin, "");
             reset();
             for (i = 0; i < begin.col - 1; i++) {
@@ -289,7 +303,7 @@ void msg_emit(msg_t *msg)
         } else {
             size_t offset = msg->src->lines_ptr[begin.line - 1];
             set_bold();
-            printf("\033[94m");
+            set_console(94);
             printf("%*.ld |   ", left_margin, begin.line);
             reset();
             for (i = 0; i < begin.col - 1; i++) {
@@ -305,7 +319,7 @@ void msg_emit(msg_t *msg)
             putchar('\n');
 
             set_bold();
-            printf("\033[94m");
+            set_console(94);
             printf("%*.s | _", left_margin, "");
             reset();
 
@@ -350,7 +364,7 @@ void msg_emit(msg_t *msg)
             }
 
             set_bold();
-            printf("\033[94m");
+            set_console(94);
             printf("%*.s | ", left_margin, "");
             reset();
 
