@@ -567,7 +567,7 @@ void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, si
         if (lit->kind == AST_LIT_STRING && lit->u.string_lit.str_len != 1 && format->len) {
             size_t msg_len = parser->current_token.region.pos + parser->current_token.region.len - spec_pos;
             msg_t *msg = new_msg(parser->src, region_from(spec_pos, msg_len), MSG_ERROR, "wrong output format");
-            msg_add_inline_entry(msg, region_from(spec_pos, msg_len), "field specifier cannot be used for string");
+            msg_add_inline_entry(msg, region_from(spec_pos, msg_len), "field width cannot be used for string");
             error_msg(parser, msg);
         }
     }
