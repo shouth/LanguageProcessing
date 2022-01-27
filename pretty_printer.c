@@ -44,13 +44,10 @@ void console_reset_color(printer_t *printer)
     }
 }
 
-void pp_symbol(printer_t *printer, symbol_t symbol)
+void pp_symbol(printer_t *printer, const symbol_t *symbol)
 {
-    const symbol_instance_t *instance;
     assert(printer);
-
-    instance = symbol_get_instance(symbol);
-    printf("%.*s", (int) instance->len, instance->ptr);
+    printf("%.*s", (int) symbol->len, symbol->ptr);
 }
 
 void pp_colored_program(printer_t *printer, const ast_ident_t *ident)

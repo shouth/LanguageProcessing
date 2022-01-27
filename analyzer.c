@@ -8,7 +8,7 @@ typedef struct {
     ir_block_t *break_dest;
 } analyzer_t;
 
-void maybe_error_conflict(analyzer_t *analyzer, symbol_t symbol, region_t region)
+void maybe_error_conflict(analyzer_t *analyzer, const symbol_t *symbol, region_t region)
 {
     ir_item_t *item;
     if (item = ir_item_lookup_scope(analyzer->factory->scope, symbol)) {
@@ -20,12 +20,11 @@ void maybe_error_conflict(analyzer_t *analyzer, symbol_t symbol, region_t region
     }
 }
 
-void maybe_error_undeclared(analyzer_t *analyzer, symbol_t symbol, region_t region)
+void maybe_error_undeclared(analyzer_t *analyzer, const symbol_t *symbol, region_t region)
 {
     if (!ir_item_lookup(analyzer->factory->scope, symbol)) {
-        const symbol_instance_t *instance = symbol_get_instance(symbol);
         msg_t *msg = new_msg(analyzer->source, region,
-            MSG_ERROR, "`%.*s` is not declared", (int) instance->len, instance->ptr);
+            MSG_ERROR, "`%.*s` is not declared", (int) symbol->len, symbol->ptr);
         msg_emit(msg);
         exit(1);
     }
@@ -81,9 +80,9 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
 
         maybe_error_undeclared(analyzer, ident->symbol, ident->region);
         if (!ir_type_is_kind(lookup->type, IR_TYPE_ARRAY)) {
-            const symbol_instance_t *instance = symbol_get_instance(expr->u.decl_ref_expr.decl->symbol);
+            const symbol_t *symbol = expr->u.decl_ref_expr.decl->symbol;
             msg_t *msg = new_msg(analyzer->source, ident->region,
-                MSG_ERROR, "`%.*s` is not an array.", (int) instance->len, instance->ptr);
+                MSG_ERROR, "`%.*s` is not an array.", (int) symbol->len, symbol->ptr);
             msg_emit(msg);
             exit(1);
         }
@@ -256,7 +255,7 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast
         return new_ir_constant_operand(constant);
     }
     case AST_LIT_STRING: {
-        const symbol_instance_t *instance;
+        const symbol_t *symbol;
         const ir_constant_t *constant;
         if (expr->lit->u.string_lit.str_len != 1) {
             msg_t *msg = new_msg(analyzer->source, expr->lit->region,
@@ -264,8 +263,8 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast
             msg_emit(msg);
             exit(1);
         }
-        instance = symbol_get_instance(expr->lit->u.string_lit.symbol);
-        constant = ir_char_constant(analyzer->factory, instance->ptr[0]);
+        symbol = expr->lit->u.string_lit.symbol;
+        constant = ir_char_constant(analyzer->factory, symbol->ptr[0]);
         return new_ir_constant_operand(constant);
     }
     }
@@ -417,9 +416,9 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
 
             maybe_error_undeclared(analyzer, ident->symbol, ident->region);
             if (item->kind != IR_ITEM_PROCEDURE) {
-                const symbol_instance_t *instance = symbol_get_instance(stmt->u.call_stmt.name->symbol);
+                const symbol_t *symbol = stmt->u.call_stmt.name->symbol;
                 msg_t *msg = new_msg(analyzer->source, ident->region,
-                    MSG_ERROR, "`%.*s` is not a procedure", (int) instance->len, instance->ptr);
+                    MSG_ERROR, "`%.*s` is not a procedure", (int) symbol->len, symbol->ptr);
                 msg_emit(msg);
                 exit(1);
             }
@@ -445,9 +444,9 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 block = analyze_call_stmt_param(analyzer, block, args, &arg, &type);
 
                 if (ir_local_type(func) != ir_type_procedure(analyzer->factory, type)) {
-                    const symbol_instance_t *instance = symbol_get_instance(item->symbol);
+                    const symbol_t *symbol = item->symbol;
                     msg_t *msg = new_msg(analyzer->source, ident->region,
-                        MSG_ERROR, "mismatching arguments for procedure `%.*s`", (int) instance->len, instance->ptr);
+                        MSG_ERROR, "mismatching arguments for procedure `%.*s`", (int) symbol->len, symbol->ptr);
                     msg_emit(msg);
                     exit(1);
                 }

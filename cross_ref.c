@@ -15,14 +15,14 @@ typedef struct {
 
 static void cross_ref_print_ns(cross_ref_t *cross_ref, cross_ref_ns_t *ns)
 {
-    const symbol_instance_t *instance;
+    const symbol_t *symbol;
     assert(cross_ref);
     if (!ns) {
         return;
     }
 
-    instance = symbol_get_instance(ns->item->symbol);
-    printf(" @ %.*s", (int) instance->len, instance->ptr);
+    symbol = ns->item->symbol;
+    printf(" @ %.*s", (int) symbol->len, symbol->ptr);
     cross_ref_print_ns(cross_ref, ns->next);
 }
 
@@ -57,11 +57,11 @@ static void internal_print_cross_ref(cross_ref_t *cross_ref, const ir_item_t *it
 
     inner_item = item->body->items;
     while (inner_item) {
-        const symbol_instance_t *symbol_instance;
+        const symbol_t *symbol;
         cross_ref_ns_t ns;
 
-        symbol_instance = symbol_get_instance(inner_item->symbol);
-        printf("Name | %.*s", (int) symbol_instance->len, symbol_instance->ptr);
+        symbol = inner_item->symbol;
+        printf("Name | %.*s", (int) symbol->len, symbol->ptr);
         cross_ref_print_ns(cross_ref, cross_ref->ns);
         printf("\n");
         printf("Type | ");

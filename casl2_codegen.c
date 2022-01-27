@@ -86,9 +86,9 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
     while (constant) {
         switch (constant->kind) {
         case IR_CONSTANT_STRING: {
-            const symbol_instance_t *instance = symbol_get_instance(constant->u.string_constant.value);
+            const symbol_t *symbol = constant->u.string_constant.value;
             codegen_set_label(codegen, codegen_addr_label(codegen, constant));
-            codegen_print(codegen, "DC", "\'%.*s\'", (int) instance->len, instance->ptr);
+            codegen_print(codegen, "DC", "\'%.*s\'", (int) symbol->len, symbol->ptr);
             break;
         }
         }

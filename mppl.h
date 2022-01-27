@@ -160,12 +160,10 @@ region_t region_from(size_t pos, size_t len);
 region_t region_unite(region_t a, region_t b);
 int region_compare(region_t a, region_t b);
 
-typedef uintptr_t symbol_t;
-
 typedef struct {
     const char *ptr;
     size_t len;
-} symbol_instance_t;
+} symbol_t;
 
 typedef struct {
     hash_table_t *table;
@@ -173,8 +171,7 @@ typedef struct {
 
 symbol_storage_t *new_symbol_storage();
 void delete_symbol_storage(symbol_storage_t *storage);
-symbol_t symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
-const symbol_instance_t *symbol_get_instance(symbol_t symbol);
+const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
 
 /* cursol.c */
 

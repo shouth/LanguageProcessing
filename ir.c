@@ -459,7 +459,7 @@ const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value)
     return ir_constant_intern(factory, ret);
 }
 
-const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len)
+const ir_constant_t *ir_string_constant(ir_factory_t *factory, const symbol_t *value, size_t len)
 {
     ir_type_t *base = ir_type_ref(ir_type_char(factory));
     ir_constant_t *ret = new_ir_constant(IR_CONSTANT_STRING, ir_type_array(factory, base, len));
@@ -500,7 +500,7 @@ static uint64_t ir_constant_hasher(const void *ptr)
         ret = 31 * ret + fnv1_int(p->u.char_constant.value);
         break;
     case IR_CONSTANT_STRING:
-        ret = 31 * ret + fnv1_ptr(symbol_get_instance(p->u.string_constant.value));
+        ret = 31 * ret + fnv1_ptr(p->u.string_constant.value);
         break;
     }
     return ret;
@@ -759,7 +759,7 @@ void delete_ir_block(ir_block_t *block)
     free(block);
 }
 
-ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, region_t name_region, const ir_type_t *type)
+ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, const symbol_t *symbol, region_t name_region, const ir_type_t *type)
 {
     ir_item_t *ret = new(ir_item_t);
     ret->kind = kind;
@@ -780,7 +780,7 @@ ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, 
     return ret;
 }
 
-ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, symbol_t symbol)
+ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, const symbol_t *symbol)
 {
     const hash_table_entry_t *entry;
     assert(scope);
@@ -789,7 +789,7 @@ ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, symbol_t symbol)
     return entry ? entry->value : NULL;
 }
 
-ir_item_t *ir_item_lookup(ir_scope_t *scope, symbol_t symbol)
+ir_item_t *ir_item_lookup(ir_scope_t *scope, const symbol_t *symbol)
 {
     assert(scope);
 

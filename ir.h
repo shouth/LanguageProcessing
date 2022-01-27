@@ -126,7 +126,7 @@ struct impl_ir_constant {
             int value;
         } char_constant;
         struct {
-            symbol_t value;
+            const symbol_t *value;
         } string_constant;
     } u;
 };
@@ -134,7 +134,7 @@ struct impl_ir_constant {
 const ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value);
 const ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value);
 const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value);
-const ir_constant_t *ir_string_constant(ir_factory_t *factory, symbol_t value, size_t len);
+const ir_constant_t *ir_string_constant(ir_factory_t *factory, const symbol_t *value, size_t len);
 const ir_type_t *ir_constant_type(const ir_constant_t *constant);
 
 typedef enum {
@@ -306,7 +306,7 @@ typedef enum {
 struct impl_ir_item {
     ir_item_kind_t kind;
     const ir_type_t *type;
-    symbol_t symbol;
+    const symbol_t *symbol;
     ir_body_t *body;
     ir_item_t *next;
     region_t name_region;
@@ -317,9 +317,9 @@ struct impl_ir_item {
     } refs;
 };
 
-ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, symbol_t symbol, region_t name_region, const ir_type_t *type);
-ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, symbol_t symbol);
-ir_item_t *ir_item_lookup(ir_scope_t *scope, symbol_t symbol);
+ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, const symbol_t *symbol, region_t name_region, const ir_type_t *type);
+ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, const symbol_t *symbol);
+ir_item_t *ir_item_lookup(ir_scope_t *scope, const symbol_t *symbol);
 
 struct impl_ir_scope {
     ir_scope_t *next;

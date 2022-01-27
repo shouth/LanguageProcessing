@@ -10,7 +10,7 @@ typedef enum {
 } ast_lit_kind_t;
 
 typedef struct {
-    symbol_t symbol;
+    const symbol_t *symbol;
     unsigned long value;
 } ast_number_lit_t;
 
@@ -19,7 +19,7 @@ typedef struct {
 } ast_boolean_lit_t;
 
 typedef struct {
-    symbol_t symbol;
+    const symbol_t *symbol;
     size_t str_len;
 } ast_string_lit_t;
 
@@ -34,19 +34,19 @@ typedef struct {
     } u;
 } ast_lit_t;
 
-ast_lit_t *new_ast_number_lit(symbol_t symbol, unsigned long value, region_t region);
+ast_lit_t *new_ast_number_lit(const symbol_t *symbol, unsigned long value, region_t region);
 ast_lit_t *new_ast_boolean_lit(int value, region_t region);
-ast_lit_t *new_ast_string_lit(symbol_t symbol, size_t str_len, region_t region);
+ast_lit_t *new_ast_string_lit(const symbol_t *symbol, size_t str_len, region_t region);
 void delete_ast_lit(ast_lit_t *lit);
 
 typedef struct impl_ast_ident ast_ident_t;
 struct impl_ast_ident {
-    symbol_t symbol;
+    const symbol_t *symbol;
     region_t region;
     ast_ident_t *next;
 };
 
-ast_ident_t *new_ast_ident(symbol_t symbol, region_t region);
+ast_ident_t *new_ast_ident(const symbol_t *symbol, region_t region);
 void delete_ast_ident(ast_ident_t *ident);
 
 typedef enum {
