@@ -25,41 +25,35 @@ codegen_addr_t codegen_addr_lookup(codegen_t *codegen, const void *ptr)
 {
     const hash_table_entry_t *entry;
     assert(codegen);
-    if (entry = hash_table_find(codegen->addr.table, ptr)) {
+    if (ptr && (entry = hash_table_find(codegen->addr.table, ptr))) {
         return (codegen_addr_t) entry->value;
     } else {
         return 0;
     }
 }
 
-codegen_addr_t codegen_addr_for(codegen_t *codegen, const void *ptr)
+codegen_addr_t codegen_addr(codegen_t *codegen, const void *ptr)
 {
-    const hash_table_entry_t *entry;
+    codegen_addr_t addr;
     assert(codegen);
-    if (entry = hash_table_find(codegen->addr.table, ptr)) {
-        return (codegen_addr_t) entry->value;
-    } else {
-        codegen_addr_t addr = codegen->addr.cnt++;
-        hash_table_insert_unchecked(codegen->addr.table, (void *) ptr, (void *) addr);
-        return addr;
+    if (!(addr = codegen_addr_lookup(codegen, ptr))) {
+        addr = ++codegen->addr.cnt;
+        if (ptr) {
+            hash_table_insert_unchecked(codegen->addr.table, (void *) ptr, (void *) addr);
+        }
     }
+    return addr;
 }
 
-const char *codegen_label_for(codegen_t *codegen, const void *ptr)
+const char *codegen_label(codegen_addr_t addr)
 {
-    codegen_addr_t addr = codegen_addr_for(codegen, ptr);
     static char buf[16];
     sprintf(buf, "L%ld", addr);
     return buf;
 }
 
-const char *codegen_tmp_label(codegen_t *codegen)
-{
-    static char buf[16];
-    codegen_addr_t addr = codegen->addr.cnt++;
-    sprintf(buf, "L%ld", addr);
-    return buf;
-}
+const char *codegen_addr_label(codegen_t *codegen, const void *ptr)
+{ return codegen_label(codegen_addr(codegen, ptr)); }
 
 void codegen_print(codegen_t *codegen, const char *instruction, const char *operand_format, ...)
 {
@@ -93,7 +87,7 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
         switch (constant->kind) {
         case IR_CONSTANT_STRING: {
             const symbol_instance_t *instance = symbol_get_instance(constant->u.string_constant.value);
-            codegen_set_label(codegen, codegen_label_for(codegen, constant));
+            codegen_set_label(codegen, codegen_addr_label(codegen, constant));
             codegen_print(codegen, "DC", "\'%.*s\'", (int) instance->len, instance->ptr);
             break;
         }
@@ -131,7 +125,7 @@ void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *p
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
             switch (place->local->kind) {
             case IR_LOCAL_VAR:
-                codegen_print(codegen, "LD", "%s, %s, GR7", reg, codegen_label_for(codegen, place->local->u.var.item));
+                codegen_print(codegen, "LD", "%s, %s, GR7", reg, codegen_addr_label(codegen, place->local->u.var.item));
                 break;
             default:
                 unreachable();
@@ -143,10 +137,10 @@ void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *p
     } else {
         switch (place->local->kind) {
         case IR_LOCAL_VAR:
-            codegen_print(codegen, "LD", "%s, %s", reg, codegen_label_for(codegen, place->local->u.var.item));
+            codegen_print(codegen, "LD", "%s, %s", reg, codegen_addr_label(codegen, place->local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, place->local->u.arg.item));
+            codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, place->local->u.arg.item));
             codegen_print(codegen, "LD", "%s, 0, GR7", reg);
             break;
         case IR_LOCAL_TEMP:
@@ -186,7 +180,7 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
         switch (local->kind) {
         case IR_LOCAL_VAR:
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-            codegen_print(codegen, "ST", "%s, %s, GR7", reg, codegen_label_for(codegen, local->u.var.item));
+            codegen_print(codegen, "ST", "%s, %s, GR7", reg, codegen_addr_label(codegen, local->u.var.item));
             break;
         default:
             unreachable();
@@ -194,10 +188,10 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
     } else {
         switch (local->kind) {
         case IR_LOCAL_VAR:
-            codegen_print(codegen, "ST", "%s, %s", reg, codegen_label_for(codegen, local->u.var.item));
+            codegen_print(codegen, "ST", "%s, %s", reg, codegen_addr_label(codegen, local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, local->u.arg.item));
+            codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, local->u.arg.item));
             codegen_print(codegen, "ST", "%s, 0, GR7", reg);
             break;
         case IR_LOCAL_TEMP:
@@ -242,7 +236,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
         default: {
             switch (stmt->rhs->u.binary_op_rvalue.kind) {
             case AST_BINARY_OP_EQUAL: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "CPA", "GR1, GR2");
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_print(codegen, "JZE", "%s", jmp);
@@ -251,7 +245,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 break;
             }
             case AST_BINARY_OP_NOTEQ: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "CPA", "GR1, GR2");
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_print(codegen, "JNZ", "%s", jmp);
@@ -260,7 +254,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 break;
             }
             case AST_BINARY_OP_LE: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "CPA", "GR1, GR2");
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_print(codegen, "JMI", "%s", jmp);
@@ -269,7 +263,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 break;
             }
             case AST_BINARY_OP_LEEQ: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "CPA", "GR2, GR1");
                 codegen_print(codegen, "LAD", "GR1, 0");
                 codegen_print(codegen, "JMI", "%s", jmp);
@@ -278,7 +272,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 break;
             }
             case AST_BINARY_OP_GR: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "CPA", "GR2, GR1");
                 codegen_print(codegen, "LAD", "GR1, 1");
                 codegen_print(codegen, "JMI", "%s", jmp);
@@ -287,7 +281,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
                 break;
             }
             case AST_BINARY_OP_GREQ: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "CPA", "GR1, GR2");
                 codegen_print(codegen, "LAD", "GR1, 0");
                 codegen_print(codegen, "JMI", "%s", jmp);
@@ -321,7 +315,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
         case IR_TYPE_INTEGER:
             switch (lhs_type) {
             case IR_TYPE_BOOLEAN: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "LAD", "GR2, 0");
                 codegen_print(codegen, "CPA", "GR1, GR2");
                 codegen_print(codegen, "JZE", "%s", jmp);
@@ -340,7 +334,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
         case IR_TYPE_CHAR:
             switch (lhs_type) {
             case IR_TYPE_BOOLEAN: {
-                const char *jmp = codegen_tmp_label(codegen);
+                const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "LAD", "GR2, 0");
                 codegen_print(codegen, "CPA", "GR1, GR2");
                 codegen_print(codegen, "JZE", "%s", jmp);
@@ -375,7 +369,7 @@ void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
 
     switch (stmt->func->local->kind) {
     case IR_LOCAL_VAR:
-        codegen_print(codegen, "CALL", "%s", codegen_label_for(codegen, stmt->func->local->u.var.item->body));
+        codegen_print(codegen, "CALL", "%s", codegen_addr_label(codegen, stmt->func->local->u.var.item->body));
         break;
     default:
         unreachable();
@@ -387,28 +381,28 @@ void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *cons
     assert(codegen && constant);
     switch (constant->kind) {
     case IR_CONSTANT_NUMBER: {
-        const char *label = codegen_tmp_label(codegen);
+        const char *label = codegen_addr_label(codegen, NULL);
         codegen_set_label(codegen, label);
         codegen_print(codegen, "DC", "%ld", constant->u.number_constant.value);
         codegen_print(codegen, "PUSH", "%s", label);
         break;
     }
     case IR_CONSTANT_CHAR: {
-        const char *label = codegen_tmp_label(codegen);
+        const char *label = codegen_addr_label(codegen, NULL);
         codegen_set_label(codegen, label);
         codegen_print(codegen, "DC", "#%04X", constant->u.char_constant.value);
         codegen_print(codegen, "PUSH", "%s", label);
         break;
     }
     case IR_CONSTANT_BOOLEAN: {
-        const char *label = codegen_tmp_label(codegen);
+        const char *label = codegen_addr_label(codegen, NULL);
         codegen_set_label(codegen, label);
         codegen_print(codegen, "DC", "%d", constant->u.boolean_constant.value);
         codegen_print(codegen, "PUSH", "%s", label);
         break;
     }
     case IR_CONSTANT_STRING:
-        codegen_print(codegen, "PUSH", codegen_label_for(codegen, constant));
+        codegen_print(codegen, "PUSH", codegen_addr_label(codegen, constant));
         break;
     default:
         unreachable();
@@ -423,7 +417,7 @@ void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
         switch (place->local->kind) {
         case IR_LOCAL_VAR:
             codegen_load(codegen, "GR7", place->place_access->u.index_place_access.index);
-            codegen_print(codegen, "PUSH", "%s, GR7", codegen_label_for(codegen, place->local->u.var.item));
+            codegen_print(codegen, "PUSH", "%s, GR7", codegen_addr_label(codegen, place->local->u.var.item));
             break;
         default:
             unreachable();
@@ -431,19 +425,22 @@ void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
     } else {
         switch (place->local->kind) {
         case IR_LOCAL_VAR:
-            codegen_print(codegen, "PUSH", "%s", codegen_label_for(codegen, place->local->u.var.item));
+            codegen_print(codegen, "PUSH", "%s", codegen_addr_label(codegen, place->local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, place->local->u.arg.item));
+            codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, place->local->u.arg.item));
             codegen_print(codegen, "PUSH", "0, GR7");
             break;
         case IR_LOCAL_TEMP: {
-            const char *label = codegen_tmp_label(codegen);
-            codegen_set_label(codegen, label);
+            codegen_addr_t tmp = codegen_addr(codegen, NULL);
+            codegen_addr_t label = codegen_addr(codegen, NULL);
+            codegen_print(codegen, "JUMP", "%s", codegen_label(label));
+            codegen_set_label(codegen, codegen_label(tmp));
             codegen_print(codegen, "DS", "1");
+            codegen_set_label(codegen, codegen_label(label));
             codegen_print(codegen, "POP", "GR1");
-            codegen_print(codegen, "ST", "GR1, %s", label);
-            codegen_print(codegen, "PUSH", "%s", label);
+            codegen_print(codegen, "ST", "GR1, %s", codegen_label(tmp));
+            codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
             break;
         }
         default:
@@ -483,10 +480,10 @@ void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
     } else {
         switch (stmt->ref->local->kind) {
         case IR_LOCAL_VAR:
-            codegen_print(codegen, "LAD", "GR7, %s", codegen_label_for(codegen, stmt->ref->local->u.var.item));
+            codegen_print(codegen, "LAD", "GR7, %s", codegen_addr_label(codegen, stmt->ref->local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, stmt->ref->local->u.arg.item));
+            codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, stmt->ref->local->u.arg.item));
             break;
         default:
             unreachable();
@@ -552,7 +549,7 @@ void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
         const ir_type_t *type = ir_constant_type(constant);
         codegen->builtin.w_str++;
         codegen_print(codegen, "LAD", "GR2, %ld", type->u.array_type.size);
-        codegen_print(codegen, "LAD", "GR3, %s", codegen_label_for(codegen, constant));
+        codegen_print(codegen, "LAD", "GR3, %s", codegen_addr_label(codegen, constant));
         codegen_print(codegen, "LD", "GR1, GR2");
         codegen_print(codegen, "CALL", "BWSTR");
         break;
@@ -602,14 +599,14 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     codegen_addr_t addr;
     assert(codegen && block);
 
-    codegen_set_label(codegen, codegen_label_for(codegen, block));
+    codegen_set_label(codegen, codegen_addr_label(codegen, block));
     codegen->stmt_cnt = 0;
     codegen_stmt(codegen, block->stmt);
     switch (block->termn.kind) {
     case IR_TERMN_GOTO: {
         const ir_block_t *next = block->termn.u.goto_termn.next;
         if (codegen_addr_lookup(codegen, next)) {
-            codegen_print(codegen, "JUMP", "%s", codegen_label_for(codegen, next));
+            codegen_print(codegen, "JUMP", "%s", codegen_addr_label(codegen, next));
         } else {
             codegen_block(codegen, next);
         }
@@ -624,18 +621,18 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
         codegen_print(codegen, "LAD", "GR2, 0");
         codegen_print(codegen, "CPA", "GR1, GR2");
         if (codegen_addr_lookup(codegen, then)) {
-            codegen_print(codegen, "JNZ", "%s", codegen_label_for(codegen, then));
+            codegen_print(codegen, "JNZ", "%s", codegen_addr_label(codegen, then));
             if (codegen_addr_lookup(codegen, els)) {
-                codegen_print(codegen, "JUMP", "%s", codegen_label_for(codegen, els));
+                codegen_print(codegen, "JUMP", "%s", codegen_addr_label(codegen, els));
             } else {
                 codegen_block(codegen, els);
             }
         } else {
             if (codegen_addr_lookup(codegen, els)) {
-                codegen_print(codegen, "JZE", "%s", codegen_label_for(codegen, els));
+                codegen_print(codegen, "JZE", "%s", codegen_addr_label(codegen, els));
                 codegen_block(codegen, then);
             } else {
-                codegen_print(codegen, "JZE", "%s", codegen_label_for(codegen, els));
+                codegen_print(codegen, "JZE", "%s", codegen_addr_label(codegen, els));
                 codegen_block(codegen, then);
                 codegen_block(codegen, els);
             }
@@ -662,21 +659,21 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
     while (item) {
         switch (item->kind) {
         case IR_ITEM_PROGRAM:
-            codegen_print(codegen, "CALL", codegen_label_for(codegen, item->body->inner));
+            codegen_print(codegen, "CALL", codegen_addr_label(codegen, item->body->inner));
             codegen_print(codegen, "SVC", "0");
             codegen_item(codegen, item->body->items);
             codegen_block(codegen, item->body->inner);
             break;
         case IR_ITEM_PROCEDURE:
             codegen_item(codegen, item->body->items);
-            codegen_set_label(codegen, codegen_label_for(codegen, item->body));
+            codegen_set_label(codegen, codegen_addr_label(codegen, item->body));
             {
                 ir_item_t *items = item->body->items;
                 codegen_print(codegen, "POP", "GR2");
                 while (items) {
                     if (items->kind == IR_ITEM_ARG_VAR) {
                         codegen_print(codegen, "POP", "GR1");
-                        codegen_print(codegen, "ST", "GR1, %s", codegen_label_for(codegen, items));
+                        codegen_print(codegen, "ST", "GR1, %s", codegen_addr_label(codegen, items));
                     }
                     items = items->next;
                 }
@@ -686,7 +683,7 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
             break;
         case IR_ITEM_VAR:
         case IR_ITEM_LOCAL_VAR:
-            codegen_set_label(codegen, codegen_label_for(codegen, item));
+            codegen_set_label(codegen, codegen_addr_label(codegen, item));
             switch (item->type->kind) {
             case IR_TYPE_INTEGER:
             case IR_TYPE_BOOLEAN:
@@ -701,7 +698,7 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
             }
             break;
         case IR_ITEM_ARG_VAR:
-            codegen_set_label(codegen, codegen_label_for(codegen, item));
+            codegen_set_label(codegen, codegen_addr_label(codegen, item));
             switch (item->type->kind) {
             case IR_TYPE_INTEGER:
             case IR_TYPE_BOOLEAN:
@@ -737,7 +734,12 @@ void codegen_builtin(codegen_t *codegen)
     if (codegen->builtin.w_int) {
         builtin_write = 1;
         codegen_set_label(codegen, "BSINT");
-        codegen_print(codegen, "LAD", "GR4, 5");
+        codegen_print(codegen, "LAD", "GR4, 6");
+        codegen_print(codegen, "LAD", "GR5, 0");
+        codegen_print(codegen, "CPA", "GR1, GR5");
+        codegen_print(codegen, "JPL", "BSINT0");
+        codegen_print(codegen, "SUBA", "GR5, GR1");
+        codegen_print(codegen, "LD", "GR1, GR5");
 
         codegen_set_label(codegen, "BSINT0");
         codegen_print(codegen, "LD", "GR2, GR1");
@@ -750,8 +752,15 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "ST", "GR2, BSBUF, GR4");
         codegen_print(codegen, "DIVA", "GR1, BC10");
         codegen_print(codegen, "JNZ", "BSINT0");
+        codegen_print(codegen, "LAD", "GR6, 0");
+        codegen_print(codegen, "CPA", "GR5, GR6");
+        codegen_print(codegen, "JZE", "BSINT1");
+        codegen_print(codegen, "LAD", "GR2, #%04X", (int) '-');
+        codegen_print(codegen, "SUBA", "GR4, BC1");
+        codegen_print(codegen, "ST", "GR2, BSBUF, GR4");
 
-        codegen_print(codegen, "LAD", "GR2, 5");
+        codegen_set_label(codegen, "BSINT1");
+        codegen_print(codegen, "LAD", "GR2, 6");
         codegen_print(codegen, "SUBA", "GR2, GR4");
         codegen_print(codegen, "LAD", "GR3, BSBUF, GR4");
         codegen_print(codegen, "RET", NULL);
@@ -792,7 +801,7 @@ void codegen_builtin(codegen_t *codegen)
 
     if (builtin_write) {
         codegen_set_label(codegen, "BSBUF");
-        codegen_print(codegen, "DS", "5");
+        codegen_print(codegen, "DS", "6");
         codegen_set_label(codegen, "BOBUF");
         codegen_print(codegen, "DS", "256");
         codegen_set_label(codegen, "BOCUR");
@@ -948,7 +957,7 @@ void codegen_casl2(const ir_t *ir)
     assert(ir);
 
     codegen.file = fopen(ir->source->output_filename, "w");
-    codegen.addr.cnt = 1;
+    codegen.addr.cnt = 0;
     codegen.addr.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
     codegen.label[0] = '\0';
     codegen.builtin.r_int = 0;
