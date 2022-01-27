@@ -469,7 +469,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     msg_t *msg = new_msg(analyzer->source, args->region,
                         MSG_ERROR, "cannot read value for expression");
                     msg_add_inline_entry(msg, args->region,
-                        "arguments for read statements are of reference and of type integer or char");
+                        "arguments for read statements are of reference to integer or char");
                     msg_emit(msg);
                     exit(1);
                 }
@@ -479,9 +479,9 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     const ir_type_t *type = ir_place_type(ref);
                     if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
                         msg_t *msg = new_msg(analyzer->source, args->region,
-                            MSG_ERROR, "cannot read value for reference of type `%s`", ir_type_str(type));
+                            MSG_ERROR, "cannot read value for reference to `%s`", ir_type_str(type));
                         msg_add_inline_entry(msg, args->region,
-                            "arguments for read statements are of reference and of type integer or char");
+                            "arguments for read statements are of reference to integer or char");
                         msg_emit(msg);
                         exit(1);
                     }
