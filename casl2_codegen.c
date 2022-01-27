@@ -146,7 +146,7 @@ void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *p
             codegen_print(codegen, "LD", "%s, %s", reg, codegen_label_for(codegen, place->local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            codegen_print(codegen, "LAD", "GR7, %s", codegen_label_for(codegen, place->local->u.arg.item));
+            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, place->local->u.arg.item));
             codegen_print(codegen, "LD", "%s, 0, GR7", reg);
             break;
         case IR_LOCAL_TEMP:
@@ -585,6 +585,7 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
             codegen_write_stmt(codegen, &stmt->u.write_stmt);
             break;
         case IR_STMT_WRITELN:
+            codegen->builtin.w_char++;
             codegen_print(codegen, "LD", "GR1, BCLF");
             codegen_print(codegen, "CALL", "BSCHAR");
             codegen_print(codegen, "LAD", "GR1, 1");
