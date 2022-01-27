@@ -197,7 +197,7 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
             codegen_print(codegen, "ST", "%s, %s", reg, codegen_label_for(codegen, local->u.var.item));
             break;
         case IR_LOCAL_ARG:
-            codegen_print(codegen, "LAD", "GR7, %s", codegen_label_for(codegen, local->u.arg.item));
+            codegen_print(codegen, "LD", "GR7, %s", codegen_label_for(codegen, local->u.arg.item));
             codegen_print(codegen, "ST", "%s, 0, GR7", reg);
             break;
         case IR_LOCAL_TEMP:
