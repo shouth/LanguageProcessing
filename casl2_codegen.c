@@ -992,7 +992,7 @@ void codegen_builtin(codegen_t *codegen)
     }
 
     if (codegen->builtin.e_ov) {
-        const char *msg = "error: overflow";
+        const char *msg = "runtime error: overflow";
         codegen_set_label(codegen, "EMOV");
         codegen_print(codegen, "DC", "'%s'", msg);
         codegen_set_label(codegen, "EMLOV");
@@ -1001,24 +1001,11 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "CALL", "BFLUSH");
         codegen_print(codegen, "OUT", "EMOV, EMLOV");
         codegen_print(codegen, "OUT", "BCLF, BC1");
-        codegen_print(codegen, "SVC", "-1");
-    }
-
-    if (codegen->builtin.e_rng) {
-        const char *msg = "error: tried to access out of array range";
-        codegen_set_label(codegen, "EMRNG");
-        codegen_print(codegen, "DC", "'%s'", msg);
-        codegen_set_label(codegen, "EMLRNG");
-        codegen_print(codegen, "DC", "%ld", strlen(msg));
-        codegen_set_label(codegen, "ERNG");
-        codegen_print(codegen, "CALL", "BFLUSH");
-        codegen_print(codegen, "OUT", "EMRNG, EMLRNG");
-        codegen_print(codegen, "OUT", "BCLF, BC1");
-        codegen_print(codegen, "SVC", "-1");
+        codegen_print(codegen, "SVC", "1");
     }
 
     if (codegen->builtin.e_div0) {
-        const char *msg = "error: division by 0";
+        const char *msg = "runtime error: division by 0";
         codegen_set_label(codegen, "EMDIV0");
         codegen_print(codegen, "DC", "'%s'", msg);
         codegen_set_label(codegen, "EMLDIV0");
@@ -1027,7 +1014,20 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "CALL", "BFLUSH");
         codegen_print(codegen, "OUT", "EMDIV0, EMLDIV0");
         codegen_print(codegen, "OUT", "BCLF, BC1");
-        codegen_print(codegen, "SVC", "-1");
+        codegen_print(codegen, "SVC", "2");
+    }
+
+    if (codegen->builtin.e_rng) {
+        const char *msg = "runtime error: index out of range";
+        codegen_set_label(codegen, "EMRNG");
+        codegen_print(codegen, "DC", "'%s'", msg);
+        codegen_set_label(codegen, "EMLRNG");
+        codegen_print(codegen, "DC", "%ld", strlen(msg));
+        codegen_set_label(codegen, "ERNG");
+        codegen_print(codegen, "CALL", "BFLUSH");
+        codegen_print(codegen, "OUT", "EMRNG, EMLRNG");
+        codegen_print(codegen, "OUT", "BCLF, BC1");
+        codegen_print(codegen, "SVC", "3");
     }
 }
 
