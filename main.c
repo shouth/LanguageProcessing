@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 
     const char *output = NULL;
     int flag_pretty_print = 0;
-    int flag_cross_ref = 0;
+    int flag_crossref = 0;
     int flag_color_print = 0;
 
     if (argc < 2) {
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
             flag_pretty_print = 1;
             break;
         case 'r':
-            flag_cross_ref = 1;
+            flag_crossref = 1;
             break;
         case 'c':
             flag_color_print = 1;
@@ -66,8 +66,8 @@ int main(int argc, char **argv)
         }
 
         if (ir = analyze_ast(ast)) {
-            if (flag_cross_ref) {
-                print_cross_ref(ir);
+            if (flag_crossref) {
+                print_crossref(ir);
             }
             codegen_casl2(ir);
         }

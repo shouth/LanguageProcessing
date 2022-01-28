@@ -236,6 +236,7 @@ typedef struct {
     hash_table_t *table;
 } symbol_storage_t;
 
+int symbol_compare(const void *lhs, const void *rhs);
 symbol_storage_t *new_symbol_storage();
 void delete_symbol_storage(symbol_storage_t *storage);
 const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
@@ -341,9 +342,9 @@ void pretty_print(const ast_t *ast);
 
 ir_t *analyze_ast(ast_t *ast);
 
-/* cross_ref.c */
+/* crossref.c */
 
-void print_cross_ref(const ir_t *ir);
+void print_crossref(const ir_t *ir);
 
 /* codegen.c */
 

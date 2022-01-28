@@ -268,13 +268,16 @@ size_t cursol_position(const cursol_t *cur)
     return cur->init_len - cur->len;
 }
 
-static int symbol_comparator(const void *lhs, const void *rhs)
+int symbol_compare(const void *lhs, const void *rhs)
 {
     const symbol_t *l = lhs, *r = rhs;
     size_t len = l->len < r->len ? l->len : r->len;
     int ret = strncmp(l->ptr, r->ptr, len);
-    return ret ? 0 : (l->len == r->len);
+    return ret ? ret : l->len - r->len;
 }
+
+static int symbol_comparator(const void *lhs, const void *rhs)
+{ return !symbol_compare(lhs, rhs); }
 
 static uint64_t symbol_hasher(const void *ptr)
 {
