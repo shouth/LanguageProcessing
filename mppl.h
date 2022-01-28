@@ -91,7 +91,7 @@ static void *xmalloc(size_t size)
 #define unreachable() \
     (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), exit(1))
 
-/* hash_table.c */
+/* utility.c */
 
 typedef uintptr_t hash_table_hop_t;
 typedef int hash_table_comparator_t(const void *, const void *);
@@ -128,6 +128,58 @@ static int hash_table_default_comparator(const void *lhs, const void *rhs)
 
 static uint64_t hash_table_default_hasher(const void *ptr)
 { return fnv1_ptr(ptr); }
+
+typedef enum {
+    SGR_RESET             = 0,
+    SGR_BOLD              = 1,
+    SGR_FAINT             = 2,
+    SGR_ITALIC            = 3,
+    SGR_UNDERLINE         = 4,
+    SGR_NORMAL_INTENSITY  = 22,
+    SGR_NOT_ITALIC        = 23,
+    SGR_NOT_UNDERLINED    = 24,
+
+    SGR_FG_BLACK          = 30,
+    SGR_FG_RED            = 31,
+    SGR_FG_GREEN          = 32,
+    SGR_FG_YELLOW         = 33,
+    SGR_FG_BLUE           = 34,
+    SGR_FG_MAGENTA        = 35,
+    SGR_FG_CYAN           = 36,
+    SGR_FG_WHITE          = 37,
+    SGR_BG_BLACK          = 40,
+    SGR_BG_RED            = 41,
+    SGR_BG_GREEN          = 42,
+    SGR_BG_YELLOW         = 43,
+    SGR_BG_BLUE           = 44,
+    SGR_BG_MAGENTA        = 45,
+    SGR_BG_CYAN           = 46,
+    SGR_BG_WHITE          = 47,
+
+    SGR_FG_BRIGHT_BLACK   = 90,
+    SGR_FG_BRIGHT_RED     = 91,
+    SGR_FG_BRIGHT_GREEN   = 92,
+    SGR_FG_BRIGHT_YELLOW  = 93,
+    SGR_FG_BRIGHT_BLUE    = 94,
+    SGR_FG_BRIGHT_MAGENTA = 95,
+    SGR_FG_BRIGHT_CYAN    = 96,
+    SGR_FG_BRIGHT_WHITE   = 97,
+    SGR_BG_BRIGHT_BLACK   = 100,
+    SGR_BG_BRIGHT_RED     = 101,
+    SGR_BG_BRIGHT_GREEN   = 102,
+    SGR_BG_BRIGHT_YELLOW  = 103,
+    SGR_BG_BRIGHT_BLUE    = 104,
+    SGR_BG_BRIGHT_MAGENTA = 105,
+    SGR_BG_BRIGHT_CYAN    = 106,
+    SGR_BG_BRIGHT_WHITE   = 107
+} sgr_t;
+
+typedef uint64_t color_t;
+
+void console_ansi(int flag);
+void console_set(sgr_t code);
+void console_reset();
+void console_24bit(color_t color);
 
 /* source.c */
 
@@ -279,7 +331,6 @@ ast_t *parse_source(const source_t *src);
 
 /* pretty_print.c */
 
-void pp_colored(int flag);
 void pretty_print(const ast_t *ast);
 
 /* ir.c */
@@ -336,6 +387,5 @@ void delete_msg(msg_t *msg);
 void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
 void msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...);
 void msg_emit(msg_t *msg);
-void msg_colored(int flag);
 
 #endif
