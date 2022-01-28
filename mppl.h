@@ -161,21 +161,6 @@ region_t region_unite(region_t a, region_t b);
 int region_compare(region_t a, region_t b);
 
 typedef struct {
-    const char *ptr;
-    size_t len;
-} symbol_t;
-
-typedef struct {
-    hash_table_t *table;
-} symbol_storage_t;
-
-symbol_storage_t *new_symbol_storage();
-void delete_symbol_storage(symbol_storage_t *storage);
-const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
-
-/* cursol.c */
-
-typedef struct {
     size_t init_len;
     const char *ptr;
     size_t len;
@@ -189,6 +174,19 @@ int cursol_second(const cursol_t *cur);
 int cursol_eof(const cursol_t *cur);
 void cursol_next(cursol_t *cur);
 size_t cursol_position(const cursol_t *cur);
+
+typedef struct {
+    const char *ptr;
+    size_t len;
+} symbol_t;
+
+typedef struct {
+    hash_table_t *table;
+} symbol_storage_t;
+
+symbol_storage_t *new_symbol_storage();
+void delete_symbol_storage(symbol_storage_t *storage);
+const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len);
 
 /* lexer.c */
 
