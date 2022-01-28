@@ -119,12 +119,6 @@ void set_level_color(msg_level_t level)
     }
 }
 
-void set_bold()
-{ console_set(1); }
-
-void reset()
-{ console_set(0); }
-
 void put_sanitized(int c)
 {
     if (c == '\t') {
@@ -204,21 +198,21 @@ void msg_emit(msg_t *msg)
 
     {
         set_level_color(msg->level);
-        set_bold();
+        console_set(SGR_BOLD);
         printf("%s", level_str(msg->level));
-        reset();
-        set_bold();
+        console_reset();
+        console_set(SGR_BOLD);
         printf(": %s\n", msg->msg);
-        reset();
+        console_reset();
     }
 
     {
         location_t loc = source_location(msg->src, msg->region.pos);
         printf("%*.s", left_margin, "");
-        set_bold();
+        console_set(SGR_BOLD);
         console_set(SGR_FG_BRIGHT_BLUE);
         printf("--> ");
-        reset();
+        console_reset();
         printf("%s:%ld:%ld\n", msg->src->input_filename, loc.line, loc.col);
     }
 
@@ -226,26 +220,26 @@ void msg_emit(msg_t *msg)
         location_t begin = source_location(msg->src, cur0->region.pos);
         location_t end = source_location(msg->src, cur0->region.pos + cur0->region.len);
         if (cur0 == msg->inline_entries) {
-            set_bold();
+            console_set(SGR_BOLD);
             console_set(SGR_FG_BRIGHT_BLUE);
             printf("%*.s |\n", left_margin, "");
-            reset();
+            console_reset();
         } else if (begin.line - preloc.line > 1) {
-            set_bold();
+            console_set(SGR_BOLD);
             console_set(SGR_FG_BRIGHT_BLUE);
             for (i = 0; i < left_margin + 2; i++) {
                 putchar('~');
             }
             putchar('\n');
-            reset();
+            console_reset();
         }
 
         if (begin.line == end.line) {
             size_t offset = msg->src->lines_ptr[begin.line - 1];
-            set_bold();
+            console_set(SGR_BOLD);
             console_set(SGR_FG_BRIGHT_BLUE);
             printf("%*.ld |   ", left_margin, begin.line);
-            reset();
+            console_reset();
             for (i = 0; i < begin.col - 1; i++) {
                 put_sanitized(msg->src->src_ptr[offset + i]);
             }
@@ -257,24 +251,24 @@ void msg_emit(msg_t *msg)
                 put_sanitized(msg->src->src_ptr[offset + i]);
             }
             offset += cur0->region.len;
-            reset();
+            console_reset();
             for (; offset < msg->src->lines_ptr[begin.line]; offset++) {
                 put_sanitized(msg->src->src_ptr[offset]);
             }
             putchar('\n');
 
             offset = msg->src->lines_ptr[begin.line - 1];
-            set_bold();
+            console_set(SGR_BOLD);
             console_set(SGR_FG_BRIGHT_BLUE);
             printf("%*.s |   ", left_margin, "");
-            reset();
+            console_reset();
             for (i = 0; i < begin.col - 1; i++) {
                 c = msg->src->src_ptr[offset + i];
                 put_sanitized(c == '\t' ? c : ' ');
             }
             offset += begin.col - 1;
 
-            set_bold();
+            console_set(SGR_BOLD);
             set_level_color(has_primary ? msg->level : MSG_NOTE);
             m = has_primary ? '^' : '-';
             for (i = 0; i < cur0->region.len; i++) {
@@ -287,13 +281,13 @@ void msg_emit(msg_t *msg)
                 }
             }
             printf(" %s\n", cur0->msg);
-            reset();
+            console_reset();
         } else {
             size_t offset = msg->src->lines_ptr[begin.line - 1];
-            set_bold();
+            console_set(SGR_BOLD);
             console_set(SGR_FG_BRIGHT_BLUE);
             printf("%*.ld |   ", left_margin, begin.line);
-            reset();
+            console_reset();
             for (i = 0; i < begin.col - 1; i++) {
                 put_sanitized(msg->src->src_ptr[offset + i]);
             }
@@ -306,14 +300,14 @@ void msg_emit(msg_t *msg)
             }
             putchar('\n');
 
-            set_bold();
+            console_set(SGR_BOLD);
             console_set(SGR_FG_BRIGHT_BLUE);
             printf("%*.s | _", left_margin, "");
-            reset();
+            console_reset();
 
             offset = msg->src->lines_ptr[begin.line - 1];
             m = has_primary ? '^' : '-';
-            set_bold();
+            console_set(SGR_BOLD);
             set_level_color(has_primary ? msg->level : MSG_NOTE);
             for (i = 0; i < begin.col; i++) {
                 putchar('_');
@@ -325,15 +319,15 @@ void msg_emit(msg_t *msg)
                 }
             }
             putchar(m);
-            reset();
+            console_reset();
             putchar('\n');
 
             for (i = begin.line; i < end.line; i++) {
                 size_t line_len = msg->src->lines_ptr[i + 1] - msg->src->lines_ptr[i];
-                set_bold();
+                console_set(SGR_BOLD);
                 set_level_color(has_primary ? msg->level : MSG_NOTE);
                 printf("%*.ld | | ", left_margin, i + 1);
-                reset();
+                console_reset();
 
                 set_level_color(has_primary ? msg->level : MSG_NOTE);
                 j = 0;
@@ -342,21 +336,21 @@ void msg_emit(msg_t *msg)
                     for (; j < end.col - 1; j++) {
                         put_sanitized(msg->src->src_ptr[offset + j]);
                     }
-                    reset();
+                    console_reset();
                 }
                 for (; j < line_len; j++) {
                     put_sanitized(msg->src->src_ptr[offset + j]);
                 }
-                reset();
+                console_reset();
                 putchar('\n');
             }
 
-            set_bold();
+            console_set(SGR_BOLD);
             console_set(SGR_FG_BRIGHT_BLUE);
             printf("%*.s | ", left_margin, "");
-            reset();
+            console_reset();
 
-            set_bold();
+            console_set(SGR_BOLD);
             set_level_color(has_primary ? msg->level : MSG_NOTE);
             offset = msg->src->lines_ptr[end.line - 1];
             putchar('|');
@@ -372,7 +366,7 @@ void msg_emit(msg_t *msg)
             putchar(m);
             putchar(' ');
             printf("%s", cur0->msg);
-            reset();
+            console_reset();
             putchar('\n');
         }
         preloc = begin;
@@ -381,9 +375,9 @@ void msg_emit(msg_t *msg)
     for (cur1 = msg->entries; cur1; cur1 = cur1->next) {
         printf("%*.s = ", left_margin, "");
         set_level_color(cur1->level);
-        set_bold();
+        console_set(SGR_BOLD);
         printf("%s", level_str(cur1->level));
-        reset();
+        console_reset();
         printf(": %s\n", cur1->msg);
     }
 
