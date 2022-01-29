@@ -218,7 +218,8 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_u
     case AST_UNARY_OP_NOT: {
         ir_operand_t *operand = analyze_expr(analyzer, block, expr->expr);
         const ir_type_t *type = ir_operand_type(operand);
-        const ir_local_t *result;
+        const ir_local_t *result = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
+        ir_block_push_assign(*block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
         if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
             msg_t *msg = new_msg(analyzer->source, expr->op_region,
                 MSG_ERROR, "invalid operands for `not`");
@@ -227,8 +228,6 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_u
             msg_emit(msg);
             exit(1);
         }
-        result = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
-        ir_block_push_assign(*block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
         return new_ir_place_operand(new_ir_place(result));
     }
     default:
