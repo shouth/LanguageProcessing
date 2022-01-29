@@ -58,9 +58,9 @@ const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
     unreachable();
 }
 
-ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *expr);
+ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *expr);
 
-ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *expr)
+ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *expr)
 {
     assert(analyzer && expr);
     assert(expr->kind == AST_EXPR_DECL_REF || expr->kind == AST_EXPR_ARRAY_SUBSCRIPT);
@@ -115,18 +115,14 @@ void error_invalid_binary_expr(
     msg_emit(msg);
 }
 
-ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_binary_expr_t *expr)
+ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_binary_expr_t *expr)
 {
-    ir_operand_t *lhs, *rhs;
-    const ir_type_t *ltype, *rtype;
-    const ir_local_t *result;
-    const ir_type_t *type;
     assert(analyzer && expr);
 
-    rhs = analyze_expr(analyzer, block, expr->rhs);
-    rtype = ir_operand_type(rhs);
-
     if (expr->lhs->kind == AST_EXPR_EMPTY) {
+        ir_operand_t *rhs = analyze_expr(analyzer, block, expr->rhs);
+        const ir_type_t *rtype = ir_operand_type(rhs);
+
         if (!ir_type_is_kind(rtype, IR_TYPE_INTEGER)) {
             msg_t *msg = new_msg(analyzer->source, expr->op_region,
                 MSG_ERROR, "`%s` cannot be prefixed by `%s`", ir_type_str(rtype), ast_binop_str(expr->kind));
@@ -134,11 +130,21 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
             exit(1);
         }
 
-        type = ir_type_integer(analyzer->factory);
-        lhs = new_ir_constant_operand(ir_number_constant(analyzer->factory, 0));
+        switch (expr->kind) {
+        case AST_BINARY_OP_PLUS:
+            return rhs;
+        case AST_BINARY_OP_MINUS: {
+            ir_operand_t *lhs = new_ir_constant_operand(ir_number_constant(analyzer->factory, 0));
+            const ir_local_t *result = ir_local_temp(analyzer->factory, ir_type_integer(analyzer->factory));
+            ir_block_push_assign(*block, new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
+            return new_ir_place_operand(new_ir_place(result));
+        }
+        default:
+            unreachable();
+        }
     } else {
-        lhs = analyze_expr(analyzer, block, expr->lhs);
-        ltype = ir_operand_type(lhs);
+        ir_operand_t *lhs = analyze_expr(analyzer, block, expr->lhs);
+        const ir_type_t *ltype = ir_operand_type(lhs);
 
         switch (expr->kind) {
         case AST_BINARY_OP_EQUAL:
@@ -146,40 +152,65 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t *block, ast_b
         case AST_BINARY_OP_LE:
         case AST_BINARY_OP_LEEQ:
         case AST_BINARY_OP_GR:
-        case AST_BINARY_OP_GREQ:
+        case AST_BINARY_OP_GREQ: {
+            ir_operand_t *rhs = analyze_expr(analyzer, block, expr->rhs);
+            const ir_type_t *rtype = ir_operand_type(rhs);
+            const ir_local_t *result = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
+            ir_block_push_assign(*block, new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
             if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "the same standard type");
                 exit(1);
             }
-            type = ir_type_boolean(analyzer->factory);
-            break;
+            return new_ir_place_operand(new_ir_place(result));
+        }
         case AST_BINARY_OP_PLUS:
         case AST_BINARY_OP_MINUS:
         case AST_BINARY_OP_STAR:
-        case AST_BINARY_OP_DIV:
+        case AST_BINARY_OP_DIV: {
+            ir_operand_t *rhs = analyze_expr(analyzer, block, expr->rhs);
+            const ir_type_t *rtype = ir_operand_type(rhs);
+            const ir_local_t *result = ir_local_temp(analyzer->factory, ir_type_integer(analyzer->factory));
+            ir_block_push_assign(*block, new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
             if (!ir_type_is_kind(ltype, IR_TYPE_INTEGER) || !ir_type_is_kind(rtype, IR_TYPE_INTEGER)) {
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type integer");
                 exit(1);
             }
-            type = ir_type_integer(analyzer->factory);
-            break;
+            return new_ir_place_operand(new_ir_place(result));
+        }
         case AST_BINARY_OP_OR:
-        case AST_BINARY_OP_AND:
+        case AST_BINARY_OP_AND: {
+            ir_block_t *shortcircuit = ir_block(analyzer->factory);
+            ir_block_t *els_begin = ir_block(analyzer->factory);
+            ir_block_t *els_end = els_begin;
+            ir_operand_t *rhs = analyze_expr(analyzer, &els_end, expr->rhs);
+            const ir_type_t *rtype = ir_operand_type(rhs);
+            const ir_local_t *result = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
             if (!ir_type_is_kind(ltype, IR_TYPE_BOOLEAN) || !ir_type_is_kind(rtype, IR_TYPE_BOOLEAN)) {
                 error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type boolean");
                 exit(1);
             }
-            type = ir_type_boolean(analyzer->factory);
-            break;
+            switch (expr->kind) {
+            case AST_BINARY_OP_OR:
+                ir_block_terminate_if(*block, lhs, shortcircuit, els_begin);
+                lhs = new_ir_constant_operand(ir_boolean_constant(analyzer->factory, 1));
+                break;
+            case AST_BINARY_OP_AND:
+                ir_block_terminate_if(*block, lhs, els_begin, shortcircuit);
+                lhs = new_ir_constant_operand(ir_boolean_constant(analyzer->factory, 0));
+                break;
+            }
+            *block = ir_block(analyzer->factory);
+            ir_block_push_assign(shortcircuit, new_ir_place(result), new_ir_use_rvalue(lhs));
+            ir_block_terminate_goto(shortcircuit, *block);
+            ir_block_push_assign(els_end, new_ir_place(result), new_ir_use_rvalue(rhs));
+            ir_block_terminate_goto(els_end, *block);
+            return new_ir_place_operand(new_ir_place(result));
+        }
         }
     }
-
-    result = ir_local_temp(analyzer->factory, type);
-    ir_block_push_assign(block, new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
-    return new_ir_place_operand(new_ir_place(result));
 }
 
-ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_unary_expr_t *expr)
+ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_unary_expr_t *expr)
 {
     ir_operand_t *operand;
     const ir_type_t *operand_type;
@@ -205,11 +236,11 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t *block, ast_un
     }
 
     result = ir_local_temp(analyzer->factory, type);
-    ir_block_push_assign(block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
+    ir_block_push_assign(*block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
     return new_ir_place_operand(new_ir_place(result));
 }
 
-ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cast_expr_t *expr)
+ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t **block, ast_cast_expr_t *expr)
 {
     ir_operand_t *operand;
     const ir_type_t *operand_type;
@@ -237,11 +268,11 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t *block, ast_cas
     }
 
     result = ir_local_temp(analyzer->factory, cast_type);
-    ir_block_push_assign(block, new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
+    ir_block_push_assign(*block, new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
     return new_ir_place_operand(new_ir_place(result));
 }
 
-ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast_constant_expr_t *expr)
+ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, ast_constant_expr_t *expr)
 {
     assert(analyzer && block && expr);
 
@@ -272,7 +303,7 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t *block, ast
     unreachable();
 }
 
-ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *expr)
+ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *expr)
 {
     assert(analyzer && block && expr);
 
@@ -297,24 +328,24 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *
     unreachable();
 }
 
-ir_block_t *analyze_call_stmt_param(analyzer_t *analyzer, ir_block_t *block, ast_expr_t *args, ir_operand_t **operand, ir_type_t **type)
+void analyze_call_stmt_param(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *args, ir_operand_t **operand, ir_type_t **type)
 {
     assert(analyzer && block);
     if (args) {
         ir_operand_t *next_op = NULL;
         ir_type_t *next_type = NULL;
-        ir_block_t *pre = analyze_call_stmt_param(analyzer, block, args->next, &next_op, &next_type);
-        *operand = analyze_expr(analyzer, pre, args);
+        ir_block_t *blk = *block;
+        analyze_call_stmt_param(analyzer, &blk, args->next, &next_op, &next_type);
+        *operand = analyze_expr(analyzer, &blk, args);
         *type = ir_type_ref(ir_operand_type(*operand));
         (*operand)->next = next_op;
         (*type)->next = next_type;
-        block = ir_block(analyzer->factory);
-        ir_block_terminate_arg(pre, *operand, block);
+        *block = ir_block(analyzer->factory);
+        ir_block_terminate_arg(blk, *operand, *block);
     }
-    return block;
 }
 
-ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *stmt)
+void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
 {
     assert(analyzer && block && stmt);
 
@@ -323,10 +354,9 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         case AST_STMT_ASSIGN: {
             ast_assign_stmt_t *assign_stmt = &stmt->u.assign_stmt;
             ir_place_t *lhs = analyze_lvalue(analyzer, block, assign_stmt->lhs);
-            ir_operand_t *rhs_operand = analyze_expr(analyzer, block, assign_stmt->rhs);
-            ir_rvalue_t *rhs = new_ir_use_rvalue(rhs_operand);
+            ir_operand_t *rhs = analyze_expr(analyzer, block, assign_stmt->rhs);
             const ir_type_t *ltype = ir_place_type(lhs);
-            const ir_type_t *rtype = ir_operand_type(rhs_operand);
+            const ir_type_t *rtype = ir_operand_type(rhs);
 
             if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
                 msg_t *msg = new_msg(analyzer->source, stmt->u.assign_stmt.op_region,
@@ -339,7 +369,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 exit(1);
             }
 
-            ir_block_push_assign(block, lhs, rhs);
+            ir_block_push_assign(*block, lhs, new_ir_use_rvalue(rhs));
             break;
         }
         case AST_STMT_IF: {
@@ -357,29 +387,31 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
 
             {
                 ir_block_t *then_begin = ir_block(analyzer->factory);
-                ir_block_t *then_end = analyze_stmt(analyzer, then_begin, stmt->u.if_stmt.then_stmt);
+                ir_block_t *then_end = then_begin;
                 ir_block_t *join_block = ir_block(analyzer->factory);
+                analyze_stmt(analyzer, &then_end, stmt->u.if_stmt.then_stmt);
 
                 if (stmt->u.if_stmt.else_stmt) {
                     ir_block_t *else_begin = ir_block(analyzer->factory);
-                    ir_block_t *else_end = analyze_stmt(analyzer, else_begin, stmt->u.if_stmt.else_stmt);
-                    ir_block_terminate_if(block, cond, then_begin, else_begin);
+                    ir_block_t *else_end = else_begin;
+                    analyze_stmt(analyzer, &else_end, stmt->u.if_stmt.else_stmt);
+                    ir_block_terminate_if(*block, cond, then_begin, else_begin);
                     ir_block_terminate_goto(then_end, join_block);
                     ir_block_terminate_goto(else_end, join_block);
                 } else {
-                    ir_block_terminate_if(block, cond, then_begin, join_block);
+                    ir_block_terminate_if(*block, cond, then_begin, join_block);
                     ir_block_terminate_goto(then_end, join_block);
                 }
-
-                block = join_block;
+                *block = join_block;
             }
             break;
         }
         case AST_STMT_WHILE: {
-            ir_block_t *cond_block = ir_block(analyzer->factory);
+            ir_block_t *cond_begin = ir_block(analyzer->factory);
+            ir_block_t *cond_end = cond_begin;
             ir_block_t *join_block = ir_block(analyzer->factory);
             ast_while_stmt_t *while_stmt = &stmt->u.while_stmt;
-            ir_operand_t *cond = analyze_expr(analyzer, cond_block, while_stmt->cond);
+            ir_operand_t *cond = analyze_expr(analyzer, &cond_end, while_stmt->cond);
             const ir_type_t *type = ir_operand_type(cond);
 
             if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
@@ -395,19 +427,20 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 analyzer->break_dest = join_block;
                 {
                     ir_block_t *do_begin = ir_block(analyzer->factory);
-                    ir_block_t *do_end = analyze_stmt(analyzer, do_begin, while_stmt->do_stmt);
-                    ir_block_terminate_goto(block, cond_block);
-                    ir_block_terminate_if(cond_block, cond, do_begin, join_block);
-                    ir_block_terminate_goto(do_end, cond_block);
+                    ir_block_t *do_end = do_begin;
+                    analyze_stmt(analyzer, &do_end, while_stmt->do_stmt);
+                    ir_block_terminate_goto(*block, cond_begin);
+                    ir_block_terminate_if(cond_end, cond, do_begin, join_block);
+                    ir_block_terminate_goto(do_end, cond_begin);
                 }
                 analyzer->break_dest = pre_break_dest;
-                block = join_block;
+                *block = join_block;
             }
             break;
         }
         case AST_STMT_BREAK: {
-            ir_block_terminate_goto(block, analyzer->break_dest);
-            block = ir_block(analyzer->factory);
+            ir_block_terminate_goto(*block, analyzer->break_dest);
+            *block = ir_block(analyzer->factory);
             break;
         }
         case AST_STMT_CALL: {
@@ -441,7 +474,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ast_expr_t *args = stmt->u.call_stmt.args;
                 ir_type_t *type = NULL;
                 ir_operand_t *arg = NULL;
-                block = analyze_call_stmt_param(analyzer, block, args, &arg, &type);
+                analyze_call_stmt_param(analyzer, block, args, &arg, &type);
 
                 if (ir_local_type(func) != ir_type_procedure(analyzer->factory, type)) {
                     const symbol_t *symbol = item->symbol;
@@ -451,13 +484,13 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     exit(1);
                 }
 
-                ir_block_push_call(block, new_ir_place(func), arg);
+                ir_block_push_call(*block, new_ir_place(func), arg);
             }
             break;
         }
         case AST_STMT_RETURN: {
-            ir_block_terminate_return(block);
-            block = ir_block(analyzer->factory);
+            ir_block_terminate_return(*block);
+            *block = ir_block(analyzer->factory);
             break;
         }
         case AST_STMT_READ: {
@@ -485,13 +518,13 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                         exit(1);
                     }
 
-                    ir_block_push_read(block, ref);
+                    ir_block_push_read(*block, ref);
                 }
                 args = args->next;
             }
 
             if (stmt->u.read_stmt.newline) {
-                ir_block_push_readln(block);
+                ir_block_push_readln(*block);
             }
             break;
         }
@@ -504,7 +537,7 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                 ast_string_lit_t *string = &constant->lit->u.string_lit;
                 if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len > 1) {
                     const ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
-                    ir_block_push_write(block, new_ir_constant_operand(constant), NULL);
+                    ir_block_push_write(*block, new_ir_constant_operand(constant), NULL);
                 } else {
                     ir_operand_t *value = analyze_expr(analyzer, block, formats->expr);
                     const ir_type_t *type = ir_operand_type(value);
@@ -518,21 +551,21 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
                     }
 
                     if (formats->len) {
-                        ir_block_push_write(block, value, ir_number_constant(analyzer->factory, formats->len->u.number_lit.value));
+                        ir_block_push_write(*block, value, ir_number_constant(analyzer->factory, formats->len->u.number_lit.value));
                     } else {
-                        ir_block_push_write(block, value, NULL);
+                        ir_block_push_write(*block, value, NULL);
                     }
                 }
                 formats = formats->next;
             }
 
             if (stmt->u.write_stmt.newline) {
-                ir_block_push_writeln(block);
+                ir_block_push_writeln(*block);
             }
             break;
         }
         case AST_STMT_COMPOUND: {
-            block = analyze_stmt(analyzer, block, stmt->u.compound_stmt.stmts);
+            analyze_stmt(analyzer, block, stmt->u.compound_stmt.stmts);
             break;
         }
         case AST_STMT_EMPTY:
@@ -540,8 +573,6 @@ ir_block_t *analyze_stmt(analyzer_t *analyzer, ir_block_t *block, ast_stmt_t *st
         }
         stmt = stmt->next;
     }
-
-    return block;
 }
 
 ir_type_t *analyze_param_types(analyzer_t *analyzer, ast_param_decl_t *decl)
@@ -626,7 +657,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
         }
         case AST_DECL_PART_PROCEDURE: {
             ir_item_t *item;
-            ir_block_t *inner = ir_block(analyzer->factory);
+            ir_block_t *block_begin = ir_block(analyzer->factory);
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
             ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
 
@@ -635,15 +666,15 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_scope_start(analyzer->factory, item);
             {
                 ast_decl_part_t *decl_part = decl->variables;
-                ir_block_t *block;
+                ir_block_t *block_end = block_begin;
                 analyze_param_decl(analyzer, decl->params);
                 if (decl_part) {
                     analyze_variable_decl(analyzer, decl_part->u.variable_decl_part.decls, 1);
                 }
-                block = analyze_stmt(analyzer, inner, decl->stmt);
-                ir_block_terminate_return(block);
+                analyze_stmt(analyzer, &block_end, decl->stmt);
+                ir_block_terminate_return(block_end);
             }
-            ir_scope_end(analyzer->factory, inner);
+            ir_scope_end(analyzer->factory, block_begin);
             break;
         }
         }
@@ -654,19 +685,19 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 {
     ir_item_t *ret;
-    ir_block_t *inner;
+    ir_block_t *block_begin;
     assert(analyzer && program);
 
     ret = ir_item(analyzer->factory, IR_ITEM_PROGRAM, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
-    inner = ir_block(analyzer->factory);
+    block_begin = ir_block(analyzer->factory);
     ir_scope_start(analyzer->factory, ret);
     {
-        ir_block_t *block;
+        ir_block_t *block_end = block_begin;
         analyze_decl_part(analyzer, program->decl_part);
-        block = analyze_stmt(analyzer, inner, program->stmt);
-        ir_block_terminate_return(block);
+        analyze_stmt(analyzer, &block_end, program->stmt);
+        ir_block_terminate_return(block_end);
     }
-    ir_scope_end(analyzer->factory, inner);
+    ir_scope_end(analyzer->factory, block_begin);
     return ret;
 }
 
