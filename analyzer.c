@@ -212,32 +212,28 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
 
 ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_unary_expr_t *expr)
 {
-    ir_operand_t *operand;
-    const ir_type_t *operand_type;
-    const ir_local_t *result;
-    const ir_type_t *type;
     assert(analyzer && expr);
 
-    operand = analyze_expr(analyzer, block, expr->expr);
-    operand_type = ir_operand_type(operand);
-
     switch (expr->kind) {
-    case AST_UNARY_OP_NOT:
-        if (!ir_type_is_kind(operand_type, IR_TYPE_BOOLEAN)) {
+    case AST_UNARY_OP_NOT: {
+        ir_operand_t *operand = analyze_expr(analyzer, block, expr->expr);
+        const ir_type_t *type = ir_operand_type(operand);
+        const ir_local_t *result;
+        if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
             msg_t *msg = new_msg(analyzer->source, expr->op_region,
                 MSG_ERROR, "invalid operands for `not`");
             msg_add_inline_entry(msg, expr->op_region, "operator `not` takes one operand of type boolean");
-            msg_add_inline_entry(msg, expr->expr->region, "%s", ir_type_str(operand_type));
+            msg_add_inline_entry(msg, expr->expr->region, "%s", ir_type_str(type));
             msg_emit(msg);
             exit(1);
         }
-        type = ir_type_boolean(analyzer->factory);
-        break;
+        result = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
+        ir_block_push_assign(*block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
+        return new_ir_place_operand(new_ir_place(result));
     }
-
-    result = ir_local_temp(analyzer->factory, type);
-    ir_block_push_assign(*block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
-    return new_ir_place_operand(new_ir_place(result));
+    default:
+        unreachable();
+    }
 }
 
 ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t **block, ast_cast_expr_t *expr)
