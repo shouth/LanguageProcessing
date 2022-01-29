@@ -101,7 +101,7 @@ static int crossref_item_compare(const void *lhs, const void *rhs)
 }
 
 static int crossref_item_ptr_compare(const void *lhs, const void *rhs)
-{ crossref_item_compare(*(crossref_item_t **) lhs, *(crossref_item_t **) rhs); }
+{ return crossref_item_compare(*(crossref_item_t **) lhs, *(crossref_item_t **) rhs); }
 
 void print_crossref(const ir_t *ir)
 {
