@@ -277,16 +277,15 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             codegen_print(codegen, "CPA", "GR1, GR2");
             codegen_print(codegen, "LAD", "GR1, 1");
             codegen_print(codegen, "JZE", "%s", jmp);
-            codegen_print(codegen, "LAD", "GR1, 0");
+            codegen_print(codegen, "XOR", "GR1, GR1");
             codegen_set_label(codegen, jmp);
             break;
         }
         case AST_BINARY_OP_NOTEQ: {
             const char *jmp = codegen_addr_label(codegen, NULL);
-            codegen_print(codegen, "CPA", "GR1, GR2");
+            codegen_print(codegen, "SUBA", "GR1, GR2");
+            codegen_print(codegen, "JZE", "%s", jmp);
             codegen_print(codegen, "LAD", "GR1, 1");
-            codegen_print(codegen, "JNZ", "%s", jmp);
-            codegen_print(codegen, "LAD", "GR1, 0");
             codegen_set_label(codegen, jmp);
             break;
         }
@@ -295,14 +294,14 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             codegen_print(codegen, "CPA", "GR1, GR2");
             codegen_print(codegen, "LAD", "GR1, 1");
             codegen_print(codegen, "JMI", "%s", jmp);
-            codegen_print(codegen, "LAD", "GR1, 0");
+            codegen_print(codegen, "XOR", "GR1, GR1");
             codegen_set_label(codegen, jmp);
             break;
         }
         case AST_BINARY_OP_LEEQ: {
             const char *jmp = codegen_addr_label(codegen, NULL);
             codegen_print(codegen, "CPA", "GR2, GR1");
-            codegen_print(codegen, "LAD", "GR1, 0");
+            codegen_print(codegen, "XOR", "GR1, GR1");
             codegen_print(codegen, "JMI", "%s", jmp);
             codegen_print(codegen, "LAD", "GR1, 1");
             codegen_set_label(codegen, jmp);
@@ -313,14 +312,14 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             codegen_print(codegen, "CPA", "GR2, GR1");
             codegen_print(codegen, "LAD", "GR1, 1");
             codegen_print(codegen, "JMI", "%s", jmp);
-            codegen_print(codegen, "LAD", "GR1, 0");
+            codegen_print(codegen, "XOR", "GR1, GR1");
             codegen_set_label(codegen, jmp);
             break;
         }
         case AST_BINARY_OP_GREQ: {
             const char *jmp = codegen_addr_label(codegen, NULL);
             codegen_print(codegen, "CPA", "GR1, GR2");
-            codegen_print(codegen, "LAD", "GR1, 0");
+            codegen_print(codegen, "XOR", "GR1, GR1");
             codegen_print(codegen, "JMI", "%s", jmp);
             codegen_print(codegen, "LAD", "GR1, 1");
             codegen_set_label(codegen, jmp);
@@ -780,7 +779,7 @@ void codegen_builtin(codegen_t *codegen)
         builtin_write = 1;
         codegen_set_label(codegen, "BSINT");
         codegen_print(codegen, "LAD", "GR4, 6");
-        codegen_print(codegen, "LAD", "GR5, 0");
+        codegen_print(codegen, "XOR", "GR5, GR5");
         codegen_print(codegen, "CPA", "GR1, GR5");
         codegen_print(codegen, "JPL", "BSINT0");
         codegen_print(codegen, "SUBA", "GR5, GR1");
@@ -852,7 +851,7 @@ void codegen_builtin(codegen_t *codegen)
 
         codegen_set_label(codegen, "BFLUSH");
         codegen_print(codegen, "OUT", "BOBUF, BOCUR");
-        codegen_print(codegen, "LAD", "GR0, 0");
+        codegen_print(codegen, "XOR", "GR0, GR0");
         codegen_print(codegen, "ST", "GR0, BOCUR");
         codegen_print(codegen, "RET", NULL);
 
@@ -895,7 +894,7 @@ void codegen_builtin(codegen_t *codegen)
     if (codegen->builtin.r_int) {
         builtin_read = 1;
         codegen_set_label(codegen, "BRINT");
-        codegen_print(codegen, "LAD", "GR0, 0");
+        codegen_print(codegen, "XOR", "GR0, GR0");
         codegen_print(codegen, "CALL", "BRREAD");
 
         codegen_set_label(codegen, "BRINT0");
@@ -940,7 +939,7 @@ void codegen_builtin(codegen_t *codegen)
     if (codegen->builtin.r_ln) {
         builtin_read = 1;
         codegen_set_label(codegen, "BRLN");
-        codegen_print(codegen, "LAD", "GR0, 0");
+        codegen_print(codegen, "XOR", "GR0, GR0");
         codegen_print(codegen, "ST", "GR0, BILEN");
         codegen_print(codegen, "ST", "GR0, BICUR");
         codegen_print(codegen, "RET", NULL);
@@ -960,7 +959,7 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "CPA", "GR1, BILEN");
         codegen_print(codegen, "JMI", "BRREAD0");
         codegen_print(codegen, "IN", "BIBUF, BILEN");
-        codegen_print(codegen, "LAD", "GR0, 0");
+        codegen_print(codegen, "XOR", "GR0, GR0");
         codegen_print(codegen, "ST", "GR0, BICUR");
 
         codegen_set_label(codegen, "BRREAD0");
@@ -971,7 +970,7 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "LD", "GR2, BICUR");
         codegen_print(codegen, "CPA", "GR1, BILEN");
         codegen_print(codegen, "JMI", "BRTOP0");
-        codegen_print(codegen, "LAD", "GR1, 0");
+        codegen_print(codegen, "XOR", "GR1, GR1");
         codegen_print(codegen, "RET", NULL);
 
         codegen_set_label(codegen, "BRTOP0");
