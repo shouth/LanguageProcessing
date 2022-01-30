@@ -477,6 +477,8 @@ static int ir_constant_comparator(const void *lhs, const void *rhs)
         return l->u.char_constant.value == r->u.char_constant.value;
     case IR_CONSTANT_STRING:
         return l->u.string_constant.value == r->u.string_constant.value;
+    default:
+        unreachable();
     }
 }
 
@@ -535,6 +537,8 @@ const ir_type_t *ir_operand_type(ir_operand_t *operand)
         return ir_place_type(operand->u.place_operand.place);
     case IR_OPERAND_CONSTANT:
         return ir_constant_type(operand->u.constant_operand.constant);
+    default:
+        unreachable();
     }
 }
 
@@ -798,7 +802,7 @@ ir_item_t *ir_item_lookup(ir_scope_t *scope, const symbol_t *symbol)
     return NULL;
 }
 
-static delete_ir_item_pos(ir_item_pos_t *pos)
+static void delete_ir_item_pos(ir_item_pos_t *pos)
 {
     if (!pos) {
         return;

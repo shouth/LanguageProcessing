@@ -64,7 +64,6 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
 ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *expr)
 {
     assert(analyzer && expr);
-    assert(expr->kind == AST_EXPR_DECL_REF || expr->kind == AST_EXPR_ARRAY_SUBSCRIPT);
 
     switch (expr->kind) {
     case AST_EXPR_DECL_REF: {
@@ -97,6 +96,8 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
         }
         return new_ir_index_place(ir_local_for(analyzer->factory, lookup, ident->region.pos), index);
     }
+    default:
+        unreachable();
     }
 }
 
@@ -206,6 +207,8 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
             ir_block_terminate_goto(els_end, *block);
             return new_ir_place_operand(new_ir_place(result));
         }
+        default:
+            unreachable();
         }
     }
 }
@@ -672,7 +675,7 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_block_t *block_begin = ir_block(analyzer->factory);
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
             ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
-            ir_type_t *proc_type = ir_type_procedure(analyzer->factory, param_types);
+            const ir_type_t *proc_type = ir_type_procedure(analyzer->factory, param_types);
 
             maybe_error_conflict(analyzer, decl->name->symbol, decl->name->region);
             item = ir_item(analyzer->factory, IR_ITEM_PROCEDURE, decl->name->symbol, decl->name->region, proc_type);
