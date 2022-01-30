@@ -770,7 +770,7 @@ ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, const symbol_t *s
     ret->refs.head = NULL;
     ret->refs.tail = &ret->refs.head;
 
-    if (kind != IR_TYPE_PROGRAM) {
+    if (kind != IR_ITEM_PROGRAM) {
         assert(!ir_item_lookup_scope(factory->scope, symbol));
         hash_table_insert_unchecked(factory->scope->items.table, (void *) symbol, ret);
         *factory->scope->items.tail = ret;
