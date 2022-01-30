@@ -672,9 +672,10 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
             ir_block_t *block_begin = ir_block(analyzer->factory);
             ast_procedure_decl_part_t *decl = &decl_part->u.procedure_decl_part;
             ir_type_t *param_types = analyze_param_types(analyzer, decl->params);
+            ir_type_t *proc_type = ir_type_procedure(analyzer->factory, param_types);
 
             maybe_error_conflict(analyzer, decl->name->symbol, decl->name->region);
-            item = ir_item(analyzer->factory, IR_ITEM_PROCEDURE, decl->name->symbol, decl->name->region, ir_type_procedure(analyzer->factory, param_types));
+            item = ir_item(analyzer->factory, IR_ITEM_PROCEDURE, decl->name->symbol, decl->name->region, proc_type);
             ir_scope_start(analyzer->factory, item);
             {
                 ast_decl_part_t *decl_part = decl->variables;
