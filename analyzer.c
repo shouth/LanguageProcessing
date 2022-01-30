@@ -448,6 +448,9 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
         case AST_STMT_CALL: {
             ast_ident_t *ident = stmt->u.call_stmt.name;
             ir_item_t *item = ir_item_lookup(analyzer->factory->scope, ident->symbol);
+            const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
+            ast_expr_t *args = stmt->u.call_stmt.args;
+            ir_type_t *param_type = ir_local_type(func)->u.procedure_type.param_types;
 
             maybe_error_undeclared(analyzer, ident->symbol, ident->region);
             if (item->kind != IR_ITEM_PROCEDURE) {
@@ -472,9 +475,26 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
             }
 
             {
-                const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
-                ast_expr_t *args = stmt->u.call_stmt.args;
-                ir_type_t *param_type = ir_local_type(func)->u.procedure_type.param_types;
+                ast_expr_t *expr_cur = args;
+                ir_type_t *type_cur = param_type;
+                size_t expr_cnt = 0, type_cnt = 0;
+                while (expr_cur) {
+                    expr_cnt++;
+                    expr_cur = expr_cur->next;
+                }
+                while (type_cur) {
+                    type_cnt++;
+                    type_cur = type_cur->next;
+                }
+                if (expr_cnt != type_cnt) {
+                    msg_t *msg = new_msg(analyzer->source, ident->region, MSG_ERROR, "wrong number of arguments");
+                    msg_add_inline_entry(msg, ident->region, "expected %ld arguments, supplied %ld arguments", type_cnt, expr_cnt);
+                    msg_emit(msg);
+                    exit(1);
+                }
+            }
+
+            {
                 ir_operand_t *arg = analyze_call_stmt_param(analyzer, block, args, param_type);
                 ir_block_push_call(*block, new_ir_place(func), arg);
             }
