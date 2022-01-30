@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 
 #include "mppl.h"
 
@@ -320,20 +321,29 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
     unreachable();
 }
 
-void analyze_call_stmt_param(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *args, ir_operand_t **operand, ir_type_t **type)
+ir_operand_t *analyze_call_stmt_param(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *args, ir_type_t *param_type)
 {
     assert(analyzer && block);
     if (args) {
-        ir_operand_t *next_op = NULL;
-        ir_type_t *next_type = NULL;
         ir_block_t *blk = *block;
-        analyze_call_stmt_param(analyzer, &blk, args->next, &next_op, &next_type);
-        *operand = analyze_expr(analyzer, &blk, args);
-        *type = ir_type_ref(ir_operand_type(*operand));
-        (*operand)->next = next_op;
-        (*type)->next = next_type;
+        ir_operand_t *next = analyze_call_stmt_param(analyzer, &blk, args->next, param_type->next);
+        ir_operand_t *ret = analyze_expr(analyzer, &blk, args);
+        const ir_type_t *type = ir_operand_type(ret);
+        ret->next = next;
+        if (param_type->u.ref != type) {
+            msg_t *msg = new_msg(analyzer->source, args->region, MSG_ERROR, "mismatching arguments for procedure");
+            char expected[1024], found[1024];
+            strcpy(expected, ir_type_str(param_type->u.ref));
+            strcpy(found, ir_type_str(type));
+            msg_add_inline_entry(msg, args->region, "expected `%s`, found `%s`", expected, found);
+            msg_emit(msg);
+            exit(1);
+        }
         *block = ir_block(analyzer->factory);
-        ir_block_terminate_arg(blk, *operand, *block);
+        ir_block_terminate_arg(blk, ret, *block);
+        return ret;
+    } else {
+        return NULL;
     }
 }
 
@@ -464,18 +474,8 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
             {
                 const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
                 ast_expr_t *args = stmt->u.call_stmt.args;
-                ir_type_t *type = NULL;
-                ir_operand_t *arg = NULL;
-                analyze_call_stmt_param(analyzer, block, args, &arg, &type);
-
-                if (ir_local_type(func) != ir_type_procedure(analyzer->factory, type)) {
-                    const symbol_t *symbol = item->symbol;
-                    msg_t *msg = new_msg(analyzer->source, ident->region,
-                        MSG_ERROR, "mismatching arguments for procedure `%.*s`", (int) symbol->len, symbol->ptr);
-                    msg_emit(msg);
-                    exit(1);
-                }
-
+                ir_type_t *param_type = ir_local_type(func)->u.procedure_type.param_types;
+                ir_operand_t *arg = analyze_call_stmt_param(analyzer, block, args, param_type);
                 ir_block_push_call(*block, new_ir_place(func), arg);
             }
             break;
