@@ -2,26 +2,6 @@
 
 #include "mppl.h"
 
-const char *ir_type_kind_str(ir_type_kind_t kind)
-{
-    switch (kind) {
-    case IR_TYPE_PROGRAM:
-        return "program";
-    case IR_TYPE_PROCEDURE:
-        return "procedure";
-    case IR_TYPE_INTEGER:
-        return "integer";
-    case IR_TYPE_CHAR:
-        return "char";
-    case IR_TYPE_BOOLEAN:
-        return "boolean";
-    case IR_TYPE_ARRAY:
-        return "array";
-    default:
-        unreachable();
-    }
-}
-
 int ir_type_is_kind(const ir_type_t *type, ir_type_kind_t kind)
 { return type->kind == kind; }
 
