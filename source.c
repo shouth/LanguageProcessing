@@ -282,7 +282,7 @@ static int symbol_comparator(const void *lhs, const void *rhs)
 static uint64_t symbol_hasher(const void *ptr)
 {
     const symbol_t *s = ptr;
-    return fnv1((const uint8_t *) s->ptr, s->len);
+    return fnv1(s->ptr, s->len);
 }
 
 symbol_storage_t *new_symbol_storage()

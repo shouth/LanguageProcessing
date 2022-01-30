@@ -1,6 +1,7 @@
 #ifndef MPPL_H
 #define MPPL_H
 
+#include <memory.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,7 +9,7 @@
 
 /* utility */
 
-static uint64_t fnv1(const void *ptr, size_t len)
+static uint64_t fnv1(const char *ptr, size_t len)
 {
     uint64_t ret = 0xcbf29ce484222325;
     uint64_t prime = 0x00000100000001b3;
@@ -23,10 +24,18 @@ static uint64_t fnv1(const void *ptr, size_t len)
 }
 
 static uint64_t fnv1_int(uint64_t value)
-{ return fnv1(&value, sizeof(value)); }
+{
+    char buf[sizeof(value)];
+    memcpy(buf, &value, sizeof(value));
+    return fnv1(buf, sizeof(value));
+}
 
 static uint64_t fnv1_ptr(const void *ptr)
-{ return fnv1(&ptr, sizeof(ptr)); }
+{
+    char buf[sizeof(ptr)];
+    memcpy(buf, &ptr, sizeof(ptr));
+    return fnv1(buf, sizeof(ptr));
+}
 
 static uint8_t popcount(uint64_t n)
 {
