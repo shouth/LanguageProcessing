@@ -13,12 +13,11 @@ static uint64_t fnv1(const char *ptr, size_t len)
 {
     uint64_t ret = 0xcbf29ce484222325;
     uint64_t prime = 0x00000100000001b3;
-    const char *p = ptr;
     size_t i;
 
     for (i = 0; i < len; i++) {
         ret *= prime;
-        ret ^= p[i];
+        ret ^= ptr[i];
     }
     return ret;
 }
