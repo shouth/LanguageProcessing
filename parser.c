@@ -357,7 +357,7 @@ ast_expr_t *parse_term(parser_t *parser)
     ret = parse_factor(parser);
     while (1) {
         ast_expr_t *factor;
-        ast_expr_kind_t kind;
+        ast_binary_op_kind_t kind;
         region_t op_region;
         if (eat(parser, TOKEN_STAR)) {
             kind = AST_BINARY_OP_STAR;
@@ -389,7 +389,7 @@ ast_expr_t *parse_simple_expr(parser_t *parser)
     }
     while (1) {
         ast_expr_t *term;
-        ast_expr_kind_t kind;
+        ast_binary_op_kind_t kind;
         region_t op_region;
         if (eat(parser, TOKEN_PLUS)) {
             kind = AST_BINARY_OP_PLUS;
@@ -416,7 +416,7 @@ ast_expr_t *parse_expr(parser_t *parser)
     ret = parse_simple_expr(parser);
     while (1) {
         ast_expr_t *simple;
-        ast_expr_kind_t kind;
+        ast_binary_op_kind_t kind;
         region_t op_region;
         if (eat(parser, TOKEN_EQUAL)) {
             kind = AST_BINARY_OP_EQUAL;
