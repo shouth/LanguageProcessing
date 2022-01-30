@@ -11,61 +11,66 @@
 
 #include "mppl.h"
 
-static size_t filesize(const char *filename)
+static size_t source_size(const char *filename)
 {
 #if defined(__unix__) || defined(__APPLE__)
     struct stat s;
 
     assert(filename);
-    if (stat(filename, &s) < 0) {
-        return SIZE_MAX;
+    if (stat(filename, &s) == 0 && S_ISREG(s.st_mode)) {
+        return s.st_size;
     } else {
-        if (S_ISREG(s.st_mode)) {
-            return s.st_size;
-        } else {
-            return SIZE_MAX;
-        }
+        fprintf(stderr, "error: failed to get file size; maybe `%s` is not a file\n", filename);
+        exit(1);
     }
 
 #elif defined(_WIN32)
     struct __stat64 s;
 
     assert(filename);
-    if (_stat64(filename, &s) < 0) {
-        return SIZE_MAX;
+    if (_stat64(filename, &s) == 0 && (s.st_mode & _S_IFREG)) {
+        return s.st_size;
     } else {
-        if (s.st_mode & _S_IFREG) {
-            return s.st_size;
-        } else {
-            return SIZE_MAX;
-        }
+        fprintf(stderr, "error: failed to get file size; maybe `%s` is not a file\n", filename);
+        exit(1);
     }
 
 #else
-    const size_t block_size = 4096;
-    char buf[block_size];
+
+#define BLOCK_SIZE 4096
+
+    char buf[BLOCK_SIZE];
     FILE *file;
     size_t size;
     size_t ret = 0;
 
     assert(filename);
     file = fopen(filename, "r");
-    setvbuf(file, NULL, _IOFBF, block_size);
-    do {
-        size = fread(buf, sizeof(*buf), block_size, file);
-        ret += size;
-    } while (size == block_size);
-
-    if (ferror(file) != 0) {
-        ret = SIZE_MAX;
+    if (!file) {
+        fprintf(stderr, "error: failed to open `%s`\n", filename);
+        exit(1);
     }
+
+    setvbuf(file, NULL, _IOFBF, BLOCK_SIZE);
+    do {
+        size = fread(buf, sizeof(*buf), BLOCK_SIZE, file);
+        if (ferror(file)) {
+            fprintf(stderr, "error: failed to get file size\n", filename);
+            fclose(file);
+            exit(1);
+        }
+        ret += size;
+    } while (size == BLOCK_SIZE);
+
     fclose(file);
     return ret;
+
+#undef BLOCK_SIZE
 
 #endif
 }
 
-static const char *nextline(const char *str)
+static const char *source_next_line(const char *str)
 {
     assert(str);
     str += strcspn(str, "\r\n");
@@ -102,31 +107,24 @@ source_t *new_source(const char *filename, const char *output)
         strcpy(src->output_filename, output);
     } else {
         if (strncmp(filename + filename_len - 4, ".mpl", 4) != 0) {
-            delete_source(src);
-            return NULL;
+            fprintf(stderr, "error: filename needs to end with `.mpl`\n");
+            exit(1);
         }
         sprintf(src->output_filename, "%.*s.csl", (int) (filename_len - 4), filename);
     }
 
-    src->src_size = filesize(filename);
-    {
-        if (src->src_size == SIZE_MAX) {
-            delete_source(src);
-            return NULL;
-        }
-    }
-
+    src->src_size = source_size(filename);
     src->src_ptr = new_arr(char, src->src_size + 1);
     {
         FILE *file = fopen(filename, "r");
         if (!file) {
-            delete_source(src);
-            return NULL;
+            fprintf(stderr, "error: failed to open `%s`\n", filename);
+            exit(1);
         }
-        fread(src->src_ptr, sizeof(char), src->src_size, file);
+        fread(src->src_ptr, sizeof(*src->src_ptr), src->src_size, file);
         if (ferror(file)) {
-            delete_source(src);
-            return NULL;
+            fprintf(stderr, "error: failed to read `%s`\n", filename);
+            exit(1);
         }
         fclose(file);
         src->src_ptr[src->src_size] = '\0';
@@ -135,7 +133,7 @@ source_t *new_source(const char *filename, const char *output)
     src->lines_size = 0;
     {
         const char *cur;
-        for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
+        for (cur = src->src_ptr; *cur; cur = source_next_line(cur)) {
             src->lines_size++;
         }
     }
@@ -144,7 +142,7 @@ source_t *new_source(const char *filename, const char *output)
     {
         const char *cur;
         size_t linecnt = 0;
-        for (cur = src->src_ptr; *cur; cur = nextline(cur)) {
+        for (cur = src->src_ptr; *cur; cur = source_next_line(cur)) {
             src->lines_ptr[linecnt] = cur - src->src_ptr;
             linecnt++;
         }
