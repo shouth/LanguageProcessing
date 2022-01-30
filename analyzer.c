@@ -76,7 +76,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
         ir_operand_t *index = analyze_expr(analyzer, block, expr->u.array_subscript_expr.expr);
         ast_ident_t *ident = expr->u.array_subscript_expr.decl;
         ir_item_t *lookup = ir_item_lookup(analyzer->factory->scope, ident->symbol);
-        const ir_type_t *operand_type;
+        const ir_type_t *index_type = ir_operand_type(index);
 
         maybe_error_undeclared(analyzer, ident->symbol, ident->region);
         if (!ir_type_is_kind(lookup->type, IR_TYPE_ARRAY)) {
@@ -86,11 +86,10 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
             msg_emit(msg);
             exit(1);
         }
-        operand_type = ir_operand_type(index);
-        if (!ir_type_is_kind(operand_type, IR_TYPE_INTEGER)) {
+        if (!ir_type_is_kind(index_type, IR_TYPE_INTEGER)) {
             region_t region = expr->u.array_subscript_expr.expr->region;
             msg_t *msg = new_msg(analyzer->source, region,
-                MSG_ERROR, "arrays cannot be indexed by `%s`", ir_type_str(operand_type));
+                MSG_ERROR, "arrays cannot be indexed by `%s`", ir_type_str(index_type));
             msg_add_inline_entry(msg, region, "array indices are of type integer");
             msg_emit(msg);
             exit(1);
@@ -246,6 +245,8 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t **block, ast_ca
     operand = analyze_expr(analyzer, block, expr->expr);
     operand_type = ir_operand_type(operand);
     cast_type = analyze_type(analyzer, expr->type);
+    result = ir_local_temp(analyzer->factory, cast_type);
+    ir_block_push_assign(*block, new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
 
     if (!ir_type_is_std(operand_type)) {
         msg_t *msg = new_msg(analyzer->source, expr->expr->region,
@@ -262,8 +263,6 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t **block, ast_ca
         exit(1);
     }
 
-    result = ir_local_temp(analyzer->factory, cast_type);
-    ir_block_push_assign(*block, new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
     return new_ir_place_operand(new_ir_place(result));
 }
 
@@ -281,16 +280,14 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, as
         return new_ir_constant_operand(constant);
     }
     case AST_LIT_STRING: {
-        const symbol_t *symbol;
-        const ir_constant_t *constant;
+        const symbol_t *symbol = expr->lit->u.string_lit.symbol;
+        const ir_constant_t *constant = ir_char_constant(analyzer->factory, symbol->ptr[0]);
         if (expr->lit->u.string_lit.str_len != 1) {
             msg_t *msg = new_msg(analyzer->source, expr->lit->region,
                 MSG_ERROR, "string is not a valid expression");
             msg_emit(msg);
             exit(1);
         }
-        symbol = expr->lit->u.string_lit.symbol;
-        constant = ir_char_constant(analyzer->factory, symbol->ptr[0]);
         return new_ir_constant_operand(constant);
     }
     }
