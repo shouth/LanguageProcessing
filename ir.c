@@ -69,24 +69,39 @@ static void delete_ir_type(ir_type_t *type)
 
 static char *internal_ir_type_str(char *buf, const ir_type_t *type)
 {
-    buf += sprintf(buf, "%s", ir_type_kind_str(type->kind));
     switch (type->kind) {
+    case IR_TYPE_INTEGER:
+        buf += sprintf(buf, "integer");
+        break;
+    case IR_TYPE_CHAR:
+        buf += sprintf(buf, "char");
+        break;
+    case IR_TYPE_BOOLEAN:
+        buf += sprintf(buf, "boolean");
+        break;
+    case IR_TYPE_PROGRAM:
+        buf += sprintf(buf, "program");
+        break;
     case IR_TYPE_PROCEDURE: {
-        const ir_type_t *cur = type->u.procedure_type.param_types;
-        buf += sprintf(buf, "(");
-        while (cur) {
-            buf = internal_ir_type_str(buf, cur->u.ref);
-            if (cur = cur->next) {
-                buf += sprintf(buf, ", ");
-            }
+        buf += sprintf(buf, "procedure");
+        if (type->u.procedure_type.param_types) {
+            buf += sprintf(buf, "(");
+            buf = internal_ir_type_str(buf, type->u.procedure_type.param_types);
+            buf += sprintf(buf, ")");
         }
-        buf += sprintf(buf, ")");
         break;
     }
     case IR_TYPE_ARRAY:
-        buf += sprintf(buf, "[%ld] of ", type->u.array_type.size);
-        internal_ir_type_str(buf, type->u.array_type.base_type->u.ref);
+        buf += sprintf(buf, "array[%ld] of ", type->u.array_type.size);
+        internal_ir_type_str(buf, type->u.array_type.base_type);
         break;
+    case -1:
+        while (type) {
+            buf = internal_ir_type_str(buf, type->u.ref);
+            if (type = type->next) {
+                buf += sprintf(buf, ", ");
+            }
+        }
     }
     return buf;
 }

@@ -34,7 +34,6 @@ struct impl_ir_type {
     } u;
 };
 
-const char *ir_type_kind_str(ir_type_kind_t kind);
 int ir_type_is_kind(const ir_type_t *type, ir_type_kind_t kind);
 int ir_type_is_std(const ir_type_t *type);
 ir_type_t *ir_type_ref(const ir_type_t *type);
