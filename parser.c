@@ -76,8 +76,6 @@ void error_unexpected(parser_t *parser)
     error_expected(parser, buf);
 }
 
-#define maybe_error_unreachable(parser) ((parser)->alive && (unreachable(), 0))
-
 void bump(parser_t *parser)
 {
     assert(parser);
@@ -180,9 +178,9 @@ ast_lit_t *parse_boolean_lit(parser_t *parser)
         return new_ast_boolean_lit(1, parser->current_token.region);
     } else if (eat(parser, TOKEN_FALSE)) {
         return new_ast_boolean_lit(0, parser->current_token.region);
+    } else {
+        unreachable();
     }
-
-    maybe_error_unreachable(parser);
 }
 
 ast_lit_t *parse_string_lit(parser_t *parser)
@@ -212,9 +210,9 @@ ast_lit_t *parse_lit(parser_t *parser)
         return parse_boolean_lit(parser);
     } else if (check(parser, TOKEN_STRING)) {
         return parse_string_lit(parser);
+    } else {
+        unreachable();
     }
-
-    maybe_error_unreachable(parser);
 }
 
 int check_std_type(parser_t *parser)
@@ -230,9 +228,9 @@ ast_type_t *parse_std_type(parser_t *parser)
         return new_ast_std_type(AST_TYPE_BOOLEAN, parser->current_token.region);
     } else if (eat(parser, TOKEN_CHAR)) {
         return new_ast_std_type(AST_TYPE_CHAR, parser->current_token.region);
+    } else {
+        unreachable();
     }
-
-    maybe_error_unreachable(parser);
 }
 
 ast_type_t *parse_array_type(parser_t *parser)
@@ -272,9 +270,9 @@ ast_type_t *parse_type(parser_t *parser)
         return parse_array_type(parser);
     } else if (check_std_type(parser)) {
         return parse_std_type(parser);
+    } else {
+        unreachable();
     }
-
-    maybe_error_unreachable(parser);
 }
 
 ast_expr_t *parse_expr(parser_t *parser);
@@ -546,7 +544,7 @@ ast_stmt_t *parse_read_stmt(parser_t *parser)
     } else if (eat(parser, TOKEN_READLN)) {
         newline = 1;
     } else {
-        maybe_error_unreachable(parser);
+        unreachable();
     }
     if (eat(parser, TOKEN_LPAREN)) {
         args = parse_ref_seq(parser);
@@ -614,7 +612,7 @@ ast_stmt_t *parse_write_stmt(parser_t *parser)
     } else if (eat(parser, TOKEN_WRITELN)) {
         newline = 1;
     } else {
-        maybe_error_unreachable(parser);
+        unreachable();
     }
     if (eat(parser, TOKEN_LPAREN)) {
         formats = parse_output_format_seq(parser);
