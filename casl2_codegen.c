@@ -9,7 +9,6 @@ typedef size_t codegen_addr_t;
 
 typedef struct {
     FILE *file;
-    size_t stmt_cnt;
     struct {
         codegen_addr_t cnt;
         hash_table_t *table;
@@ -637,7 +636,6 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
             break;
         }
         stmt = stmt->next;
-        codegen->stmt_cnt++;
     }
 }
 
@@ -646,7 +644,6 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     assert(codegen && block);
 
     codegen_set_label(codegen, codegen_addr_label(codegen, block));
-    codegen->stmt_cnt = 0;
     codegen_stmt(codegen, block->stmt);
     switch (block->termn.kind) {
     case IR_TERMN_GOTO: {
