@@ -331,7 +331,7 @@ ir_operand_t *analyze_call_stmt_param(analyzer_t *analyzer, ir_block_t **block, 
         const ir_type_t *type = ir_operand_type(ret);
         ret->next = next;
         if (param_type->u.ref != type) {
-            msg_t *msg = new_msg(analyzer->source, args->region, MSG_ERROR, "mismatching arguments for procedure");
+            msg_t *msg = new_msg(analyzer->source, args->region, MSG_ERROR, "mismatching argument type");
             char expected[1024], found[1024];
             strcpy(expected, ir_type_str(param_type->u.ref));
             strcpy(found, ir_type_str(type));
