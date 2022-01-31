@@ -505,14 +505,19 @@ void pp_procedure_decl_part(printer_t *printer, const ast_procedure_decl_part_t 
     printf(" ");
     pp_colored_procedure(printer, decl_part->name);
     if (decl_part->params) {
-        const ast_param_decl_t *cur;
+        const ast_param_decl_t *cur = decl_part->params;
         printf("(");
-        cur = decl_part->params;
         while (cur) {
+            const ast_ident_t *ident = cur->names;
             if (cur != decl_part->params) {
                 printf("; ");
             }
-            pp_colored_parameter(printer, cur->names);
+            while (ident) {
+                pp_colored_parameter(printer, ident);
+                if (ident = ident->next) {
+                    printf(", ");
+                }
+            }
             printf(": ");
             pp_type(printer, cur->type);
             cur = cur->next;
