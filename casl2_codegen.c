@@ -81,7 +81,7 @@ void codegen_set_label(codegen_t *codegen, const char *label)
 
 void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
 {
-    assert(codegen && constant);
+    assert(codegen);
 
     while (constant) {
         switch (constant->kind) {

@@ -661,7 +661,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_param_decl_t *decl)
 
 void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 {
-    assert(analyzer && decl_part);
+    assert(analyzer);
 
     while (decl_part) {
         switch (decl_part->kind) {
