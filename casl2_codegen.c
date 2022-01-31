@@ -417,8 +417,10 @@ void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *cons
         codegen_addr_t label = codegen_addr(codegen, NULL);
         codegen_print(codegen, "JUMP", codegen_label(label));
         codegen_set_label(codegen, codegen_label(tmp));
-        codegen_print(codegen, "DC", "%ld", constant->u.number_constant.value);
+        codegen_print(codegen, "DS", "1");
         codegen_set_label(codegen, codegen_label(label));
+        codegen_print(codegen, "LAD", "GR0, %ld", constant->u.number_constant.value);
+        codegen_print(codegen, "ST", "GR0, %s", codegen_label(tmp));
         codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
         break;
     }
@@ -427,8 +429,10 @@ void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *cons
         codegen_addr_t label = codegen_addr(codegen, NULL);
         codegen_print(codegen, "JUMP", codegen_label(label));
         codegen_set_label(codegen, codegen_label(tmp));
-        codegen_print(codegen, "DC", "#%04X", constant->u.char_constant.value);
+        codegen_print(codegen, "DS", "1");
         codegen_set_label(codegen, codegen_label(label));
+        codegen_print(codegen, "LAD", "GR0, #%04x", constant->u.char_constant.value);
+        codegen_print(codegen, "ST", "GR0, %s", codegen_label(tmp));
         codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
         break;
     }
@@ -437,14 +441,13 @@ void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *cons
         codegen_addr_t label = codegen_addr(codegen, NULL);
         codegen_print(codegen, "JUMP", codegen_label(label));
         codegen_set_label(codegen, codegen_label(tmp));
-        codegen_print(codegen, "DC", "%d", constant->u.boolean_constant.value);
+        codegen_print(codegen, "DS", "1");
         codegen_set_label(codegen, codegen_label(label));
+        codegen_print(codegen, "LAD", "GR0, %ld", constant->u.boolean_constant.value);
+        codegen_print(codegen, "ST", "GR0, %s", codegen_label(tmp));
         codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
         break;
     }
-    case IR_CONSTANT_STRING:
-        codegen_print(codegen, "PUSH", codegen_addr_label(codegen, constant));
-        break;
     default:
         unreachable();
     }
