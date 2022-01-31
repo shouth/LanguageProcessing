@@ -49,7 +49,6 @@ static void crossref_print_ref(crossref_t *crossref, ir_item_pos_t *pos)
 static size_t crossref_count_item(const ir_item_t *item)
 {
     size_t ret;
-    assert(item);
 
     ret = 0;
     while (item) {
