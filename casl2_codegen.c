@@ -102,7 +102,7 @@ void codegen_check_range(codegen_t *codegen, const char *reg, const ir_local_t *
     ++codegen->builtin.e_rng;
     if (local->kind == IR_LOCAL_VAR
         && ir_type_is_kind(type, IR_TYPE_ARRAY)
-        && ir_type_is_std(type->u.array_type.base_type))
+        && ir_type_is_std(type->u.array_type.base_type->u.ref))
     {
         if (type->u.array_type.size) {
             codegen_print(codegen, "LD", "GR0, %s", reg);
@@ -211,6 +211,7 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
             default:
                 unreachable();
             }
+            break;
         default:
             unreachable();
         }
