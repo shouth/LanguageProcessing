@@ -240,34 +240,30 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_u
 
 ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t **block, ast_cast_expr_t *expr)
 {
-    ir_operand_t *operand;
-    const ir_type_t *operand_type;
-    const ir_type_t *cast_type;
-    const ir_local_t *result;
     assert(analyzer && block && expr);
 
-    operand = analyze_expr(analyzer, block, expr->expr);
-    operand_type = ir_operand_type(operand);
-    cast_type = analyze_type(analyzer, expr->type);
-    result = ir_local_temp(analyzer->factory, cast_type);
-    ir_block_push_assign(*block, new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
-
-    if (!ir_type_is_std(operand_type)) {
-        msg_t *msg = new_msg(analyzer->source, expr->expr->region,
-            MSG_ERROR, "expression of type `%s` cannot be cast", ir_type_str(operand_type));
-        msg_add_inline_entry(msg, expr->expr->region, "expressions to be cast are of standard types");
-        msg_emit(msg);
-        exit(1);
+    {
+        ir_operand_t *operand = analyze_expr(analyzer, block, expr->expr);
+        const ir_type_t *operand_type = ir_operand_type(operand);
+        const ir_type_t *cast_type = analyze_type(analyzer, expr->type);
+        const ir_local_t *result = ir_local_temp(analyzer->factory, cast_type);
+        ir_block_push_assign(*block, new_ir_place(result), new_ir_cast_rvalue(cast_type, operand));
+        if (!ir_type_is_std(operand_type)) {
+            msg_t *msg = new_msg(analyzer->source, expr->expr->region,
+                MSG_ERROR, "expression of type `%s` cannot be cast", ir_type_str(operand_type));
+            msg_add_inline_entry(msg, expr->expr->region, "expressions to be cast are of standard types");
+            msg_emit(msg);
+            exit(1);
+        }
+        if (!ir_type_is_std(cast_type)) {
+            msg_t *msg = new_msg(analyzer->source, expr->expr->region,
+                MSG_ERROR, "expression cannot be cast to `%s`", ir_type_str(cast_type));
+            msg_add_inline_entry(msg, expr->type->region, "expressions can be cast to standard types");
+            msg_emit(msg);
+            exit(1);
+        }
+        return new_ir_place_operand(new_ir_place(result));
     }
-    if (!ir_type_is_std(cast_type)) {
-        msg_t *msg = new_msg(analyzer->source, expr->expr->region,
-            MSG_ERROR, "expression cannot be cast to `%s`", ir_type_str(cast_type));
-        msg_add_inline_entry(msg, expr->type->region, "expressions can be cast to standard types");
-        msg_emit(msg);
-        exit(1);
-    }
-
-    return new_ir_place_operand(new_ir_place(result));
 }
 
 ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, ast_constant_expr_t *expr)
@@ -327,7 +323,8 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
 ir_operand_t *analyze_call_stmt_param(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *args, ir_type_t *param_type)
 {
     assert(analyzer && block);
-    if (args) {
+
+    if (args && param_type) {
         ir_block_t *blk = *block;
         ir_operand_t *next = analyze_call_stmt_param(analyzer, &blk, args->next, param_type->next);
         ir_operand_t *ret = analyze_expr(analyzer, &blk, args);
@@ -476,12 +473,11 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
 
             {
                 const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
-                ast_expr_t *args = stmt->u.call_stmt.args;
                 ir_type_t *param_type = ir_local_type(func)->u.procedure_type.param_types;
-                ast_expr_t *expr_cur = args;
+                ast_expr_t *expr_cur = stmt->u.call_stmt.args;
                 ir_type_t *type_cur = param_type;
                 size_t expr_cnt = 0, type_cnt = 0;
-                ir_operand_t *arg;
+                ir_operand_t *arg = analyze_call_stmt_param(analyzer, block, stmt->u.call_stmt.args, param_type);
                 while (expr_cur) {
                     expr_cnt++;
                     expr_cur = expr_cur->next;
@@ -496,7 +492,6 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
                     msg_emit(msg);
                     exit(1);
                 }
-                arg = analyze_call_stmt_param(analyzer, block, args, param_type);
                 ir_block_push_call(*block, new_ir_place(func), arg);
             }
             break;
