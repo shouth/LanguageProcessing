@@ -379,12 +379,8 @@ const ir_type_t *ir_place_type(ir_place_t *place)
     assert(place);
 
     type = ir_local_type(place->local);
-    if (type->kind == IR_TYPE_ARRAY) {
-        if (place->place_access && place->place_access->kind == IR_PLACE_ACCESS_INDEX) {
-            return type->u.array_type.base_type->u.ref;
-        } else {
-            unreachable();
-        }
+    if (type->kind == IR_TYPE_ARRAY && place->place_access && place->place_access->kind == IR_PLACE_ACCESS_INDEX) {
+        return type->u.array_type.base_type->u.ref;
     } else {
         return type;
     }
