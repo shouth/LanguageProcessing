@@ -451,9 +451,6 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
         case AST_STMT_CALL: {
             ast_ident_t *ident = stmt->u.call_stmt.name;
             ir_item_t *item = ir_item_lookup(analyzer->factory->scope, ident->symbol);
-            const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
-            ast_expr_t *args = stmt->u.call_stmt.args;
-            ir_type_t *param_type = ir_local_type(func)->u.procedure_type.param_types;
 
             maybe_error_undeclared(analyzer, ident->symbol, ident->region);
             if (item->kind != IR_ITEM_PROCEDURE) {
@@ -478,9 +475,13 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
             }
 
             {
+                const ir_local_t *func = ir_local_for(analyzer->factory, item, ident->region.pos);
+                ast_expr_t *args = stmt->u.call_stmt.args;
+                ir_type_t *param_type = ir_local_type(func)->u.procedure_type.param_types;
                 ast_expr_t *expr_cur = args;
                 ir_type_t *type_cur = param_type;
                 size_t expr_cnt = 0, type_cnt = 0;
+                ir_operand_t *arg;
                 while (expr_cur) {
                     expr_cnt++;
                     expr_cur = expr_cur->next;
@@ -495,10 +496,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
                     msg_emit(msg);
                     exit(1);
                 }
-            }
-
-            {
-                ir_operand_t *arg = analyze_call_stmt_param(analyzer, block, args, param_type);
+                arg = analyze_call_stmt_param(analyzer, block, args, param_type);
                 ir_block_push_call(*block, new_ir_place(func), arg);
             }
             break;
@@ -550,7 +548,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
                 ast_expr_t *expr = formats->expr;
                 ast_constant_expr_t *constant = &expr->u.constant_expr;
                 ast_string_lit_t *string = &constant->lit->u.string_lit;
-                if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len > 1) {
+                if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len != 1) {
                     const ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
                     ir_block_push_write(*block, new_ir_constant_operand(constant), NULL);
                 } else {

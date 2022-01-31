@@ -221,7 +221,6 @@ const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, size_t si
 {
     ir_type_t *array;
     assert(factory && base);
-    assert(size > 0);
     assert(base->kind == -1);
 
     array = new_ir_type(IR_TYPE_ARRAY);
