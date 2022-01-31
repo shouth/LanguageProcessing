@@ -820,7 +820,7 @@ void codegen_builtin(codegen_t *codegen)
         codegen_print(codegen, "LAD", "GR3, BCFALSE");
         codegen_print(codegen, "LAD", "GR2, 5");
         codegen_print(codegen, "RET", NULL);
-        codegen_set_label(codegen, "BWBOOL0");
+        codegen_set_label(codegen, "BSBOOL0");
         codegen_print(codegen, "LAD", "GR3, BCTRUE");
         codegen_print(codegen, "LAD", "GR2, 4");
         codegen_print(codegen, "RET", NULL);
@@ -924,7 +924,6 @@ void codegen_builtin(codegen_t *codegen)
 
     if (codegen->builtin.r_char) {
         builtin_read = 1;
-
         codegen_set_label(codegen, "BRCHAR");
         codegen_print(codegen, "CALL", "BRREAD");
         codegen_print(codegen, "CALL", "BRTOP");
