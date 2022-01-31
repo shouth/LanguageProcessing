@@ -82,7 +82,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
         if (!ir_type_is_kind(lookup->type, IR_TYPE_ARRAY)) {
             const symbol_t *symbol = expr->u.decl_ref_expr.decl->symbol;
             msg_t *msg = new_msg(analyzer->source, ident->region,
-                MSG_ERROR, "`%.*s` is not an array.", (int) symbol->len, symbol->ptr);
+                MSG_ERROR, "`%.*s` is not an array", (int) symbol->len, symbol->ptr);
             msg_emit(msg);
             exit(1);
         }
