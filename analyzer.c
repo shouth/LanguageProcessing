@@ -272,23 +272,20 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, as
 
     switch (expr->lit->kind) {
     case AST_LIT_NUMBER: {
-        const ir_constant_t *constant = ir_number_constant(analyzer->factory, expr->lit->u.number_lit.value);
-        return new_ir_constant_operand(constant);
+        return new_ir_constant_operand(ir_number_constant(analyzer->factory, expr->lit->u.number_lit.value));
     }
     case AST_LIT_BOOLEAN: {
-        const ir_constant_t *constant = ir_boolean_constant(analyzer->factory, expr->lit->u.boolean_lit.value);
-        return new_ir_constant_operand(constant);
+        return new_ir_constant_operand(ir_boolean_constant(analyzer->factory, expr->lit->u.boolean_lit.value));
     }
     case AST_LIT_STRING: {
         const symbol_t *symbol = expr->lit->u.string_lit.symbol;
-        const ir_constant_t *constant = ir_char_constant(analyzer->factory, symbol->ptr[0]);
         if (expr->lit->u.string_lit.str_len != 1) {
             msg_t *msg = new_msg(analyzer->source, expr->lit->region,
                 MSG_ERROR, "string is not a valid expression");
             msg_emit(msg);
             exit(1);
         }
-        return new_ir_constant_operand(constant);
+        return new_ir_constant_operand(ir_char_constant(analyzer->factory, symbol->ptr[0]));
     }
     }
 
