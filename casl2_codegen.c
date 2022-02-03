@@ -339,14 +339,11 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             unreachable();
         }
         break;
-    case IR_RVALUE_CAST: {
-        ir_type_kind_t lhs_type = stmt->rhs->u.cast_rvalue.type->kind;
-        ir_type_kind_t rhs_type = ir_operand_type(stmt->rhs->u.cast_rvalue.value)->kind;
-
+    case IR_RVALUE_CAST:
         codegen_load(codegen, "GR1", stmt->rhs->u.cast_rvalue.value);
-        switch (rhs_type) {
+        switch (ir_operand_type(stmt->rhs->u.cast_rvalue.value)->kind) {
         case IR_TYPE_INTEGER:
-            switch (lhs_type) {
+            switch (stmt->rhs->u.cast_rvalue.type->kind) {
             case IR_TYPE_BOOLEAN: {
                 const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "LD", "GR1, GR1");
@@ -365,7 +362,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             }
             break;
         case IR_TYPE_CHAR:
-            switch (lhs_type) {
+            switch (stmt->rhs->u.cast_rvalue.type->kind) {
             case IR_TYPE_BOOLEAN: {
                 const char *jmp = codegen_addr_label(codegen, NULL);
                 codegen_print(codegen, "LD", "GR1, GR1");
@@ -389,7 +386,6 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
             unreachable();
         }
         break;
-    }
     }
     codegen_store(codegen, "GR1", stmt->lhs);
 }
