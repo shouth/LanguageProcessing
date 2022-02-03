@@ -271,12 +271,10 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, as
     assert(analyzer && block && expr);
 
     switch (expr->lit->kind) {
-    case AST_LIT_NUMBER: {
+    case AST_LIT_NUMBER:
         return new_ir_constant_operand(ir_number_constant(analyzer->factory, expr->lit->u.number_lit.value));
-    }
-    case AST_LIT_BOOLEAN: {
+    case AST_LIT_BOOLEAN:
         return new_ir_constant_operand(ir_boolean_constant(analyzer->factory, expr->lit->u.boolean_lit.value));
-    }
     case AST_LIT_STRING: {
         const symbol_t *symbol = expr->lit->u.string_lit.symbol;
         if (expr->lit->u.string_lit.str_len != 1) {
@@ -537,10 +535,9 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
             ast_output_format_t *formats = stmt->u.write_stmt.formats;
 
             while (formats) {
-                ast_expr_t *expr = formats->expr;
-                ast_constant_expr_t *constant = &expr->u.constant_expr;
+                ast_constant_expr_t *constant = &formats->expr->u.constant_expr;
                 ast_string_lit_t *string = &constant->lit->u.string_lit;
-                if (expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len != 1) {
+                if (formats->expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_STRING && string->str_len != 1) {
                     const ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
                     ir_block_push_write(*block, new_ir_constant_operand(constant), NULL);
                 } else {
