@@ -54,7 +54,7 @@ static uint8_t popcount(uint64_t n)
 #endif
 }
 
-static uint8_t lsb(uint64_t n)
+static uint8_t trailing0(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
     /* If compiler is GCC or Clang, use builtin functions. */
@@ -66,7 +66,7 @@ static uint8_t lsb(uint64_t n)
 #endif
 }
 
-static uint8_t msb(uint64_t n)
+static uint8_t leading0(uint64_t n)
 {
 #if defined(__GNUC__) || defined(__clang__)
     /* If compiler is GCC or Clang, use builtin functions. */

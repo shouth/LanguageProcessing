@@ -91,11 +91,11 @@ const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key)
     home = table->buckets + index;
     hop = home->hop;
     while (hop) {
-        uint8_t l = lsb(hop);
-        if (table->comparator(key, home[l].key)) {
-            return home + l;
+        uint8_t t = trailing0(hop);
+        if (table->comparator(key, home[t].key)) {
+            return home + t;
         }
-        hop ^= (hash_table_hop_t) 1 << l;
+        hop ^= (hash_table_hop_t) 1 << t;
     }
     return NULL;
 }
@@ -121,15 +121,15 @@ void hash_table_insert_unchecked(hash_table_t *table, void *key, void *value)
         for (i = 0; i < NBHD_RANGE; i++) {
             hash_table_hop_t hop = entry[i].hop;
             if (hop) {
-                uint8_t l = lsb(hop);
-                if (i + l < NBHD_RANGE) {
-                    hash_table_entry_t *next = entry + i + l;
+                uint8_t t = trailing0(hop);
+                if (i + t < NBHD_RANGE) {
+                    hash_table_entry_t *next = entry + i + t;
                     empty->key = next->key;
                     empty->value = next->value;
-                    next->hop ^= (hash_table_hop_t) 1 << l;
+                    next->hop ^= (hash_table_hop_t) 1 << t;
                     next->hop ^= (hash_table_hop_t) 1 << (NBHD_RANGE - i - 1);
                     empty = next;
-                    dist -= NBHD_RANGE - 1 - i - l;
+                    dist -= NBHD_RANGE - 1 - i - t;
                     break;
                 }
             }
@@ -175,16 +175,16 @@ hash_table_entry_t *hash_table_remove(hash_table_t *table, const void *key)
     home = table->buckets + index;
     hop = home->hop;
     while (hop) {
-        uint8_t l = lsb(hop);
-        if (table->comparator(key, home[l].key)) {
-            table->removed.key = home[l].key;
-            table->removed.value = home[l].value;
-            home[l].key = NULL;
-            home->hop ^= (hash_table_hop_t) 1 << l;
+        uint8_t t = trailing0(hop);
+        if (table->comparator(key, home[t].key)) {
+            table->removed.key = home[t].key;
+            table->removed.value = home[t].value;
+            home[t].key = NULL;
+            home->hop ^= (hash_table_hop_t) 1 << t;
             table->size--;
             return &table->removed;
         }
-        hop ^= (hash_table_hop_t) 1 << l;
+        hop ^= (hash_table_hop_t) 1 << t;
     }
     return NULL;
 }

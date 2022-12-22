@@ -55,7 +55,7 @@ void error_expected(parser_t *parser, const char *str)
 void error_unexpected(parser_t *parser)
 {
     char buf[256], *ptr;
-    uint8_t m, l;
+    uint8_t l, t;
 
     assert(parser);
     if (!parser->alive) {
@@ -63,15 +63,15 @@ void error_unexpected(parser_t *parser)
     }
     assert(parser->expected_tokens);
 
-    m = msb(parser->expected_tokens);
+    l = leading0(parser->expected_tokens);
     ptr = buf;
     while (parser->expected_tokens) {
-        l = lsb(parser->expected_tokens);
+        t = trailing0(parser->expected_tokens);
         if (ptr != buf) {
-            ptr += sprintf(ptr, l != m ? ", " : " or ");
+            ptr += sprintf(ptr, t != l ? ", " : " or ");
         }
-        ptr += msg_token(ptr, l);
-        parser->expected_tokens ^= (uint64_t) 1 << l;
+        ptr += msg_token(ptr, t);
+        parser->expected_tokens ^= (uint64_t) 1 << t;
     }
     error_expected(parser, buf);
 }
