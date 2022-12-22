@@ -136,11 +136,10 @@ int expect(parser_t *parser, token_kind_t type)
 
 ast_ident_t *parse_ident(parser_t *parser)
 {
-    const symbol_t *symbol;
     assert(parser);
 
     if (expect(parser, TOKEN_NAME)) {
-        symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
+        const symbol_t *symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
         return new_ast_ident(symbol, parser->current_token.region);
     }
     return NULL;
@@ -160,11 +159,10 @@ ast_ident_t *parse_ident_seq(parser_t *parser)
 
 ast_lit_t *parse_number_lit(parser_t *parser)
 {
-    const symbol_t *symbol;
     assert(parser);
 
     if (expect(parser, TOKEN_NUMBER)) {
-        symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
+        const symbol_t *symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
         return new_ast_number_lit(symbol, parser->current_token.data.number.value, parser->current_token.region);
     }
     return NULL;
@@ -185,13 +183,11 @@ ast_lit_t *parse_boolean_lit(parser_t *parser)
 
 ast_lit_t *parse_string_lit(parser_t *parser)
 {
-    const symbol_t *symbol;
-    const token_data_t *data;
     assert(parser);
 
     if (expect(parser, TOKEN_STRING)) {
-        data = &parser->current_token.data;
-        symbol = symbol_intern(parser->storage, data->string.ptr, data->string.len);
+        const token_data_t *data = &parser->current_token.data;
+        const symbol_t *symbol = symbol_intern(parser->storage, data->string.ptr, data->string.len);
         return new_ast_string_lit(symbol, data->string.str_len, parser->current_token.region);
     }
     return NULL;
