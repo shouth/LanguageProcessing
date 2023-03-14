@@ -186,7 +186,7 @@ void msg_emit(msg_t *msg)
 
     for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
         if (cur0->next == NULL) {
-            location_t loc = source_location(msg->src, msg->region.pos);
+            location_t loc = source_location(msg->src, cur0->region.pos);
             size_t tmp = loc.line;
             left_margin = 0;
             while (tmp > 0) {
