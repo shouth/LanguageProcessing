@@ -770,7 +770,7 @@ void codegen_builtin(codegen_t *codegen)
     codegen_set_label(codegen, "BC10");
     codegen_print(codegen, "DC", "10");
     codegen_set_label(codegen, "BCH30");
-    codegen_print(codegen, "DC", "#30");
+    codegen_print(codegen, "DC", "#0030");
 
     if (codegen->builtin.w_int) {
         builtin_write = 1;
