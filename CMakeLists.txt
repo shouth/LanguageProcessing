@@ -16,7 +16,9 @@ target_compile_options(mppl
     $<$<C_COMPILER_ID:GNU,Clang>:
       -pedantic-errors>
     $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Debug>>:
-      -fsanitize=address,leak,undefined -fno-sanitize-recover -fstack-protector>)
+      -fsanitize=address,leak,undefined
+      -fno-sanitize-recover
+      -fstack-protector>)
 target_link_options(mppl
   PRIVATE
     $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Debug>>:
