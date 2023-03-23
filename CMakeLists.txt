@@ -1,19 +1,23 @@
-cmake_minimum_required (VERSION 3.0)
+cmake_minimum_required(VERSION 3.20)
 project(KIT_LPP)
 
-set(CMAKE_C_STANDARD 90)
-add_compile_options(-pedantic-errors)
+add_executable(mppl)
 
-add_executable(mppl
-  src/analyzer.c
-  src/ast.c
-  src/casl2_codegen.c
-  src/crossref.c
-  src/ir.c
-  src/lexer.c
-  src/main.c
-  src/message.c
-  src/parser.c
-  src/pretty_printer.c
-  src/source.c
-  src/utility.c)
+file(GLOB src src/*.c)
+target_sources(mppl
+  PRIVATE ${src})
+
+set_target_properties(mppl
+  PROPERTIES
+    C_STANDARD 90
+    C_EXTENSIONS OFF)
+target_compile_options(mppl
+  PRIVATE
+    $<$<C_COMPILER_ID:GNU,Clang>:
+      -pedantic-errors>
+    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Debug>>:
+      -fsanitize=address,leak,undefined -fno-sanitize-recover -fstack-protector>)
+target_link_options(mppl
+  PRIVATE
+    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Debug>>:
+      -fsanitize=address,leak,undefined>)
