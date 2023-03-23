@@ -1,11 +1,14 @@
 {
-    "C_Cpp.clang_format_fallbackStyle": "WebKit",
-    "files.associations": {
-        "*.mpl": "pascal",
-        "*.csl": "casl2"
-    },
-    "ros.distro": "noetic",
-    "files.watcherExclude": {
-        "**/target": true
-    }
+  "files.associations": {
+    "*.mpl": "pascal",
+    "*.csl": "casl2"
+  },
+  "cmake.buildTask": true,
+  "cmake.configureOnOpen": true,
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "[c]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true
+  },
 }

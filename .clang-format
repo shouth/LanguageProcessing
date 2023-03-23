@@ -1,0 +1,7 @@
+BasedOnStyle: Webkit
+IndentWidth: 2
+ContinuationIndentWidth: 2
+PointerAlignment: Right
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveAssignments: Consecutive
+SpaceAfterCStyleCast: true
