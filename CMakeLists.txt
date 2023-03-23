@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.0)
-project(KIT_LLP)
+project(KIT_LPP)
 
 set(CMAKE_C_STANDARD 90)
 add_compile_options(-pedantic-errors)
