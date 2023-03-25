@@ -1,5 +1,6 @@
 {
   "files.associations": {
+    "*.h": "c",
     "*.mpl": "pascal",
     "*.csl": "casl2"
   },
