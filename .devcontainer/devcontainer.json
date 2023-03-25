@@ -1,13 +1,12 @@
 {
   "name": "C++",
   "image": "omzn/kit-lpp:multiple",
-  "onCreateCommand": "brew install cmake ninja",
+  "onCreateCommand": "mv ${containerWorkspaceFolder}/.devcontainer/greeting.fish $HOME/.config/fish/conf.d/",
   "features": {
     "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {
       "fisher": true
     },
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "customizations": {
     "vscode": {
