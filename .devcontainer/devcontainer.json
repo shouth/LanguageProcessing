@@ -1,7 +1,7 @@
 {
   "name": "C++",
   "image": "omzn/kit-lpp:multiple",
-  "onCreateCommand": "mv ${containerWorkspaceFolder}/.devcontainer/greeting.fish $HOME/.config/fish/conf.d/",
+  "onCreateCommand": "cp ${containerWorkspaceFolder}/.devcontainer/greeting.fish $HOME/.config/fish/conf.d/",
   "features": {
     "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {
       "fisher": true
