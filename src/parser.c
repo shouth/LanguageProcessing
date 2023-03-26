@@ -710,9 +710,7 @@ static ast_stmt_t *parse_stmt(parser_t *parser)
     return parse_stmt_write(parser);
   } else if (check(parser, TOKEN_BEGIN)) {
     return parse_stmt_compound(parser);
-  }
-
-  {
+  } else {
     ast_stmt_t *stmt = xmalloc(sizeof(ast_stmt_t));
     return init_ast_stmt(stmt, AST_STMT_KIND_EMPTY);
   }
