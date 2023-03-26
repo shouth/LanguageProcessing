@@ -540,9 +540,9 @@ static ast_stmt_t *parse_stmt_while(parser_t *parser)
   expect(parser, TOKEN_WHILE);
   stmt->cond = parse_expr(parser);
   expect(parser, TOKEN_DO);
-  parser->within_loop++;
+  ++parser->within_loop;
   stmt->do_stmt = parse_stmt(parser);
-  parser->within_loop--;
+  --parser->within_loop;
   return init_ast_stmt((ast_stmt_t *) stmt, AST_STMT_KIND_WHILE);
 }
 
