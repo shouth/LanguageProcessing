@@ -334,8 +334,7 @@ struct ast__program_s {
   ast_stmt_t      *stmt;
 };
 
-ast_program_t *new_program(ast_ident_t *name, ast_decl_part_t *decl_part, ast_stmt_t *stmt);
-void           delete_program(ast_program_t *program);
+void delete_program(ast_program_t *program);
 
 /**********     ast     **********/
 
@@ -345,7 +344,6 @@ typedef struct {
   const source_t   *source;
 } ast_t;
 
-ast_t *new_ast(ast_program_t *program, symbol_storage_t *storage, const source_t *source);
-void   delete_ast(ast_t *ast);
+void delete_ast(ast_t *ast);
 
 #endif
