@@ -154,28 +154,28 @@ static ast_ident_t *parse_ident_seq(parser_t *parser)
   return seq;
 }
 
-static ast_lit_t *alloc_lit(ast_lit_kind_t kind, region_t region)
+static ast_lit_t *init_ast_lit(ast_lit_t *lit, ast_lit_kind_t kind, region_t region)
 {
-  ast_lit_t *lit = xmalloc(sizeof(ast_lit_t));
-  lit->kind      = kind;
-  lit->region    = region;
+  lit->kind   = kind;
+  lit->region = region;
   return lit;
 }
 
 static ast_lit_t *parse_number_lit(parser_t *parser)
 {
-  if (expect(parser, TOKEN_NUMBER)) {
-    ast_lit_number_t *lit = (ast_lit_number_t *) alloc_lit(AST_LIT_KIND_NUMBER, parser->current_token.region);
-    lit->symbol           = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
-    lit->value            = parser->current_token.data.number.value;
-    return (ast_lit_t *) lit;
+  ast_lit_number_t *lit = xmalloc(sizeof(ast_lit_t));
+  if (eat(parser, TOKEN_NUMBER)) {
+    lit->symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
+    lit->value  = parser->current_token.data.number.value;
+  } else {
+    unreachable();
   }
-  return NULL;
+  return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_NUMBER, parser->current_token.region);
 }
 
 static ast_lit_t *parse_boolean_lit(parser_t *parser)
 {
-  ast_lit_boolean_t *lit = (ast_lit_boolean_t *) alloc_lit(AST_LIT_KIND_BOOLEAN, parser->current_token.region);
+  ast_lit_boolean_t *lit = xmalloc(sizeof(ast_lit_t));
   if (eat(parser, TOKEN_TRUE)) {
     lit->value = 1;
   } else if (eat(parser, TOKEN_FALSE)) {
@@ -183,19 +183,20 @@ static ast_lit_t *parse_boolean_lit(parser_t *parser)
   } else {
     unreachable();
   }
-  return (ast_lit_t *) lit;
+  return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_BOOLEAN, parser->current_token.region);
 }
 
 static ast_lit_t *parse_string_lit(parser_t *parser)
 {
-  if (expect(parser, TOKEN_STRING)) {
-    ast_lit_string_t   *lit  = (ast_lit_string_t *) alloc_lit(AST_LIT_KIND_STRING, parser->current_token.region);
+  ast_lit_string_t *lit = xmalloc(sizeof(ast_lit_t));
+  if (eat(parser, TOKEN_STRING)) {
     const token_data_t *data = &parser->current_token.data;
     lit->str_len             = data->string.str_len;
     lit->symbol              = symbol_intern(parser->storage, data->string.ptr, data->string.len);
-    return (ast_lit_t *) lit;
+  } else {
+    unreachable();
   }
-  return NULL;
+  return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_STRING, parser->current_token.region);
 }
 
 static int check_lit(parser_t *parser)
