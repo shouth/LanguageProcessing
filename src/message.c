@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "mppl.h"
+#include "message.h"
 
 msg_t *new_msg(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...)
 {

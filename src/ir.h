@@ -161,7 +161,7 @@ void             delete_ir_operand(ir_operand_t *operand);
 
 typedef enum {
   IR_RVALUE_USE,
-  IR_RVALUE_BINARY_OP,
+  IR_RVALUE_EXPR_BINARY_KIND,
   IR_RVALUE_UNARY_OP,
   IR_RVALUE_CAST
 } ir_rvalue_kind_t;
@@ -174,13 +174,13 @@ typedef struct {
       ir_operand_t *operand;
     } use_rvalue;
     struct {
-      ast_binary_op_kind_t kind;
-      ir_operand_t        *lhs;
-      ir_operand_t        *rhs;
+      ast_expr_binary_kind_t kind;
+      ir_operand_t          *lhs;
+      ir_operand_t          *rhs;
     } binary_op_rvalue;
     struct {
-      ast_unary_op_kind_t kind;
-      ir_operand_t       *value;
+      ast_expr_unary_kind_t kind;
+      ir_operand_t         *value;
     } unary_op_rvalue;
     struct {
       const ir_type_t *type;
@@ -190,8 +190,8 @@ typedef struct {
 } ir_rvalue_t;
 
 ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *operand);
-ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs);
-ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *value);
+ir_rvalue_t *new_ir_binary_op_rvalue(ast_expr_binary_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs);
+ir_rvalue_t *new_ir_unary_op_rvalue(ast_expr_unary_kind_t kind, ir_operand_t *value);
 ir_rvalue_t *new_ir_cast_rvalue(const ir_type_t *type, ir_operand_t *value);
 void         delete_ir_rvalue(ir_rvalue_t *rvalue);
 
@@ -209,31 +209,31 @@ typedef enum {
 typedef struct {
   ir_place_t  *lhs;
   ir_rvalue_t *rhs;
-} ir_assign_stmt_t;
+} ir_stmt_assign_t;
 
 typedef struct {
   ir_place_t   *func;
   ir_operand_t *args;
-} ir_call_stmt_t;
+} ir_stmt_call_t;
 
 typedef struct {
   ir_place_t *ref;
-} ir_read_stmt_t;
+} ir_stmt_read_t;
 
 typedef struct {
   ir_operand_t        *value;
   const ir_constant_t *len;
-} ir_write_stmt_t;
+} ir_stmt_write_t;
 
 struct impl_ir_stmt {
   ir_stmt_kind_t kind;
   ir_stmt_t     *next;
 
   union {
-    ir_assign_stmt_t assign_stmt;
-    ir_call_stmt_t   call_stmt;
-    ir_read_stmt_t   read_stmt;
-    ir_write_stmt_t  write_stmt;
+    ir_stmt_assign_t stmt_assign;
+    ir_stmt_call_t   stmt_call;
+    ir_stmt_read_t   stmt_read;
+    ir_stmt_write_t  stmt_write;
   } u;
 };
 

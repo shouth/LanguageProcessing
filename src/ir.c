@@ -580,16 +580,16 @@ ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *operand)
   return ret;
 }
 
-ir_rvalue_t *new_ir_binary_op_rvalue(ast_binary_op_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs)
+ir_rvalue_t *new_ir_binary_op_rvalue(ast_expr_binary_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs)
 {
-  ir_rvalue_t *ret             = new_ir_rvalue(IR_RVALUE_BINARY_OP);
+  ir_rvalue_t *ret             = new_ir_rvalue(IR_RVALUE_EXPR_BINARY_KIND);
   ret->u.binary_op_rvalue.kind = kind;
   ret->u.binary_op_rvalue.lhs  = lhs;
   ret->u.binary_op_rvalue.rhs  = rhs;
   return ret;
 }
 
-ir_rvalue_t *new_ir_unary_op_rvalue(ast_unary_op_kind_t kind, ir_operand_t *value)
+ir_rvalue_t *new_ir_unary_op_rvalue(ast_expr_unary_kind_t kind, ir_operand_t *value)
 {
   ir_rvalue_t *ret             = new_ir_rvalue(IR_RVALUE_UNARY_OP);
   ret->u.unary_op_rvalue.kind  = kind;
@@ -614,7 +614,7 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
   case IR_RVALUE_USE:
     delete_ir_operand(rvalue->u.use_rvalue.operand);
     break;
-  case IR_RVALUE_BINARY_OP:
+  case IR_RVALUE_EXPR_BINARY_KIND:
     delete_ir_operand(rvalue->u.binary_op_rvalue.lhs);
     delete_ir_operand(rvalue->u.binary_op_rvalue.rhs);
     break;
@@ -644,18 +644,18 @@ void delete_ir_stmt(ir_stmt_t *stmt)
 
   switch (stmt->kind) {
   case IR_STMT_ASSIGN:
-    delete_ir_place(stmt->u.assign_stmt.lhs);
-    delete_ir_rvalue(stmt->u.assign_stmt.rhs);
+    delete_ir_place(stmt->u.stmt_assign.lhs);
+    delete_ir_rvalue(stmt->u.stmt_assign.rhs);
     break;
   case IR_STMT_CALL:
-    delete_ir_place(stmt->u.call_stmt.func);
-    delete_ir_operand(stmt->u.call_stmt.args);
+    delete_ir_place(stmt->u.stmt_call.func);
+    delete_ir_operand(stmt->u.stmt_call.args);
     break;
   case IR_STMT_READ:
-    delete_ir_place(stmt->u.read_stmt.ref);
+    delete_ir_place(stmt->u.stmt_read.ref);
     break;
   case IR_STMT_WRITE:
-    delete_ir_operand(stmt->u.write_stmt.value);
+    delete_ir_operand(stmt->u.stmt_write.value);
     break;
   }
   delete_ir_stmt(stmt->next);
@@ -684,23 +684,23 @@ void ir_block_append_block(ir_block_t *block, ir_stmt_t *stmt)
 void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs)
 {
   ir_stmt_t *ret         = new_ir_stmt(IR_STMT_ASSIGN);
-  ret->u.assign_stmt.lhs = lhs;
-  ret->u.assign_stmt.rhs = rhs;
+  ret->u.stmt_assign.lhs = lhs;
+  ret->u.stmt_assign.rhs = rhs;
   ir_block_append_block(block, ret);
 }
 
 void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_operand_t *args)
 {
   ir_stmt_t *ret        = new_ir_stmt(IR_STMT_CALL);
-  ret->u.call_stmt.func = func;
-  ret->u.call_stmt.args = args;
+  ret->u.stmt_call.func = func;
+  ret->u.stmt_call.args = args;
   ir_block_append_block(block, ret);
 }
 
 void ir_block_push_read(ir_block_t *block, ir_place_t *ref)
 {
   ir_stmt_t *ret       = new_ir_stmt(IR_STMT_READ);
-  ret->u.read_stmt.ref = ref;
+  ret->u.stmt_read.ref = ref;
   ir_block_append_block(block, ret);
 }
 
@@ -713,8 +713,8 @@ void ir_block_push_readln(ir_block_t *block)
 void ir_block_push_write(ir_block_t *block, ir_operand_t *value, const ir_constant_t *len)
 {
   ir_stmt_t *ret          = new_ir_stmt(IR_STMT_WRITE);
-  ret->u.write_stmt.value = value;
-  ret->u.write_stmt.len   = len;
+  ret->u.stmt_write.value = value;
+  ret->u.stmt_write.len   = len;
   ir_block_append_block(block, ret);
 }
 

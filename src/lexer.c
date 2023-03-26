@@ -2,7 +2,8 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "mppl.h"
+#include "lexer.h"
+#include "message.h"
 
 typedef union {
   struct {

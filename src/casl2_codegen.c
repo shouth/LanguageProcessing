@@ -234,7 +234,7 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
   }
 }
 
-void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
+void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
 {
   assert(codegen && stmt);
 
@@ -242,38 +242,38 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
   case IR_RVALUE_USE:
     codegen_load(codegen, "GR1", stmt->rhs->u.use_rvalue.operand);
     break;
-  case IR_RVALUE_BINARY_OP:
+  case IR_RVALUE_EXPR_BINARY_KIND:
     codegen_load(codegen, "GR2", stmt->rhs->u.binary_op_rvalue.rhs);
     codegen_load(codegen, "GR1", stmt->rhs->u.binary_op_rvalue.lhs);
     switch (stmt->rhs->u.binary_op_rvalue.kind) {
-    case AST_BINARY_OP_PLUS:
+    case AST_EXPR_BINARY_KIND_PLUS:
       ++codegen->builtin.e_ov;
       codegen_print(codegen, "ADDA", "GR1, GR2");
       codegen_print(codegen, "JOV", "EOV");
       break;
-    case AST_BINARY_OP_MINUS:
+    case AST_EXPR_BINARY_KIND_MINUS:
       ++codegen->builtin.e_ov;
       codegen_print(codegen, "SUBA", "GR1, GR2");
       codegen_print(codegen, "JOV", "EOV");
       break;
-    case AST_BINARY_OP_STAR:
+    case AST_EXPR_BINARY_KIND_STAR:
       ++codegen->builtin.e_ov;
       codegen_print(codegen, "MULA", "GR1, GR2");
       codegen_print(codegen, "JOV", "EOV");
       break;
-    case AST_BINARY_OP_DIV:
+    case AST_EXPR_BINARY_KIND_DIV:
       ++codegen->builtin.e_div0;
       codegen_print(codegen, "LD", "GR2, GR2");
       codegen_print(codegen, "JZE", "EDIV0");
       codegen_print(codegen, "DIVA", "GR1, GR2");
       break;
-    case AST_BINARY_OP_AND:
+    case AST_EXPR_BINARY_KIND_AND:
       codegen_print(codegen, "AND", "GR1, GR2");
       break;
-    case AST_BINARY_OP_OR:
+    case AST_EXPR_BINARY_KIND_OR:
       codegen_print(codegen, "OR", "GR1, GR2");
       break;
-    case AST_BINARY_OP_EQUAL: {
+    case AST_EXPR_BINARY_KIND_EQUAL: {
       const char *jmp = codegen_addr_label(codegen, NULL);
       codegen_print(codegen, "CPA", "GR1, GR2");
       codegen_print(codegen, "LAD", "GR1, 1");
@@ -282,7 +282,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
       codegen_set_label(codegen, jmp);
       break;
     }
-    case AST_BINARY_OP_NOTEQ: {
+    case AST_EXPR_BINARY_KIND_NOTEQ: {
       const char *jmp = codegen_addr_label(codegen, NULL);
       codegen_print(codegen, "SUBA", "GR1, GR2");
       codegen_print(codegen, "JZE", "%s", jmp);
@@ -290,7 +290,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
       codegen_set_label(codegen, jmp);
       break;
     }
-    case AST_BINARY_OP_LE: {
+    case AST_EXPR_BINARY_KIND_LE: {
       const char *jmp = codegen_addr_label(codegen, NULL);
       codegen_print(codegen, "CPA", "GR1, GR2");
       codegen_print(codegen, "LAD", "GR1, 1");
@@ -299,7 +299,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
       codegen_set_label(codegen, jmp);
       break;
     }
-    case AST_BINARY_OP_LEEQ: {
+    case AST_EXPR_BINARY_KIND_LEEQ: {
       const char *jmp = codegen_addr_label(codegen, NULL);
       codegen_print(codegen, "CPA", "GR2, GR1");
       codegen_print(codegen, "XOR", "GR1, GR1");
@@ -308,7 +308,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
       codegen_set_label(codegen, jmp);
       break;
     }
-    case AST_BINARY_OP_GR: {
+    case AST_EXPR_BINARY_KIND_GR: {
       const char *jmp = codegen_addr_label(codegen, NULL);
       codegen_print(codegen, "CPA", "GR2, GR1");
       codegen_print(codegen, "LAD", "GR1, 1");
@@ -317,7 +317,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
       codegen_set_label(codegen, jmp);
       break;
     }
-    case AST_BINARY_OP_GREQ: {
+    case AST_EXPR_BINARY_KIND_GREQ: {
       const char *jmp = codegen_addr_label(codegen, NULL);
       codegen_print(codegen, "CPA", "GR1, GR2");
       codegen_print(codegen, "XOR", "GR1, GR1");
@@ -391,7 +391,7 @@ void codegen_assign_stmt(codegen_t *codegen, const ir_assign_stmt_t *stmt)
   codegen_store(codegen, "GR1", stmt->lhs);
 }
 
-void codegen_call_stmt(codegen_t *codegen, const ir_call_stmt_t *stmt)
+void codegen_stmt_call(codegen_t *codegen, const ir_stmt_call_t *stmt)
 {
   assert(codegen && stmt);
   assert(!stmt->func->place_access);
@@ -512,7 +512,7 @@ void codegen_push_operand_address(codegen_t *codegen, const ir_operand_t *operan
   }
 }
 
-void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
+void codegen_stmt_read(codegen_t *codegen, const ir_stmt_read_t *stmt)
 {
   assert(codegen && stmt);
 
@@ -552,7 +552,7 @@ void codegen_read_stmt(codegen_t *codegen, const ir_read_stmt_t *stmt)
   }
 }
 
-void codegen_write_stmt(codegen_t *codegen, const ir_write_stmt_t *stmt)
+void codegen_stmt_write(codegen_t *codegen, const ir_stmt_write_t *stmt)
 {
   assert(codegen && stmt);
 
@@ -613,20 +613,20 @@ void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
   while (stmt) {
     switch (stmt->kind) {
     case IR_STMT_ASSIGN:
-      codegen_assign_stmt(codegen, &stmt->u.assign_stmt);
+      codegen_stmt_assign(codegen, &stmt->u.stmt_assign);
       break;
     case IR_STMT_CALL:
-      codegen_call_stmt(codegen, &stmt->u.call_stmt);
+      codegen_stmt_call(codegen, &stmt->u.stmt_call);
       break;
     case IR_STMT_READ:
-      codegen_read_stmt(codegen, &stmt->u.read_stmt);
+      codegen_stmt_read(codegen, &stmt->u.stmt_read);
       break;
     case IR_STMT_READLN:
       codegen->builtin.r_ln++;
       codegen_print(codegen, "CALL", "BRLN");
       break;
     case IR_STMT_WRITE:
-      codegen_write_stmt(codegen, &stmt->u.write_stmt);
+      codegen_stmt_write(codegen, &stmt->u.stmt_write);
       break;
     case IR_STMT_WRITELN:
       codegen->builtin.w_char++;

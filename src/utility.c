@@ -203,7 +203,7 @@ void console_set(sgr_t code)
   }
 }
 
-void console_reset()
+void console_reset(void)
 {
   console_set(SGR_RESET);
 }

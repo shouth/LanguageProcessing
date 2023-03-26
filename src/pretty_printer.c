@@ -3,7 +3,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "mppl.h"
+#include "ast.h"
+#include "lexer.h"
 
 typedef struct {
   color_t foreground;
@@ -79,7 +80,7 @@ void pp_colored_parameter(printer_t *printer, const ast_ident_t *ident)
   console_reset();
 }
 
-void pp_colored_string(printer_t *printer, const ast_string_lit_t *lit)
+void pp_colored_string(printer_t *printer, const ast_lit_string_t *lit)
 {
   assert(printer && lit);
   console_24bit(printer->color_scheme->string);
@@ -89,7 +90,7 @@ void pp_colored_string(printer_t *printer, const ast_string_lit_t *lit)
   console_reset();
 }
 
-void pp_colored_number(printer_t *printer, const ast_number_lit_t *lit)
+void pp_colored_number(printer_t *printer, const ast_lit_number_t *lit)
 {
   assert(printer && lit);
   console_24bit(printer->color_scheme->literal);
@@ -109,23 +110,23 @@ void pp_type(printer_t *printer, const ast_type_t *type)
 {
   assert(printer && type);
   switch (type->kind) {
-  case AST_TYPE_INTEGER:
+  case AST_TYPE_KIND_INTEGER:
     pp_colored_keyword(printer, TOKEN_INTEGER);
     break;
-  case AST_TYPE_BOOLEAN:
+  case AST_TYPE_KIND_BOOLEAN:
     pp_colored_keyword(printer, TOKEN_BOOLEAN);
     break;
-  case AST_TYPE_CHAR:
+  case AST_TYPE_KIND_CHAR:
     pp_colored_keyword(printer, TOKEN_CHAR);
     break;
-  case AST_TYPE_ARRAY:
+  case AST_TYPE_KIND_ARRAY:
     pp_colored_keyword(printer, TOKEN_ARRAY);
     printf("[");
-    pp_colored_number(printer, &type->u.array_type.size->u.number_lit);
+    pp_colored_number(printer, &type->type.array.size->lit.number);
     printf("] ");
     pp_colored_keyword(printer, TOKEN_OF);
     printf(" ");
-    pp_type(printer, type->u.array_type.base);
+    pp_type(printer, type->type.array.base);
     break;
   }
 }
@@ -156,21 +157,21 @@ void pp_lit(printer_t *printer, const ast_lit_t *lit)
 {
   assert(printer && lit);
   switch (lit->kind) {
-  case AST_LIT_NUMBER:
-    pp_colored_number(printer, &lit->u.number_lit);
+  case AST_LIT_KIND_NUMBER:
+    pp_colored_number(printer, &lit->lit.number);
     break;
-  case AST_LIT_BOOLEAN:
-    pp_colored_reserved_lit(printer, lit->u.boolean_lit.value ? TOKEN_TRUE : TOKEN_FALSE);
+  case AST_LIT_KIND_BOOLEAN:
+    pp_colored_reserved_lit(printer, lit->lit.boolean.value ? TOKEN_TRUE : TOKEN_FALSE);
     break;
-  case AST_LIT_STRING:
-    pp_colored_string(printer, &lit->u.string_lit);
+  case AST_LIT_KIND_STRING:
+    pp_colored_string(printer, &lit->lit.string);
     break;
   }
 }
 
 void pp_expr(printer_t *printer, const ast_expr_t *expr);
 
-void pp_binary_op_expr(printer_t *printer, const ast_binary_expr_t *expr)
+void pp_binary_op_expr(printer_t *printer, const ast_expr_binary_t *expr)
 {
   assert(printer && expr);
   if (expr->lhs->kind != AST_EXPR_EMPTY) {
@@ -178,40 +179,40 @@ void pp_binary_op_expr(printer_t *printer, const ast_binary_expr_t *expr)
     printf(" ");
   }
   switch (expr->kind) {
-  case AST_BINARY_OP_STAR:
+  case AST_EXPR_BINARY_KIND_STAR:
     pp_colored_operator(printer, TOKEN_STAR);
     break;
-  case AST_BINARY_OP_DIV:
+  case AST_EXPR_BINARY_KIND_DIV:
     pp_colored_operator(printer, TOKEN_DIV);
     break;
-  case AST_BINARY_OP_AND:
+  case AST_EXPR_BINARY_KIND_AND:
     pp_colored_operator(printer, TOKEN_AND);
     break;
-  case AST_BINARY_OP_PLUS:
+  case AST_EXPR_BINARY_KIND_PLUS:
     pp_colored_operator(printer, TOKEN_PLUS);
     break;
-  case AST_BINARY_OP_MINUS:
+  case AST_EXPR_BINARY_KIND_MINUS:
     pp_colored_operator(printer, TOKEN_MINUS);
     break;
-  case AST_BINARY_OP_OR:
+  case AST_EXPR_BINARY_KIND_OR:
     pp_colored_operator(printer, TOKEN_OR);
     break;
-  case AST_BINARY_OP_EQUAL:
+  case AST_EXPR_BINARY_KIND_EQUAL:
     pp_colored_operator(printer, TOKEN_EQUAL);
     break;
-  case AST_BINARY_OP_NOTEQ:
+  case AST_EXPR_BINARY_KIND_NOTEQ:
     pp_colored_operator(printer, TOKEN_NOTEQ);
     break;
-  case AST_BINARY_OP_LE:
+  case AST_EXPR_BINARY_KIND_LE:
     pp_colored_operator(printer, TOKEN_LE);
     break;
-  case AST_BINARY_OP_LEEQ:
+  case AST_EXPR_BINARY_KIND_LEEQ:
     pp_colored_operator(printer, TOKEN_LEEQ);
     break;
-  case AST_BINARY_OP_GR:
+  case AST_EXPR_BINARY_KIND_GR:
     pp_colored_operator(printer, TOKEN_GR);
     break;
-  case AST_BINARY_OP_GREQ:
+  case AST_EXPR_BINARY_KIND_GREQ:
     pp_colored_operator(printer, TOKEN_GREQ);
     break;
   }
@@ -221,7 +222,7 @@ void pp_binary_op_expr(printer_t *printer, const ast_binary_expr_t *expr)
   pp_expr(printer, expr->rhs);
 }
 
-void pp_unary_op_expr(printer_t *printer, const ast_unary_expr_t *expr)
+void pp_unary_op_expr(printer_t *printer, const ast_expr_unary_t *expr)
 {
   switch (expr->kind) {
   case AST_UNARY_OP_NOT:
@@ -232,39 +233,39 @@ void pp_unary_op_expr(printer_t *printer, const ast_unary_expr_t *expr)
   }
 }
 
-void pp_paren_expr(printer_t *printer, const ast_paren_expr_t *expr)
+void pp_paren_expr(printer_t *printer, const ast_expr_paren_t *expr)
 {
   assert(printer && expr);
   printf("(");
-  pp_expr(printer, expr->expr);
+  pp_expr(printer, expr->inner);
   printf(")");
 }
 
-void pp_cast_expr(printer_t *printer, const ast_cast_expr_t *expr)
+void pp_cast_expr(printer_t *printer, const ast_expr_cast_t *expr)
 {
   assert(printer && expr);
   pp_type(printer, expr->type);
   printf("(");
-  pp_expr(printer, expr->expr);
+  pp_expr(printer, expr->cast);
   printf(")");
 }
 
-void pp_decl_ref_expr(printer_t *printer, const ast_decl_ref_expr_t *expr)
+void pp_decl_ref_expr(printer_t *printer, const ast_expr_decl_ref_t *expr)
 {
   assert(printer && expr);
   pp_ident(printer, expr->decl);
 }
 
-void pp_array_subscript_expr(printer_t *printer, const ast_array_subscript_expr_t *expr)
+void pp_array_subscript_expr(printer_t *printer, const ast_expr_array_subscript_t *expr)
 {
   assert(printer && expr);
   pp_ident(printer, expr->decl);
   printf("[");
-  pp_expr(printer, expr->expr);
+  pp_expr(printer, expr->subscript);
   printf("]");
 }
 
-void pp_constant_expr(printer_t *printer, const ast_constant_expr_t *expr)
+void pp_constant_expr(printer_t *printer, const ast_expr_constant_t *expr)
 {
   assert(printer && expr);
   pp_lit(printer, expr->lit);
@@ -277,31 +278,31 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
   cur = expr;
   while (cur) {
     switch (cur->kind) {
-    case AST_EXPR_BINARY_OP:
-      pp_binary_op_expr(printer, &cur->u.binary_expr);
+    case AST_EXPR_BINARY:
+      pp_binary_op_expr(printer, (ast_expr_binary_t *) cur);
       break;
-    case AST_EXPR_UNARY_OP:
-      pp_unary_op_expr(printer, &cur->u.unary_expr);
+    case AST_EXPR_UNARY:
+      pp_unary_op_expr(printer, (ast_expr_unary_t *) cur);
       break;
     case AST_EXPR_PAREN:
-      pp_paren_expr(printer, &cur->u.paren_expr);
+      pp_paren_expr(printer, (ast_expr_paren_t *) cur);
       break;
     case AST_EXPR_CAST:
-      pp_cast_expr(printer, &cur->u.cast_expr);
+      pp_cast_expr(printer, (ast_expr_cast_t *) cur);
       break;
     case AST_EXPR_DECL_REF:
-      pp_decl_ref_expr(printer, &cur->u.decl_ref_expr);
+      pp_decl_ref_expr(printer, (ast_expr_decl_ref_t *) cur);
       break;
     case AST_EXPR_ARRAY_SUBSCRIPT:
-      pp_array_subscript_expr(printer, &cur->u.array_subscript_expr);
+      pp_array_subscript_expr(printer, (ast_expr_array_subscript_t *) cur);
       break;
     case AST_EXPR_CONSTANT:
-      pp_constant_expr(printer, &cur->u.constant_expr);
+      pp_constant_expr(printer, (ast_expr_constant_t *) cur);
       break;
     case AST_EXPR_EMPTY:
       break;
     }
-    if (cur = cur->next) {
+    if ((cur = cur->next)) {
       printf(", ");
     }
   }
@@ -309,7 +310,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
 
 void pp_stmt(printer_t *printer, const ast_stmt_t *stmt);
 
-void pp_assign_stmt(printer_t *printer, const ast_assign_stmt_t *stmt)
+void pp_stmt_assign(printer_t *printer, const ast_stmt_assign_t *stmt)
 {
   pp_expr(printer, stmt->lhs);
   printf(" ");
@@ -334,7 +335,7 @@ void pp_structured_stmt(printer_t *printer, const ast_stmt_t *stmt)
   }
 }
 
-void pp_if_stmt(printer_t *printer, const ast_if_stmt_t *stmt)
+void pp_stmt_if(printer_t *printer, const ast_stmt_if_t *stmt)
 {
   assert(printer && stmt);
   pp_colored_keyword(printer, TOKEN_IF);
@@ -356,7 +357,7 @@ void pp_if_stmt(printer_t *printer, const ast_if_stmt_t *stmt)
   }
 }
 
-void pp_while_stmt(printer_t *printer, const ast_while_stmt_t *stmt)
+void pp_stmt_while(printer_t *printer, const ast_stmt_while_t *stmt)
 {
   assert(printer && stmt);
   pp_colored_keyword(printer, TOKEN_WHILE);
@@ -367,7 +368,7 @@ void pp_while_stmt(printer_t *printer, const ast_while_stmt_t *stmt)
   pp_structured_stmt(printer, stmt->do_stmt);
 }
 
-void pp_call_stmt(printer_t *printer, const ast_call_stmt_t *stmt)
+void pp_stmt_call(printer_t *printer, const ast_stmt_call_t *stmt)
 {
   assert(printer && stmt);
   pp_colored_keyword(printer, TOKEN_CALL);
@@ -380,7 +381,7 @@ void pp_call_stmt(printer_t *printer, const ast_call_stmt_t *stmt)
   }
 }
 
-void pp_read_stmt(printer_t *printer, const ast_read_stmt_t *stmt)
+void pp_stmt_read(printer_t *printer, const ast_stmt_read_t *stmt)
 {
   assert(printer && stmt);
   pp_colored_reserved_function(printer, stmt->newline ? TOKEN_READLN : TOKEN_READ);
@@ -391,7 +392,7 @@ void pp_read_stmt(printer_t *printer, const ast_read_stmt_t *stmt)
   }
 }
 
-void pp_write_stmt(printer_t *printer, const ast_write_stmt_t *stmt)
+void pp_stmt_write(printer_t *printer, const ast_stmt_write_t *stmt)
 {
   assert(printer && stmt);
   pp_colored_reserved_function(printer, stmt->newline ? TOKEN_WRITELN : TOKEN_WRITE);
@@ -404,7 +405,7 @@ void pp_write_stmt(printer_t *printer, const ast_write_stmt_t *stmt)
       }
       pp_expr(printer, cur->expr);
       if (cur->len) {
-        pp_colored_number(printer, &cur->len->u.number_lit);
+        pp_colored_number(printer, (ast_lit_number_t *) cur->len);
       }
       cur = cur->next;
     }
@@ -412,7 +413,7 @@ void pp_write_stmt(printer_t *printer, const ast_write_stmt_t *stmt)
   }
 }
 
-void pp_compound_stmt(printer_t *printer, const ast_compound_stmt_t *stmt)
+void pp_stmt_compound(printer_t *printer, const ast_stmt_compound_t *stmt)
 {
   ast_stmt_t *cur;
   assert(printer && stmt);
@@ -425,7 +426,7 @@ void pp_compound_stmt(printer_t *printer, const ast_compound_stmt_t *stmt)
   while (cur) {
     pp_indent(printer);
     pp_stmt(printer, cur);
-    if (cur = cur->next) {
+    if ((cur = cur->next)) {
       printf(";");
       if (!cur->next && cur->kind == AST_STMT_EMPTY) {
         break;
@@ -444,31 +445,31 @@ void pp_stmt(printer_t *printer, const ast_stmt_t *stmt)
   assert(printer && stmt);
   switch (stmt->kind) {
   case AST_STMT_ASSIGN:
-    pp_assign_stmt(printer, &stmt->u.assign_stmt);
+    pp_stmt_assign(printer, (ast_stmt_assign_t *) stmt);
     break;
   case AST_STMT_IF:
-    pp_if_stmt(printer, &stmt->u.if_stmt);
+    pp_stmt_if(printer, (ast_stmt_if_t *) stmt);
     break;
   case AST_STMT_WHILE:
-    pp_while_stmt(printer, &stmt->u.while_stmt);
+    pp_stmt_while(printer, (ast_stmt_while_t *) stmt);
     break;
   case AST_STMT_BREAK:
     pp_colored_keyword(printer, TOKEN_BREAK);
     break;
   case AST_STMT_CALL:
-    pp_call_stmt(printer, &stmt->u.call_stmt);
+    pp_stmt_call(printer, (ast_stmt_call_t *) stmt);
     break;
   case AST_STMT_RETURN:
     pp_colored_keyword(printer, TOKEN_RETURN);
     break;
   case AST_STMT_READ:
-    pp_read_stmt(printer, &stmt->u.read_stmt);
+    pp_stmt_read(printer, (ast_stmt_read_t *) stmt);
     break;
   case AST_STMT_WRITE:
-    pp_write_stmt(printer, &stmt->u.write_stmt);
+    pp_stmt_write(printer, (ast_stmt_write_t *) stmt);
     break;
   case AST_STMT_COMPOUND:
-    pp_compound_stmt(printer, &stmt->u.compound_stmt);
+    pp_stmt_compound(printer, (ast_stmt_compound_t *) stmt);
     break;
   case AST_STMT_EMPTY:
     break;
@@ -477,9 +478,9 @@ void pp_stmt(printer_t *printer, const ast_stmt_t *stmt)
 
 void pp_decl_part(printer_t *printer, const ast_decl_part_t *decl_part);
 
-void pp_variable_decl_part(printer_t *printer, const ast_variable_decl_part_t *decl_part)
+void pp_variable_decl_part(printer_t *printer, const ast_decl_part_variable_t *decl_part)
 {
-  const ast_variable_decl_t *cur;
+  const ast_decl_variable_t *cur;
   assert(printer && decl_part);
 
   pp_colored_keyword(printer, TOKEN_VAR);
@@ -497,14 +498,14 @@ void pp_variable_decl_part(printer_t *printer, const ast_variable_decl_part_t *d
   printer->indent--;
 }
 
-void pp_procedure_decl_part(printer_t *printer, const ast_procedure_decl_part_t *decl_part)
+void pp_procedure_decl_part(printer_t *printer, const ast_decl_part_procedure_t *decl_part)
 {
   assert(printer && decl_part);
   pp_colored_keyword(printer, TOKEN_PROCEDURE);
   printf(" ");
   pp_colored_procedure(printer, decl_part->name);
   if (decl_part->params) {
-    const ast_param_decl_t *cur = decl_part->params;
+    const ast_decl_param_t *cur = decl_part->params;
     printf("(");
     while (cur) {
       const ast_ident_t *ident = cur->names;
@@ -513,7 +514,7 @@ void pp_procedure_decl_part(printer_t *printer, const ast_procedure_decl_part_t 
       }
       while (ident) {
         pp_colored_parameter(printer, ident);
-        if (ident = ident->next) {
+        if ((ident = ident->next)) {
           printf(", ");
         }
       }
@@ -542,13 +543,13 @@ void pp_decl_part(printer_t *printer, const ast_decl_part_t *decl_part)
     pp_indent(printer);
     switch (cur->kind) {
     case AST_DECL_PART_VARIABLE:
-      pp_variable_decl_part(printer, &cur->u.variable_decl_part);
+      pp_variable_decl_part(printer, (ast_decl_part_variable_t *) cur);
       break;
     case AST_DECL_PART_PROCEDURE:
-      pp_procedure_decl_part(printer, &cur->u.procedure_decl_part);
+      pp_procedure_decl_part(printer, (ast_decl_part_procedure_t *) cur);
       break;
     }
-    if (cur = cur->next) {
+    if ((cur = cur->next)) {
       printf("\n");
     }
   }

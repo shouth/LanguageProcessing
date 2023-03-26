@@ -3,7 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "mppl.h"
+#include "ast.h"
+#include "lexer.h"
+#include "message.h"
+#include "source.h"
+#include "utility.h"
 
 typedef struct {
   const source_t   *src;
@@ -16,7 +20,7 @@ typedef struct {
   int      alive, error;
 } parser_t;
 
-size_t msg_token(char *ptr, token_kind_t type)
+static size_t msg_token(char *ptr, token_kind_t type)
 {
   switch (type) {
   case TOKEN_NAME:
@@ -30,14 +34,14 @@ size_t msg_token(char *ptr, token_kind_t type)
   }
 }
 
-void error_msg(parser_t *parser, msg_t *msg)
+static void error_msg(parser_t *parser, msg_t *msg)
 {
   parser->alive = 0;
   parser->error = 1;
   msg_emit(msg);
 }
 
-void error_expected(parser_t *parser, const char *str)
+static void error_expected(parser_t *parser, const char *str)
 {
   msg_t *msg;
   assert(parser);
@@ -52,7 +56,7 @@ void error_expected(parser_t *parser, const char *str)
   parser->expected_tokens = 0;
 }
 
-void error_unexpected(parser_t *parser)
+static void error_unexpected(parser_t *parser)
 {
   char    buf[256], *ptr;
   uint8_t l, t;
@@ -76,11 +80,9 @@ void error_unexpected(parser_t *parser)
   error_expected(parser, buf);
 }
 
-void bump(parser_t *parser)
+static void bump(parser_t *parser)
 {
-  assert(parser);
-
-  if (!parser->alive) {
+  if (!parser || !parser->alive) {
     return;
   }
   parser->current_token   = parser->next_token;
@@ -101,51 +103,48 @@ void bump(parser_t *parser)
   }
 }
 
-int check(parser_t *parser, token_kind_t type)
+static int check(parser_t *parser, token_kind_t type)
 {
-  assert(parser);
-
-  if (!parser->alive) {
+  if (!parser || !parser->alive) {
     return 0;
   }
   parser->expected_tokens |= (uint64_t) 1 << type;
   return parser->next_token.type == type;
 }
 
-int eat(parser_t *parser, token_kind_t type)
+static int eat(parser_t *parser, token_kind_t type)
 {
-  int ret;
-  assert(parser);
-
-  if (ret = check(parser, type)) {
+  int ret = check(parser, type);
+  if (ret) {
     bump(parser);
   }
   return ret;
 }
 
-int expect(parser_t *parser, token_kind_t type)
+static int expect(parser_t *parser, token_kind_t type)
 {
-  int ret;
-  assert(parser);
-
-  if (!(ret = eat(parser, type))) {
+  int ret = eat(parser, type);
+  if (!ret) {
     error_unexpected(parser);
   }
   return ret;
 }
 
-ast_ident_t *parse_ident(parser_t *parser)
+static ast_ident_t *parse_ident(parser_t *parser)
 {
   assert(parser);
 
   if (expect(parser, TOKEN_NAME)) {
-    const symbol_t *symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
-    return new_ast_ident(symbol, parser->current_token.region);
+    ast_ident_t *ident = xmalloc(sizeof(ast_ident_t));
+    ident->symbol      = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
+    ident->region      = parser->current_token.region;
+    ident->next        = NULL;
+    return ident;
   }
   return NULL;
 }
 
-ast_ident_t *parse_ident_seq(parser_t *parser)
+static ast_ident_t *parse_ident_seq(parser_t *parser)
 {
   ast_ident_t *ret, *ident;
   assert(parser);
@@ -157,48 +156,56 @@ ast_ident_t *parse_ident_seq(parser_t *parser)
   return ret;
 }
 
-ast_lit_t *parse_number_lit(parser_t *parser)
+static ast_lit_t *alloc_lit(ast_lit_kind_t kind, region_t region)
 {
-  assert(parser);
+  ast_lit_t *lit = xmalloc(sizeof(ast_lit_t));
+  lit->kind      = kind;
+  lit->region    = region;
+  return lit;
+}
 
+static ast_lit_t *parse_number_lit(parser_t *parser)
+{
   if (expect(parser, TOKEN_NUMBER)) {
-    const symbol_t *symbol = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
-    return new_ast_number_lit(symbol, parser->current_token.data.number.value, parser->current_token.region);
+    ast_lit_number_t *lit = (ast_lit_number_t *) alloc_lit(AST_LIT_KIND_NUMBER, parser->current_token.region);
+    lit->symbol           = symbol_intern(parser->storage, parser->current_token.ptr, parser->current_token.region.len);
+    lit->value            = parser->current_token.data.number.value;
+    return (ast_lit_t *) lit;
   }
   return NULL;
 }
 
-ast_lit_t *parse_boolean_lit(parser_t *parser)
+static ast_lit_t *parse_boolean_lit(parser_t *parser)
 {
-  assert(parser);
-
+  ast_lit_boolean_t *lit = (ast_lit_boolean_t *) alloc_lit(AST_LIT_KIND_BOOLEAN, parser->current_token.region);
   if (eat(parser, TOKEN_TRUE)) {
-    return new_ast_boolean_lit(1, parser->current_token.region);
+    lit->value = 1;
   } else if (eat(parser, TOKEN_FALSE)) {
-    return new_ast_boolean_lit(0, parser->current_token.region);
+    lit->value = 0;
   } else {
     unreachable();
   }
+  return (ast_lit_t *) lit;
 }
 
-ast_lit_t *parse_string_lit(parser_t *parser)
+static ast_lit_t *parse_string_lit(parser_t *parser)
 {
-  assert(parser);
-
   if (expect(parser, TOKEN_STRING)) {
-    const token_data_t *data   = &parser->current_token.data;
-    const symbol_t     *symbol = symbol_intern(parser->storage, data->string.ptr, data->string.len);
-    return new_ast_string_lit(symbol, data->string.str_len, parser->current_token.region);
+    ast_lit_string_t   *lit  = (ast_lit_string_t *) alloc_lit(AST_LIT_KIND_STRING, parser->current_token.region);
+    const token_data_t *data = &parser->current_token.data;
+    lit->str_len             = data->string.str_len;
+    lit->symbol              = symbol_intern(parser->storage, data->string.ptr, data->string.len);
+    return (ast_lit_t *) lit;
   }
   return NULL;
 }
 
-int check_lit(parser_t *parser)
+static int check_lit(parser_t *parser)
 {
   return check(parser, TOKEN_NUMBER) || check(parser, TOKEN_TRUE) || check(parser, TOKEN_FALSE) || check(parser, TOKEN_STRING);
 }
 
-ast_lit_t *parse_lit(parser_t *parser)
+static ast_lit_t *parse_lit(parser_t *parser)
 {
   assert(parser);
 
@@ -213,34 +220,40 @@ ast_lit_t *parse_lit(parser_t *parser)
   }
 }
 
-int check_std_type(parser_t *parser)
+static int check_std_type(parser_t *parser)
 {
   return check(parser, TOKEN_INTEGER) || check(parser, TOKEN_BOOLEAN) || check(parser, TOKEN_CHAR);
 }
 
-ast_type_t *parse_std_type(parser_t *parser)
+static ast_type_t *alloc_type(ast_type_kind_t kind, region_t region)
 {
-  assert(parser);
+  ast_type_t *type = xmalloc(sizeof(ast_type_t));
+  type->kind       = kind;
+  type->region     = region;
+  return type;
+}
 
+static ast_type_t *parse_std_type(parser_t *parser)
+{
   if (eat(parser, TOKEN_INTEGER)) {
-    return new_ast_std_type(AST_TYPE_INTEGER, parser->current_token.region);
+    return alloc_type(AST_TYPE_KIND_INTEGER, parser->current_token.region);
   } else if (eat(parser, TOKEN_BOOLEAN)) {
-    return new_ast_std_type(AST_TYPE_BOOLEAN, parser->current_token.region);
+    return alloc_type(AST_TYPE_KIND_BOOLEAN, parser->current_token.region);
   } else if (eat(parser, TOKEN_CHAR)) {
-    return new_ast_std_type(AST_TYPE_CHAR, parser->current_token.region);
+    return alloc_type(AST_TYPE_KIND_CHAR, parser->current_token.region);
   } else {
     unreachable();
   }
 }
 
-ast_type_t *parse_array_type(parser_t *parser)
+static ast_type_t *parse_array_type(parser_t *parser)
 {
   ast_lit_t  *size = NULL;
   ast_type_t *base = NULL;
-  size_t      begin, end;
+  region_t    left;
   assert(parser);
 
-  begin = parser->next_token.region.pos;
+  left = parser->next_token.region;
   expect(parser, TOKEN_ARRAY);
   expect(parser, TOKEN_LSQPAREN);
   if (check_lit(parser)) {
@@ -255,16 +268,22 @@ ast_type_t *parse_array_type(parser_t *parser)
   } else {
     error_unexpected(parser);
   }
-  end = parser->current_token.region.pos + parser->current_token.region.len;
-  return new_ast_array_type(base, size, region_from(begin, end - begin));
+
+  {
+    ast_type_array_t *type = (ast_type_array_t *) alloc_type(AST_TYPE_KIND_ARRAY,
+      region_unite(left, parser->current_token.region));
+    type->base             = base;
+    type->size             = size;
+    return (ast_type_t *) type;
+  }
 }
 
-int check_type(parser_t *parser)
+static int check_type(parser_t *parser)
 {
   return check(parser, TOKEN_ARRAY) || check_std_type(parser);
 }
 
-ast_type_t *parse_type(parser_t *parser)
+static ast_type_t *parse_type(parser_t *parser)
 {
   assert(parser);
 
@@ -277,25 +296,44 @@ ast_type_t *parse_type(parser_t *parser)
   }
 }
 
-ast_expr_t *parse_expr(parser_t *parser);
-
-ast_expr_t *parse_ref(parser_t *parser)
+static ast_expr_t *alloc_expr(ast_expr_kind_t kind, region_t region)
 {
-  region_t     begin;
+  ast_expr_t *expr = xmalloc(sizeof(ast_expr_t));
+  expr->kind       = kind;
+  expr->region     = region;
+  expr->next       = NULL;
+  return expr;
+}
+
+static ast_expr_t *parse_expr(parser_t *parser);
+
+static ast_expr_t *parse_ref(parser_t *parser)
+{
+  region_t     left;
   ast_ident_t *ident;
   assert(parser);
 
-  begin = parser->next_token.region;
+  left  = parser->next_token.region;
   ident = parse_ident(parser);
   if (eat(parser, TOKEN_LSQPAREN)) {
-    ast_expr_t *expr = parse_expr(parser);
+    ast_expr_t *subscript = parse_expr(parser);
     expect(parser, TOKEN_RSQPAREN);
-    return new_ast_array_subscript_expr(ident, expr, region_unite(begin, parser->current_token.region));
+    {
+      region_t                    region = region_unite(left, parser->current_token.region);
+      ast_expr_array_subscript_t *expr   = (ast_expr_array_subscript_t *) alloc_expr(AST_EXPR_ARRAY_SUBSCRIPT, region);
+      expr->subscript                    = subscript;
+      expr->decl                         = ident;
+      return (ast_expr_t *) expr;
+    }
+  } else {
+    region_t             region = region_unite(left, parser->current_token.region);
+    ast_expr_decl_ref_t *expr   = (ast_expr_decl_ref_t *) alloc_expr(AST_EXPR_DECL_REF, region);
+    expr->decl                  = ident;
+    return (ast_expr_t *) expr;
   }
-  return new_ast_decl_ref_expr(ident, region_unite(begin, parser->current_token.region));
 }
 
-ast_expr_t *parse_ref_seq(parser_t *parser)
+static ast_expr_t *parse_ref_seq(parser_t *parser)
 {
   ast_expr_t *ret, *ref;
   assert(parser);
@@ -307,7 +345,7 @@ ast_expr_t *parse_ref_seq(parser_t *parser)
   return ret;
 }
 
-ast_expr_t *parse_expr_seq(parser_t *parser)
+static ast_expr_t *parse_expr_seq(parser_t *parser)
 {
   ast_expr_t *ret, *expr;
   assert(parser);
@@ -319,133 +357,174 @@ ast_expr_t *parse_expr_seq(parser_t *parser)
   return ret;
 }
 
-ast_expr_t *parse_factor(parser_t *parser)
+static ast_expr_t *parse_factor(parser_t *parser)
 {
-  region_t begin;
+  region_t left;
   assert(parser);
 
-  begin = parser->next_token.region;
+  left = parser->next_token.region;
   if (check(parser, TOKEN_NAME)) {
     return parse_ref(parser);
   } else if (check_lit(parser)) {
     ast_lit_t *lit = parse_lit(parser);
-    return new_ast_constant_expr(lit, region_unite(begin, parser->current_token.region));
+    {
+      region_t             region = region_unite(left, parser->current_token.region);
+      ast_expr_constant_t *expr   = (ast_expr_constant_t *) alloc_expr(AST_EXPR_CONSTANT, region);
+      expr->lit                   = lit;
+      return (ast_expr_t *) expr;
+    }
   } else if (eat(parser, TOKEN_LPAREN)) {
-    ast_expr_t *expr = parse_expr(parser);
+    ast_expr_t *inner = parse_expr(parser);
     expect(parser, TOKEN_RPAREN);
-    return new_ast_paren_expr(expr, region_unite(begin, parser->current_token.region));
+    {
+      region_t          region = region_unite(left, parser->current_token.region);
+      ast_expr_paren_t *expr   = (ast_expr_paren_t *) alloc_expr(AST_EXPR_PAREN, region);
+      expr->inner              = inner;
+      return (ast_expr_t *) expr;
+    }
   } else if (eat(parser, TOKEN_NOT)) {
-    region_t    op_region = parser->current_token.region;
-    ast_expr_t *expr      = parse_factor(parser);
-    return new_ast_unary_expr(AST_UNARY_OP_NOT, expr,
-      region_unite(begin, parser->current_token.region), op_region);
+    ast_expr_t *subject = parse_factor(parser);
+    {
+      region_t          region = region_unite(left, parser->current_token.region);
+      ast_expr_unary_t *expr   = (ast_expr_unary_t *) alloc_expr(AST_EXPR_UNARY, region);
+      expr->kind               = AST_UNARY_OP_NOT;
+      expr->expr               = subject;
+      expr->op_region          = parser->current_token.region;
+      return (ast_expr_t *) expr;
+    }
   } else if (check_std_type(parser)) {
-    ast_expr_t *expr;
+    ast_expr_t *cast;
     ast_type_t *type = parse_std_type(parser);
     expect(parser, TOKEN_LPAREN);
-    expr = parse_expr(parser);
+    cast = parse_expr(parser);
     expect(parser, TOKEN_RPAREN);
-    return new_ast_cast_expr(type, expr, region_unite(begin, parser->current_token.region));
+    {
+      region_t         region = region_unite(left, parser->current_token.region);
+      ast_expr_cast_t *expr   = (ast_expr_cast_t *) alloc_expr(AST_EXPR_CAST, region);
+      expr->cast              = cast;
+      expr->type              = type;
+      return (ast_expr_t *) expr;
+    }
   }
   error_expected(parser, "expression");
   return NULL;
 }
 
-ast_expr_t *parse_term(parser_t *parser)
+static ast_expr_t *alloc_expr_binary(region_t region, ast_expr_binary_kind_t kind, region_t op_region, ast_expr_t *lhs, ast_expr_t *rhs)
+{
+  ast_expr_binary_t *expr = (ast_expr_binary_t *) alloc_expr(AST_EXPR_BINARY, region);
+  expr->kind              = kind;
+  expr->op_region         = op_region;
+  expr->lhs               = lhs;
+  expr->rhs               = rhs;
+  return (ast_expr_t *) expr;
+}
+
+static ast_expr_t *parse_term(parser_t *parser)
 {
   ast_expr_t *ret;
   assert(parser);
 
   ret = parse_factor(parser);
   while (1) {
-    ast_expr_t          *factor;
-    ast_binary_op_kind_t kind;
-    region_t             op_region;
+    ast_expr_binary_kind_t kind;
     if (eat(parser, TOKEN_STAR)) {
-      kind = AST_BINARY_OP_STAR;
+      kind = AST_EXPR_BINARY_KIND_STAR;
     } else if (eat(parser, TOKEN_DIV)) {
-      kind = AST_BINARY_OP_DIV;
+      kind = AST_EXPR_BINARY_KIND_DIV;
     } else if (eat(parser, TOKEN_AND)) {
-      kind = AST_BINARY_OP_AND;
+      kind = AST_EXPR_BINARY_KIND_AND;
     } else {
       break;
     }
-    op_region = parser->current_token.region;
-    factor    = parse_factor(parser);
-    ret       = new_ast_binary_expr(kind, ret, factor,
-            region_unite(ret->region, factor->region), op_region);
+
+    {
+      region_t    op_region = parser->current_token.region;
+      ast_expr_t *factor    = parse_factor(parser);
+      region_t    region    = region_unite(ret->region, factor->region);
+      ret                   = alloc_expr_binary(region, kind, op_region, ret, factor);
+    }
   }
   return ret;
 }
 
-ast_expr_t *parse_simple_expr(parser_t *parser)
+static ast_expr_t *parse_simple_expr(parser_t *parser)
 {
   ast_expr_t *ret;
   assert(parser);
 
   if (check(parser, TOKEN_PLUS) || check(parser, TOKEN_MINUS)) {
-    size_t pos = parser->next_token.region.pos;
-    ret        = new_ast_empty_expr(region_from(pos, pos));
+    ret = alloc_expr(AST_EXPR_EMPTY, region_from(parser->next_token.region.pos, 0));
   } else {
     ret = parse_term(parser);
   }
   while (1) {
-    ast_expr_t          *term;
-    ast_binary_op_kind_t kind;
-    region_t             op_region;
+    ast_expr_binary_kind_t kind;
     if (eat(parser, TOKEN_PLUS)) {
-      kind = AST_BINARY_OP_PLUS;
+      kind = AST_EXPR_BINARY_KIND_PLUS;
     } else if (eat(parser, TOKEN_MINUS)) {
-      kind = AST_BINARY_OP_MINUS;
+      kind = AST_EXPR_BINARY_KIND_MINUS;
     } else if (eat(parser, TOKEN_OR)) {
-      kind = AST_BINARY_OP_OR;
+      kind = AST_EXPR_BINARY_KIND_OR;
     } else {
       break;
     }
-    op_region = parser->current_token.region;
-    term      = parse_term(parser);
-    ret       = new_ast_binary_expr(kind, ret, term,
-            region_unite(ret->region, term->region), op_region);
+
+    {
+      region_t    op_region = parser->current_token.region;
+      ast_expr_t *term      = parse_term(parser);
+      region_t    region    = region_unite(ret->region, term->region);
+      ret                   = alloc_expr_binary(region, kind, op_region, ret, term);
+    }
   }
   return ret;
 }
 
-ast_expr_t *parse_expr(parser_t *parser)
+static ast_expr_t *parse_expr(parser_t *parser)
 {
   ast_expr_t *ret;
   assert(parser);
 
   ret = parse_simple_expr(parser);
   while (1) {
-    ast_expr_t          *simple;
-    ast_binary_op_kind_t kind;
-    region_t             op_region;
+    ast_expr_binary_kind_t kind;
     if (eat(parser, TOKEN_EQUAL)) {
-      kind = AST_BINARY_OP_EQUAL;
+      kind = AST_EXPR_BINARY_KIND_EQUAL;
     } else if (eat(parser, TOKEN_NOTEQ)) {
-      kind = AST_BINARY_OP_NOTEQ;
+      kind = AST_EXPR_BINARY_KIND_NOTEQ;
     } else if (eat(parser, TOKEN_LE)) {
-      kind = AST_BINARY_OP_LE;
+      kind = AST_EXPR_BINARY_KIND_LE;
     } else if (eat(parser, TOKEN_LEEQ)) {
-      kind = AST_BINARY_OP_LEEQ;
+      kind = AST_EXPR_BINARY_KIND_LEEQ;
     } else if (eat(parser, TOKEN_GR)) {
-      kind = AST_BINARY_OP_GR;
+      kind = AST_EXPR_BINARY_KIND_GR;
     } else if (eat(parser, TOKEN_GREQ)) {
-      kind = AST_BINARY_OP_GREQ;
+      kind = AST_EXPR_BINARY_KIND_GREQ;
     } else {
       break;
     }
-    op_region = parser->current_token.region;
-    simple    = parse_simple_expr(parser);
-    ret       = new_ast_binary_expr(kind, ret, simple,
-            region_unite(ret->region, simple->region), op_region);
+
+    {
+      region_t    op_region = parser->current_token.region;
+      ast_expr_t *simple    = parse_simple_expr(parser);
+      region_t    region    = region_unite(ret->region, simple->region);
+      ret                   = alloc_expr_binary(region, kind, op_region, ret, simple);
+    }
   }
   return ret;
 }
 
-ast_stmt_t *parse_stmt(parser_t *parser);
+static ast_stmt_t *parse_stmt(parser_t *parser);
 
-ast_stmt_t *parse_assign_stmt(parser_t *parser)
+static ast_stmt_t *alloc_stmt(ast_stmt_kind_t kind)
+{
+  ast_stmt_t *stmt = xmalloc(sizeof(ast_stmt_t));
+  stmt->kind       = kind;
+  stmt->next       = NULL;
+  return stmt;
+}
+
+static ast_stmt_t *parse_stmt_assign(parser_t *parser)
 {
   ast_expr_t *lhs, *rhs;
   region_t    op_region;
@@ -455,10 +534,17 @@ ast_stmt_t *parse_assign_stmt(parser_t *parser)
   expect(parser, TOKEN_ASSIGN);
   op_region = parser->current_token.region;
   rhs       = parse_expr(parser);
-  return new_ast_assign_stmt(lhs, rhs, op_region);
+
+  {
+    ast_stmt_assign_t *stmt = (ast_stmt_assign_t *) alloc_stmt(AST_STMT_ASSIGN);
+    stmt->lhs               = lhs;
+    stmt->rhs               = rhs;
+    stmt->op_region         = op_region;
+    return (ast_stmt_t *) stmt;
+  }
 }
 
-ast_stmt_t *parse_if_stmt(parser_t *parser)
+static ast_stmt_t *parse_stmt_if(parser_t *parser)
 {
   ast_expr_t *cond;
   ast_stmt_t *then_stmt, *else_stmt = NULL;
@@ -471,10 +557,17 @@ ast_stmt_t *parse_if_stmt(parser_t *parser)
   if (eat(parser, TOKEN_ELSE)) {
     else_stmt = parse_stmt(parser);
   }
-  return new_ast_if_stmt(cond, then_stmt, else_stmt);
+
+  {
+    ast_stmt_if_t *stmt = (ast_stmt_if_t *) alloc_stmt(AST_STMT_IF);
+    stmt->cond          = cond;
+    stmt->then_stmt     = then_stmt;
+    stmt->else_stmt     = else_stmt;
+    return (ast_stmt_t *) stmt;
+  }
 }
 
-ast_stmt_t *parse_while_stmt(parser_t *parser)
+static ast_stmt_t *parse_stmt_while(parser_t *parser)
 {
   ast_expr_t *cond;
   ast_stmt_t *do_stmt;
@@ -486,10 +579,16 @@ ast_stmt_t *parse_while_stmt(parser_t *parser)
   parser->within_loop++;
   do_stmt = parse_stmt(parser);
   parser->within_loop--;
-  return new_ast_while_stmt(cond, do_stmt);
+
+  {
+    ast_stmt_while_t *stmt = (ast_stmt_while_t *) alloc_stmt(AST_STMT_WHILE);
+    stmt->cond             = cond;
+    stmt->do_stmt          = do_stmt;
+    return (ast_stmt_t *) stmt;
+  }
 }
 
-void maybe_error_break_stmt(parser_t *parser)
+static void maybe_error_break_stmt(parser_t *parser)
 {
   assert(parser);
   if (!parser->alive) {
@@ -503,16 +602,16 @@ void maybe_error_break_stmt(parser_t *parser)
   }
 }
 
-ast_stmt_t *parse_break_stmt(parser_t *parser)
+static ast_stmt_t *parse_break_stmt(parser_t *parser)
 {
   assert(parser);
 
   expect(parser, TOKEN_BREAK);
   maybe_error_break_stmt(parser);
-  return new_ast_break_stmt();
+  return alloc_stmt(AST_STMT_BREAK);
 }
 
-ast_stmt_t *parse_call_stmt(parser_t *parser)
+static ast_stmt_t *parse_stmt_call(parser_t *parser)
 {
   ast_ident_t *name;
   ast_expr_t  *args = NULL;
@@ -524,18 +623,24 @@ ast_stmt_t *parse_call_stmt(parser_t *parser)
     args = parse_expr_seq(parser);
     expect(parser, TOKEN_RPAREN);
   }
-  return new_ast_call_stmt(name, args);
+
+  {
+    ast_stmt_call_t *stmt = (ast_stmt_call_t *) alloc_stmt(AST_STMT_CALL);
+    stmt->name            = name;
+    stmt->args            = args;
+    return (ast_stmt_t *) stmt;
+  }
 }
 
-ast_stmt_t *parse_return_stmt(parser_t *parser)
+static ast_stmt_t *parse_return_stmt(parser_t *parser)
 {
   assert(parser);
 
   expect(parser, TOKEN_RETURN);
-  return new_ast_return_stmt();
+  return alloc_stmt(AST_STMT_RETURN);
 }
 
-ast_stmt_t *parse_read_stmt(parser_t *parser)
+static ast_stmt_t *parse_stmt_read(parser_t *parser)
 {
   int         newline;
   ast_expr_t *args = NULL;
@@ -552,10 +657,16 @@ ast_stmt_t *parse_read_stmt(parser_t *parser)
     args = parse_ref_seq(parser);
     expect(parser, TOKEN_RPAREN);
   }
-  return new_ast_read_stmt(newline, args);
+
+  {
+    ast_stmt_read_t *stmt = (ast_stmt_read_t *) alloc_stmt(AST_STMT_READ);
+    stmt->newline         = newline;
+    stmt->args            = args;
+    return (ast_stmt_t *) stmt;
+  }
 }
 
-void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, size_t spec_pos)
+static void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, size_t spec_pos)
 {
   assert(parser && format);
   if (!parser->alive) {
@@ -563,8 +674,8 @@ void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, si
   }
 
   if (format->expr && format->expr->kind == AST_EXPR_CONSTANT) {
-    ast_lit_t *lit = format->expr->u.constant_expr.lit;
-    if (lit->kind == AST_LIT_STRING && lit->u.string_lit.str_len != 1 && format->len) {
+    ast_lit_t *lit = format->expr->expr.constant.lit;
+    if (lit->kind == AST_LIT_KIND_STRING && lit->lit.string.str_len != 1 && format->len) {
       size_t msg_len = parser->current_token.region.pos + parser->current_token.region.len - spec_pos;
       msg_t *msg     = new_msg(parser->src, region_from(spec_pos, msg_len), MSG_ERROR, "wrong output format");
       msg_add_inline_entry(msg, region_from(spec_pos, msg_len), "field width cannot be used for string");
@@ -573,12 +684,11 @@ void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, si
   }
 }
 
-ast_output_format_t *parse_output_format(parser_t *parser)
+static ast_output_format_t *parse_output_format(parser_t *parser)
 {
-  ast_expr_t          *expr;
-  ast_lit_t           *len = NULL;
-  size_t               spec_pos;
-  ast_output_format_t *ret;
+  ast_expr_t *expr;
+  ast_lit_t  *len      = NULL;
+  size_t      spec_pos = 0;
   assert(parser);
 
   expr = parse_expr(parser);
@@ -586,12 +696,18 @@ ast_output_format_t *parse_output_format(parser_t *parser)
     spec_pos = parser->current_token.region.pos;
     len      = parse_number_lit(parser);
   }
-  ret = new_ast_output_format(expr, len);
-  maybe_error_output_format(parser, ret, spec_pos);
-  return ret;
+
+  {
+    ast_output_format_t *format = xmalloc(sizeof(ast_output_format_t));
+    format->expr                = expr;
+    format->len                 = len;
+    format->next                = NULL;
+    maybe_error_output_format(parser, format, spec_pos);
+    return format;
+  }
 }
 
-ast_output_format_t *parse_output_format_seq(parser_t *parser)
+static ast_output_format_t *parse_output_format_seq(parser_t *parser)
 {
   ast_output_format_t *ret, *expr;
   assert(parser);
@@ -603,7 +719,7 @@ ast_output_format_t *parse_output_format_seq(parser_t *parser)
   return ret;
 }
 
-ast_stmt_t *parse_write_stmt(parser_t *parser)
+static ast_stmt_t *parse_stmt_write(parser_t *parser)
 {
   int                  newline;
   ast_output_format_t *formats = NULL;
@@ -620,10 +736,16 @@ ast_stmt_t *parse_write_stmt(parser_t *parser)
     formats = parse_output_format_seq(parser);
     expect(parser, TOKEN_RPAREN);
   }
-  return new_ast_write_stmt(newline, formats);
+
+  {
+    ast_stmt_write_t *stmt = (ast_stmt_write_t *) alloc_stmt(AST_STMT_WRITE);
+    stmt->newline          = newline;
+    stmt->formats          = formats;
+    return (ast_stmt_t *) stmt;
+  }
 }
 
-ast_stmt_t *parse_compound_stmt(parser_t *parser)
+static ast_stmt_t *parse_stmt_compound(parser_t *parser)
 {
   ast_stmt_t *stmts, *cur;
   assert(parser);
@@ -634,55 +756,57 @@ ast_stmt_t *parse_compound_stmt(parser_t *parser)
     cur = cur->next = parse_stmt(parser);
   }
   expect(parser, TOKEN_END);
-  return new_ast_compound_stmt(stmts);
+
+  {
+    ast_stmt_compound_t *stmt = (ast_stmt_compound_t *) alloc_stmt(AST_STMT_COMPOUND);
+    stmt->stmts               = stmts;
+    return (ast_stmt_t *) stmt;
+  }
 }
 
-ast_stmt_t *parse_stmt(parser_t *parser)
+static ast_stmt_t *parse_stmt(parser_t *parser)
 {
   assert(parser);
 
   if (check(parser, TOKEN_NAME)) {
-    return parse_assign_stmt(parser);
+    return parse_stmt_assign(parser);
   } else if (check(parser, TOKEN_IF)) {
-    return parse_if_stmt(parser);
+    return parse_stmt_if(parser);
   } else if (check(parser, TOKEN_WHILE)) {
-    return parse_while_stmt(parser);
+    return parse_stmt_while(parser);
   } else if (check(parser, TOKEN_BREAK)) {
     return parse_break_stmt(parser);
   } else if (check(parser, TOKEN_CALL)) {
-    return parse_call_stmt(parser);
+    return parse_stmt_call(parser);
   } else if (check(parser, TOKEN_RETURN)) {
     return parse_return_stmt(parser);
   } else if (check(parser, TOKEN_READ) || check(parser, TOKEN_READLN)) {
-    return parse_read_stmt(parser);
+    return parse_stmt_read(parser);
   } else if (check(parser, TOKEN_WRITE) || check(parser, TOKEN_WRITELN)) {
-    return parse_write_stmt(parser);
+    return parse_stmt_write(parser);
   } else if (check(parser, TOKEN_BEGIN)) {
-    return parse_compound_stmt(parser);
+    return parse_stmt_compound(parser);
   }
-  return new_ast_empty_stmt();
+  return alloc_stmt(AST_STMT_EMPTY);
 }
 
-ast_decl_part_t *parse_variable_decl_part(parser_t *parser)
+static ast_decl_part_t *alloc_decl_part(ast_decl_part_kind_t kind)
 {
-  ast_variable_decl_t *decls, *cur;
-  ast_ident_t         *names;
-  ast_type_t          *type = NULL;
+  ast_decl_part_t *decl_part = xmalloc(sizeof(ast_decl_part_t));
+  decl_part->kind            = kind;
+  decl_part->next            = NULL;
+  return decl_part;
+}
+
+static ast_decl_part_t *parse_variable_decl_part(parser_t *parser)
+{
+  ast_decl_variable_t *decls = NULL, **tail = &decls;
   assert(parser);
 
   expect(parser, TOKEN_VAR);
-
-  names = parse_ident_seq(parser);
-  expect(parser, TOKEN_COLON);
-  if (check_type(parser)) {
-    type = parse_type(parser);
-  } else {
-    error_unexpected(parser);
-  }
-  expect(parser, TOKEN_SEMI);
-  decls = cur = new_ast_variable_decl(names, type);
-  while (check(parser, TOKEN_NAME)) {
-    names = parse_ident_seq(parser);
+  do {
+    ast_ident_t *names = parse_ident_seq(parser);
+    ast_type_t  *type  = NULL;
     expect(parser, TOKEN_COLON);
     if (check_type(parser)) {
       type = parse_type(parser);
@@ -690,45 +814,57 @@ ast_decl_part_t *parse_variable_decl_part(parser_t *parser)
       error_unexpected(parser);
     }
     expect(parser, TOKEN_SEMI);
-    cur = cur->next = new_ast_variable_decl(names, type);
+
+    {
+      ast_decl_variable_t *decl = xmalloc(sizeof(ast_decl_variable_t));
+      decl->names               = names;
+      decl->type                = type;
+      decl->next                = NULL;
+      *tail                     = decl;
+      tail                      = &decl->next;
+    }
+  } while (check(parser, TOKEN_NAME));
+
+  {
+    ast_decl_part_variable_t *decl_part = (ast_decl_part_variable_t *) alloc_decl_part(AST_DECL_PART_VARIABLE);
+    decl_part->decls                    = decls;
+    return (ast_decl_part_t *) decl_part;
   }
-  return new_variable_decl_part(decls);
 }
 
-ast_param_decl_t *parse_param_decl(parser_t *parser)
+static ast_decl_param_t *parse_param_decl(parser_t *parser)
 {
-  ast_ident_t      *names;
-  ast_type_t       *type = NULL;
-  ast_param_decl_t *ret, *param;
+  ast_decl_param_t *param = NULL, **tail = &param;
   assert(parser);
 
   expect(parser, TOKEN_LPAREN);
-  names = parse_ident_seq(parser);
-  expect(parser, TOKEN_COLON);
-  if (check_type(parser)) {
-    type = parse_type(parser);
-  } else {
-    error_unexpected(parser);
-  }
-  ret = param = new_ast_param_decl(names, type);
-  while (eat(parser, TOKEN_SEMI)) {
-    names = parse_ident_seq(parser);
+  do {
+    ast_ident_t *names = parse_ident_seq(parser);
+    ast_type_t  *type  = NULL;
     expect(parser, TOKEN_COLON);
     if (check_type(parser)) {
       type = parse_type(parser);
     } else {
       error_unexpected(parser);
     }
-    param = param->next = new_ast_param_decl(names, type);
-  }
+
+    {
+      ast_decl_param_t *decl = xmalloc(sizeof(ast_decl_param_t));
+      decl->names            = names;
+      decl->type             = type;
+      decl->next             = NULL;
+      *tail                  = decl;
+      tail                   = &decl->next;
+    }
+  } while (eat(parser, TOKEN_SEMI));
   expect(parser, TOKEN_RPAREN);
-  return ret;
+  return param;
 }
 
-ast_decl_part_t *parse_procedure_decl_part(parser_t *parser)
+static ast_decl_part_t *parse_procedure_decl_part(parser_t *parser)
 {
   ast_ident_t      *name;
-  ast_param_decl_t *params    = NULL;
+  ast_decl_param_t *params    = NULL;
   ast_decl_part_t  *variables = NULL;
   ast_stmt_t       *stmt;
   assert(parser);
@@ -742,12 +878,20 @@ ast_decl_part_t *parse_procedure_decl_part(parser_t *parser)
   if (check(parser, TOKEN_VAR)) {
     variables = parse_variable_decl_part(parser);
   }
-  stmt = parse_compound_stmt(parser);
+  stmt = parse_stmt_compound(parser);
   expect(parser, TOKEN_SEMI);
-  return new_procedure_decl_part(name, params, variables, stmt);
+
+  {
+    ast_decl_part_procedure_t *decl_part = (ast_decl_part_procedure_t *) alloc_decl_part(AST_DECL_PART_PROCEDURE);
+    decl_part->name                      = name;
+    decl_part->params                    = params;
+    decl_part->variables                 = variables;
+    decl_part->stmt                      = stmt;
+    return (ast_decl_part_t *) decl_part;
+  }
 }
 
-ast_decl_part_t *parse_decl_part(parser_t *parser)
+static ast_decl_part_t *parse_decl_part(parser_t *parser)
 {
   ast_decl_part_t *ret, *cur;
   assert(parser);
@@ -771,7 +915,7 @@ ast_decl_part_t *parse_decl_part(parser_t *parser)
   return ret;
 }
 
-ast_program_t *parse_program(parser_t *parser)
+static ast_program_t *parse_program(parser_t *parser)
 {
   ast_ident_t     *name;
   ast_decl_part_t *decl_part;
@@ -782,10 +926,17 @@ ast_program_t *parse_program(parser_t *parser)
   name = parse_ident(parser);
   expect(parser, TOKEN_SEMI);
   decl_part = parse_decl_part(parser);
-  stmt      = parse_compound_stmt(parser);
+  stmt      = parse_stmt_compound(parser);
   expect(parser, TOKEN_DOT);
   expect(parser, TOKEN_EOF);
-  return new_program(name, decl_part, stmt);
+
+  {
+    ast_program_t *program = xmalloc(sizeof(ast_program_t));
+    program->name          = name;
+    program->decl_part     = decl_part;
+    program->stmt          = stmt;
+    return program;
+  }
 }
 
 ast_t *parse_source(const source_t *src)
@@ -807,5 +958,12 @@ ast_t *parse_source(const source_t *src)
     delete_symbol_storage(parser.storage);
     return NULL;
   }
-  return new_ast(program, parser.storage, src);
+
+  {
+    ast_t *ast   = xmalloc(sizeof(ast_t));
+    ast->program = program;
+    ast->storage = parser.storage;
+    ast->source  = src;
+    return ast;
+  }
 }

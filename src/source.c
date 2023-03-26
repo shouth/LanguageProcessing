@@ -10,6 +10,7 @@
 #include <sys/types.h>
 
 #include "mppl.h"
+#include "source.h"
 
 static size_t source_size(const char *filename)
 {
@@ -287,7 +288,7 @@ static uint64_t symbol_hasher(const void *ptr)
   return fnv1(s->ptr, s->len);
 }
 
-symbol_storage_t *new_symbol_storage()
+symbol_storage_t *new_symbol_storage(void)
 {
   symbol_storage_t *ret = new (symbol_storage_t);
   ret->table            = new_hash_table(symbol_comparator, symbol_hasher);
