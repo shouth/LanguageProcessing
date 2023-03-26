@@ -225,7 +225,7 @@ void pp_binary_op_expr(printer_t *printer, const ast_expr_binary_t *expr)
 void pp_unary_op_expr(printer_t *printer, const ast_expr_unary_t *expr)
 {
   switch (expr->kind) {
-  case AST_UNARY_OP_NOT:
+  case AST_EXPR_UNARY_NOT:
     pp_colored_operator(printer, TOKEN_NOT);
     printf(" ");
     pp_expr(printer, expr->expr);
@@ -321,10 +321,10 @@ void pp_stmt_assign(printer_t *printer, const ast_stmt_assign_t *stmt)
 
 void pp_structured_stmt(printer_t *printer, const ast_stmt_t *stmt)
 {
-  if (stmt->kind != AST_STMT_EMPTY) {
+  if (stmt->kind != AST_STMT_KIND_EMPTY) {
     printf("\n");
   }
-  if (stmt->kind != AST_STMT_COMPOUND) {
+  if (stmt->kind != AST_STMT_KIND_COMPOUND) {
     printer->indent++;
     pp_indent(printer);
     pp_stmt(printer, stmt);
@@ -348,7 +348,7 @@ void pp_stmt_if(printer_t *printer, const ast_stmt_if_t *stmt)
     printf("\n");
     pp_indent(printer);
     pp_colored_keyword(printer, TOKEN_ELSE);
-    if (stmt->else_stmt->kind == AST_STMT_IF) {
+    if (stmt->else_stmt->kind == AST_STMT_KIND_IF) {
       printf(" ");
       pp_stmt(printer, stmt->else_stmt);
     } else {
@@ -420,7 +420,7 @@ void pp_stmt_compound(printer_t *printer, const ast_stmt_compound_t *stmt)
   pp_colored_keyword(printer, TOKEN_BEGIN);
   printer->indent++;
   cur = stmt->stmts;
-  if (cur->next || cur->kind != AST_STMT_EMPTY) {
+  if (cur->next || cur->kind != AST_STMT_KIND_EMPTY) {
     printf("\n");
   }
   while (cur) {
@@ -428,7 +428,7 @@ void pp_stmt_compound(printer_t *printer, const ast_stmt_compound_t *stmt)
     pp_stmt(printer, cur);
     if ((cur = cur->next)) {
       printf(";");
-      if (!cur->next && cur->kind == AST_STMT_EMPTY) {
+      if (!cur->next && cur->kind == AST_STMT_KIND_EMPTY) {
         break;
       }
       printf("\n");
@@ -444,34 +444,34 @@ void pp_stmt(printer_t *printer, const ast_stmt_t *stmt)
 {
   assert(printer && stmt);
   switch (stmt->kind) {
-  case AST_STMT_ASSIGN:
+  case AST_STMT_KIND_ASSIGN:
     pp_stmt_assign(printer, (ast_stmt_assign_t *) stmt);
     break;
-  case AST_STMT_IF:
+  case AST_STMT_KIND_IF:
     pp_stmt_if(printer, (ast_stmt_if_t *) stmt);
     break;
-  case AST_STMT_WHILE:
+  case AST_STMT_KIND_WHILE:
     pp_stmt_while(printer, (ast_stmt_while_t *) stmt);
     break;
-  case AST_STMT_BREAK:
+  case AST_STMT_KIND_BREAK:
     pp_colored_keyword(printer, TOKEN_BREAK);
     break;
-  case AST_STMT_CALL:
+  case AST_STMT_KIND_CALL:
     pp_stmt_call(printer, (ast_stmt_call_t *) stmt);
     break;
-  case AST_STMT_RETURN:
+  case AST_STMT_KIND_RETURN:
     pp_colored_keyword(printer, TOKEN_RETURN);
     break;
-  case AST_STMT_READ:
+  case AST_STMT_KIND_READ:
     pp_stmt_read(printer, (ast_stmt_read_t *) stmt);
     break;
-  case AST_STMT_WRITE:
+  case AST_STMT_KIND_WRITE:
     pp_stmt_write(printer, (ast_stmt_write_t *) stmt);
     break;
-  case AST_STMT_COMPOUND:
+  case AST_STMT_KIND_COMPOUND:
     pp_stmt_compound(printer, (ast_stmt_compound_t *) stmt);
     break;
-  case AST_STMT_EMPTY:
+  case AST_STMT_KIND_EMPTY:
     break;
   }
 }

@@ -108,35 +108,35 @@ void delete_ast_stmt(ast_stmt_t *stmt)
     return;
   }
   switch (stmt->kind) {
-  case AST_STMT_ASSIGN:
+  case AST_STMT_KIND_ASSIGN:
     delete_ast_expr(stmt->stmt.assign.lhs);
     delete_ast_expr(stmt->stmt.assign.rhs);
     break;
-  case AST_STMT_IF:
+  case AST_STMT_KIND_IF:
     delete_ast_expr(stmt->stmt.if_.cond);
     delete_ast_stmt(stmt->stmt.if_.then_stmt);
     delete_ast_stmt(stmt->stmt.if_.else_stmt);
     break;
-  case AST_STMT_WHILE:
+  case AST_STMT_KIND_WHILE:
     delete_ast_expr(stmt->stmt.while_.cond);
     delete_ast_stmt(stmt->stmt.while_.do_stmt);
     break;
-  case AST_STMT_CALL:
+  case AST_STMT_KIND_CALL:
     delete_ast_ident(stmt->stmt.call.name);
     delete_ast_expr(stmt->stmt.call.args);
     break;
-  case AST_STMT_READ:
+  case AST_STMT_KIND_READ:
     delete_ast_expr(stmt->stmt.read.args);
     break;
-  case AST_STMT_WRITE:
+  case AST_STMT_KIND_WRITE:
     delete_ast_output_format(stmt->stmt.write.formats);
     break;
-  case AST_STMT_COMPOUND:
+  case AST_STMT_KIND_COMPOUND:
     delete_ast_stmt(stmt->stmt.compound.stmts);
     break;
-  case AST_STMT_BREAK:
-  case AST_STMT_RETURN:
-  case AST_STMT_EMPTY:
+  case AST_STMT_KIND_BREAK:
+  case AST_STMT_KIND_RETURN:
+  case AST_STMT_KIND_EMPTY:
     /* do nothing */
     break;
   }

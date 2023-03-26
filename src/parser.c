@@ -387,7 +387,7 @@ static ast_expr_t *parse_factor(parser_t *parser)
     {
       region_t          region = region_unite(left, parser->current_token.region);
       ast_expr_unary_t *expr   = (ast_expr_unary_t *) alloc_expr(AST_EXPR_UNARY, region);
-      expr->kind               = AST_UNARY_OP_NOT;
+      expr->kind               = AST_EXPR_UNARY_NOT;
       expr->expr               = subject;
       expr->op_region          = parser->current_token.region;
       return (ast_expr_t *) expr;
@@ -536,7 +536,7 @@ static ast_stmt_t *parse_stmt_assign(parser_t *parser)
   rhs       = parse_expr(parser);
 
   {
-    ast_stmt_assign_t *stmt = (ast_stmt_assign_t *) alloc_stmt(AST_STMT_ASSIGN);
+    ast_stmt_assign_t *stmt = (ast_stmt_assign_t *) alloc_stmt(AST_STMT_KIND_ASSIGN);
     stmt->lhs               = lhs;
     stmt->rhs               = rhs;
     stmt->op_region         = op_region;
@@ -559,7 +559,7 @@ static ast_stmt_t *parse_stmt_if(parser_t *parser)
   }
 
   {
-    ast_stmt_if_t *stmt = (ast_stmt_if_t *) alloc_stmt(AST_STMT_IF);
+    ast_stmt_if_t *stmt = (ast_stmt_if_t *) alloc_stmt(AST_STMT_KIND_IF);
     stmt->cond          = cond;
     stmt->then_stmt     = then_stmt;
     stmt->else_stmt     = else_stmt;
@@ -581,7 +581,7 @@ static ast_stmt_t *parse_stmt_while(parser_t *parser)
   parser->within_loop--;
 
   {
-    ast_stmt_while_t *stmt = (ast_stmt_while_t *) alloc_stmt(AST_STMT_WHILE);
+    ast_stmt_while_t *stmt = (ast_stmt_while_t *) alloc_stmt(AST_STMT_KIND_WHILE);
     stmt->cond             = cond;
     stmt->do_stmt          = do_stmt;
     return (ast_stmt_t *) stmt;
@@ -608,7 +608,7 @@ static ast_stmt_t *parse_break_stmt(parser_t *parser)
 
   expect(parser, TOKEN_BREAK);
   maybe_error_break_stmt(parser);
-  return alloc_stmt(AST_STMT_BREAK);
+  return alloc_stmt(AST_STMT_KIND_BREAK);
 }
 
 static ast_stmt_t *parse_stmt_call(parser_t *parser)
@@ -625,7 +625,7 @@ static ast_stmt_t *parse_stmt_call(parser_t *parser)
   }
 
   {
-    ast_stmt_call_t *stmt = (ast_stmt_call_t *) alloc_stmt(AST_STMT_CALL);
+    ast_stmt_call_t *stmt = (ast_stmt_call_t *) alloc_stmt(AST_STMT_KIND_CALL);
     stmt->name            = name;
     stmt->args            = args;
     return (ast_stmt_t *) stmt;
@@ -637,7 +637,7 @@ static ast_stmt_t *parse_return_stmt(parser_t *parser)
   assert(parser);
 
   expect(parser, TOKEN_RETURN);
-  return alloc_stmt(AST_STMT_RETURN);
+  return alloc_stmt(AST_STMT_KIND_RETURN);
 }
 
 static ast_stmt_t *parse_stmt_read(parser_t *parser)
@@ -659,7 +659,7 @@ static ast_stmt_t *parse_stmt_read(parser_t *parser)
   }
 
   {
-    ast_stmt_read_t *stmt = (ast_stmt_read_t *) alloc_stmt(AST_STMT_READ);
+    ast_stmt_read_t *stmt = (ast_stmt_read_t *) alloc_stmt(AST_STMT_KIND_READ);
     stmt->newline         = newline;
     stmt->args            = args;
     return (ast_stmt_t *) stmt;
@@ -738,7 +738,7 @@ static ast_stmt_t *parse_stmt_write(parser_t *parser)
   }
 
   {
-    ast_stmt_write_t *stmt = (ast_stmt_write_t *) alloc_stmt(AST_STMT_WRITE);
+    ast_stmt_write_t *stmt = (ast_stmt_write_t *) alloc_stmt(AST_STMT_KIND_WRITE);
     stmt->newline          = newline;
     stmt->formats          = formats;
     return (ast_stmt_t *) stmt;
@@ -758,7 +758,7 @@ static ast_stmt_t *parse_stmt_compound(parser_t *parser)
   expect(parser, TOKEN_END);
 
   {
-    ast_stmt_compound_t *stmt = (ast_stmt_compound_t *) alloc_stmt(AST_STMT_COMPOUND);
+    ast_stmt_compound_t *stmt = (ast_stmt_compound_t *) alloc_stmt(AST_STMT_KIND_COMPOUND);
     stmt->stmts               = stmts;
     return (ast_stmt_t *) stmt;
   }
@@ -787,7 +787,7 @@ static ast_stmt_t *parse_stmt(parser_t *parser)
   } else if (check(parser, TOKEN_BEGIN)) {
     return parse_stmt_compound(parser);
   }
-  return alloc_stmt(AST_STMT_EMPTY);
+  return alloc_stmt(AST_STMT_KIND_EMPTY);
 }
 
 static ast_decl_part_t *alloc_decl_part(ast_decl_part_kind_t kind)

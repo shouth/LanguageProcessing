@@ -112,7 +112,7 @@ typedef enum {
 } ast_expr_binary_kind_t;
 
 typedef enum {
-  AST_UNARY_OP_NOT
+  AST_EXPR_UNARY_NOT
 } ast_expr_unary_kind_t;
 
 typedef struct ast__expr_s                 ast_expr_t;
@@ -194,16 +194,16 @@ void delete_ast_output_format(ast_output_format_t *format);
 /**********     ast statement     **********/
 
 typedef enum {
-  AST_STMT_ASSIGN,
-  AST_STMT_IF,
-  AST_STMT_WHILE,
-  AST_STMT_BREAK,
-  AST_STMT_CALL,
-  AST_STMT_RETURN,
-  AST_STMT_READ,
-  AST_STMT_WRITE,
-  AST_STMT_COMPOUND,
-  AST_STMT_EMPTY
+  AST_STMT_KIND_ASSIGN,
+  AST_STMT_KIND_IF,
+  AST_STMT_KIND_WHILE,
+  AST_STMT_KIND_BREAK,
+  AST_STMT_KIND_CALL,
+  AST_STMT_KIND_RETURN,
+  AST_STMT_KIND_READ,
+  AST_STMT_KIND_WRITE,
+  AST_STMT_KIND_COMPOUND,
+  AST_STMT_KIND_EMPTY
 } ast_stmt_kind_t;
 
 typedef struct ast__stmt_s          ast_stmt_t;

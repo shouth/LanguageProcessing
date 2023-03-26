@@ -222,7 +222,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_e
   assert(analyzer && expr);
 
   switch (expr->kind) {
-  case AST_UNARY_OP_NOT: {
+  case AST_EXPR_UNARY_NOT: {
     ir_operand_t     *operand = analyze_expr(analyzer, block, expr->expr);
     const ir_type_t  *type    = ir_operand_type(operand);
     const ir_local_t *result  = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
@@ -352,7 +352,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
 
   while (stmt) {
     switch (stmt->kind) {
-    case AST_STMT_ASSIGN: {
+    case AST_STMT_KIND_ASSIGN: {
       ast_stmt_assign_t *stmt_assign = (ast_stmt_assign_t *) stmt;
       ir_place_t        *lhs         = analyze_lvalue(analyzer, block, stmt_assign->lhs);
       ir_operand_t      *rhs         = analyze_expr(analyzer, block, stmt_assign->rhs);
@@ -373,7 +373,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       ir_block_push_assign(*block, lhs, new_ir_use_rvalue(rhs));
       break;
     }
-    case AST_STMT_IF: {
+    case AST_STMT_KIND_IF: {
       ast_stmt_if_t   *stmt_if = (ast_stmt_if_t *) stmt;
       ir_operand_t    *cond    = analyze_expr(analyzer, block, stmt_if->cond);
       const ir_type_t *type    = ir_operand_type(cond);
@@ -407,7 +407,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       }
       break;
     }
-    case AST_STMT_WHILE: {
+    case AST_STMT_KIND_WHILE: {
       ir_block_t       *cond_begin = ir_block(analyzer->factory);
       ir_block_t       *cond_end   = cond_begin;
       ir_block_t       *join_block = ir_block(analyzer->factory);
@@ -439,12 +439,12 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       }
       break;
     }
-    case AST_STMT_BREAK: {
+    case AST_STMT_KIND_BREAK: {
       ir_block_terminate_goto(*block, analyzer->break_dest);
       *block = ir_block(analyzer->factory);
       break;
     }
-    case AST_STMT_CALL: {
+    case AST_STMT_KIND_CALL: {
       ast_stmt_call_t *stmt_call = (ast_stmt_call_t *) stmt;
       ast_ident_t     *ident     = stmt_call->name;
       ir_item_t       *item      = ir_item_lookup(analyzer->factory->scope, ident->symbol);
@@ -496,12 +496,12 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       }
       break;
     }
-    case AST_STMT_RETURN: {
+    case AST_STMT_KIND_RETURN: {
       ir_block_terminate_return(*block);
       *block = ir_block(analyzer->factory);
       break;
     }
-    case AST_STMT_READ: {
+    case AST_STMT_KIND_READ: {
       ast_stmt_read_t *stmt_read = (ast_stmt_read_t *) stmt;
       ast_expr_t      *args      = stmt_read->args;
 
@@ -537,7 +537,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       }
       break;
     }
-    case AST_STMT_WRITE: {
+    case AST_STMT_KIND_WRITE: {
       ast_stmt_write_t    *stmt_write = (ast_stmt_write_t *) stmt;
       ast_output_format_t *formats    = stmt_write->formats;
 
@@ -573,12 +573,12 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       }
       break;
     }
-    case AST_STMT_COMPOUND: {
+    case AST_STMT_KIND_COMPOUND: {
       ast_stmt_compound_t *stmt_compound = (ast_stmt_compound_t *) stmt;
       analyze_stmt(analyzer, block, stmt_compound->stmts);
       break;
     }
-    case AST_STMT_EMPTY:
+    case AST_STMT_KIND_EMPTY:
       break;
     }
     stmt = stmt->next;
