@@ -405,6 +405,7 @@ void pp_stmt_write(printer_t *printer, const ast_stmt_write_t *stmt)
       }
       pp_expr(printer, cur->expr);
       if (cur->len) {
+        printf(" : ");
         pp_colored_number(printer, (ast_lit_number_t *) cur->len);
       }
       cur = cur->next;
