@@ -174,7 +174,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr);
 void pp_binary_op_expr(printer_t *printer, const ast_expr_binary_t *expr)
 {
   assert(printer && expr);
-  if (expr->lhs->kind != AST_EXPR_EMPTY) {
+  if (expr->lhs->kind != AST_EXPR_KIND_EMPTY) {
     pp_expr(printer, expr->lhs);
     printf(" ");
   }
@@ -216,7 +216,7 @@ void pp_binary_op_expr(printer_t *printer, const ast_expr_binary_t *expr)
     pp_colored_operator(printer, TOKEN_GREQ);
     break;
   }
-  if (expr->lhs->kind != AST_EXPR_EMPTY) {
+  if (expr->lhs->kind != AST_EXPR_KIND_EMPTY) {
     printf(" ");
   }
   pp_expr(printer, expr->rhs);
@@ -278,10 +278,10 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
   cur = expr;
   while (cur) {
     switch (cur->kind) {
-    case AST_EXPR_BINARY:
+    case AST_EXPR_KIND_BINARY:
       pp_binary_op_expr(printer, (ast_expr_binary_t *) cur);
       break;
-    case AST_EXPR_UNARY:
+    case AST_EXPR_KIND_UNARY:
       pp_unary_op_expr(printer, (ast_expr_unary_t *) cur);
       break;
     case AST_EXPR_PAREN:
@@ -290,10 +290,10 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
     case AST_EXPR_CAST:
       pp_cast_expr(printer, (ast_expr_cast_t *) cur);
       break;
-    case AST_EXPR_DECL_REF:
+    case AST_EXPR_KIND_DECL_REF:
       pp_decl_ref_expr(printer, (ast_expr_decl_ref_t *) cur);
       break;
-    case AST_EXPR_ARRAY_SUBSCRIPT:
+    case AST_EXPR_KIND_ARRAY_SUBSCRIPT:
       pp_array_subscript_expr(printer, (ast_expr_array_subscript_t *) cur);
       break;
     case AST_EXPR_CONSTANT:

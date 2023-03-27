@@ -70,13 +70,13 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
   assert(analyzer && expr);
 
   switch (expr->kind) {
-  case AST_EXPR_DECL_REF: {
+  case AST_EXPR_KIND_DECL_REF: {
     ast_ident_t *ident  = expr->expr.decl_ref.decl;
     ir_item_t   *lookup = ir_item_lookup(analyzer->factory->scope, ident->symbol);
     maybe_error_undeclared(analyzer, ident->symbol, ident->region);
     return new_ir_place(ir_local_for(analyzer->factory, lookup, ident->region.pos));
   }
-  case AST_EXPR_ARRAY_SUBSCRIPT: {
+  case AST_EXPR_KIND_ARRAY_SUBSCRIPT: {
     ir_operand_t    *index      = analyze_expr(analyzer, block, expr->expr.array_subscript.subscript);
     ast_ident_t     *ident      = expr->expr.array_subscript.decl;
     ir_item_t       *lookup     = ir_item_lookup(analyzer->factory->scope, ident->symbol);
@@ -124,7 +124,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
 {
   assert(analyzer && expr);
 
-  if (expr->lhs->kind == AST_EXPR_EMPTY) {
+  if (expr->lhs->kind == AST_EXPR_KIND_EMPTY) {
     ir_operand_t    *rhs   = analyze_expr(analyzer, block, expr->rhs);
     const ir_type_t *rtype = ir_operand_type(rhs);
 
@@ -299,14 +299,14 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
   assert(analyzer && block && expr);
 
   switch (expr->kind) {
-  case AST_EXPR_DECL_REF:
-  case AST_EXPR_ARRAY_SUBSCRIPT: {
+  case AST_EXPR_KIND_DECL_REF:
+  case AST_EXPR_KIND_ARRAY_SUBSCRIPT: {
     ir_place_t *place = analyze_lvalue(analyzer, block, expr);
     return new_ir_place_operand(place);
   }
-  case AST_EXPR_BINARY:
+  case AST_EXPR_KIND_BINARY:
     return analyze_binary_expr(analyzer, block, &expr->expr.binary);
-  case AST_EXPR_UNARY:
+  case AST_EXPR_KIND_UNARY:
     return analyze_unary_expr(analyzer, block, &expr->expr.unary);
   case AST_EXPR_PAREN:
     return analyze_expr(analyzer, block, expr->expr.paren.inner);
@@ -506,7 +506,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       ast_expr_t      *args      = stmt_read->args;
 
       while (args) {
-        if (args->kind != AST_EXPR_DECL_REF && args->kind != AST_EXPR_ARRAY_SUBSCRIPT) {
+        if (args->kind != AST_EXPR_KIND_DECL_REF && args->kind != AST_EXPR_KIND_ARRAY_SUBSCRIPT) {
           msg_t *msg = new_msg(analyzer->source, args->region,
             MSG_ERROR, "cannot read value for expression");
           msg_add_inline_entry(msg, args->region,
@@ -544,7 +544,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       while (formats) {
         ast_expr_constant_t *constant = &formats->expr->expr.constant;
         ast_lit_string_t    *string   = &constant->lit->lit.string;
-        if (formats->expr->kind == AST_EXPR_CONSTANT && constant->lit->kind == AST_LIT_KIND_STRING && string->str_len != 1) {
+        if (formats->expr->kind == AST_EXPR_KIND_CONSTANT && constant->lit->kind == AST_LIT_KIND_STRING && string->str_len != 1) {
           const ir_constant_t *constant = ir_string_constant(analyzer->factory, string->symbol, string->str_len);
           ir_block_push_write(*block, new_ir_constant_operand(constant), NULL);
         } else {

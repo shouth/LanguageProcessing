@@ -70,11 +70,11 @@ void delete_ast_expr(ast_expr_t *expr)
     return;
   }
   switch (expr->kind) {
-  case AST_EXPR_BINARY:
+  case AST_EXPR_KIND_BINARY:
     delete_ast_expr(expr->expr.binary.lhs);
     delete_ast_expr(expr->expr.binary.rhs);
     break;
-  case AST_EXPR_UNARY:
+  case AST_EXPR_KIND_UNARY:
     delete_ast_expr(expr->expr.unary.expr);
     break;
   case AST_EXPR_PAREN:
@@ -84,10 +84,10 @@ void delete_ast_expr(ast_expr_t *expr)
     delete_ast_type(expr->expr.cast.type);
     delete_ast_expr(expr->expr.cast.cast);
     break;
-  case AST_EXPR_DECL_REF:
+  case AST_EXPR_KIND_DECL_REF:
     delete_ast_ident(expr->expr.decl_ref.decl);
     break;
-  case AST_EXPR_ARRAY_SUBSCRIPT:
+  case AST_EXPR_KIND_ARRAY_SUBSCRIPT:
     delete_ast_ident(expr->expr.array_subscript.decl);
     delete_ast_expr(expr->expr.array_subscript.subscript);
     break;

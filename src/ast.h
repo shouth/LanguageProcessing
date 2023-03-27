@@ -86,14 +86,14 @@ void delete_ast_type(ast_type_t *type);
 /**********     ast expression     **********/
 
 typedef enum {
-  AST_EXPR_DECL_REF,
-  AST_EXPR_ARRAY_SUBSCRIPT,
-  AST_EXPR_BINARY,
-  AST_EXPR_UNARY,
-  AST_EXPR_PAREN,
-  AST_EXPR_CAST,
-  AST_EXPR_CONSTANT,
-  AST_EXPR_EMPTY
+  AST_EXPR_KIND_DECL_REF,
+  AST_EXPR_KIND_ARRAY_SUBSCRIPT,
+  AST_EXPR_KIND_BINARY,
+  AST_EXPR_KIND_UNARY,
+  AST_EXPR_KIND_PAREN,
+  AST_EXPR_KIND_CAST,
+  AST_EXPR_KIND_CONSTANT,
+  AST_EXPR_KIND_EMPTY
 } ast_expr_kind_t;
 
 typedef enum {
