@@ -262,11 +262,6 @@ static ast_type_t *parse_array_type(parser_t *parser)
     region_unite(left, parser->current_token.region));
 }
 
-static int check_type(parser_t *parser)
-{
-  return check(parser, TOKEN_ARRAY) || check_std_type(parser);
-}
-
 static ast_type_t *parse_type(parser_t *parser)
 {
   if (check(parser, TOKEN_ARRAY)) {

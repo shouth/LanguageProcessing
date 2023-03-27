@@ -155,15 +155,6 @@ void delete_ast_output_format(ast_output_format_t *format)
   free(format);
 }
 
-ast_decl_param_t *new_ast_param_decl(ast_ident_t *names, ast_type_t *type)
-{
-  ast_decl_param_t *ret = new (ast_decl_param_t);
-  ret->names            = names;
-  ret->type             = type;
-  ret->next             = NULL;
-  return ret;
-}
-
 void delete_ast_param_decl(ast_decl_param_t *params)
 {
   if (!params) {
