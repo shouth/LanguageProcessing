@@ -248,8 +248,6 @@ static ast_type_t *parse_array_type(parser_t *parser)
 {
   region_t          left = parser->next_token.region;
   ast_type_array_t *type = xmalloc(sizeof(ast_type_t));
-  type->base             = NULL;
-  type->size             = NULL;
 
   expect(parser, TOKEN_ARRAY);
   expect(parser, TOKEN_LSQPAREN);
@@ -769,7 +767,7 @@ static ast_decl_part_t *parse_decl_part(parser_t *parser)
 {
   ast_decl_part_t *seq = NULL, **tail = &seq;
   while (1) {
-    ast_decl_part_t *decl_part = NULL;
+    ast_decl_part_t *decl_part;
     if (check(parser, TOKEN_VAR)) {
       decl_part = parse_variable_decl_part(parser);
     } else if (check(parser, TOKEN_PROCEDURE)) {
