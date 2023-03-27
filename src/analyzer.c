@@ -308,11 +308,11 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
     return analyze_binary_expr(analyzer, block, &expr->expr.binary);
   case AST_EXPR_KIND_UNARY:
     return analyze_unary_expr(analyzer, block, &expr->expr.unary);
-  case AST_EXPR_PAREN:
+  case AST_EXPR_KIND_PAREN:
     return analyze_expr(analyzer, block, expr->expr.paren.inner);
-  case AST_EXPR_CAST:
+  case AST_EXPR_KIND_CAST:
     return analyze_cast_expr(analyzer, block, &expr->expr.cast);
-  case AST_EXPR_CONSTANT:
+  case AST_EXPR_KIND_CONSTANT:
     return analyze_constant_expr(analyzer, block, &expr->expr.constant);
   }
 

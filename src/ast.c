@@ -77,10 +77,10 @@ void delete_ast_expr(ast_expr_t *expr)
   case AST_EXPR_KIND_UNARY:
     delete_ast_expr(expr->expr.unary.expr);
     break;
-  case AST_EXPR_PAREN:
+  case AST_EXPR_KIND_PAREN:
     delete_ast_expr(expr->expr.paren.inner);
     break;
-  case AST_EXPR_CAST:
+  case AST_EXPR_KIND_CAST:
     delete_ast_type(expr->expr.cast.type);
     delete_ast_expr(expr->expr.cast.cast);
     break;
@@ -91,10 +91,10 @@ void delete_ast_expr(ast_expr_t *expr)
     delete_ast_ident(expr->expr.array_subscript.decl);
     delete_ast_expr(expr->expr.array_subscript.subscript);
     break;
-  case AST_EXPR_CONSTANT:
+  case AST_EXPR_KIND_CONSTANT:
     delete_ast_lit(expr->expr.constant.lit);
     break;
-  case AST_EXPR_EMPTY:
+  case AST_EXPR_KIND_EMPTY:
     /* do nothing */
     break;
   }

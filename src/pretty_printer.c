@@ -284,10 +284,10 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
     case AST_EXPR_KIND_UNARY:
       pp_unary_op_expr(printer, (ast_expr_unary_t *) cur);
       break;
-    case AST_EXPR_PAREN:
+    case AST_EXPR_KIND_PAREN:
       pp_paren_expr(printer, (ast_expr_paren_t *) cur);
       break;
-    case AST_EXPR_CAST:
+    case AST_EXPR_KIND_CAST:
       pp_cast_expr(printer, (ast_expr_cast_t *) cur);
       break;
     case AST_EXPR_KIND_DECL_REF:
@@ -296,10 +296,10 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
     case AST_EXPR_KIND_ARRAY_SUBSCRIPT:
       pp_array_subscript_expr(printer, (ast_expr_array_subscript_t *) cur);
       break;
-    case AST_EXPR_CONSTANT:
+    case AST_EXPR_KIND_CONSTANT:
       pp_constant_expr(printer, (ast_expr_constant_t *) cur);
       break;
-    case AST_EXPR_EMPTY:
+    case AST_EXPR_KIND_EMPTY:
       break;
     }
     if ((cur = cur->next)) {
