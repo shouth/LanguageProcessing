@@ -258,8 +258,7 @@ static ast_type_t *parse_array_type(parser_t *parser)
   expect(parser, TOKEN_OF);
   type->base = parse_std_type(parser);
 
-  return init_ast_type((ast_type_t *) type, AST_TYPE_KIND_ARRAY,
-    region_unite(left, parser->current_token.region));
+  return init_ast_type((ast_type_t *) type, AST_TYPE_KIND_ARRAY, region_unite(left, parser->current_token.region));
 }
 
 static ast_type_t *parse_type(parser_t *parser)
@@ -332,8 +331,7 @@ static ast_expr_t *parse_expr_consant(parser_t *parser)
   region_t             left     = parser->next_token.region;
   ast_expr_constant_t *constant = xmalloc(sizeof(ast_expr_t));
   constant->lit                 = parse_lit(parser);
-  return init_ast_expr((ast_expr_t *) constant, AST_EXPR_CONSTANT,
-    region_unite(left, parser->current_token.region));
+  return init_ast_expr((ast_expr_t *) constant, AST_EXPR_CONSTANT, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_expr_paren(parser_t *parser)
@@ -343,8 +341,7 @@ static ast_expr_t *parse_expr_paren(parser_t *parser)
   expect(parser, TOKEN_LPAREN);
   paren->inner = parse_expr(parser);
   expect(parser, TOKEN_RPAREN);
-  return init_ast_expr((ast_expr_t *) paren, AST_EXPR_PAREN,
-    region_unite(left, parser->current_token.region));
+  return init_ast_expr((ast_expr_t *) paren, AST_EXPR_PAREN, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_expr_unary(parser_t *parser)
@@ -355,8 +352,7 @@ static ast_expr_t *parse_expr_unary(parser_t *parser)
   unary->kind      = AST_EXPR_UNARY_NOT;
   unary->op_region = parser->current_token.region;
   unary->expr      = parse_factor(parser);
-  return init_ast_expr((ast_expr_t *) unary, AST_EXPR_UNARY,
-    region_unite(left, parser->current_token.region));
+  return init_ast_expr((ast_expr_t *) unary, AST_EXPR_UNARY, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_expr_cast(parser_t *parser)
@@ -367,8 +363,7 @@ static ast_expr_t *parse_expr_cast(parser_t *parser)
   expect(parser, TOKEN_LPAREN);
   cast->cast = parse_expr(parser);
   expect(parser, TOKEN_RPAREN);
-  return init_ast_expr((ast_expr_t *) cast, AST_EXPR_CAST,
-    region_unite(left, parser->current_token.region));
+  return init_ast_expr((ast_expr_t *) cast, AST_EXPR_CAST, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_factor(parser_t *parser)
@@ -411,8 +406,7 @@ static ast_expr_t *parse_term(parser_t *parser)
       binary->lhs               = ret;
       binary->rhs               = parse_factor(parser);
 
-      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_BINARY,
-        region_unite(binary->lhs->region, binary->rhs->region));
+      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
     }
   }
   return ret;
@@ -422,8 +416,7 @@ static ast_expr_t *parse_simple_expr(parser_t *parser)
 {
   ast_expr_t *ret;
   if (check(parser, TOKEN_PLUS) || check(parser, TOKEN_MINUS)) {
-    ret = xmalloc(sizeof(ast_expr_t));
-    init_ast_expr(ret, AST_EXPR_EMPTY, region_from(parser->next_token.region.pos, 0));
+    ret = init_ast_expr(xmalloc(sizeof(ast_expr_t)), AST_EXPR_EMPTY, region_from(parser->next_token.region.pos, 0));
   } else {
     ret = parse_term(parser);
   }
@@ -446,8 +439,7 @@ static ast_expr_t *parse_simple_expr(parser_t *parser)
       binary->lhs               = ret;
       binary->rhs               = parse_term(parser);
 
-      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_BINARY,
-        region_unite(binary->lhs->region, binary->rhs->region));
+      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
     }
   }
   return ret;
@@ -481,8 +473,7 @@ static ast_expr_t *parse_expr(parser_t *parser)
       binary->lhs               = ret;
       binary->rhs               = parse_simple_expr(parser);
 
-      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_BINARY,
-        region_unite(binary->lhs->region, binary->rhs->region));
+      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
     }
   }
   return ret;
