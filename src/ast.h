@@ -112,7 +112,7 @@ typedef enum {
 } ast_expr_binary_kind_t;
 
 typedef enum {
-  AST_EXPR_UNARY_NOT
+  AST_EXPR_UNARY_KIND_NOT
 } ast_expr_unary_kind_t;
 
 typedef struct ast__expr_s                 ast_expr_t;

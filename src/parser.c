@@ -349,7 +349,7 @@ static ast_expr_t *parse_expr_unary(parser_t *parser)
   region_t          left  = parser->next_token.region;
   ast_expr_unary_t *unary = xmalloc(sizeof(ast_expr_t));
   expect(parser, TOKEN_NOT);
-  unary->kind      = AST_EXPR_UNARY_NOT;
+  unary->kind      = AST_EXPR_UNARY_KIND_NOT;
   unary->op_region = parser->current_token.region;
   unary->expr      = parse_factor(parser);
   return init_ast_expr((ast_expr_t *) unary, AST_EXPR_KIND_UNARY, region_unite(left, parser->current_token.region));

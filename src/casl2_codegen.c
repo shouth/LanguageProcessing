@@ -332,7 +332,7 @@ void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
     break;
   case IR_RVALUE_UNARY_OP:
     switch (stmt->rhs->u.unary_op_rvalue.kind) {
-    case AST_EXPR_UNARY_NOT:
+    case AST_EXPR_UNARY_KIND_NOT:
       codegen_load(codegen, "GR1", stmt->rhs->u.unary_op_rvalue.value);
       codegen_print(codegen, "XOR", "GR1, BC1");
       break;

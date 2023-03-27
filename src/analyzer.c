@@ -222,7 +222,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_e
   assert(analyzer && expr);
 
   switch (expr->kind) {
-  case AST_EXPR_UNARY_NOT: {
+  case AST_EXPR_UNARY_KIND_NOT: {
     ir_operand_t     *operand = analyze_expr(analyzer, block, expr->expr);
     const ir_type_t  *type    = ir_operand_type(operand);
     const ir_local_t *result  = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
