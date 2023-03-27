@@ -283,20 +283,19 @@ static ast_expr_t *parse_expr(parser_t *parser);
 
 static ast_expr_t *parse_ref(parser_t *parser)
 {
-  ast_expr_t  *expr  = xmalloc(sizeof(ast_expr_t));
   region_t     left  = parser->next_token.region;
   ast_ident_t *ident = parse_ident(parser);
 
   if (eat(parser, TOKEN_LSQPAREN)) {
-    ast_expr_array_subscript_t *array_subscript = (ast_expr_array_subscript_t *) expr;
-    array_subscript->subscript                  = parse_expr(parser);
-    array_subscript->decl                       = ident;
+    ast_expr_array_subscript_t *expr = xmalloc(sizeof(ast_expr_t));
+    expr->subscript                  = parse_expr(parser);
+    expr->decl                       = ident;
     expect(parser, TOKEN_RSQPAREN);
-    return init_ast_expr(expr, AST_EXPR_KIND_ARRAY_SUBSCRIPT, region_unite(left, parser->current_token.region));
+    return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_ARRAY_SUBSCRIPT, region_unite(left, parser->current_token.region));
   } else {
-    ast_expr_decl_ref_t *decl_ref = (ast_expr_decl_ref_t *) expr;
-    decl_ref->decl                = ident;
-    return init_ast_expr(expr, AST_EXPR_KIND_DECL_REF, region_unite(left, parser->current_token.region));
+    ast_expr_decl_ref_t *expr = xmalloc(sizeof(ast_expr_t));
+    expr->decl                = ident;
+    return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_DECL_REF, region_unite(left, parser->current_token.region));
   }
 }
 
@@ -326,42 +325,42 @@ static ast_expr_t *parse_factor(parser_t *parser);
 
 static ast_expr_t *parse_expr_consant(parser_t *parser)
 {
-  region_t             left     = parser->next_token.region;
-  ast_expr_constant_t *constant = xmalloc(sizeof(ast_expr_t));
-  constant->lit                 = parse_lit(parser);
-  return init_ast_expr((ast_expr_t *) constant, AST_EXPR_KIND_CONSTANT, region_unite(left, parser->current_token.region));
+  region_t             left = parser->next_token.region;
+  ast_expr_constant_t *expr = xmalloc(sizeof(ast_expr_t));
+  expr->lit                 = parse_lit(parser);
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_CONSTANT, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_expr_paren(parser_t *parser)
 {
-  region_t          left  = parser->next_token.region;
-  ast_expr_paren_t *paren = xmalloc(sizeof(ast_expr_t));
+  region_t          left = parser->next_token.region;
+  ast_expr_paren_t *expr = xmalloc(sizeof(ast_expr_t));
   expect(parser, TOKEN_LPAREN);
-  paren->inner = parse_expr(parser);
+  expr->inner = parse_expr(parser);
   expect(parser, TOKEN_RPAREN);
-  return init_ast_expr((ast_expr_t *) paren, AST_EXPR_KIND_PAREN, region_unite(left, parser->current_token.region));
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_PAREN, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_expr_unary(parser_t *parser)
 {
-  region_t          left  = parser->next_token.region;
-  ast_expr_unary_t *unary = xmalloc(sizeof(ast_expr_t));
+  region_t          left = parser->next_token.region;
+  ast_expr_unary_t *expr = xmalloc(sizeof(ast_expr_t));
   expect(parser, TOKEN_NOT);
-  unary->kind      = AST_EXPR_UNARY_KIND_NOT;
-  unary->op_region = parser->current_token.region;
-  unary->expr      = parse_factor(parser);
-  return init_ast_expr((ast_expr_t *) unary, AST_EXPR_KIND_UNARY, region_unite(left, parser->current_token.region));
+  expr->kind      = AST_EXPR_UNARY_KIND_NOT;
+  expr->op_region = parser->current_token.region;
+  expr->expr      = parse_factor(parser);
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_UNARY, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_expr_cast(parser_t *parser)
 {
   region_t         left = parser->next_token.region;
-  ast_expr_cast_t *cast = xmalloc(sizeof(ast_expr_t));
-  cast->type            = parse_std_type(parser);
+  ast_expr_cast_t *expr = xmalloc(sizeof(ast_expr_t));
+  expr->type            = parse_std_type(parser);
   expect(parser, TOKEN_LPAREN);
-  cast->cast = parse_expr(parser);
+  expr->cast = parse_expr(parser);
   expect(parser, TOKEN_RPAREN);
-  return init_ast_expr((ast_expr_t *) cast, AST_EXPR_KIND_CAST, region_unite(left, parser->current_token.region));
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_CAST, region_unite(left, parser->current_token.region));
 }
 
 static ast_expr_t *parse_factor(parser_t *parser)
@@ -384,7 +383,7 @@ static ast_expr_t *parse_factor(parser_t *parser)
 
 static ast_expr_t *parse_term(parser_t *parser)
 {
-  ast_expr_t *ret = parse_factor(parser);
+  ast_expr_t *term = parse_factor(parser);
   while (1) {
     ast_expr_binary_kind_t kind;
     if (eat(parser, TOKEN_STAR)) {
@@ -401,22 +400,22 @@ static ast_expr_t *parse_term(parser_t *parser)
       ast_expr_binary_t *binary = xmalloc(sizeof(ast_expr_t));
       binary->kind              = kind;
       binary->op_region         = parser->current_token.region;
-      binary->lhs               = ret;
+      binary->lhs               = term;
       binary->rhs               = parse_factor(parser);
 
-      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_KIND_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
+      term = init_ast_expr((ast_expr_t *) binary, AST_EXPR_KIND_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
     }
   }
-  return ret;
+  return term;
 }
 
 static ast_expr_t *parse_simple_expr(parser_t *parser)
 {
-  ast_expr_t *ret;
+  ast_expr_t *simple;
   if (check(parser, TOKEN_PLUS) || check(parser, TOKEN_MINUS)) {
-    ret = init_ast_expr(xmalloc(sizeof(ast_expr_t)), AST_EXPR_KIND_EMPTY, region_from(parser->next_token.region.pos, 0));
+    simple = init_ast_expr(xmalloc(sizeof(ast_expr_t)), AST_EXPR_KIND_EMPTY, region_from(parser->next_token.region.pos, 0));
   } else {
-    ret = parse_term(parser);
+    simple = parse_term(parser);
   }
   while (1) {
     ast_expr_binary_kind_t kind;
@@ -434,18 +433,18 @@ static ast_expr_t *parse_simple_expr(parser_t *parser)
       ast_expr_binary_t *binary = xmalloc(sizeof(ast_expr_t));
       binary->kind              = kind;
       binary->op_region         = parser->current_token.region;
-      binary->lhs               = ret;
+      binary->lhs               = simple;
       binary->rhs               = parse_term(parser);
 
-      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_KIND_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
+      simple = init_ast_expr((ast_expr_t *) binary, AST_EXPR_KIND_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
     }
   }
-  return ret;
+  return simple;
 }
 
 static ast_expr_t *parse_expr(parser_t *parser)
 {
-  ast_expr_t *ret = parse_simple_expr(parser);
+  ast_expr_t *expr = parse_simple_expr(parser);
   while (1) {
     ast_expr_binary_kind_t kind;
     if (eat(parser, TOKEN_EQUAL)) {
@@ -468,13 +467,13 @@ static ast_expr_t *parse_expr(parser_t *parser)
       ast_expr_binary_t *binary = xmalloc(sizeof(ast_expr_t));
       binary->kind              = kind;
       binary->op_region         = parser->current_token.region;
-      binary->lhs               = ret;
+      binary->lhs               = expr;
       binary->rhs               = parse_simple_expr(parser);
 
-      ret = init_ast_expr((ast_expr_t *) binary, AST_EXPR_KIND_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
+      expr = init_ast_expr((ast_expr_t *) binary, AST_EXPR_KIND_BINARY, region_unite(binary->lhs->region, binary->rhs->region));
     }
   }
-  return ret;
+  return expr;
 }
 
 static ast_stmt_t *parse_stmt(parser_t *parser);
