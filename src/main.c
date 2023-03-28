@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 
   console_ansi(flag_color_print);
 
-  src = new_source(argv[i], output);
+  src = src_new(argv[i], output);
   if (ast = parse_source(src)) {
     if (flag_pretty_print) {
       pretty_print(ast);
@@ -75,6 +75,6 @@ int main(int argc, char **argv)
 
   delete_ir(ir);
   delete_ast(ast);
-  delete_source(src);
+  src_delete(src);
   return 0;
 }

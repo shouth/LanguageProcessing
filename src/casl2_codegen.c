@@ -1028,11 +1028,10 @@ void codegen_ir(codegen_t *codegen, const ir_t *ir)
 
 void codegen_casl2(const ir_t *ir)
 {
-  codegen_t  codegen;
-  ir_item_t *item;
+  codegen_t codegen;
   assert(ir);
 
-  codegen.file           = fopen(ir->source->output_filename, "w");
+  codegen.file           = fopen(ir->source->out_name, "w");
   codegen.addr.cnt       = 0;
   codegen.addr.table     = hash_new(hash_default_comp, hash_default_hasher);
   codegen.label[0]       = '\0';

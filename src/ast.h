@@ -322,7 +322,7 @@ typedef struct ast__s ast_t;
 
 struct ast__s {
   ast_program_t    *program;
-  symbol_storage_t *storage;
+  symbol_context_t *symbols;
   const source_t   *source;
 };
 

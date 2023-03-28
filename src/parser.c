@@ -12,7 +12,7 @@
 static struct {
   const source_t   *src;
   cursol_t          cursol;
-  symbol_storage_t *storage;
+  symbol_context_t *symbols;
 
   token_t  current, next;
   uint64_t expected;
@@ -124,7 +124,7 @@ static ast_ident_t *parse_ident(void)
 {
   if (expect(TOKEN_NAME)) {
     ast_ident_t *ident = xmalloc(sizeof(ast_ident_t));
-    ident->symbol      = symbol_intern(ctx.storage, ctx.current.ptr, ctx.current.region.len);
+    ident->symbol      = symbol_intern(ctx.symbols, ctx.current.ptr, ctx.current.region.len);
     ident->region      = ctx.current.region;
     ident->next        = NULL;
     return ident;
@@ -155,7 +155,7 @@ static ast_lit_t *parse_number_lit(void)
 {
   if (expect(TOKEN_NUMBER)) {
     ast_lit_number_t *lit = xmalloc(sizeof(ast_lit_t));
-    lit->symbol           = symbol_intern(ctx.storage, ctx.current.ptr, ctx.current.region.len);
+    lit->symbol           = symbol_intern(ctx.symbols, ctx.current.ptr, ctx.current.region.len);
     lit->value            = ctx.current.data.number.value;
     return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_NUMBER, ctx.current.region);
   } else {
@@ -181,7 +181,7 @@ static ast_lit_t *parse_string_lit(void)
     ast_lit_string_t   *lit  = xmalloc(sizeof(ast_lit_t));
     const token_data_t *data = &ctx.current.data;
     lit->str_len             = data->string.str_len;
-    lit->symbol              = symbol_intern(ctx.storage, data->string.ptr, data->string.len);
+    lit->symbol              = symbol_intern(ctx.symbols, data->string.ptr, data->string.len);
     return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_STRING, ctx.current.region);
   } else {
     return NULL;
@@ -784,15 +784,15 @@ ast_t *parse_source(const source_t *src)
   assert(src);
 
   ctx.src         = src;
-  ctx.storage     = new_symbol_storage();
+  ctx.symbols     = symbol_context_new();
   ctx.alive       = 1;
   ctx.error       = 0;
   ctx.within_loop = 0;
-  cursol_init(&ctx.cursol, src, src->src_ptr, src->src_size);
+  cursol_init(&ctx.cursol, src, src->src, src->src_len);
   bump();
 
   ast->program = parse_program();
-  ast->storage = ctx.storage;
+  ast->symbols = ctx.symbols;
   ast->source  = src;
   if (ctx.error) {
     delete_ast(ast);

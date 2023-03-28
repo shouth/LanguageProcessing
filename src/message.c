@@ -214,7 +214,7 @@ void msg_emit(msg_t *msg)
     console_set(SGR_FG_BRIGHT_BLUE);
     printf("--> ");
     console_reset();
-    printf("%s:%ld:%ld\n", msg->src->input_filename, loc.line, loc.col);
+    printf("%s:%ld:%ld\n", msg->src->in_name, loc.line, loc.col);
   }
 
   for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
@@ -236,35 +236,35 @@ void msg_emit(msg_t *msg)
     }
 
     if (begin.line == end.line) {
-      size_t offset = msg->src->lines_ptr[begin.line - 1];
+      size_t offset = msg->src->lines[begin.line - 1];
       console_set(SGR_BOLD);
       console_set(SGR_FG_BRIGHT_BLUE);
       printf("%*.ld |   ", left_margin, begin.line);
       console_reset();
       for (i = 0; i < begin.col - 1; i++) {
-        put_sanitized(msg->src->src_ptr[offset + i]);
+        put_sanitized(msg->src->src[offset + i]);
       }
       offset += begin.col - 1;
 
       has_primary = region_compare(cur0->region, msg->region) == 0;
       set_level_color(has_primary ? msg->level : MSG_NOTE);
       for (i = 0; i < cur0->region.len; i++) {
-        put_sanitized(msg->src->src_ptr[offset + i]);
+        put_sanitized(msg->src->src[offset + i]);
       }
       offset += cur0->region.len;
       console_reset();
-      for (; offset < msg->src->lines_ptr[begin.line]; offset++) {
-        put_sanitized(msg->src->src_ptr[offset]);
+      for (; offset < msg->src->lines[begin.line]; offset++) {
+        put_sanitized(msg->src->src[offset]);
       }
       putchar('\n');
 
-      offset = msg->src->lines_ptr[begin.line - 1];
+      offset = msg->src->lines[begin.line - 1];
       console_set(SGR_BOLD);
       console_set(SGR_FG_BRIGHT_BLUE);
       printf("%*.s |   ", left_margin, "");
       console_reset();
       for (i = 0; i < begin.col - 1; i++) {
-        c = msg->src->src_ptr[offset + i];
+        c = msg->src->src[offset + i];
         put_sanitized(c == '\t' ? c : ' ');
       }
       offset += begin.col - 1;
@@ -274,7 +274,7 @@ void msg_emit(msg_t *msg)
       m = has_primary ? '^' : '-';
       for (i = 0; i < cur0->region.len; i++) {
         putchar(m);
-        c = msg->src->src_ptr[offset + i];
+        c = msg->src->src[offset + i];
         if (c == '\t' || !isprint(c)) {
           putchar(m);
           putchar(m);
@@ -284,20 +284,20 @@ void msg_emit(msg_t *msg)
       printf(" %s\n", cur0->msg);
       console_reset();
     } else {
-      size_t offset = msg->src->lines_ptr[begin.line - 1];
+      size_t offset = msg->src->lines[begin.line - 1];
       console_set(SGR_BOLD);
       console_set(SGR_FG_BRIGHT_BLUE);
       printf("%*.ld |   ", left_margin, begin.line);
       console_reset();
       for (i = 0; i < begin.col - 1; i++) {
-        put_sanitized(msg->src->src_ptr[offset + i]);
+        put_sanitized(msg->src->src[offset + i]);
       }
       offset += i;
 
       has_primary = region_compare(cur0->region, msg->region) == 0;
       set_level_color(has_primary ? msg->level : MSG_NOTE);
-      for (; offset < msg->src->lines_ptr[begin.line]; offset++) {
-        put_sanitized(msg->src->src_ptr[offset]);
+      for (; offset < msg->src->lines[begin.line]; offset++) {
+        put_sanitized(msg->src->src[offset]);
       }
       putchar('\n');
 
@@ -306,13 +306,13 @@ void msg_emit(msg_t *msg)
       printf("%*.s | _", left_margin, "");
       console_reset();
 
-      offset = msg->src->lines_ptr[begin.line - 1];
+      offset = msg->src->lines[begin.line - 1];
       m      = has_primary ? '^' : '-';
       console_set(SGR_BOLD);
       set_level_color(has_primary ? msg->level : MSG_NOTE);
       for (i = 0; i < begin.col; i++) {
         putchar('_');
-        c = msg->src->src_ptr[offset + i];
+        c = msg->src->src[offset + i];
         if (c == '\t' || !isprint(c)) {
           putchar('_');
           putchar('_');
@@ -324,7 +324,7 @@ void msg_emit(msg_t *msg)
       putchar('\n');
 
       for (i = begin.line; i < end.line; i++) {
-        size_t line_len = msg->src->lines_ptr[i + 1] - msg->src->lines_ptr[i];
+        size_t line_len = msg->src->lines[i + 1] - msg->src->lines[i];
         console_set(SGR_BOLD);
         set_level_color(has_primary ? msg->level : MSG_NOTE);
         printf("%*.ld | | ", left_margin, i + 1);
@@ -332,15 +332,15 @@ void msg_emit(msg_t *msg)
 
         set_level_color(has_primary ? msg->level : MSG_NOTE);
         j      = 0;
-        offset = msg->src->lines_ptr[i];
+        offset = msg->src->lines[i];
         if (i == end.line - 1) {
           for (; j < end.col - 1; j++) {
-            put_sanitized(msg->src->src_ptr[offset + j]);
+            put_sanitized(msg->src->src[offset + j]);
           }
           console_reset();
         }
         for (; j < line_len; j++) {
-          put_sanitized(msg->src->src_ptr[offset + j]);
+          put_sanitized(msg->src->src[offset + j]);
         }
         console_reset();
         putchar('\n');
@@ -353,11 +353,11 @@ void msg_emit(msg_t *msg)
 
       console_set(SGR_BOLD);
       set_level_color(has_primary ? msg->level : MSG_NOTE);
-      offset = msg->src->lines_ptr[end.line - 1];
+      offset = msg->src->lines[end.line - 1];
       putchar('|');
       for (i = 0; i < end.col - 1; i++) {
         putchar('_');
-        c = msg->src->src_ptr[offset + i];
+        c = msg->src->src[offset + i];
         if (c == '\t' || !isprint(c)) {
           putchar('_');
           putchar('_');

@@ -200,7 +200,7 @@ void delete_ast(ast_t *ast)
 {
   if (ast) {
     delete_program(ast->program);
-    delete_symbol_storage(ast->storage);
+    symbol_context_delete(ast->symbols);
   }
   free(ast);
 }

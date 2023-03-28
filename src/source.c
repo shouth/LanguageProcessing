@@ -13,9 +13,10 @@
 #include "mppl.h"
 #include "source.h"
 
-static size_t source_size(const char *filename)
-{
 #if defined(__unix__) || defined(__APPLE__)
+
+static long src_size(const char *filename)
+{
   struct stat s;
 
   assert(filename);
@@ -23,10 +24,14 @@ static size_t source_size(const char *filename)
     return s.st_size;
   } else {
     fprintf(stderr, "error: failed to get file size; maybe `%s` is not a file\n", filename);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
+}
 
 #elif defined(_WIN32)
+
+static long src_size(const char *filename)
+{
   struct __stat64 s;
 
   assert(filename);
@@ -34,23 +39,26 @@ static size_t source_size(const char *filename)
     return s.st_size;
   } else {
     fprintf(stderr, "error: failed to get file size; maybe `%s` is not a file\n", filename);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
+}
 
 #else
 
 #define BLOCK_SIZE 4096
 
-  char   buf[BLOCK_SIZE];
-  FILE  *file;
-  size_t size;
-  size_t ret = 0;
+static long src_size(const char *filename)
+{
+  char  buf[BLOCK_SIZE];
+  FILE *file;
+  long  size;
+  long  ret = 0;
 
   assert(filename);
   file = fopen(filename, "r");
   if (!file) {
     fprintf(stderr, "error: failed to open `%s`\n", filename);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   setvbuf(file, NULL, _IOFBF, BLOCK_SIZE);
@@ -59,24 +67,24 @@ static size_t source_size(const char *filename)
     if (ferror(file)) {
       fprintf(stderr, "error: failed to get file size\n", filename);
       fclose(file);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     ret += size;
   } while (size == BLOCK_SIZE);
 
   fclose(file);
   return ret;
+}
 
 #undef BLOCK_SIZE
 
 #endif
-}
 
-static const char *source_next_line(const char *str)
+static const char *src_next_line(const char *str)
 {
   assert(str);
   str += strcspn(str, "\r\n");
-  if (str[0] == '\0') {
+  if (*str == '\0') {
     return str;
   }
   if (strncmp("\r\n", str, 2) == 0 || strncmp("\n\r", str, 2) == 0) {
@@ -85,114 +93,106 @@ static const char *source_next_line(const char *str)
   return str + 1;
 }
 
-source_t *new_source(const char *filename, const char *output)
+source_t *src_new(const char *in_name, const char *out_name)
 {
-  source_t *src;
-  size_t    filename_len;
-  assert(filename);
+  source_t *src = xmalloc(sizeof(source_t));
+  long      in_name_len;
+  assert(in_name);
 
-  src                  = new (source_t);
-  src->input_filename  = NULL;
-  src->output_filename = NULL;
-  src->lines_ptr       = NULL;
-  src->src_ptr         = NULL;
+  in_name_len = strlen(in_name);
 
-  filename_len = strlen(filename);
+  src->in_name = xmalloc(sizeof(*src->in_name) * (in_name_len + 1));
+  strcpy(src->in_name, in_name);
 
-  src->input_filename = new_arr(char, filename_len + 1);
-  {
-    strcpy(src->input_filename, filename);
-  }
-
-  src->output_filename = new_arr(char, (output ? strlen(output) : filename_len) + 1);
-  if (output) {
-    strcpy(src->output_filename, output);
+  if (out_name) {
+    src->out_name = xmalloc(sizeof(*src->out_name) * strlen(out_name));
+    strcpy(src->out_name, out_name);
   } else {
-    if (strncmp(filename + filename_len - 4, ".mpl", 4) != 0) {
+    if (strncmp(in_name + in_name_len - 4, ".mpl", 4) != 0) {
       fprintf(stderr, "error: filename needs to end with `.mpl`\n");
-      exit(1);
+      exit(EXIT_FAILURE);
     }
-    sprintf(src->output_filename, "%.*s.csl", (int) (filename_len - 4), filename);
+    src->out_name = xmalloc(sizeof(*src->out_name) * (in_name_len + 1));
+    sprintf(src->out_name, "%.*s.csl", (int) (in_name_len - 4), in_name);
   }
 
-  src->src_size = source_size(filename);
-  src->src_ptr  = new_arr(char, src->src_size + 1);
+  src->src_len = src_size(in_name);
+  src->src     = xmalloc(sizeof(*src->src) * (src->src_len + 1));
   {
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(in_name, "r");
     if (!file) {
-      fprintf(stderr, "error: failed to open `%s`\n", filename);
-      exit(1);
+      fprintf(stderr, "error: failed to open `%s`\n", in_name);
+      exit(EXIT_FAILURE);
     }
-    fread(src->src_ptr, sizeof(*src->src_ptr), src->src_size, file);
+    fread(src->src, sizeof(*src->src), src->src_len, file);
     if (ferror(file)) {
-      fprintf(stderr, "error: failed to read `%s`\n", filename);
-      exit(1);
+      fprintf(stderr, "error: failed to read `%s`\n", in_name);
+      exit(EXIT_FAILURE);
     }
     fclose(file);
-    src->src_ptr[src->src_size] = '\0';
+    src->src[src->src_len] = '\0';
   }
 
-  src->lines_size = 0;
+  src->lines_len = 0;
   {
-    const char *cur;
-    for (cur = src->src_ptr; *cur; cur = source_next_line(cur)) {
-      src->lines_size++;
+    const char *cur = src->src;
+    while (*cur) {
+      src->lines_len++;
+      cur = src_next_line(cur);
     }
   }
 
-  src->lines_ptr = new_arr(size_t, src->lines_size + 1);
+  src->lines = xmalloc(sizeof(*src->lines) * (src->lines_len + 1));
   {
-    const char *cur;
-    size_t      linecnt = 0;
-    for (cur = src->src_ptr; *cur; cur = source_next_line(cur)) {
-      src->lines_ptr[linecnt] = cur - src->src_ptr;
-      linecnt++;
+    const char *cur   = src->src;
+    long       *lines = src->lines;
+    while (*cur) {
+      *lines = cur - src->src;
+      cur    = src_next_line(cur);
+      ++lines;
     }
-    src->lines_ptr[linecnt] = cur - src->src_ptr;
+    *lines = cur - src->src;
   }
 
   return src;
 }
 
-void delete_source(source_t *src)
+void src_delete(source_t *src)
 {
-  free(src->input_filename);
-  free(src->output_filename);
-  free(src->src_ptr);
-  free(src->lines_ptr);
+  free(src->in_name);
+  free(src->out_name);
+  free(src->src);
+  free(src->lines);
   free(src);
 }
 
-location_t location_from(size_t line, size_t col)
+location_t source_location(const source_t *src, long index)
 {
-  location_t ret;
-  ret.line = line;
-  ret.col  = col;
-  return ret;
-}
-
-location_t source_location(const source_t *src, size_t index)
-{
-  size_t left, right, middle;
-  assert(src && src->lines_ptr);
+  long left, right, middle;
+  assert(src && src->lines);
 
   left  = 0;
-  right = src->lines_size;
+  right = src->lines_len;
 
   while (right - left > 1) {
     middle = (right - left) / 2 + left;
 
-    if (src->lines_ptr[middle] <= index) {
+    if (src->lines[middle] <= index) {
       left = middle;
     } else {
       right = middle;
     }
   }
 
-  return location_from(left + 1, index - src->lines_ptr[left] + 1);
+  {
+    location_t loc;
+    loc.line = left + 1;
+    loc.col  = index - src->lines[left] + 1;
+    return loc;
+  }
 }
 
-region_t region_from(size_t pos, size_t len)
+region_t region_from(long pos, long len)
 {
   region_t ret;
   ret.pos = pos;
@@ -219,7 +219,7 @@ int region_compare(region_t a, region_t b)
   return 0;
 }
 
-void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, size_t len)
+void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, long len)
 {
   assert(cur && src);
   cur->init_len = len;
@@ -228,7 +228,7 @@ void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, size_t len
   cur->src      = src;
 }
 
-int cursol_nth(const cursol_t *cur, size_t index)
+int cursol_nth(const cursol_t *cur, long index)
 {
   assert(cur);
   if (index >= cur->len) {
@@ -264,18 +264,17 @@ void cursol_next(cursol_t *cur)
   }
 }
 
-size_t cursol_position(const cursol_t *cur)
+long cursol_position(const cursol_t *cur)
 {
   assert(cur);
   return cur->init_len - cur->len;
 }
 
-int symbol_compare(const void *lhs, const void *rhs)
+int symbol_compare(const symbol_t *lhs, const symbol_t *rhs)
 {
-  const symbol_t *l = lhs, *r = rhs;
-  size_t          len = l->len < r->len ? l->len : r->len;
-  int             ret = strncmp(l->ptr, r->ptr, len);
-  return ret ? ret : l->len - r->len;
+  long diff = lhs->len - rhs->len;
+  int  ret  = strncmp(lhs->ptr, rhs->ptr, diff < 0 ? lhs->len : rhs->len);
+  return ret ? ret : diff;
 }
 
 static int symbol_comparator(const void *lhs, const void *rhs)
@@ -289,35 +288,36 @@ static uint64_t symbol_hasher(const void *ptr)
   return fnv1(s->ptr, s->len);
 }
 
-symbol_storage_t *new_symbol_storage(void)
+symbol_context_t *symbol_context_new(void)
 {
-  symbol_storage_t *ret = new (symbol_storage_t);
+  symbol_context_t *ret = xmalloc(sizeof(symbol_context_t));
   ret->table            = hash_new(symbol_comparator, symbol_hasher);
   return ret;
 }
 
-void delete_symbol_storage(symbol_storage_t *storage)
+void symbol_context_delete(symbol_context_t *context)
 {
-  if (!storage) {
+  if (!context) {
     return;
   }
-  hash_delete(storage->table, free, NULL);
-  free(storage);
+  hash_delete(context->table, free, NULL);
+  free(context);
 }
 
-const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len)
+const symbol_t *symbol_intern(symbol_context_t *context, const char *ptr, long len)
 {
   const hash_entry_t *entry;
-  symbol_t           *ret;
-  assert(storage && ptr);
+  symbol_t            symbol;
+  assert(context && ptr);
 
-  ret      = new (symbol_t);
-  ret->ptr = ptr;
-  ret->len = len;
-  if (entry = hash_find(storage->table, ret)) {
-    free(ret);
+  symbol.ptr = ptr;
+  symbol.len = len;
+  if ((entry = hash_find(context->table, &symbol))) {
     return entry->value;
+  } else {
+    symbol_t *nsymbol = xmalloc(sizeof(symbol_t));
+    *nsymbol          = symbol;
+    hash_insert_unsafe(context->table, nsymbol, nsymbol);
+    return nsymbol;
   }
-  hash_insert_unsafe(storage->table, ret, ret);
-  return ret;
 }
