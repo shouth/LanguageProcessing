@@ -43,69 +43,57 @@ static void error_msg(parser_t *parser, msg_t *msg)
 
 static void error_expected(parser_t *parser, const char *str)
 {
-  msg_t *msg;
-  assert(parser);
-
-  if (!parser->alive) {
-    return;
+  if (parser->alive) {
+    token_t *token = &parser->next_token;
+    msg_t   *msg   = new_msg(parser->src, token->region, MSG_ERROR,
+          "expected %s, got `%.*s`", str, (int) token->region.len, token->ptr);
+    error_msg(parser, msg);
+    parser->expected_tokens = 0;
   }
-
-  msg = new_msg(parser->src, parser->next_token.region,
-    MSG_ERROR, "expected %s, got `%.*s`", str, (int) parser->next_token.region.len, parser->next_token.ptr);
-  error_msg(parser, msg);
-  parser->expected_tokens = 0;
 }
 
 static void error_unexpected(parser_t *parser)
 {
-  char    buf[256], *ptr;
-  uint8_t l, t;
-
-  assert(parser);
-  if (!parser->alive) {
-    return;
-  }
   assert(parser->expected_tokens);
-
-  l   = leading0(parser->expected_tokens);
-  ptr = buf;
-  while (parser->expected_tokens) {
-    t = trailing0(parser->expected_tokens);
-    if (ptr != buf) {
-      ptr += sprintf(ptr, t != l ? ", " : " or ");
+  if (parser->alive) {
+    char buf[1024], *ptr = buf;
+    int  last = leading0(parser->expected_tokens);
+    while (parser->expected_tokens) {
+      int current = trailing0(parser->expected_tokens);
+      if (ptr != buf) {
+        ptr += sprintf(ptr, current != last ? ", " : " or ");
+      }
+      ptr += msg_token(ptr, current);
+      parser->expected_tokens ^= (uint64_t) 1 << current;
     }
-    ptr += msg_token(ptr, t);
-    parser->expected_tokens ^= (uint64_t) 1 << t;
+    error_expected(parser, buf);
   }
-  error_expected(parser, buf);
 }
 
 static void bump(parser_t *parser)
 {
-  if (!parser || !parser->alive) {
-    return;
-  }
-  parser->current_token   = parser->next_token;
-  parser->expected_tokens = 0;
-  while (1) {
-    lex_token(&parser->cursol, &parser->next_token);
-    switch (parser->next_token.type) {
-    case TOKEN_WHITESPACE:
-    case TOKEN_BRACES_COMMENT:
-    case TOKEN_CSTYLE_COMMENT:
-      continue;
-    case TOKEN_UNKNOWN:
-    case TOKEN_ERROR:
-      exit(1);
-    default:
-      return;
+  if (parser->alive) {
+    parser->current_token   = parser->next_token;
+    parser->expected_tokens = 0;
+    while (1) {
+      lex_token(&parser->cursol, &parser->next_token);
+      switch (parser->next_token.type) {
+      case TOKEN_WHITESPACE:
+      case TOKEN_BRACES_COMMENT:
+      case TOKEN_CSTYLE_COMMENT:
+        continue;
+      case TOKEN_UNKNOWN:
+      case TOKEN_ERROR:
+        exit(1);
+      default:
+        return;
+      }
     }
   }
 }
 
 static int check(parser_t *parser, token_kind_t type)
 {
-  assert(parser);
   if (!parser->alive) {
     return 0;
   }
@@ -527,15 +515,12 @@ static ast_stmt_t *parse_stmt_while(parser_t *parser)
 
 static void maybe_error_break_stmt(parser_t *parser)
 {
-  assert(parser);
-  if (!parser->alive) {
-    return;
-  }
-
-  if (!parser->within_loop) {
-    msg_t *msg = new_msg(parser->src, parser->current_token.region,
-      MSG_ERROR, "break statement not within loop");
-    error_msg(parser, msg);
+  if (parser->alive) {
+    if (!parser->within_loop) {
+      msg_t *msg = new_msg(parser->src, parser->current_token.region,
+        MSG_ERROR, "break statement not within loop");
+      error_msg(parser, msg);
+    }
   }
 }
 
@@ -589,19 +574,17 @@ static ast_stmt_t *parse_stmt_read(parser_t *parser)
 
 static void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, region_t colon)
 {
-  if (!parser->alive) {
-    return;
-  }
-
-  if (format->expr->kind == AST_EXPR_KIND_CONSTANT) {
-    ast_expr_constant_t *expr = (ast_expr_constant_t *) format->expr;
-    if (expr->lit->kind == AST_LIT_KIND_STRING) {
-      ast_lit_string_t *lit = (ast_lit_string_t *) expr->lit;
-      if (lit->str_len != 1) {
-        region_t region = region_unite(colon, format->len->region);
-        msg_t   *msg    = new_msg(parser->src, region, MSG_ERROR, "wrong output format");
-        msg_add_inline_entry(msg, region, "field width cannot be used for string");
-        error_msg(parser, msg);
+  if (parser->alive) {
+    if (format->expr->kind == AST_EXPR_KIND_CONSTANT) {
+      ast_expr_constant_t *expr = (ast_expr_constant_t *) format->expr;
+      if (expr->lit->kind == AST_LIT_KIND_STRING) {
+        ast_lit_string_t *lit = (ast_lit_string_t *) expr->lit;
+        if (lit->str_len != 1) {
+          region_t region = region_unite(colon, format->len->region);
+          msg_t   *msg    = new_msg(parser->src, region, MSG_ERROR, "wrong output format");
+          msg_add_inline_entry(msg, region, "field width cannot be used for string");
+          error_msg(parser, msg);
+        }
       }
     }
   }
