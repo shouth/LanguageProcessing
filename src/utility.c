@@ -10,7 +10,7 @@ void *xmalloc(long size)
   void *ret = malloc(size);
   if (ret == NULL) {
     fprintf(stderr, "memory allocation failed!");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
   return ret;
 }

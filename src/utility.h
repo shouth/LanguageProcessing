@@ -21,7 +21,7 @@ int trailing0(uint64_t n);
 int leading0(uint64_t n);
 
 #define unreachable() \
-  (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), exit(1))
+  (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), exit(EXIT_FAILURE))
 
 typedef uintptr_t            hash_hop_t;
 typedef int                  hash_comp_t(const void *, const void *);

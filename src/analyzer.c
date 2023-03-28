@@ -20,7 +20,7 @@ void maybe_error_conflict(analyzer_t *analyzer, const symbol_t *symbol, region_t
     msg_add_inline_entry(msg, item->name_region, "first used here");
     msg_add_inline_entry(msg, region, "second used here");
     msg_emit(msg);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -30,7 +30,7 @@ void maybe_error_undeclared(analyzer_t *analyzer, const symbol_t *symbol, region
     msg_t *msg = new_msg(analyzer->source, region,
       MSG_ERROR, "`%.*s` is not declared", (int) symbol->len, symbol->ptr);
     msg_emit(msg);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -54,7 +54,7 @@ const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
       msg_t *msg = new_msg(analyzer->source, type->type.array.size->region,
         MSG_ERROR, "size of array needs to be greater than 0");
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     return ir_type_array(analyzer->factory, base_type_ref, size);
   }
@@ -88,7 +88,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
       msg_t          *msg    = new_msg(analyzer->source, ident->region,
                     MSG_ERROR, "`%.*s` is not an array", (int) symbol->len, symbol->ptr);
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     if (!ir_type_is_kind(index_type, IR_TYPE_INTEGER)) {
       region_t region = expr->expr.array_subscript.subscript->region;
@@ -96,7 +96,7 @@ ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
              MSG_ERROR, "arrays cannot be indexed by `%s`", ir_type_str(index_type));
       msg_add_inline_entry(msg, region, "array indices are of type integer");
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     return new_ir_index_place(ir_local_for(analyzer->factory, lookup, ident->region.pos), index);
   }
@@ -132,7 +132,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
       msg_t *msg = new_msg(analyzer->source, expr->op_region,
         MSG_ERROR, "`%s` cannot be prefixed by `%s`", ir_type_str(rtype), ast_binop_str(expr->kind));
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
 
     switch (expr->kind) {
@@ -164,7 +164,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
       ir_block_push_assign(*block, new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
       if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
         error_invalid_binary_expr(analyzer, expr, ltype, rtype, "the same standard type");
-        exit(1);
+        exit(EXIT_FAILURE);
       }
       return new_ir_place_operand(new_ir_place(result));
     }
@@ -178,7 +178,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
       ir_block_push_assign(*block, new_ir_place(result), new_ir_binary_op_rvalue(expr->kind, lhs, rhs));
       if (!ir_type_is_kind(ltype, IR_TYPE_INTEGER) || !ir_type_is_kind(rtype, IR_TYPE_INTEGER)) {
         error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type integer");
-        exit(1);
+        exit(EXIT_FAILURE);
       }
       return new_ir_place_operand(new_ir_place(result));
     }
@@ -192,7 +192,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
       const ir_local_t *result       = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
       if (!ir_type_is_kind(ltype, IR_TYPE_BOOLEAN) || !ir_type_is_kind(rtype, IR_TYPE_BOOLEAN)) {
         error_invalid_binary_expr(analyzer, expr, ltype, rtype, "type boolean");
-        exit(1);
+        exit(EXIT_FAILURE);
       }
       switch (expr->kind) {
       case AST_EXPR_BINARY_KIND_OR:
@@ -233,7 +233,7 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_e
       msg_add_inline_entry(msg, expr->op_region, "operator `not` takes one operand of type boolean");
       msg_add_inline_entry(msg, expr->expr->region, "%s", ir_type_str(type));
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     return new_ir_place_operand(new_ir_place(result));
   }
@@ -257,14 +257,14 @@ ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t **block, ast_ex
         MSG_ERROR, "expression of type `%s` cannot be cast", ir_type_str(operand_type));
       msg_add_inline_entry(msg, expr->cast->region, "expressions to be cast are of standard types");
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     if (!ir_type_is_std(cast_type)) {
       msg_t *msg = new_msg(analyzer->source, expr->cast->region,
         MSG_ERROR, "expression cannot be cast to `%s`", ir_type_str(cast_type));
       msg_add_inline_entry(msg, expr->type->region, "expressions can be cast to standard types");
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     return new_ir_place_operand(new_ir_place(result));
   }
@@ -285,7 +285,7 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, as
       msg_t *msg = new_msg(analyzer->source, expr->lit->region,
         MSG_ERROR, "string is not a valid expression");
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     return new_ir_constant_operand(ir_char_constant(analyzer->factory, symbol->ptr[0]));
   }
@@ -336,7 +336,7 @@ ir_operand_t *analyze_stmt_call_param(analyzer_t *analyzer, ir_block_t **block, 
       strcpy(found, ir_type_str(type));
       msg_add_inline_entry(msg, args->region, "expected `%s`, found `%s`", expected, found);
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     *block = ir_block(analyzer->factory);
     ir_block_terminate_arg(blk, ret, *block);
@@ -367,7 +367,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
           "operator `:=` takes two operands of the same standard type");
         msg_add_inline_entry(msg, stmt_assign->rhs->region, "%s", ir_type_str(rtype));
         msg_emit(msg);
-        exit(1);
+        exit(EXIT_FAILURE);
       }
 
       ir_block_push_assign(*block, lhs, new_ir_use_rvalue(rhs));
@@ -383,7 +383,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
           MSG_ERROR, "expression of type `%s` cannot be condition", ir_type_str(type));
         msg_add_inline_entry(msg, stmt_if->cond->region, "condition expressions are of type boolean");
         msg_emit(msg);
-        exit(1);
+        exit(EXIT_FAILURE);
       }
 
       {
@@ -420,7 +420,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
           MSG_ERROR, "expression of type `%s` cannot be condition", ir_type_str(type));
         msg_add_inline_entry(msg, stmt_while->cond->region, "condition expressions are of type boolean");
         msg_emit(msg);
-        exit(1);
+        exit(EXIT_FAILURE);
       }
 
       {
@@ -455,7 +455,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
         msg_t          *msg    = new_msg(analyzer->source, ident->region,
                       MSG_ERROR, "`%.*s` is not a procedure", (int) symbol->len, symbol->ptr);
         msg_emit(msg);
-        exit(1);
+        exit(EXIT_FAILURE);
       }
 
       {
@@ -465,7 +465,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
             msg_t *msg = new_msg(analyzer->source, ident->region,
               MSG_ERROR, "recursive call of procedure is not allowed");
             msg_emit(msg);
-            exit(1);
+            exit(EXIT_FAILURE);
           }
           scope = scope->next;
         }
@@ -490,7 +490,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
           msg_t *msg = new_msg(analyzer->source, ident->region, MSG_ERROR, "wrong number of arguments");
           msg_add_inline_entry(msg, ident->region, "expected %ld arguments, supplied %ld arguments", type_cnt, expr_cnt);
           msg_emit(msg);
-          exit(1);
+          exit(EXIT_FAILURE);
         }
         ir_block_push_call(*block, new_ir_place(func), arg);
       }
@@ -512,7 +512,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
           msg_add_inline_entry(msg, args->region,
             "arguments for read statements are of reference to integer or char");
           msg_emit(msg);
-          exit(1);
+          exit(EXIT_FAILURE);
         }
 
         {
@@ -524,7 +524,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
             msg_add_inline_entry(msg, args->region,
               "arguments for read statements are of reference to integer or char");
             msg_emit(msg);
-            exit(1);
+            exit(EXIT_FAILURE);
           }
 
           ir_block_push_read(*block, ref);
@@ -556,7 +556,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
             msg_add_inline_entry(msg, formats->expr->region,
               "arguments for write statements are of standard types");
             msg_emit(msg);
-            exit(1);
+            exit(EXIT_FAILURE);
           }
 
           if (formats->len) {
@@ -601,7 +601,7 @@ ir_type_t *analyze_param_types(analyzer_t *analyzer, ast_decl_param_t *decl)
       msg_add_inline_entry(msg, decl->type->region,
         "parameters are of standard types");
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     while (ident) {
       *last = ir_type_ref(type);
@@ -643,7 +643,7 @@ void analyze_param_decl(analyzer_t *analyzer, ast_decl_param_t *decl)
       msg_add_inline_entry(msg, decl->type->region,
         "parameters are of standard types");
       msg_emit(msg);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
     while (ident) {
       maybe_error_conflict(analyzer, ident->symbol, ident->region);

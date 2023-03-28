@@ -85,7 +85,7 @@ static void bump(void)
         continue;
       case TOKEN_UNKNOWN:
       case TOKEN_ERROR:
-        exit(1);
+        exit(EXIT_FAILURE);
       default:
         return;
       }

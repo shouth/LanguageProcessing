@@ -15,7 +15,7 @@ void print_help(const char *command)
     "    -r            print cross reference\n"
     "    -c            enable color printing\n",
     command);
-  exit(1);
+  exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv)
