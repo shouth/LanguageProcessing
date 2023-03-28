@@ -41,8 +41,6 @@ struct ast__lit_s {
   region_t       region;
 };
 
-void delete_ast_lit(ast_lit_t *lit);
-
 /**********     ast identifier     **********/
 
 typedef struct ast__ident_s ast_ident_t;
@@ -52,8 +50,6 @@ struct ast__ident_s {
   region_t        region;
   ast_ident_t    *next;
 };
-
-void delete_ast_ident(ast_ident_t *ident);
 
 /**********     ast type     **********/
 
@@ -80,8 +76,6 @@ struct ast__type_s {
   ast_type_kind_t kind;
   region_t        region;
 };
-
-void delete_ast_type(ast_type_t *type);
 
 /**********     ast expression     **********/
 
@@ -176,9 +170,6 @@ struct ast__expr_s {
   ast_expr_t     *next;
 };
 
-const char *ast_binop_str(ast_expr_binary_kind_t kind);
-void        delete_ast_expr(ast_expr_t *expr);
-
 /**********     ast output format     **********/
 
 typedef struct ast_output_format_s ast_output_format_t;
@@ -188,8 +179,6 @@ struct ast_output_format_s {
   ast_expr_t          *expr;
   ast_lit_t           *len;
 };
-
-void delete_ast_output_format(ast_output_format_t *format);
 
 /**********     ast statement     **********/
 
@@ -268,8 +257,6 @@ struct ast__stmt_s {
   ast_stmt_t     *next;
 };
 
-void delete_ast_stmt(ast_stmt_t *stmt);
-
 /**********     ast declaration     **********/
 
 typedef struct ast__decl_variable_s ast_decl_variable_t;
@@ -286,9 +273,6 @@ struct ast__decl_param_s {
   ast_ident_t      *names;
   ast_type_t       *type;
 };
-
-void delete_ast_variable_decl(ast_decl_variable_t *decl);
-void delete_ast_param_decl(ast_decl_param_t *params);
 
 /**********     ast declaration part     **********/
 
@@ -322,8 +306,6 @@ struct ast__decl_part_s {
   ast_decl_part_t     *next;
 };
 
-void delete_decl_part(ast_decl_part_t *decl);
-
 /**********     ast program     **********/
 
 typedef struct ast__program_s ast_program_t;
@@ -334,8 +316,6 @@ struct ast__program_s {
   ast_stmt_t      *stmt;
 };
 
-void delete_program(ast_program_t *program);
-
 /**********     ast     **********/
 
 typedef struct {
@@ -344,6 +324,7 @@ typedef struct {
   const source_t   *source;
 } ast_t;
 
-void delete_ast(ast_t *ast);
+const char *ast_binop_str(ast_expr_binary_kind_t kind);
+void        delete_ast(ast_t *ast);
 
 #endif
