@@ -20,20 +20,6 @@ static struct {
   int      alive, error;
 } ctx;
 
-static size_t msg_token(char *ptr, token_kind_t type)
-{
-  switch (type) {
-  case TOKEN_NAME:
-    return sprintf(ptr, "identifier");
-  case TOKEN_NUMBER:
-    return sprintf(ptr, "number");
-  case TOKEN_STRING:
-    return sprintf(ptr, "string");
-  default:
-    return sprintf(ptr, "`%s`", token_to_str(type));
-  }
-}
-
 static void error_msg(msg_t *msg)
 {
   ctx.alive = 0;
@@ -62,7 +48,23 @@ static void error_unexpected(void)
       if (ptr != buf) {
         ptr += sprintf(ptr, current != last ? ", " : " or ");
       }
-      ptr += msg_token(ptr, current);
+      switch (current) {
+      case TOKEN_NAME:
+        ptr += sprintf(ptr, "identifier");
+        break;
+      case TOKEN_NUMBER:
+        ptr += sprintf(ptr, "number");
+        break;
+      case TOKEN_STRING:
+        ptr += sprintf(ptr, "string");
+        break;
+      case TOKEN_EOF:
+        ptr += sprintf(ptr, "EOF");
+        break;
+      default:
+        ptr += sprintf(ptr, "`%s`", token_to_str(current));
+        break;
+      }
       ctx.expected ^= (uint64_t) 1 << current;
     }
     error_expected(buf);
