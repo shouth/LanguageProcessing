@@ -587,39 +587,39 @@ static ast_stmt_t *parse_stmt_read(parser_t *parser)
   return init_ast_stmt((ast_stmt_t *) stmt, AST_STMT_KIND_READ);
 }
 
-static void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, size_t spec_pos)
+static void maybe_error_output_format(parser_t *parser, ast_output_format_t *format, region_t colon)
 {
-  assert(parser && format);
   if (!parser->alive) {
     return;
   }
 
-  if (format->expr && format->expr->kind == AST_EXPR_KIND_CONSTANT) {
-    ast_lit_t *lit = format->expr->expr.constant.lit;
-    if (lit->kind == AST_LIT_KIND_STRING && lit->lit.string.str_len != 1 && format->len) {
-      size_t msg_len = parser->current_token.region.pos + parser->current_token.region.len - spec_pos;
-      msg_t *msg     = new_msg(parser->src, region_from(spec_pos, msg_len), MSG_ERROR, "wrong output format");
-      msg_add_inline_entry(msg, region_from(spec_pos, msg_len), "field width cannot be used for string");
-      error_msg(parser, msg);
+  if (format->expr->kind == AST_EXPR_KIND_CONSTANT) {
+    ast_expr_constant_t *expr = (ast_expr_constant_t *) format->expr;
+    if (expr->lit->kind == AST_LIT_KIND_STRING) {
+      ast_lit_string_t *lit = (ast_lit_string_t *) expr->lit;
+      if (lit->str_len != 1) {
+        region_t region = region_unite(colon, format->len->region);
+        msg_t   *msg    = new_msg(parser->src, region, MSG_ERROR, "wrong output format");
+        msg_add_inline_entry(msg, region, "field width cannot be used for string");
+        error_msg(parser, msg);
+      }
     }
   }
 }
 
 static ast_output_format_t *parse_output_format(parser_t *parser)
 {
-  size_t               spec_pos = 0;
-  ast_output_format_t *format   = xmalloc(sizeof(ast_output_format_t));
-  format->next                  = NULL;
+  ast_output_format_t *format = xmalloc(sizeof(ast_output_format_t));
+  format->next                = NULL;
 
   format->expr = parse_expr(parser);
   if (eat(parser, TOKEN_COLON)) {
-    spec_pos    = parser->current_token.region.pos;
-    format->len = parse_number_lit(parser);
+    region_t colon = parser->current_token.region;
+    format->len    = parse_number_lit(parser);
+    maybe_error_output_format(parser, format, colon);
   } else {
     format->len = NULL;
   }
-
-  maybe_error_output_format(parser, format, spec_pos);
   return format;
 }
 
