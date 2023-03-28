@@ -323,14 +323,14 @@ struct impl_ir_scope {
   ir_scope_t *next;
   ir_item_t  *owner;
   struct {
-    hash_table_t *table;
-    ir_item_t    *head;
-    ir_item_t   **tail;
+    hash_t     *table;
+    ir_item_t  *head;
+    ir_item_t **tail;
   } items;
   struct {
-    hash_table_t *table;
-    ir_local_t   *head;
-    ir_local_t  **tail;
+    hash_t      *table;
+    ir_local_t  *head;
+    ir_local_t **tail;
   } locals;
 };
 
@@ -343,12 +343,12 @@ struct impl_ir_factory {
     ir_block_t **tail;
   } blocks;
   struct {
-    hash_table_t   *table;
+    hash_t         *table;
     ir_constant_t  *head;
     ir_constant_t **tail;
   } constants;
   struct {
-    hash_table_t    *table;
+    hash_t          *table;
     ir_type_t       *head;
     ir_type_t      **tail;
     const ir_type_t *program;

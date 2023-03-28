@@ -1,6 +1,7 @@
 #include <assert.h>
 
 #include "mppl.h"
+#include "utility.h"
 
 int ir_type_is_kind(const ir_type_t *type, ir_type_kind_t kind)
 {
@@ -173,7 +174,7 @@ static ir_type_t *ir_type_intern_chaining(ir_factory_t *factory, ir_type_t *type
 
 static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
 {
-  const hash_table_entry_t *entry;
+  const hash_entry_t *entry;
   assert(factory && type);
   assert(type->kind != -1);
 
@@ -185,13 +186,13 @@ static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
     type->u.array_type.base_type = ir_type_intern_chaining(factory, type->u.array_type.base_type);
     break;
   }
-  if (entry = hash_table_find(factory->types.table, type)) {
+  if (entry = hash_find(factory->types.table, type)) {
     if (entry->value != type) {
       delete_ir_type(type);
     }
     return entry->value;
   }
-  hash_table_insert_unchecked(factory->types.table, type, type);
+  hash_insert_unsafe(factory->types.table, type, type);
   *factory->types.tail = type;
   factory->types.tail  = &type->next;
   return type;
@@ -255,10 +256,10 @@ void ir_scope_start(ir_factory_t *factory, ir_item_t *owner)
   scope->next         = factory->scope;
   factory->scope      = scope;
   scope->owner        = owner;
-  scope->items.table  = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+  scope->items.table  = hash_new(hash_default_comp, hash_default_hasher);
   scope->items.head   = NULL;
   scope->items.tail   = &scope->items.head;
-  scope->locals.table = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+  scope->locals.table = hash_new(hash_default_comp, hash_default_hasher);
   scope->locals.head  = NULL;
   scope->locals.tail  = &scope->locals.head;
 }
@@ -276,8 +277,8 @@ void ir_scope_end(ir_factory_t *factory, const ir_block_t *block)
   scope->owner->body->items  = scope->items.head;
   scope->owner->body->locals = scope->locals.head;
 
-  delete_hash_table(scope->items.table, NULL, NULL);
-  delete_hash_table(scope->locals.table, NULL, NULL);
+  hash_delete(scope->items.table, NULL, NULL);
+  hash_delete(scope->locals.table, NULL, NULL);
   free(scope);
 }
 
@@ -298,9 +299,9 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
 
 const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos)
 {
-  const hash_table_entry_t *entry;
-  ir_local_t               *local;
-  ir_item_pos_t            *item_pos;
+  const hash_entry_t *entry;
+  ir_local_t         *local;
+  ir_item_pos_t      *item_pos;
   assert(factory && item);
 
   item_pos         = new (ir_item_pos_t);
@@ -309,7 +310,7 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t po
   *item->refs.tail = item_pos;
   item->refs.tail  = &item_pos->next;
 
-  if (entry = hash_table_find(factory->scope->locals.table, item)) {
+  if (entry = hash_find(factory->scope->locals.table, item)) {
     return entry->value;
   }
 
@@ -327,7 +328,7 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t po
   default:
     unreachable();
   }
-  hash_table_insert_unchecked(factory->scope->locals.table, item, local);
+  hash_insert_unsafe(factory->scope->locals.table, item, local);
   return ir_scope_append_local(factory->scope, local);
 }
 
@@ -426,16 +427,16 @@ static void delete_ir_constant(ir_constant_t *constant)
 
 static const ir_constant_t *ir_constant_intern(ir_factory_t *factory, ir_constant_t *constant)
 {
-  const hash_table_entry_t *entry;
+  const hash_entry_t *entry;
   assert(factory && constant);
 
-  if (entry = hash_table_find(factory->constants.table, constant)) {
+  if (entry = hash_find(factory->constants.table, constant)) {
     if (entry->value != constant) {
       delete_ir_constant(constant);
     }
     return entry->value;
   }
-  hash_table_insert_unchecked(factory->constants.table, constant, constant);
+  hash_insert_unsafe(factory->constants.table, constant, constant);
   *factory->constants.tail = constant;
   factory->constants.tail  = &constant->next;
   return constant;
@@ -782,7 +783,7 @@ ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, const symbol_t *s
 
   if (kind != IR_ITEM_PROGRAM) {
     assert(!ir_item_lookup_scope(factory->scope, symbol));
-    hash_table_insert_unchecked(factory->scope->items.table, (void *) symbol, ret);
+    hash_insert_unsafe(factory->scope->items.table, (void *) symbol, ret);
     *factory->scope->items.tail = ret;
     factory->scope->items.tail  = &ret->next;
   }
@@ -791,10 +792,10 @@ ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, const symbol_t *s
 
 ir_item_t *ir_item_lookup_scope(ir_scope_t *scope, const symbol_t *symbol)
 {
-  const hash_table_entry_t *entry;
+  const hash_entry_t *entry;
   assert(scope);
 
-  entry = hash_table_find(scope->items.table, (void *) symbol);
+  entry = hash_find(scope->items.table, (void *) symbol);
   return entry ? entry->value : NULL;
 }
 
@@ -836,7 +837,7 @@ static void delete_ir_item(ir_item_t *item)
   free(item);
 }
 
-ir_factory_t *new_ir_factory()
+ir_factory_t *new_ir_factory(void)
 {
   ir_factory_t *ret = new (ir_factory_t);
   ret->scope        = NULL;
@@ -846,11 +847,11 @@ ir_factory_t *new_ir_factory()
 
   ret->constants.head  = NULL;
   ret->constants.tail  = &ret->constants.head;
-  ret->constants.table = new_hash_table(ir_constant_comparator, ir_constant_hasher);
+  ret->constants.table = hash_new(ir_constant_comparator, ir_constant_hasher);
 
   ret->types.head        = NULL;
   ret->types.tail        = &ret->types.head;
-  ret->types.table       = new_hash_table(ir_type_comparator, ir_type_hasher);
+  ret->types.table       = hash_new(ir_type_comparator, ir_type_hasher);
   ret->types.program     = ir_type_intern(ret, new_ir_type(IR_TYPE_PROGRAM));
   ret->types.std_integer = ir_type_intern(ret, new_ir_type(IR_TYPE_INTEGER));
   ret->types.std_char    = ir_type_intern(ret, new_ir_type(IR_TYPE_CHAR));
@@ -867,8 +868,8 @@ ir_t *new_ir(const source_t *source, ir_item_t *items, ir_factory_t *factory)
   ret->constants = factory->constants.head;
   ret->types     = factory->types.head;
 
-  delete_hash_table(factory->constants.table, NULL, NULL);
-  delete_hash_table(factory->types.table, NULL, NULL);
+  hash_delete(factory->constants.table, NULL, NULL);
+  hash_delete(factory->types.table, NULL, NULL);
   free(factory);
 
   return ret;

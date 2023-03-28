@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "mppl.h"
+#include "utility.h"
 
 typedef size_t codegen_addr_t;
 
@@ -11,7 +12,7 @@ typedef struct {
   FILE *file;
   struct {
     codegen_addr_t cnt;
-    hash_table_t  *table;
+    hash_t        *table;
   } addr;
   char label[16];
   struct {
@@ -23,9 +24,9 @@ typedef struct {
 
 codegen_addr_t codegen_addr_lookup(codegen_t *codegen, const void *ptr)
 {
-  const hash_table_entry_t *entry;
+  const hash_entry_t *entry;
   assert(codegen);
-  if (ptr && (entry = hash_table_find(codegen->addr.table, ptr))) {
+  if (ptr && (entry = hash_find(codegen->addr.table, ptr))) {
     return (codegen_addr_t) entry->value;
   } else {
     return 0;
@@ -39,7 +40,7 @@ codegen_addr_t codegen_addr(codegen_t *codegen, const void *ptr)
   if (!(addr = codegen_addr_lookup(codegen, ptr))) {
     addr = ++codegen->addr.cnt;
     if (ptr) {
-      hash_table_insert_unchecked(codegen->addr.table, (void *) ptr, (void *) addr);
+      hash_insert_unsafe(codegen->addr.table, (void *) ptr, (void *) addr);
     }
   }
   return addr;
@@ -1033,7 +1034,7 @@ void codegen_casl2(const ir_t *ir)
 
   codegen.file           = fopen(ir->source->output_filename, "w");
   codegen.addr.cnt       = 0;
-  codegen.addr.table     = new_hash_table(hash_table_default_comparator, hash_table_default_hasher);
+  codegen.addr.table     = hash_new(hash_default_comp, hash_default_hasher);
   codegen.label[0]       = '\0';
   codegen.builtin.e_rng  = 0;
   codegen.builtin.e_ov   = 0;
@@ -1045,6 +1046,6 @@ void codegen_casl2(const ir_t *ir)
   codegen.builtin.w_char = 0;
   codegen.builtin.w_bool = 0;
   codegen_ir(&codegen, ir);
-  delete_hash_table(codegen.addr.table, NULL, NULL);
+  hash_delete(codegen.addr.table, NULL, NULL);
   fclose(codegen.file);
 }

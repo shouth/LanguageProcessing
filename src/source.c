@@ -1,3 +1,4 @@
+#include "utility.h"
 #define _FILE_OFFSET_BITS 64
 
 #include <assert.h>
@@ -291,7 +292,7 @@ static uint64_t symbol_hasher(const void *ptr)
 symbol_storage_t *new_symbol_storage(void)
 {
   symbol_storage_t *ret = new (symbol_storage_t);
-  ret->table            = new_hash_table(symbol_comparator, symbol_hasher);
+  ret->table            = hash_new(symbol_comparator, symbol_hasher);
   return ret;
 }
 
@@ -300,23 +301,23 @@ void delete_symbol_storage(symbol_storage_t *storage)
   if (!storage) {
     return;
   }
-  delete_hash_table(storage->table, free, NULL);
+  hash_delete(storage->table, free, NULL);
   free(storage);
 }
 
 const symbol_t *symbol_intern(symbol_storage_t *storage, const char *ptr, size_t len)
 {
-  const hash_table_entry_t *entry;
-  symbol_t                 *ret;
+  const hash_entry_t *entry;
+  symbol_t           *ret;
   assert(storage && ptr);
 
   ret      = new (symbol_t);
   ret->ptr = ptr;
   ret->len = len;
-  if (entry = hash_table_find(storage->table, ret)) {
+  if (entry = hash_find(storage->table, ret)) {
     free(ret);
     return entry->value;
   }
-  hash_table_insert_unchecked(storage->table, ret, ret);
+  hash_insert_unsafe(storage->table, ret, ret);
   return ret;
 }

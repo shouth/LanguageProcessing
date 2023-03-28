@@ -1,8 +1,8 @@
 #ifndef SOURCE_H
 #define SOURCE_H
 
-#include <stddef.h>
 #include "utility.h"
+#include <stddef.h>
 
 typedef struct {
   char   *input_filename;
@@ -54,7 +54,7 @@ typedef struct {
 } symbol_t;
 
 typedef struct {
-  hash_table_t *table;
+  hash_t *table;
 } symbol_storage_t;
 
 int               symbol_compare(const void *lhs, const void *rhs);

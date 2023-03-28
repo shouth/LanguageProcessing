@@ -7,136 +7,53 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint64_t fnv1(const char *ptr, size_t len)
-{
-  uint64_t ret   = 0xcbf29ce484222325;
-  uint64_t prime = 0x00000100000001b3;
-  size_t   i;
-
-  for (i = 0; i < len; i++) {
-    ret *= prime;
-    ret ^= ptr[i];
-  }
-  return ret;
-}
-
-static uint64_t fnv1_int(uint64_t value)
-{
-  char buf[sizeof(value)];
-  memcpy(buf, &value, sizeof(value));
-  return fnv1(buf, sizeof(value));
-}
-
-static uint64_t fnv1_ptr(const void *ptr)
-{
-  char buf[sizeof(ptr)];
-  memcpy(buf, &ptr, sizeof(ptr));
-  return fnv1(buf, sizeof(ptr));
-}
-
-static uint8_t popcount(uint64_t n)
-{
-#if defined(__GNUC__) || defined(__clang__)
-  /* If compiler is GCC or Clang, use builtin functions. */
-  return __builtin_popcountll(n);
-
-#else
-  /* Otherwise, use bitwise operatons. */
-  n -= (n >> 1) & 0x5555555555555555;
-  n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
-  n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
-  n += n >> 8;
-  n += n >> 16;
-  n += n >> 32;
-  return n & 0x000000000000007f;
-#endif
-}
-
-static uint8_t trailing0(uint64_t n)
-{
-#if defined(__GNUC__) || defined(__clang__)
-  /* If compiler is GCC or Clang, use builtin functions. */
-  return __builtin_ctzll(n);
-
-#else
-  /* Otherwise, use bitwise operatons. */
-  return popcount((n & (~n + 1)) - 1);
-#endif
-}
-
-static uint8_t leading0(uint64_t n)
-{
-#if defined(__GNUC__) || defined(__clang__)
-  /* If compiler is GCC or Clang, use builtin functions. */
-  return 63 - __builtin_clzll(n);
-
-#else
-  /* Otherwise, use bitwise operatons. */
-  n |= n >> 1;
-  n |= n >> 2;
-  n |= n >> 4;
-  n |= n >> 8;
-  n |= n >> 16;
-  n |= n >> 32;
-  return popcount(n) - 1;
-#endif
-}
-
-static void *xmalloc(size_t size)
-{
-  void *ret = malloc(size);
-  if (ret == NULL) {
-    fprintf(stderr, "memory allocation failed!");
-    exit(1);
-  }
-  return ret;
-}
+void *xmalloc(size_t size);
 
 #define new(type) ((type *) xmalloc(sizeof(type)))
 #define new_arr(type, size) ((type *) xmalloc(sizeof(type) * (size)))
 
+uint64_t fnv1(const char *ptr, size_t len);
+uint64_t fnv1_int(uint64_t value);
+uint64_t fnv1_ptr(const void *ptr);
+
+int popcount(uint64_t n);
+int trailing0(uint64_t n);
+int leading0(uint64_t n);
+
 #define unreachable() \
   (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), exit(1))
 
-typedef uintptr_t hash_table_hop_t;
-typedef int       hash_table_comparator_t(const void *, const void *);
-typedef uint64_t  hash_table_hasher_t(const void *);
-typedef void      hash_table_deleter_t(void *);
+typedef uintptr_t            hash_hop_t;
+typedef int                  hash_comp_t(const void *, const void *);
+typedef uint64_t             hash_hasher_t(const void *);
+typedef void                 hash_deleter_t(void *);
+typedef struct hash__entry_s hash_entry_t;
 
-typedef struct impl_hash_table_entry hash_table_entry_t;
-struct impl_hash_table_entry {
-  hash_table_hop_t hop;
-  void            *key;
-  void            *value;
+struct hash__entry_s {
+  hash_hop_t hop;
+  void      *key;
+  void      *value;
 };
 
 typedef struct {
-  size_t                   size;
-  size_t                   capacity;
-  uint8_t                  load_factor;
-  size_t                   bucket_cnt;
-  hash_table_entry_t      *buckets;
-  hash_table_entry_t       removed;
-  hash_table_comparator_t *comparator;
-  hash_table_hasher_t     *hasher;
-} hash_table_t;
+  size_t         size;
+  size_t         capacity;
+  uint8_t        load_factor;
+  size_t         bucket_cnt;
+  hash_entry_t  *buckets;
+  hash_entry_t   removed;
+  hash_comp_t   *comparator;
+  hash_hasher_t *hasher;
+} hash_t;
 
-hash_table_t             *new_hash_table(hash_table_comparator_t *comparator, hash_table_hasher_t *hasher);
-void                      delete_hash_table(hash_table_t *table, hash_table_deleter_t *key_deleter, hash_table_deleter_t *value_deleter);
-const hash_table_entry_t *hash_table_find(hash_table_t *table, const void *key);
-void                      hash_table_insert_unchecked(hash_table_t *table, void *key, void *value);
-hash_table_entry_t       *hash_table_insert(hash_table_t *table, void *key, void *value);
-hash_table_entry_t       *hash_table_remove(hash_table_t *table, const void *key);
-
-static int hash_table_default_comparator(const void *lhs, const void *rhs)
-{
-  return lhs == rhs;
-}
-
-static uint64_t hash_table_default_hasher(const void *ptr)
-{
-  return fnv1_ptr(ptr);
-}
+hash_t             *hash_new(hash_comp_t *comparator, hash_hasher_t *hasher);
+void                hash_delete(hash_t *table, hash_deleter_t *key_deleter, hash_deleter_t *value_deleter);
+const hash_entry_t *hash_find(hash_t *table, const void *key);
+void                hash_insert_unsafe(hash_t *table, void *key, void *value);
+hash_entry_t       *hash_insert(hash_t *table, void *key, void *value);
+hash_entry_t       *hash_remove(hash_t *table, const void *key);
+int                 hash_default_comp(const void *lhs, const void *rhs);
+uint64_t            hash_default_hasher(const void *ptr);
 
 typedef enum {
   SGR_RESET            = 0,
