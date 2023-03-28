@@ -60,12 +60,12 @@ int main(int argc, char **argv)
   console_ansi(flag_color_print);
 
   src = src_new(argv[i], output);
-  if (ast = parse_source(src)) {
+  if ((ast = parse_source(src))) {
     if (flag_pretty_print) {
       pretty_print(ast);
     }
 
-    if (ir = analyze_ast(ast)) {
+    if ((ir = analyze_ast(ast))) {
       if (flag_crossref) {
         print_crossref(ir);
       }

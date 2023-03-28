@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "message.h"
 #include "mppl.h"
+#include "utility.h"
 
 typedef struct {
   const source_t *source;
@@ -203,6 +204,9 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
         ir_block_terminate_if(*block, lhs, els_begin, shortcircuit);
         lhs = new_ir_constant_operand(ir_boolean_constant(analyzer->factory, 0));
         break;
+      default:
+        unreachable();
+        break;
       }
       *block = ir_block(analyzer->factory);
       ir_block_push_assign(shortcircuit, new_ir_place(result), new_ir_use_rvalue(lhs));
@@ -314,9 +318,9 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
     return analyze_cast_expr(analyzer, block, &expr->expr.cast);
   case AST_EXPR_KIND_CONSTANT:
     return analyze_constant_expr(analyzer, block, &expr->expr.constant);
+  default:
+    unreachable();
   }
-
-  unreachable();
 }
 
 ir_operand_t *analyze_stmt_call_param(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *args, ir_type_t *param_type)

@@ -2,7 +2,7 @@
 
 #include "utility.h"
 
-#define NBHD_RANGE (sizeof(hash_hop_t) * 8)
+#define NBHD_RANGE ((long) (sizeof(hash_hop_t) * 8))
 
 int hash_default_comp(const void *lhs, const void *rhs)
 {

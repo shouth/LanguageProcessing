@@ -93,6 +93,9 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
       codegen_set_label(codegen, codegen_addr_label(codegen, constant));
       codegen_print(codegen, "DC", "\'%.*s\'", (int) symbol->len, symbol->ptr);
       break;
+    default:
+      /* do nothing */
+      break;
     }
     }
     constant = constant->next;
@@ -467,6 +470,7 @@ void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
       default:
         unreachable();
       }
+      break;
     default:
       unreachable();
     }

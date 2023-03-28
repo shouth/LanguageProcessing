@@ -45,6 +45,9 @@ static void delete_ir_type(ir_type_t *type)
   case IR_TYPE_ARRAY:
     delete_ir_type(type->u.array_type.base_type);
     break;
+  default:
+    /* do nothing */
+    break;
   }
   delete_ir_type(type->next);
   free(type);
@@ -81,7 +84,7 @@ static char *internal_ir_type_str(char *buf, const ir_type_t *type)
   case -1:
     while (type) {
       buf = internal_ir_type_str(buf, type->u.ref);
-      if (type = type->next) {
+      if ((type = type->next)) {
         buf += sprintf(buf, ", ");
       }
     }
@@ -146,6 +149,9 @@ static uint64_t ir_type_hasher(const void *ptr)
     ret = 31 * ret + fnv1_ptr(cur->u.ref);
     ret = 31 * ret + fnv1_int(p->u.array_type.size);
     break;
+  default:
+    /* do nothing */
+    break;
   }
   return ret;
 }
@@ -186,7 +192,7 @@ static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
     type->u.array_type.base_type = ir_type_intern_chaining(factory, type->u.array_type.base_type);
     break;
   }
-  if (entry = hash_find(factory->types.table, type)) {
+  if ((entry = hash_find(factory->types.table, type))) {
     if (entry->value != type) {
       delete_ir_type(type);
     }
@@ -310,7 +316,7 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, long pos)
   *item->refs.tail = item_pos;
   item->refs.tail  = &item_pos->next;
 
-  if (entry = hash_find(factory->scope->locals.table, item)) {
+  if ((entry = hash_find(factory->scope->locals.table, item))) {
     return entry->value;
   }
 
@@ -430,7 +436,7 @@ static const ir_constant_t *ir_constant_intern(ir_factory_t *factory, ir_constan
   const hash_entry_t *entry;
   assert(factory && constant);
 
-  if (entry = hash_find(factory->constants.table, constant)) {
+  if ((entry = hash_find(factory->constants.table, constant))) {
     if (entry->value != constant) {
       delete_ir_constant(constant);
     }
@@ -562,6 +568,9 @@ void delete_ir_operand(ir_operand_t *operand)
   case IR_OPERAND_PLACE:
     delete_ir_place(operand->u.place_operand.place);
     break;
+  default:
+    /* do nothing */
+    break;
   }
   delete_ir_operand(operand->next);
   free(operand);
@@ -657,6 +666,9 @@ void delete_ir_stmt(ir_stmt_t *stmt)
     break;
   case IR_STMT_WRITE:
     delete_ir_operand(stmt->u.stmt_write.value);
+    break;
+  default:
+    /* do nothing */
     break;
   }
   delete_ir_stmt(stmt->next);
@@ -763,6 +775,10 @@ void delete_ir_block(ir_block_t *block)
   switch (block->termn.kind) {
   case IR_TERMN_IF:
     delete_ir_operand(block->termn.u.if_termn.cond);
+    break;
+  default:
+    /* do nothing */
+    break;
   }
   delete_ir_stmt(block->stmt);
   delete_ir_block(block->next);

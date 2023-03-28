@@ -25,7 +25,7 @@ static void crossref_print_ns(crossref_t *crossref, const crossref_item_t *ns)
   crossref_print_ns(crossref, ns->owner);
 }
 
-static void crossref_print_type(crossref_t *crossref, const ir_type_t *type)
+static void crossref_print_type(const ir_type_t *type)
 {
   printf("%s", ir_type_str(type));
 }
@@ -40,7 +40,7 @@ static void crossref_print_ref(crossref_t *crossref, ir_item_pos_t *pos)
 {
   while (pos) {
     crossref_print_location(crossref, pos->pos);
-    if (pos = pos->next) {
+    if ((pos = pos->next)) {
       printf(", ");
     }
   }
@@ -92,7 +92,7 @@ static int crossref_item_compare(const void *lhs, const void *rhs)
     return -1;
   } else if (l && !r) {
     return 1;
-  } else if (ret = symbol_compare(l->item->symbol, r->item->symbol)) {
+  } else if ((ret = symbol_compare(l->item->symbol, r->item->symbol))) {
     return ret;
   } else {
     return crossref_item_compare(l->owner, r->owner);
@@ -118,7 +118,7 @@ void print_crossref(const ir_t *ir)
   for (i = 0; i < cnt; i++) {
     sort[i] = items + i;
   }
-  qsort(sort, cnt, sizeof(*sort), crossref_item_ptr_compare);
+  qsort(sort, cnt, sizeof(sort[0]), crossref_item_ptr_compare);
   crossref.source = ir->source;
   for (i = 0; i < cnt; i++) {
     const ir_item_t *item = sort[i]->item;
@@ -126,7 +126,7 @@ void print_crossref(const ir_t *ir)
     crossref_print_ns(&crossref, sort[i]->owner);
     printf("\n");
     printf("Type | ");
-    crossref_print_type(&crossref, item->type);
+    crossref_print_type(item->type);
     printf("\n");
     printf("Def. | ");
     crossref_print_location(&crossref, item->name_region.pos);
