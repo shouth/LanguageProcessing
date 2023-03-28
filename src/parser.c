@@ -14,8 +14,8 @@ static struct {
   cursol_t          cursol;
   symbol_storage_t *storage;
 
-  token_t  current_token, next_token;
-  uint64_t expected_tokens;
+  token_t  current, next;
+  uint64_t expected;
   int      within_loop;
   int      alive, error;
 } ctx;
@@ -44,27 +44,26 @@ static void error_msg(msg_t *msg)
 static void error_expected(const char *str)
 {
   if (ctx.alive) {
-    token_t *token = &ctx.next_token;
-    msg_t   *msg   = new_msg(ctx.src, token->region, MSG_ERROR,
-          "expected %s, got `%.*s`", str, (int) token->region.len, token->ptr);
+    msg_t *msg = new_msg(ctx.src, ctx.next.region, MSG_ERROR,
+      "expected %s, got `%.*s`", str, (int) ctx.next.region.len, ctx.next.ptr);
     error_msg(msg);
-    ctx.expected_tokens = 0;
+    ctx.expected = 0;
   }
 }
 
 static void error_unexpected(void)
 {
-  assert(ctx.expected_tokens);
+  assert(ctx.expected);
   if (ctx.alive) {
     char buf[1024], *ptr = buf;
-    int  last = leading0(ctx.expected_tokens);
-    while (ctx.expected_tokens) {
-      int current = trailing0(ctx.expected_tokens);
+    int  last = leading0(ctx.expected);
+    while (ctx.expected) {
+      int current = trailing0(ctx.expected);
       if (ptr != buf) {
         ptr += sprintf(ptr, current != last ? ", " : " or ");
       }
       ptr += msg_token(ptr, current);
-      ctx.expected_tokens ^= (uint64_t) 1 << current;
+      ctx.expected ^= (uint64_t) 1 << current;
     }
     error_expected(buf);
   }
@@ -73,11 +72,11 @@ static void error_unexpected(void)
 static void bump(void)
 {
   if (ctx.alive) {
-    ctx.current_token   = ctx.next_token;
-    ctx.expected_tokens = 0;
+    ctx.current  = ctx.next;
+    ctx.expected = 0;
     while (1) {
-      lex_token(&ctx.cursol, &ctx.next_token);
-      switch (ctx.next_token.type) {
+      lex_token(&ctx.cursol, &ctx.next);
+      switch (ctx.next.type) {
       case TOKEN_WHITESPACE:
       case TOKEN_BRACES_COMMENT:
       case TOKEN_CSTYLE_COMMENT:
@@ -97,8 +96,8 @@ static int check(token_kind_t type)
   if (!ctx.alive) {
     return 0;
   }
-  ctx.expected_tokens |= (uint64_t) 1 << type;
-  return ctx.next_token.type == type;
+  ctx.expected |= (uint64_t) 1 << type;
+  return ctx.next.type == type;
 }
 
 static int eat(token_kind_t type)
@@ -123,8 +122,8 @@ static ast_ident_t *parse_ident(void)
 {
   if (expect(TOKEN_NAME)) {
     ast_ident_t *ident = xmalloc(sizeof(ast_ident_t));
-    ident->symbol      = symbol_intern(ctx.storage, ctx.current_token.ptr, ctx.current_token.region.len);
-    ident->region      = ctx.current_token.region;
+    ident->symbol      = symbol_intern(ctx.storage, ctx.current.ptr, ctx.current.region.len);
+    ident->region      = ctx.current.region;
     ident->next        = NULL;
     return ident;
   } else {
@@ -154,9 +153,9 @@ static ast_lit_t *parse_number_lit(void)
 {
   if (expect(TOKEN_NUMBER)) {
     ast_lit_number_t *lit = xmalloc(sizeof(ast_lit_t));
-    lit->symbol           = symbol_intern(ctx.storage, ctx.current_token.ptr, ctx.current_token.region.len);
-    lit->value            = ctx.current_token.data.number.value;
-    return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_NUMBER, ctx.current_token.region);
+    lit->symbol           = symbol_intern(ctx.storage, ctx.current.ptr, ctx.current.region.len);
+    lit->value            = ctx.current.data.number.value;
+    return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_NUMBER, ctx.current.region);
   } else {
     return NULL;
   }
@@ -166,8 +165,8 @@ static ast_lit_t *parse_boolean_lit(void)
 {
   if (eat(TOKEN_TRUE) || eat(TOKEN_FALSE)) {
     ast_lit_boolean_t *lit = xmalloc(sizeof(ast_lit_t));
-    lit->value             = ctx.current_token.type == TOKEN_TRUE;
-    return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_BOOLEAN, ctx.current_token.region);
+    lit->value             = ctx.current.type == TOKEN_TRUE;
+    return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_BOOLEAN, ctx.current.region);
   } else {
     error_unexpected();
     return NULL;
@@ -178,10 +177,10 @@ static ast_lit_t *parse_string_lit(void)
 {
   if (expect(TOKEN_STRING)) {
     ast_lit_string_t   *lit  = xmalloc(sizeof(ast_lit_t));
-    const token_data_t *data = &ctx.current_token.data;
+    const token_data_t *data = &ctx.current.data;
     lit->str_len             = data->string.str_len;
     lit->symbol              = symbol_intern(ctx.storage, data->string.ptr, data->string.len);
-    return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_STRING, ctx.current_token.region);
+    return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_STRING, ctx.current.region);
   } else {
     return NULL;
   }
@@ -221,11 +220,11 @@ static ast_type_t *init_ast_type(ast_type_t *type, ast_type_kind_t kind, region_
 static ast_type_t *parse_std_type(void)
 {
   if (eat(TOKEN_INTEGER)) {
-    return init_ast_type(xmalloc(sizeof(ast_type_t)), AST_TYPE_KIND_INTEGER, ctx.current_token.region);
+    return init_ast_type(xmalloc(sizeof(ast_type_t)), AST_TYPE_KIND_INTEGER, ctx.current.region);
   } else if (eat(TOKEN_BOOLEAN)) {
-    return init_ast_type(xmalloc(sizeof(ast_type_t)), AST_TYPE_KIND_BOOLEAN, ctx.current_token.region);
+    return init_ast_type(xmalloc(sizeof(ast_type_t)), AST_TYPE_KIND_BOOLEAN, ctx.current.region);
   } else if (eat(TOKEN_CHAR)) {
-    return init_ast_type(xmalloc(sizeof(ast_type_t)), AST_TYPE_KIND_CHAR, ctx.current_token.region);
+    return init_ast_type(xmalloc(sizeof(ast_type_t)), AST_TYPE_KIND_CHAR, ctx.current.region);
   } else {
     error_unexpected();
     return NULL;
@@ -234,7 +233,7 @@ static ast_type_t *parse_std_type(void)
 
 static ast_type_t *parse_array_type(void)
 {
-  region_t          left = ctx.next_token.region;
+  region_t          left = ctx.next.region;
   ast_type_array_t *type = xmalloc(sizeof(ast_type_t));
 
   expect(TOKEN_ARRAY);
@@ -244,7 +243,7 @@ static ast_type_t *parse_array_type(void)
   expect(TOKEN_OF);
   type->base = parse_std_type();
 
-  return init_ast_type((ast_type_t *) type, AST_TYPE_KIND_ARRAY, region_unite(left, ctx.current_token.region));
+  return init_ast_type((ast_type_t *) type, AST_TYPE_KIND_ARRAY, region_unite(left, ctx.current.region));
 }
 
 static ast_type_t *parse_type(void)
@@ -271,7 +270,7 @@ static ast_expr_t *parse_expr(void);
 
 static ast_expr_t *parse_ref(void)
 {
-  region_t     left  = ctx.next_token.region;
+  region_t     left  = ctx.next.region;
   ast_ident_t *ident = parse_ident();
 
   if (eat(TOKEN_LSQPAREN)) {
@@ -279,11 +278,11 @@ static ast_expr_t *parse_ref(void)
     expr->subscript                  = parse_expr();
     expr->decl                       = ident;
     expect(TOKEN_RSQPAREN);
-    return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_ARRAY_SUBSCRIPT, region_unite(left, ctx.current_token.region));
+    return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_ARRAY_SUBSCRIPT, region_unite(left, ctx.current.region));
   } else {
     ast_expr_decl_ref_t *expr = xmalloc(sizeof(ast_expr_t));
     expr->decl                = ident;
-    return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_DECL_REF, region_unite(left, ctx.current_token.region));
+    return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_DECL_REF, region_unite(left, ctx.current.region));
   }
 }
 
@@ -313,42 +312,42 @@ static ast_expr_t *parse_factor(void);
 
 static ast_expr_t *parse_expr_constant(void)
 {
-  region_t             left = ctx.next_token.region;
+  region_t             left = ctx.next.region;
   ast_expr_constant_t *expr = xmalloc(sizeof(ast_expr_t));
   expr->lit                 = parse_lit();
-  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_CONSTANT, region_unite(left, ctx.current_token.region));
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_CONSTANT, region_unite(left, ctx.current.region));
 }
 
 static ast_expr_t *parse_expr_paren(void)
 {
-  region_t          left = ctx.next_token.region;
+  region_t          left = ctx.next.region;
   ast_expr_paren_t *expr = xmalloc(sizeof(ast_expr_t));
   expect(TOKEN_LPAREN);
   expr->inner = parse_expr();
   expect(TOKEN_RPAREN);
-  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_PAREN, region_unite(left, ctx.current_token.region));
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_PAREN, region_unite(left, ctx.current.region));
 }
 
 static ast_expr_t *parse_expr_unary(void)
 {
-  region_t          left = ctx.next_token.region;
+  region_t          left = ctx.next.region;
   ast_expr_unary_t *expr = xmalloc(sizeof(ast_expr_t));
   expect(TOKEN_NOT);
   expr->kind      = AST_EXPR_UNARY_KIND_NOT;
-  expr->op_region = ctx.current_token.region;
+  expr->op_region = ctx.current.region;
   expr->expr      = parse_factor();
-  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_UNARY, region_unite(left, ctx.current_token.region));
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_UNARY, region_unite(left, ctx.current.region));
 }
 
 static ast_expr_t *parse_expr_cast(void)
 {
-  region_t         left = ctx.next_token.region;
+  region_t         left = ctx.next.region;
   ast_expr_cast_t *expr = xmalloc(sizeof(ast_expr_t));
   expr->type            = parse_std_type();
   expect(TOKEN_LPAREN);
   expr->cast = parse_expr();
   expect(TOKEN_RPAREN);
-  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_CAST, region_unite(left, ctx.current_token.region));
+  return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_CAST, region_unite(left, ctx.current.region));
 }
 
 static ast_expr_t *parse_factor(void)
@@ -387,7 +386,7 @@ static ast_expr_t *parse_term(void)
     {
       ast_expr_binary_t *binary = xmalloc(sizeof(ast_expr_t));
       binary->kind              = kind;
-      binary->op_region         = ctx.current_token.region;
+      binary->op_region         = ctx.current.region;
       binary->lhs               = term;
       binary->rhs               = parse_factor();
 
@@ -401,7 +400,7 @@ static ast_expr_t *parse_simple_expr(void)
 {
   ast_expr_t *simple;
   if (check(TOKEN_PLUS) || check(TOKEN_MINUS)) {
-    simple = init_ast_expr(xmalloc(sizeof(ast_expr_t)), AST_EXPR_KIND_EMPTY, region_from(ctx.next_token.region.pos, 0));
+    simple = init_ast_expr(xmalloc(sizeof(ast_expr_t)), AST_EXPR_KIND_EMPTY, region_from(ctx.next.region.pos, 0));
   } else {
     simple = parse_term();
   }
@@ -420,7 +419,7 @@ static ast_expr_t *parse_simple_expr(void)
     {
       ast_expr_binary_t *binary = xmalloc(sizeof(ast_expr_t));
       binary->kind              = kind;
-      binary->op_region         = ctx.current_token.region;
+      binary->op_region         = ctx.current.region;
       binary->lhs               = simple;
       binary->rhs               = parse_term();
 
@@ -454,7 +453,7 @@ static ast_expr_t *parse_expr(void)
     {
       ast_expr_binary_t *binary = xmalloc(sizeof(ast_expr_t));
       binary->kind              = kind;
-      binary->op_region         = ctx.current_token.region;
+      binary->op_region         = ctx.current.region;
       binary->lhs               = expr;
       binary->rhs               = parse_simple_expr();
 
@@ -479,7 +478,7 @@ static ast_stmt_t *parse_stmt_assign(void)
 
   stmt->lhs = parse_ref();
   expect(TOKEN_ASSIGN);
-  stmt->op_region = ctx.current_token.region;
+  stmt->op_region = ctx.current.region;
   stmt->rhs       = parse_expr();
   return init_ast_stmt((ast_stmt_t *) stmt, AST_STMT_KIND_ASSIGN);
 }
@@ -517,7 +516,7 @@ static void maybe_error_break_stmt(void)
 {
   if (ctx.alive) {
     if (!ctx.within_loop) {
-      msg_t *msg = new_msg(ctx.src, ctx.current_token.region,
+      msg_t *msg = new_msg(ctx.src, ctx.current.region,
         MSG_ERROR, "break statement not within loop");
       error_msg(msg);
     }
@@ -597,7 +596,7 @@ static ast_output_format_t *parse_output_format(void)
 
   format->expr = parse_expr();
   if (eat(TOKEN_COLON)) {
-    region_t colon = ctx.current_token.region;
+    region_t colon = ctx.current.region;
     format->len    = parse_number_lit();
     maybe_error_output_format(format, colon);
   } else {
@@ -779,7 +778,7 @@ static ast_program_t *parse_program(void)
 
 ast_t *parse_source(const source_t *src)
 {
-  ast_t   *ast = xmalloc(sizeof(ast_t));
+  ast_t *ast = xmalloc(sizeof(ast_t));
   assert(src);
 
   ctx.src         = src;
