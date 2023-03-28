@@ -1,8 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include <stddef.h>
 #include "source.h"
+#include <stddef.h>
 
 typedef enum {
   TOKEN_NAME,
@@ -68,8 +68,8 @@ typedef union {
   } number;
   struct {
     const char *ptr;
-    size_t      len;
-    size_t      str_len;
+    long        len;
+    long        str_len;
   } string;
 } token_data_t;
 

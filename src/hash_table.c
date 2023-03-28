@@ -16,7 +16,7 @@ uint64_t hash_default_hasher(const void *ptr)
 
 static void hash_init_buckets(hash_t *table)
 {
-  size_t i;
+  long i;
   table->size       = 0;
   table->bucket_cnt = table->capacity + NBHD_RANGE;
   table->buckets    = new_arr(hash_entry_t, table->bucket_cnt);
@@ -43,7 +43,7 @@ hash_t *hash_new(hash_comp_t *comparator, hash_hasher_t *hasher)
 
 void hash_delete(hash_t *table, hash_deleter_t *key_deleter, hash_deleter_t *value_deleter)
 {
-  size_t i;
+  long i;
   if (!table) {
     return;
   }
@@ -65,8 +65,8 @@ void hash_delete(hash_t *table, hash_deleter_t *key_deleter, hash_deleter_t *val
 static void hash_grow(hash_t *table)
 {
   hash_entry_t *old_buckets;
-  size_t        old_bucket_cnt;
-  size_t        i;
+  long          old_bucket_cnt;
+  long          i;
   assert(table);
 
   old_buckets    = table->buckets;
@@ -81,7 +81,7 @@ static void hash_grow(hash_t *table)
   free(old_buckets);
 }
 
-static size_t hash_index(hash_t *table, const void *key)
+static long hash_index(hash_t *table, const void *key)
 {
   assert(table && key);
   return table->hasher(key) & (table->capacity - 1);
@@ -91,7 +91,7 @@ const hash_entry_t *hash_find(hash_t *table, const void *key)
 {
   hash_entry_t *home;
   hash_hop_t    hop;
-  size_t        index;
+  long          index;
   assert(table && key);
 
   index = hash_index(table, key);
@@ -110,8 +110,8 @@ const hash_entry_t *hash_find(hash_t *table, const void *key)
 void hash_insert_unsafe(hash_t *table, void *key, void *value)
 {
   hash_entry_t *home, *empty = NULL;
-  size_t        dist, index;
-  size_t        i;
+  long          dist, index;
+  long          i;
   assert(table && key && value);
 
   index = hash_index(table, key);
@@ -175,7 +175,7 @@ hash_entry_t *hash_remove(hash_t *table, const void *key)
 {
   hash_entry_t *home;
   hash_hop_t    hop;
-  size_t        index;
+  long          index;
   assert(table && key);
 
   index = hash_index(table, key);

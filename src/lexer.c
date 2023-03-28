@@ -8,9 +8,9 @@
 
 typedef union {
   struct {
-    int    terminated;
-    size_t len;
-    size_t str_len;
+    int  terminated;
+    long len;
+    long str_len;
   } string;
   struct {
     int terminated;
@@ -326,7 +326,7 @@ static token_kind_t keywords[] = {
   TOKEN_BREAK,
 };
 
-static const size_t keywords_size = sizeof(keywords) / sizeof(*keywords);
+static const long keywords_size = sizeof(keywords) / sizeof(*keywords);
 
 void lex_token(cursol_t *cursol, token_t *ret)
 {
@@ -334,7 +334,7 @@ void lex_token(cursol_t *cursol, token_t *ret)
   assert(cursol && ret);
 
   {
-    size_t pos  = cursol_position(cursol);
+    long pos    = cursol_position(cursol);
     ret->ptr    = cursol->ptr;
     ret->type   = lex_delimited(cursol, &info);
     ret->region = region_from(pos, cursol_position(cursol) - pos);
@@ -342,7 +342,7 @@ void lex_token(cursol_t *cursol, token_t *ret)
 
   switch (ret->type) {
   case TOKEN_NAME: {
-    size_t i, j;
+    long i, j;
     for (i = 0; i < keywords_size; i++) {
       const char *ptr = token_to_str(keywords[i]);
       for (j = 0; j < ret->region.len; j++) {

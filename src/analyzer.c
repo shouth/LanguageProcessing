@@ -49,7 +49,7 @@ const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
   case AST_TYPE_KIND_ARRAY: {
     const ir_type_t *base_type     = analyze_type(analyzer, type->type.array.base);
     ir_type_t       *base_type_ref = ir_type_ref(base_type);
-    size_t           size          = type->type.array.size->lit.number.value;
+    long             size          = type->type.array.size->lit.number.value;
     if (size == 0) {
       msg_t *msg = new_msg(analyzer->source, type->type.array.size->region,
         MSG_ERROR, "size of array needs to be greater than 0");
@@ -476,7 +476,7 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
         ir_type_t        *param_type = ir_local_type(func)->u.procedure_type.param_types;
         ast_expr_t       *expr_cur   = stmt_call->args;
         ir_type_t        *type_cur   = param_type;
-        size_t            expr_cnt = 0, type_cnt = 0;
+        long              expr_cnt = 0, type_cnt = 0;
         ir_operand_t     *arg = analyze_stmt_call_param(analyzer, block, stmt_call->args, param_type);
         while (expr_cur) {
           expr_cnt++;

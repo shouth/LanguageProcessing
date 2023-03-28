@@ -23,7 +23,7 @@ int main(int argc, char **argv)
   source_t *src = NULL;
   ast_t    *ast = NULL;
   ir_t     *ir  = NULL;
-  size_t    i;
+  long      i;
 
   const char *output            = NULL;
   int         flag_pretty_print = 0;

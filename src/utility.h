@@ -7,12 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-void *xmalloc(size_t size);
+void *xmalloc(long size);
 
 #define new(type) ((type *) xmalloc(sizeof(type)))
 #define new_arr(type, size) ((type *) xmalloc(sizeof(type) * (size)))
 
-uint64_t fnv1(const char *ptr, size_t len);
+uint64_t fnv1(const char *ptr, long len);
 uint64_t fnv1_int(uint64_t value);
 uint64_t fnv1_ptr(const void *ptr);
 
@@ -36,10 +36,10 @@ struct hash__entry_s {
 };
 
 typedef struct {
-  size_t         size;
-  size_t         capacity;
+  long           size;
+  long           capacity;
   uint8_t        load_factor;
-  size_t         bucket_cnt;
+  long           bucket_cnt;
   hash_entry_t  *buckets;
   hash_entry_t   removed;
   hash_comp_t   *comparator;

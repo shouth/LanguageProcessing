@@ -5,7 +5,7 @@
 
 #include "utility.h"
 
-void *xmalloc(size_t size)
+void *xmalloc(long size)
 {
   void *ret = malloc(size);
   if (ret == NULL) {
@@ -15,11 +15,11 @@ void *xmalloc(size_t size)
   return ret;
 }
 
-uint64_t fnv1(const char *ptr, size_t len)
+uint64_t fnv1(const char *ptr, long len)
 {
   uint64_t ret   = 0xcbf29ce484222325;
   uint64_t prime = 0x00000100000001b3;
-  size_t   i;
+  long     i;
 
   for (i = 0; i < len; i++) {
     ret *= prime;

@@ -27,7 +27,7 @@ struct ast__lit_boolean_s {
 
 struct ast__lit_string_s {
   const symbol_t *symbol;
-  size_t          str_len;
+  long            str_len;
 };
 
 struct ast__lit_s {

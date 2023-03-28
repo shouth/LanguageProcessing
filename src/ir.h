@@ -27,7 +27,7 @@ struct impl_ir_type {
     } procedure_type;
     struct {
       ir_type_t *base_type;
-      size_t     size;
+      long       size;
     } array_type;
     const ir_type_t *ref;
   } u;
@@ -40,7 +40,7 @@ const char *ir_type_str(const ir_type_t *type);
 
 const ir_type_t *ir_type_program(ir_factory_t *factory);
 const ir_type_t *ir_type_procedure(ir_factory_t *factory, ir_type_t *params);
-const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, size_t size);
+const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, long size);
 const ir_type_t *ir_type_integer(ir_factory_t *factory);
 const ir_type_t *ir_type_char(ir_factory_t *factory);
 const ir_type_t *ir_type_boolean(ir_factory_t *factory);
@@ -69,7 +69,7 @@ struct impl_ir_local {
   } u;
 };
 
-const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos);
+const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, long pos);
 const ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type);
 const ir_type_t  *ir_local_type(const ir_local_t *local);
 
@@ -132,7 +132,7 @@ struct impl_ir_constant {
 const ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value);
 const ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value);
 const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value);
-const ir_constant_t *ir_string_constant(ir_factory_t *factory, const symbol_t *value, size_t len);
+const ir_constant_t *ir_string_constant(ir_factory_t *factory, const symbol_t *value, long len);
 const ir_type_t     *ir_constant_type(const ir_constant_t *constant);
 
 typedef enum {
@@ -289,7 +289,7 @@ typedef struct {
 
 typedef struct impl_ir_item_pos ir_item_pos_t;
 struct impl_ir_item_pos {
-  size_t         pos;
+  long           pos;
   ir_item_pos_t *next;
 };
 

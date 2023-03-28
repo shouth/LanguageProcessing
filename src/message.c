@@ -168,7 +168,7 @@ void msg_emit(msg_t *msg)
   msg_inline_entry_t *cur0;
   msg_entry_t        *cur1;
   int                 left_margin;
-  size_t              i, j;
+  long                i, j;
   int                 has_primary;
   location_t          preloc;
   int                 c, m;
@@ -188,7 +188,7 @@ void msg_emit(msg_t *msg)
   for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
     if (cur0->next == NULL) {
       location_t loc = source_location(msg->src, cur0->region.pos);
-      size_t     tmp = loc.line;
+      long       tmp = loc.line;
       left_margin    = 0;
       while (tmp > 0) {
         left_margin++;
@@ -236,7 +236,7 @@ void msg_emit(msg_t *msg)
     }
 
     if (begin.line == end.line) {
-      size_t offset = msg->src->lines[begin.line - 1];
+      long offset = msg->src->lines[begin.line - 1];
       console_set(SGR_BOLD);
       console_set(SGR_FG_BRIGHT_BLUE);
       printf("%*.ld |   ", left_margin, begin.line);
@@ -284,7 +284,7 @@ void msg_emit(msg_t *msg)
       printf(" %s\n", cur0->msg);
       console_reset();
     } else {
-      size_t offset = msg->src->lines[begin.line - 1];
+      long offset = msg->src->lines[begin.line - 1];
       console_set(SGR_BOLD);
       console_set(SGR_FG_BRIGHT_BLUE);
       printf("%*.ld |   ", left_margin, begin.line);
@@ -324,7 +324,7 @@ void msg_emit(msg_t *msg)
       putchar('\n');
 
       for (i = begin.line; i < end.line; i++) {
-        size_t line_len = msg->src->lines[i + 1] - msg->src->lines[i];
+        long line_len = msg->src->lines[i + 1] - msg->src->lines[i];
         console_set(SGR_BOLD);
         set_level_color(has_primary ? msg->level : MSG_NOTE);
         printf("%*.ld | | ", left_margin, i + 1);

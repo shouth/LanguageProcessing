@@ -220,7 +220,7 @@ const ir_type_t *ir_type_procedure(ir_factory_t *factory, ir_type_t *params)
   return ir_type_intern(factory, procedure);
 }
 
-const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, size_t size)
+const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, long size)
 {
   ir_type_t *array;
   assert(factory && base);
@@ -297,7 +297,7 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
   return ret;
 }
 
-const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, size_t pos)
+const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, long pos)
 {
   const hash_entry_t *entry;
   ir_local_t         *local;
@@ -463,7 +463,7 @@ const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value)
   return ir_constant_intern(factory, ret);
 }
 
-const ir_constant_t *ir_string_constant(ir_factory_t *factory, const symbol_t *value, size_t len)
+const ir_constant_t *ir_string_constant(ir_factory_t *factory, const symbol_t *value, long len)
 {
   ir_type_t     *base          = ir_type_ref(ir_type_char(factory));
   ir_constant_t *ret           = new_ir_constant(IR_CONSTANT_STRING, ir_type_array(factory, base, len));

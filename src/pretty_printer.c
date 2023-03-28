@@ -22,7 +22,7 @@ const color_scheme_t monokai = {
 };
 
 typedef struct {
-  size_t                indent;
+  long                  indent;
   const color_scheme_t *color_scheme;
 } printer_t;
 
@@ -133,7 +133,7 @@ void pp_type(printer_t *printer, const ast_type_t *type)
 
 void pp_indent(printer_t *printer)
 {
-  size_t i;
+  long i;
   assert(printer);
   for (i = 0; i < printer->indent; i++) {
     printf("    ");

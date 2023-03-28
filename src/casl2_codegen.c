@@ -6,7 +6,7 @@
 #include "mppl.h"
 #include "utility.h"
 
-typedef size_t codegen_addr_t;
+typedef long codegen_addr_t;
 
 typedef struct {
   FILE *file;

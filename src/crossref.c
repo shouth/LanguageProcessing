@@ -30,7 +30,7 @@ static void crossref_print_type(crossref_t *crossref, const ir_type_t *type)
   printf("%s", ir_type_str(type));
 }
 
-static void crossref_print_location(crossref_t *crossref, size_t pos)
+static void crossref_print_location(crossref_t *crossref, long pos)
 {
   location_t loc = source_location(crossref->source, pos);
   printf("%ld:%ld", loc.line, loc.col);
@@ -46,9 +46,9 @@ static void crossref_print_ref(crossref_t *crossref, ir_item_pos_t *pos)
   }
 }
 
-static size_t crossref_count_item(const ir_item_t *item)
+static long crossref_count_item(const ir_item_t *item)
 {
-  size_t ret;
+  long ret;
 
   ret = 0;
   while (item) {
@@ -107,7 +107,7 @@ static int crossref_item_ptr_compare(const void *lhs, const void *rhs)
 void print_crossref(const ir_t *ir)
 {
   crossref_t       crossref;
-  size_t           i, cnt;
+  long             i, cnt;
   crossref_item_t *items, **sort;
   assert(ir);
 
