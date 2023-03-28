@@ -318,11 +318,13 @@ struct ast__program_s {
 
 /**********     ast     **********/
 
-typedef struct {
+typedef struct ast__s ast_t;
+
+struct ast__s {
   ast_program_t    *program;
   symbol_storage_t *storage;
   const source_t   *source;
-} ast_t;
+};
 
 const char *ast_binop_str(ast_expr_binary_kind_t kind);
 void        delete_ast(ast_t *ast);
