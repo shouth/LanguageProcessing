@@ -1,7 +1,8 @@
 #ifndef IR_H
 #define IR_H
 
-#include "mppl.h"
+#include "ast.h"
+#include "source.h"
 
 typedef struct impl_ir_factory ir_factory_t;
 typedef struct impl_ir_scope   ir_scope_t;
@@ -162,7 +163,7 @@ void             delete_ir_operand(ir_operand_t *operand);
 typedef enum {
   IR_RVALUE_USE,
   IR_RVALUE_EXPR_BINARY_KIND,
-  IR_RVALUE_UNARY_OP,
+  IR_RVALUE_NOT,
   IR_RVALUE_CAST
 } ir_rvalue_kind_t;
 
@@ -179,8 +180,7 @@ typedef struct {
       ir_operand_t          *rhs;
     } binary_op_rvalue;
     struct {
-      ast_expr_unary_kind_t kind;
-      ir_operand_t         *value;
+      ir_operand_t *value;
     } unary_op_rvalue;
     struct {
       const ir_type_t *type;
@@ -191,7 +191,7 @@ typedef struct {
 
 ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *operand);
 ir_rvalue_t *new_ir_binary_op_rvalue(ast_expr_binary_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs);
-ir_rvalue_t *new_ir_unary_op_rvalue(ast_expr_unary_kind_t kind, ir_operand_t *value);
+ir_rvalue_t *new_ir_not_rvalue(ir_operand_t *value);
 ir_rvalue_t *new_ir_cast_rvalue(const ir_type_t *type, ir_operand_t *value);
 void         delete_ir_rvalue(ir_rvalue_t *rvalue);
 
@@ -359,7 +359,7 @@ struct impl_ir_factory {
   ir_scope_t *scope;
 };
 
-ir_factory_t *new_ir_factory();
+ir_factory_t *new_ir_factory(void);
 
 typedef struct {
   const source_t *source;

@@ -105,15 +105,11 @@ typedef enum {
   AST_EXPR_BINARY_KIND_GREQ
 } ast_expr_binary_kind_t;
 
-typedef enum {
-  AST_EXPR_UNARY_KIND_NOT
-} ast_expr_unary_kind_t;
-
 typedef struct ast__expr_s                 ast_expr_t;
 typedef struct ast__expr_decl_ref_s        ast_expr_decl_ref_t;
 typedef struct ast__expr_array_subscript_s ast_expr_array_subscript_t;
 typedef struct ast__expr_binary_s          ast_expr_binary_t;
-typedef struct ast__expr_unary_s           ast_expr_unary_t;
+typedef struct ast__expr_not_s             ast_expr_not_t;
 typedef struct ast__expr_paren_s           ast_expr_paren_t;
 typedef struct ast__expr_cast_s            ast_expr_cast_t;
 typedef struct ast__expr_constant_s        ast_expr_constant_t;
@@ -135,10 +131,9 @@ struct ast__expr_binary_s {
   ast_expr_t            *rhs;
 };
 
-struct ast__expr_unary_s {
-  ast_expr_unary_kind_t kind;
-  region_t              op_region;
-  ast_expr_t           *expr;
+struct ast__expr_not_s {
+  region_t    op_region;
+  ast_expr_t *expr;
 };
 
 struct ast__expr_paren_s {
@@ -159,7 +154,7 @@ struct ast__expr_s {
     ast_expr_decl_ref_t        decl_ref;
     ast_expr_array_subscript_t array_subscript;
     ast_expr_binary_t          binary;
-    ast_expr_unary_t           unary;
+    ast_expr_not_t             unary;
     ast_expr_paren_t           paren;
     ast_expr_cast_t            cast;
     ast_expr_constant_t        constant;

@@ -320,12 +320,11 @@ static ast_expr_t *parse_expr_paren(void)
   return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_PAREN, region_unite(left, ctx.current.region));
 }
 
-static ast_expr_t *parse_expr_unary(void)
+static ast_expr_t *parse_expr_not(void)
 {
-  region_t          left = ctx.next.region;
-  ast_expr_unary_t *expr = xmalloc(sizeof(ast_expr_t));
+  region_t        left = ctx.next.region;
+  ast_expr_not_t *expr = xmalloc(sizeof(ast_expr_t));
   expect(TOKEN_NOT);
-  expr->kind      = AST_EXPR_UNARY_KIND_NOT;
   expr->op_region = ctx.current.region;
   expr->expr      = parse_factor();
   return init_ast_expr((ast_expr_t *) expr, AST_EXPR_KIND_UNARY, region_unite(left, ctx.current.region));
@@ -351,7 +350,7 @@ static ast_expr_t *parse_factor(void)
   } else if (check(TOKEN_LPAREN)) {
     return parse_expr_paren();
   } else if (check(TOKEN_NOT)) {
-    return parse_expr_unary();
+    return parse_expr_not();
   } else if (check(TOKEN_INTEGER) || check(TOKEN_BOOLEAN) || check(TOKEN_CHAR)) {
     return parse_expr_cast();
   } else {

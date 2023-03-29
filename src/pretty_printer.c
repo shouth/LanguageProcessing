@@ -222,15 +222,11 @@ void pp_binary_op_expr(printer_t *printer, const ast_expr_binary_t *expr)
   pp_expr(printer, expr->rhs);
 }
 
-void pp_unary_op_expr(printer_t *printer, const ast_expr_unary_t *expr)
+void pp_not_expr(printer_t *printer, const ast_expr_not_t *expr)
 {
-  switch (expr->kind) {
-  case AST_EXPR_UNARY_KIND_NOT:
-    pp_colored_operator(printer, TOKEN_NOT);
-    printf(" ");
-    pp_expr(printer, expr->expr);
-    break;
-  }
+  pp_colored_operator(printer, TOKEN_NOT);
+  printf(" ");
+  pp_expr(printer, expr->expr);
 }
 
 void pp_paren_expr(printer_t *printer, const ast_expr_paren_t *expr)
@@ -282,7 +278,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
       pp_binary_op_expr(printer, (ast_expr_binary_t *) cur);
       break;
     case AST_EXPR_KIND_UNARY:
-      pp_unary_op_expr(printer, (ast_expr_unary_t *) cur);
+      pp_not_expr(printer, (ast_expr_not_t *) cur);
       break;
     case AST_EXPR_KIND_PAREN:
       pp_paren_expr(printer, (ast_expr_paren_t *) cur);

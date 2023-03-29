@@ -334,15 +334,9 @@ void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
       unreachable();
     }
     break;
-  case IR_RVALUE_UNARY_OP:
-    switch (stmt->rhs->u.unary_op_rvalue.kind) {
-    case AST_EXPR_UNARY_KIND_NOT:
-      codegen_load(codegen, "GR1", stmt->rhs->u.unary_op_rvalue.value);
-      codegen_print(codegen, "XOR", "GR1, BC1");
-      break;
-    default:
-      unreachable();
-    }
+  case IR_RVALUE_NOT:
+    codegen_load(codegen, "GR1", stmt->rhs->u.unary_op_rvalue.value);
+    codegen_print(codegen, "XOR", "GR1, BC1");
     break;
   case IR_RVALUE_CAST:
     codegen_load(codegen, "GR1", stmt->rhs->u.cast_rvalue.value);

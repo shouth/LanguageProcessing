@@ -3,8 +3,8 @@
 #include <string.h>
 
 #include "ast.h"
+#include "ir.h"
 #include "message.h"
-#include "mppl.h"
 #include "utility.h"
 
 typedef struct {
@@ -221,16 +221,15 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
   }
 }
 
-ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_unary_t *expr)
+ir_operand_t *analyze_not_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_not_t *expr)
 {
   assert(analyzer && expr);
 
-  switch (expr->kind) {
-  case AST_EXPR_UNARY_KIND_NOT: {
+  {
     ir_operand_t     *operand = analyze_expr(analyzer, block, expr->expr);
     const ir_type_t  *type    = ir_operand_type(operand);
     const ir_local_t *result  = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
-    ir_block_push_assign(*block, new_ir_place(result), new_ir_unary_op_rvalue(expr->kind, operand));
+    ir_block_push_assign(*block, new_ir_place(result), new_ir_not_rvalue(operand));
     if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
       msg_t *msg = new_msg(analyzer->source, expr->op_region,
         MSG_ERROR, "invalid operands for `not`");
@@ -240,9 +239,6 @@ ir_operand_t *analyze_unary_expr(analyzer_t *analyzer, ir_block_t **block, ast_e
       exit(EXIT_FAILURE);
     }
     return new_ir_place_operand(new_ir_place(result));
-  }
-  default:
-    unreachable();
   }
 }
 
@@ -311,7 +307,7 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
   case AST_EXPR_KIND_BINARY:
     return analyze_binary_expr(analyzer, block, &expr->expr.binary);
   case AST_EXPR_KIND_UNARY:
-    return analyze_unary_expr(analyzer, block, &expr->expr.unary);
+    return analyze_not_expr(analyzer, block, &expr->expr.unary);
   case AST_EXPR_KIND_PAREN:
     return analyze_expr(analyzer, block, expr->expr.paren.inner);
   case AST_EXPR_KIND_CAST:
