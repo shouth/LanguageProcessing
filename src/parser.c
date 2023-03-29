@@ -769,7 +769,6 @@ static ast_program_t *parse_program(void)
 
 ast_t *parse_source(const source_t *src)
 {
-  ast_t *ast = xmalloc(sizeof(ast_t));
   assert(src);
 
   ctx.src         = src;
@@ -780,12 +779,15 @@ ast_t *parse_source(const source_t *src)
   lexer_init(&ctx.lexer, src);
   bump();
 
-  ast->program = parse_program();
-  ast->symbols = ctx.symbols;
-  ast->source  = src;
-  if (ctx.error) {
-    delete_ast(ast);
-    return NULL;
+  {
+    ast_t *ast   = xmalloc(sizeof(ast_t));
+    ast->program = parse_program();
+    ast->symbols = ctx.symbols;
+    ast->source  = src;
+    if (ctx.error) {
+      delete_ast(ast);
+      return NULL;
+    }
+    return ast;
   }
-  return ast;
 }

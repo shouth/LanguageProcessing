@@ -126,7 +126,6 @@ static token_kind_t lex_braces_comment(void)
       ctx->info.braces_comment.terminated = 0;
       return TOKEN_BRACES_COMMENT;
     }
-
     bump();
   }
 }
@@ -204,7 +203,6 @@ static token_kind_t lex_number(void)
 
 static token_kind_t lex_symbol(void)
 {
-
   switch (first()) {
   case '+':
     bump();
