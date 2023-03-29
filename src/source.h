@@ -33,21 +33,6 @@ region_t region_unite(region_t a, region_t b);
 int      region_compare(region_t a, region_t b);
 
 typedef struct {
-  long            init_len;
-  const char     *ptr;
-  long            len;
-  const source_t *src;
-} cursol_t;
-
-void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, long len);
-int  cursol_nth(const cursol_t *cur, long index);
-int  cursol_first(const cursol_t *cur);
-int  cursol_second(const cursol_t *cur);
-int  cursol_eof(const cursol_t *cur);
-void cursol_next(cursol_t *cur);
-long cursol_position(const cursol_t *cur);
-
-typedef struct {
   const char *ptr;
   long        len;
 } symbol_t;

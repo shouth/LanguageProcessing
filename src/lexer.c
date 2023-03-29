@@ -6,23 +6,15 @@
 #include "message.h"
 #include "source.h"
 
-static struct {
-  cursol_t *cursol;
+static lexer_t *ctx;
 
-  union {
-    struct {
-      int  terminated;
-      long len;
-      long str_len;
-    } string;
-    struct {
-      int terminated;
-    } braces_comment;
-    struct {
-      int terminated;
-    } cstyle_comment;
-  } info;
-} ctx;
+void lexer_init(lexer_t *lexer, const source_t *src)
+{
+  lexer->init_len = src->src_len;
+  lexer->ptr      = src->src;
+  lexer->len      = src->src_len;
+  lexer->src      = src;
+}
 
 static int is_alphabet(int c)
 {
@@ -72,110 +64,140 @@ static int is_graphical(int c)
   return is_alphabet(c) || is_number(c) || is_space(c);
 }
 
+static int eof(void)
+{
+  return ctx->len == 0;
+}
+
+static void bump(void)
+{
+  if (!eof()) {
+    ++ctx->ptr;
+    --ctx->len;
+  }
+}
+
+static int nth(long index)
+{
+  if (index >= ctx->len) {
+    return EOF;
+  } else {
+    return ctx->ptr[index];
+  }
+}
+
+static int first(void)
+{
+  return nth(0);
+}
+
+static int second(void)
+{
+  return nth(1);
+}
+
+static long position(void)
+{
+  return ctx->init_len - ctx->len;
+}
+
 static token_kind_t lex_space(void)
 {
-  assert(is_space(cursol_first(ctx.cursol)));
+  assert(is_space(first()));
 
-  cursol_next(ctx.cursol);
-  while (is_space(cursol_first(ctx.cursol))) {
-    cursol_next(ctx.cursol);
+  bump();
+  while (is_space(first())) {
+    bump();
   }
   return TOKEN_WHITESPACE;
 }
 
 static token_kind_t lex_braces_comment(void)
 {
-  assert(cursol_first(ctx.cursol) == '{');
+  assert(first() == '{');
 
-  cursol_next(ctx.cursol);
+  bump();
   while (1) {
-    if (cursol_first(ctx.cursol) == '}') {
-      cursol_next(ctx.cursol);
-      ctx.info.braces_comment.terminated = 1;
+    if (first() == '}') {
+      bump();
+      ctx->info.braces_comment.terminated = 1;
+      return TOKEN_BRACES_COMMENT;
+    } else if (eof() || !is_graphical(first())) {
+      ctx->info.braces_comment.terminated = 0;
       return TOKEN_BRACES_COMMENT;
     }
 
-    if (cursol_eof(ctx.cursol) || !is_graphical(cursol_first(ctx.cursol))) {
-      ctx.info.braces_comment.terminated = 0;
-      return TOKEN_BRACES_COMMENT;
-    }
-
-    cursol_next(ctx.cursol);
+    bump();
   }
 }
 
 static token_kind_t lex_cstyle_comment(void)
 {
-  assert(cursol_first(ctx.cursol) == '/' && cursol_second(ctx.cursol) == '*');
+  assert(first() == '/' && second() == '*');
 
-  cursol_next(ctx.cursol);
-  cursol_next(ctx.cursol);
+  bump();
+  bump();
   while (1) {
-    if (cursol_first(ctx.cursol) == '*' && cursol_second(ctx.cursol) == '/') {
-      cursol_next(ctx.cursol);
-      cursol_next(ctx.cursol);
-      ctx.info.cstyle_comment.terminated = 1;
+    if (first() == '*' && second() == '/') {
+      bump();
+      bump();
+      ctx->info.cstyle_comment.terminated = 1;
+      return TOKEN_CSTYLE_COMMENT;
+    } else if (eof() || !is_graphical(first())) {
+      ctx->info.cstyle_comment.terminated = 0;
       return TOKEN_CSTYLE_COMMENT;
     }
 
-    if (cursol_eof(ctx.cursol) || !is_graphical(cursol_first(ctx.cursol))) {
-      ctx.info.cstyle_comment.terminated = 0;
-      return TOKEN_CSTYLE_COMMENT;
-    }
-
-    cursol_next(ctx.cursol);
+    bump();
   }
 }
 
 static token_kind_t lex_string(void)
 {
-  assert(cursol_first(ctx.cursol) == '\'');
+  assert(first() == '\'');
 
-  ctx.info.string.len     = 0;
-  ctx.info.string.str_len = 0;
-  cursol_next(ctx.cursol);
+  ctx->info.string.len     = 0;
+  ctx->info.string.str_len = 0;
+  bump();
   while (1) {
-    if (cursol_first(ctx.cursol) == '\'') {
-      cursol_next(ctx.cursol);
+    if (first() == '\'') {
+      bump();
 
-      if (cursol_first(ctx.cursol) != '\'') {
-        ctx.info.string.terminated = 1;
+      if (first() != '\'') {
+        ctx->info.string.terminated = 1;
         return TOKEN_STRING;
       } else {
-        ctx.info.string.len++;
+        ctx->info.string.len++;
       }
-    }
-
-    if (cursol_eof(ctx.cursol) || !is_graphical(cursol_first(ctx.cursol))
-      || cursol_first(ctx.cursol) == '\r' || cursol_first(ctx.cursol) == '\n') {
-      ctx.info.string.terminated = 0;
+    } else if (eof() || !is_graphical(first()) || first() == '\r' || first() == '\n') {
+      ctx->info.string.terminated = 0;
       return TOKEN_STRING;
     }
 
-    ctx.info.string.len++;
-    ctx.info.string.str_len++;
-    cursol_next(ctx.cursol);
+    ctx->info.string.len++;
+    ctx->info.string.str_len++;
+    bump();
   }
 }
 
 static token_kind_t lex_name_or_keyword(void)
 {
-  assert(is_alphabet(cursol_first(ctx.cursol)));
+  assert(is_alphabet(first()));
 
-  cursol_next(ctx.cursol);
-  while (is_alphabet(cursol_first(ctx.cursol)) || is_number(cursol_first(ctx.cursol))) {
-    cursol_next(ctx.cursol);
+  bump();
+  while (is_alphabet(first()) || is_number(first())) {
+    bump();
   }
   return TOKEN_NAME;
 }
 
 static token_kind_t lex_number(void)
 {
-  assert(is_number(cursol_first(ctx.cursol)));
+  assert(is_number(first()));
 
-  cursol_next(ctx.cursol);
-  while (is_number(cursol_first(ctx.cursol))) {
-    cursol_next(ctx.cursol);
+  bump();
+  while (is_number(first())) {
+    bump();
   }
   return TOKEN_NUMBER;
 }
@@ -183,95 +205,95 @@ static token_kind_t lex_number(void)
 static token_kind_t lex_symbol(void)
 {
 
-  switch (cursol_first(ctx.cursol)) {
+  switch (first()) {
   case '+':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_PLUS;
   case '-':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_MINUS;
   case '*':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_STAR;
   case '=':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_EQUAL;
   case '(':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_LPAREN;
   case ')':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_RPAREN;
   case '[':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_LSQPAREN;
   case ']':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_RSQPAREN;
   case '.':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_DOT;
   case ',':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_COMMA;
   case ';':
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_SEMI;
 
   case '<':
-    cursol_next(ctx.cursol);
-    switch (cursol_first(ctx.cursol)) {
+    bump();
+    switch (first()) {
     case '>':
-      cursol_next(ctx.cursol);
+      bump();
       return TOKEN_NOTEQ;
     case '=':
-      cursol_next(ctx.cursol);
+      bump();
       return TOKEN_LEEQ;
     default:
       return TOKEN_LE;
     }
 
   case '>':
-    cursol_next(ctx.cursol);
-    switch (cursol_first(ctx.cursol)) {
+    bump();
+    switch (first()) {
     case '=':
-      cursol_next(ctx.cursol);
+      bump();
       return TOKEN_GREQ;
     default:
       return TOKEN_GR;
     }
 
   case ':':
-    cursol_next(ctx.cursol);
-    switch (cursol_first(ctx.cursol)) {
+    bump();
+    switch (first()) {
     case '=':
-      cursol_next(ctx.cursol);
+      bump();
       return TOKEN_ASSIGN;
     default:
       return TOKEN_COLON;
     }
 
   default:
-    cursol_next(ctx.cursol);
+    bump();
     return TOKEN_UNKNOWN;
   }
 }
 
 static token_kind_t lex_delimited(void)
 {
-  if (cursol_eof(ctx.cursol)) {
+  if (eof()) {
     return TOKEN_EOF;
-  } else if (is_space(cursol_first(ctx.cursol))) {
+  } else if (is_space(first())) {
     return lex_space();
-  } else if (cursol_first(ctx.cursol) == '{') {
+  } else if (first() == '{') {
     return lex_braces_comment();
-  } else if (cursol_first(ctx.cursol) == '/' && cursol_second(ctx.cursol) == '*') {
+  } else if (first() == '/' && second() == '*') {
     return lex_cstyle_comment();
-  } else if (cursol_first(ctx.cursol) == '\'') {
+  } else if (first() == '\'') {
     return lex_string();
-  } else if (is_alphabet(cursol_first(ctx.cursol))) {
+  } else if (is_alphabet(first())) {
     return lex_name_or_keyword();
-  } else if (is_number(cursol_first(ctx.cursol))) {
+  } else if (is_number(first())) {
     return lex_number();
   } else {
     return lex_symbol();
@@ -311,16 +333,16 @@ static token_kind_t keywords[] = {
 
 static const long keywords_size = sizeof(keywords) / sizeof(*keywords);
 
-void lex_token(cursol_t *cursol, token_t *ret)
+void lex_token(lexer_t *lexer, token_t *ret)
 {
-  assert(cursol && ret);
+  assert(lexer && ret);
 
-  ctx.cursol = cursol;
+  ctx = lexer;
   {
-    long pos    = cursol_position(cursol);
-    ret->ptr    = cursol->ptr;
+    long pos    = position();
+    ret->ptr    = lexer->ptr;
     ret->type   = lex_delimited();
-    ret->region = region_from(pos, cursol_position(cursol) - pos);
+    ret->region = region_from(pos, position() - pos);
   }
 
   switch (ret->type) {
@@ -345,7 +367,7 @@ void lex_token(cursol_t *cursol, token_t *ret)
     errno                  = 0;
     ret->data.number.value = strtoul(ret->ptr, NULL, 10);
     if (errno == ERANGE || ret->data.number.value > 32767) {
-      msg_t *msg = new_msg(cursol->src, ret->region, MSG_ERROR, "number is too large");
+      msg_t *msg = new_msg(lexer->src, ret->region, MSG_ERROR, "number is too large");
       msg_add_inline_entry(msg, ret->region, "number needs to be less than 32768");
       msg_emit(msg);
       ret->type = TOKEN_ERROR;
@@ -354,29 +376,29 @@ void lex_token(cursol_t *cursol, token_t *ret)
   }
 
   case TOKEN_STRING: {
-    if (!ctx.info.string.terminated) {
-      if (cursol_eof(cursol)) {
-        msg_emit(new_msg(cursol->src, ret->region, MSG_ERROR, "string is unterminated"));
+    if (!ctx->info.string.terminated) {
+      if (eof()) {
+        msg_emit(new_msg(lexer->src, ret->region, MSG_ERROR, "string is unterminated"));
       } else {
-        msg_emit(new_msg(cursol->src, region_from(cursol_position(cursol), 1),
+        msg_emit(new_msg(lexer->src, region_from(position(), 1),
           MSG_ERROR, "nongraphical character"));
       }
       ret->type = TOKEN_ERROR;
     } else {
-      ret->data.string.str_len = ctx.info.string.str_len;
+      ret->data.string.str_len = ctx->info.string.str_len;
       ret->data.string.ptr     = ret->ptr + 1;
-      ret->data.string.len     = ctx.info.string.len;
+      ret->data.string.len     = ctx->info.string.len;
     }
     return;
   }
 
   case TOKEN_BRACES_COMMENT: {
-    if (!ctx.info.braces_comment.terminated) {
-      if (cursol_eof(cursol)) {
-        msg_emit(new_msg(cursol->src, region_from(ret->region.pos, 1),
+    if (!ctx->info.braces_comment.terminated) {
+      if (eof()) {
+        msg_emit(new_msg(lexer->src, region_from(ret->region.pos, 1),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(cursol->src, region_from(cursol_position(cursol), 1),
+        msg_emit(new_msg(lexer->src, region_from(position(), 1),
           MSG_ERROR, "nongraphical character"));
       }
       ret->type = TOKEN_ERROR;
@@ -385,12 +407,12 @@ void lex_token(cursol_t *cursol, token_t *ret)
   }
 
   case TOKEN_CSTYLE_COMMENT: {
-    if (!ctx.info.cstyle_comment.terminated) {
-      if (cursol_eof(cursol)) {
-        msg_emit(new_msg(cursol->src, region_from(ret->region.pos, 2),
+    if (!ctx->info.cstyle_comment.terminated) {
+      if (eof()) {
+        msg_emit(new_msg(lexer->src, region_from(ret->region.pos, 2),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(cursol->src, region_from(cursol_position(cursol), 1),
+        msg_emit(new_msg(lexer->src, region_from(position(), 1),
           MSG_ERROR, "nongraphical character"));
       }
       ret->type = TOKEN_ERROR;
@@ -400,11 +422,11 @@ void lex_token(cursol_t *cursol, token_t *ret)
 
   case TOKEN_UNKNOWN: {
     if (is_graphical(ret->ptr[0])) {
-      msg_t *msg = new_msg(cursol->src, ret->region,
+      msg_t *msg = new_msg(lexer->src, ret->region,
         MSG_ERROR, "stray `%c` in program", ret->ptr[0]);
       msg_emit(msg);
     } else {
-      msg_t *msg = new_msg(cursol->src, ret->region,
+      msg_t *msg = new_msg(lexer->src, ret->region,
         MSG_ERROR, "stray \\%03o in program", (unsigned char) ret->ptr[0]);
       msg_emit(msg);
     }

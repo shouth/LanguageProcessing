@@ -219,57 +219,6 @@ int region_compare(region_t a, region_t b)
   return 0;
 }
 
-void cursol_init(cursol_t *cur, const source_t *src, const char *ptr, long len)
-{
-  assert(cur && src);
-  cur->init_len = len;
-  cur->ptr      = ptr;
-  cur->len      = len;
-  cur->src      = src;
-}
-
-int cursol_nth(const cursol_t *cur, long index)
-{
-  assert(cur);
-  if (index >= cur->len) {
-    return EOF;
-  }
-  return cur->ptr[index];
-}
-
-int cursol_first(const cursol_t *cur)
-{
-  assert(cur);
-  return cursol_nth(cur, 0);
-}
-
-int cursol_second(const cursol_t *cur)
-{
-  assert(cur);
-  return cursol_nth(cur, 1);
-}
-
-int cursol_eof(const cursol_t *cur)
-{
-  assert(cur);
-  return cur->len == 0;
-}
-
-void cursol_next(cursol_t *cur)
-{
-  assert(cur);
-  if (!cursol_eof(cur)) {
-    cur->ptr++;
-    cur->len--;
-  }
-}
-
-long cursol_position(const cursol_t *cur)
-{
-  assert(cur);
-  return cur->init_len - cur->len;
-}
-
 int symbol_compare(const symbol_t *lhs, const symbol_t *rhs)
 {
   long diff = lhs->len - rhs->len;

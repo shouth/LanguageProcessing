@@ -11,7 +11,7 @@
 
 static struct {
   const source_t   *src;
-  cursol_t          cursol;
+  lexer_t           lexer;
   symbol_context_t *symbols;
 
   token_t  current, next;
@@ -77,7 +77,7 @@ static void bump(void)
     ctx.current  = ctx.next;
     ctx.expected = 0;
     while (1) {
-      lex_token(&ctx.cursol, &ctx.next);
+      lex_token(&ctx.lexer, &ctx.next);
       switch (ctx.next.type) {
       case TOKEN_WHITESPACE:
       case TOKEN_BRACES_COMMENT:
@@ -777,7 +777,7 @@ ast_t *parse_source(const source_t *src)
   ctx.alive       = 1;
   ctx.error       = 0;
   ctx.within_loop = 0;
-  cursol_init(&ctx.cursol, src, src->src, src->src_len);
+  lexer_init(&ctx.lexer, src);
   bump();
 
   ast->program = parse_program();

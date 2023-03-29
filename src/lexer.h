@@ -80,7 +80,29 @@ typedef struct {
   token_data_t data;
 } token_t;
 
-void        lex_token(cursol_t *cursol, token_t *ret);
+typedef struct {
+  long            init_len;
+  const char     *ptr;
+  long            len;
+  const source_t *src;
+
+  union {
+    struct {
+      int  terminated;
+      long len;
+      long str_len;
+    } string;
+    struct {
+      int terminated;
+    } braces_comment;
+    struct {
+      int terminated;
+    } cstyle_comment;
+  } info;
+} lexer_t;
+
+void        lexer_init(lexer_t *lexer, const source_t *src);
+void        lex_token(lexer_t *lexer, token_t *ret);
 const char *token_to_str(token_kind_t type);
 
 #endif
