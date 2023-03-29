@@ -418,13 +418,11 @@ void lex_token(lexer_t *lexer, token_t *token)
   }
   case TOKEN_UNKNOWN: {
     if (is_graphical(token->ptr[0])) {
-      msg_t *msg = new_msg(lexer->src, token->region,
-        MSG_ERROR, "stray `%c` in program", token->ptr[0]);
-      msg_emit(msg);
+      msg_emit(new_msg(lexer->src, token->region,
+        MSG_ERROR, "stray `%c` in program", token->ptr[0]));
     } else {
-      msg_t *msg = new_msg(lexer->src, token->region,
-        MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]);
-      msg_emit(msg);
+      msg_emit(new_msg(lexer->src, token->region,
+        MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]));
     }
     return;
   }
