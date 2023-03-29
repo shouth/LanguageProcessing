@@ -363,7 +363,6 @@ void lex_token(lexer_t *lexer, token_t *token)
     }
     return;
   }
-
   case TOKEN_NUMBER: {
     token_number_t *token = (token_number_t *) ctx.token;
     errno                 = 0;
@@ -376,7 +375,6 @@ void lex_token(lexer_t *lexer, token_t *token)
     }
     return;
   }
-
   case TOKEN_STRING: {
     token_string_t *token = (token_string_t *) ctx.token;
     if (!token->terminated) {
@@ -390,7 +388,6 @@ void lex_token(lexer_t *lexer, token_t *token)
     }
     return;
   }
-
   case TOKEN_BRACES_COMMENT: {
     token_braces_comment_t *token = (token_braces_comment_t *) ctx.token;
     if (!token->terminated) {
@@ -405,7 +402,6 @@ void lex_token(lexer_t *lexer, token_t *token)
     }
     return;
   }
-
   case TOKEN_CSTYLE_COMMENT: {
     token_cstyle_comment_t *token = (token_cstyle_comment_t *) ctx.token;
     if (!token->terminated) {
@@ -420,7 +416,6 @@ void lex_token(lexer_t *lexer, token_t *token)
     }
     return;
   }
-
   case TOKEN_UNKNOWN: {
     if (is_graphical(token->ptr[0])) {
       msg_t *msg = new_msg(lexer->src, token->region,
@@ -433,7 +428,6 @@ void lex_token(lexer_t *lexer, token_t *token)
     }
     return;
   }
-
   default:
     /* do nothing */
     return;
