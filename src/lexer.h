@@ -100,10 +100,8 @@ typedef struct {
 } token_t;
 
 typedef struct {
-  long            init_len;
-  const char     *ptr;
-  long            len;
   const source_t *src;
+  long            pos;
 } lexer_t;
 
 void        lexer_init(lexer_t *lexer, const source_t *src);

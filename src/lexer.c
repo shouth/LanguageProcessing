@@ -13,10 +13,8 @@ static struct {
 
 void lexer_init(lexer_t *lexer, const source_t *src)
 {
-  lexer->init_len = src->src_len;
-  lexer->ptr      = src->src;
-  lexer->len      = src->src_len;
-  lexer->src      = src;
+  lexer->pos = 0;
+  lexer->src = src;
 }
 
 static int is_alphabet(int c)
@@ -69,23 +67,23 @@ static int is_graphical(int c)
 
 static int eof(void)
 {
-  return ctx.lexer->len == 0;
+  return ctx.lexer->pos >= ctx.lexer->src->src_len;
 }
 
 static void bump(void)
 {
   if (!eof()) {
-    ++ctx.lexer->ptr;
-    --ctx.lexer->len;
+    ++ctx.lexer->pos;
   }
 }
 
 static int nth(long index)
 {
-  if (index >= ctx.lexer->len) {
+  index += ctx.lexer->pos;
+  if (index >= ctx.lexer->src->src_len) {
     return EOF;
   } else {
-    return ctx.lexer->ptr[index];
+    return ctx.lexer->src->src[index];
   }
 }
 
@@ -97,11 +95,6 @@ static int first(void)
 static int second(void)
 {
   return nth(1);
-}
-
-static long position(void)
-{
-  return ctx.lexer->init_len - ctx.lexer->len;
 }
 
 static token_kind_t lex_space(void)
@@ -340,10 +333,10 @@ void lex_token(lexer_t *lexer, token_t *token)
   ctx.token = token;
 
   {
-    long pos      = position();
-    token->ptr    = lexer->ptr;
+    long pos      = ctx.lexer->pos;
+    token->ptr    = lexer->src->src + pos;
     token->type   = lex_delimited();
-    token->region = region_from(pos, position() - pos);
+    token->region = region_from(pos, ctx.lexer->pos - pos);
   }
 
   switch (token->type) {
@@ -381,7 +374,7 @@ void lex_token(lexer_t *lexer, token_t *token)
       if (eof()) {
         msg_emit(new_msg(lexer->src, ctx.token->region, MSG_ERROR, "string is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(position(), 1),
+        msg_emit(new_msg(lexer->src, region_from(ctx.lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
       ctx.token->type = TOKEN_ERROR;
@@ -395,7 +388,7 @@ void lex_token(lexer_t *lexer, token_t *token)
         msg_emit(new_msg(lexer->src, region_from(ctx.token->region.pos, 1),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(position(), 1),
+        msg_emit(new_msg(lexer->src, region_from(ctx.lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
       ctx.token->type = TOKEN_ERROR;
@@ -409,7 +402,7 @@ void lex_token(lexer_t *lexer, token_t *token)
         msg_emit(new_msg(lexer->src, region_from(ctx.token->region.pos, 2),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(position(), 1),
+        msg_emit(new_msg(lexer->src, region_from(ctx.lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
       ctx.token->type = TOKEN_ERROR;
