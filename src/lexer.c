@@ -364,13 +364,14 @@ void lex_token(lexer_t *lexer, token_t *token)
   }
 
   case TOKEN_NUMBER: {
-    errno                    = 0;
-    token->data.number.value = strtoul(token->ptr, NULL, 10);
-    if (errno == ERANGE || token->data.number.value > 32767) {
-      msg_t *msg = new_msg(lexer->src, token->region, MSG_ERROR, "number is too large");
-      msg_add_inline_entry(msg, token->region, "number needs to be less than 32768");
+    token_number_t *token = (token_number_t *) ctx.token;
+    errno                 = 0;
+    token->value          = strtoul(ctx.token->ptr, NULL, 10);
+    if (errno == ERANGE || token->value > 32767) {
+      msg_t *msg = new_msg(lexer->src, ctx.token->region, MSG_ERROR, "number is too large");
+      msg_add_inline_entry(msg, ctx.token->region, "number needs to be less than 32768");
       msg_emit(msg);
-      token->type = TOKEN_ERROR;
+      ctx.token->type = TOKEN_ERROR;
     }
     return;
   }
