@@ -162,6 +162,7 @@ static token_kind_t lex_string(void)
 
   token->len     = 0;
   token->str_len = 0;
+  token->ptr     = ctx.token->ptr + 1;
   bump();
   while (1) {
     if (first() == '\'') {
@@ -386,8 +387,6 @@ void lex_token(lexer_t *lexer, token_t *token)
           MSG_ERROR, "nongraphical character"));
       }
       ctx.token->type = TOKEN_ERROR;
-    } else {
-      token->ptr = ctx.token->ptr + 1;
     }
     return;
   }
