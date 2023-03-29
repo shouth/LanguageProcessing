@@ -6,7 +6,10 @@
 #include "message.h"
 #include "source.h"
 
-static lexer_t *ctx;
+static struct {
+  lexer_t *lexer;
+  token_t *token;
+} ctx;
 
 void lexer_init(lexer_t *lexer, const source_t *src)
 {
@@ -66,23 +69,23 @@ static int is_graphical(int c)
 
 static int eof(void)
 {
-  return ctx->len == 0;
+  return ctx.lexer->len == 0;
 }
 
 static void bump(void)
 {
   if (!eof()) {
-    ++ctx->ptr;
-    --ctx->len;
+    ++ctx.lexer->ptr;
+    --ctx.lexer->len;
   }
 }
 
 static int nth(long index)
 {
-  if (index >= ctx->len) {
+  if (index >= ctx.lexer->len) {
     return EOF;
   } else {
-    return ctx->ptr[index];
+    return ctx.lexer->ptr[index];
   }
 }
 
@@ -98,7 +101,7 @@ static int second(void)
 
 static long position(void)
 {
-  return ctx->init_len - ctx->len;
+  return ctx.lexer->init_len - ctx.lexer->len;
 }
 
 static token_kind_t lex_space(void)
@@ -114,16 +117,17 @@ static token_kind_t lex_space(void)
 
 static token_kind_t lex_braces_comment(void)
 {
+  token_braces_comment_t *token = (token_braces_comment_t *) ctx.token;
   assert(first() == '{');
 
   bump();
   while (1) {
     if (first() == '}') {
       bump();
-      ctx->info.braces_comment.terminated = 1;
+      token->terminated = 1;
       return TOKEN_BRACES_COMMENT;
     } else if (eof() || !is_graphical(first())) {
-      ctx->info.braces_comment.terminated = 0;
+      token->terminated = 0;
       return TOKEN_BRACES_COMMENT;
     }
     bump();
@@ -132,6 +136,7 @@ static token_kind_t lex_braces_comment(void)
 
 static token_kind_t lex_cstyle_comment(void)
 {
+  token_cstyle_comment_t *token = (token_cstyle_comment_t *) ctx.token;
   assert(first() == '/' && second() == '*');
 
   bump();
@@ -140,41 +145,41 @@ static token_kind_t lex_cstyle_comment(void)
     if (first() == '*' && second() == '/') {
       bump();
       bump();
-      ctx->info.cstyle_comment.terminated = 1;
+      token->terminated = 1;
       return TOKEN_CSTYLE_COMMENT;
     } else if (eof() || !is_graphical(first())) {
-      ctx->info.cstyle_comment.terminated = 0;
+      token->terminated = 0;
       return TOKEN_CSTYLE_COMMENT;
     }
-
     bump();
   }
 }
 
 static token_kind_t lex_string(void)
 {
+  token_string_t *token = (token_string_t *) ctx.token;
   assert(first() == '\'');
 
-  ctx->info.string.len     = 0;
-  ctx->info.string.str_len = 0;
+  token->len     = 0;
+  token->str_len = 0;
   bump();
   while (1) {
     if (first() == '\'') {
       bump();
 
       if (first() != '\'') {
-        ctx->info.string.terminated = 1;
+        token->terminated = 1;
         return TOKEN_STRING;
       } else {
-        ctx->info.string.len++;
+        ++token->len;
       }
     } else if (eof() || !is_graphical(first()) || first() == '\r' || first() == '\n') {
-      ctx->info.string.terminated = 0;
+      token->terminated = 0;
       return TOKEN_STRING;
     }
 
-    ctx->info.string.len++;
-    ctx->info.string.str_len++;
+    ++token->len;
+    ++token->str_len;
     bump();
   }
 }
@@ -247,9 +252,8 @@ static token_kind_t lex_symbol(void)
     case '=':
       bump();
       return TOKEN_LEEQ;
-    default:
-      return TOKEN_LE;
     }
+    return TOKEN_LE;
 
   case '>':
     bump();
@@ -257,9 +261,8 @@ static token_kind_t lex_symbol(void)
     case '=':
       bump();
       return TOKEN_GREQ;
-    default:
-      return TOKEN_GR;
     }
+    return TOKEN_GR;
 
   case ':':
     bump();
@@ -267,14 +270,11 @@ static token_kind_t lex_symbol(void)
     case '=':
       bump();
       return TOKEN_ASSIGN;
-    default:
-      return TOKEN_COLON;
     }
-
-  default:
-    bump();
-    return TOKEN_UNKNOWN;
+    return TOKEN_COLON;
   }
+  bump();
+  return TOKEN_UNKNOWN;
 }
 
 static token_kind_t lex_delimited(void)
@@ -331,30 +331,32 @@ static token_kind_t keywords[] = {
 
 static const long keywords_size = sizeof(keywords) / sizeof(*keywords);
 
-void lex_token(lexer_t *lexer, token_t *ret)
+void lex_token(lexer_t *lexer, token_t *token)
 {
-  assert(lexer && ret);
+  assert(lexer && token);
 
-  ctx = lexer;
+  ctx.lexer = lexer;
+  ctx.token = token;
+
   {
-    long pos    = position();
-    ret->ptr    = lexer->ptr;
-    ret->type   = lex_delimited();
-    ret->region = region_from(pos, position() - pos);
+    long pos      = position();
+    token->ptr    = lexer->ptr;
+    token->type   = lex_delimited();
+    token->region = region_from(pos, position() - pos);
   }
 
-  switch (ret->type) {
+  switch (token->type) {
   case TOKEN_NAME: {
     long i, j;
     for (i = 0; i < keywords_size; i++) {
       const char *ptr = token_to_str(keywords[i]);
-      for (j = 0; j < ret->region.len; j++) {
-        if (ret->ptr[j] != ptr[j]) {
+      for (j = 0; j < token->region.len; j++) {
+        if (token->ptr[j] != ptr[j]) {
           break;
         }
       }
-      if (j == ret->region.len && ptr[j] == '\0') {
-        ret->type = keywords[i];
+      if (j == token->region.len && ptr[j] == '\0') {
+        token->type = keywords[i];
         break;
       }
     }
@@ -362,70 +364,71 @@ void lex_token(lexer_t *lexer, token_t *ret)
   }
 
   case TOKEN_NUMBER: {
-    errno                  = 0;
-    ret->data.number.value = strtoul(ret->ptr, NULL, 10);
-    if (errno == ERANGE || ret->data.number.value > 32767) {
-      msg_t *msg = new_msg(lexer->src, ret->region, MSG_ERROR, "number is too large");
-      msg_add_inline_entry(msg, ret->region, "number needs to be less than 32768");
+    errno                    = 0;
+    token->data.number.value = strtoul(token->ptr, NULL, 10);
+    if (errno == ERANGE || token->data.number.value > 32767) {
+      msg_t *msg = new_msg(lexer->src, token->region, MSG_ERROR, "number is too large");
+      msg_add_inline_entry(msg, token->region, "number needs to be less than 32768");
       msg_emit(msg);
-      ret->type = TOKEN_ERROR;
+      token->type = TOKEN_ERROR;
     }
     return;
   }
 
   case TOKEN_STRING: {
-    if (!ctx->info.string.terminated) {
+    token_string_t *token = (token_string_t *) ctx.token;
+    if (!token->terminated) {
       if (eof()) {
-        msg_emit(new_msg(lexer->src, ret->region, MSG_ERROR, "string is unterminated"));
+        msg_emit(new_msg(lexer->src, ctx.token->region, MSG_ERROR, "string is unterminated"));
       } else {
         msg_emit(new_msg(lexer->src, region_from(position(), 1),
           MSG_ERROR, "nongraphical character"));
       }
-      ret->type = TOKEN_ERROR;
+      ctx.token->type = TOKEN_ERROR;
     } else {
-      ret->data.string.str_len = ctx->info.string.str_len;
-      ret->data.string.ptr     = ret->ptr + 1;
-      ret->data.string.len     = ctx->info.string.len;
+      token->ptr = ctx.token->ptr + 1;
     }
     return;
   }
 
   case TOKEN_BRACES_COMMENT: {
-    if (!ctx->info.braces_comment.terminated) {
+    token_braces_comment_t *token = (token_braces_comment_t *) ctx.token;
+    if (!token->terminated) {
       if (eof()) {
-        msg_emit(new_msg(lexer->src, region_from(ret->region.pos, 1),
+        msg_emit(new_msg(lexer->src, region_from(ctx.token->region.pos, 1),
           MSG_ERROR, "comment is unterminated"));
       } else {
         msg_emit(new_msg(lexer->src, region_from(position(), 1),
           MSG_ERROR, "nongraphical character"));
       }
-      ret->type = TOKEN_ERROR;
+      ctx.token->type = TOKEN_ERROR;
     }
     return;
   }
 
   case TOKEN_CSTYLE_COMMENT: {
-    if (!ctx->info.cstyle_comment.terminated) {
+    token_cstyle_comment_t *token = (token_cstyle_comment_t *) ctx.token;
+    if (!token->terminated) {
       if (eof()) {
-        msg_emit(new_msg(lexer->src, region_from(ret->region.pos, 2),
+        msg_emit(new_msg(lexer->src, region_from(ctx.token->region.pos, 2),
           MSG_ERROR, "comment is unterminated"));
       } else {
         msg_emit(new_msg(lexer->src, region_from(position(), 1),
           MSG_ERROR, "nongraphical character"));
       }
-      ret->type = TOKEN_ERROR;
+      ctx.token->type = TOKEN_ERROR;
     }
     return;
   }
 
   case TOKEN_UNKNOWN: {
-    if (is_graphical(ret->ptr[0])) {
-      msg_t *msg = new_msg(lexer->src, ret->region,
-        MSG_ERROR, "stray `%c` in program", ret->ptr[0]);
+    if (is_graphical(token->ptr[0])) {
+      msg_t *msg = new_msg(lexer->src, token->region,
+        MSG_ERROR, "stray `%c` in program", token->ptr[0]);
       msg_emit(msg);
     } else {
-      msg_t *msg = new_msg(lexer->src, ret->region,
-        MSG_ERROR, "stray \\%03o in program", (unsigned char) ret->ptr[0]);
+      msg_t *msg = new_msg(lexer->src, token->region,
+        MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]);
       msg_emit(msg);
     }
     return;

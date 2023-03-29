@@ -62,22 +62,41 @@ typedef enum {
   TOKEN_ERROR
 } token_kind_t;
 
-typedef union {
-  struct {
-    unsigned long value;
-  } number;
-  struct {
-    const char *ptr;
-    long        len;
-    long        str_len;
-  } string;
-} token_data_t;
+typedef struct token__number_s         token_number_t;
+typedef struct token__string_s         token_string_t;
+typedef struct token__braces_comment_s token_braces_comment_t;
+typedef struct token__cstyle_comment_s token_cstyle_comment_t;
+
+struct token__number_s {
+  unsigned long value;
+};
+
+struct token__string_s {
+  const char *ptr;
+  long        len;
+  long        str_len;
+  int         terminated;
+};
+
+struct token__braces_comment_s {
+  int terminated;
+};
+
+struct token__cstyle_comment_s {
+  int terminated;
+};
 
 typedef struct {
+  union {
+    token_number_t         number;
+    token_string_t         string;
+    token_braces_comment_t braces_comment;
+    token_cstyle_comment_t cstyle_comment;
+  } data;
+
   const char  *ptr;
   region_t     region;
   token_kind_t type;
-  token_data_t data;
 } token_t;
 
 typedef struct {
@@ -85,20 +104,6 @@ typedef struct {
   const char     *ptr;
   long            len;
   const source_t *src;
-
-  union {
-    struct {
-      int  terminated;
-      long len;
-      long str_len;
-    } string;
-    struct {
-      int terminated;
-    } braces_comment;
-    struct {
-      int terminated;
-    } cstyle_comment;
-  } info;
 } lexer_t;
 
 void        lexer_init(lexer_t *lexer, const source_t *src);

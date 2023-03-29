@@ -178,10 +178,10 @@ static ast_lit_t *parse_boolean_lit(void)
 static ast_lit_t *parse_string_lit(void)
 {
   if (expect(TOKEN_STRING)) {
-    ast_lit_string_t   *lit  = xmalloc(sizeof(ast_lit_t));
-    const token_data_t *data = &ctx.current.data;
-    lit->str_len             = data->string.str_len;
-    lit->symbol              = symbol_intern(ctx.symbols, data->string.ptr, data->string.len);
+    ast_lit_string_t *lit   = xmalloc(sizeof(ast_lit_t));
+    token_string_t   *token = (token_string_t *) &ctx.current;
+    lit->str_len            = token->str_len;
+    lit->symbol             = symbol_intern(ctx.symbols, token->ptr, token->len);
     return init_ast_lit((ast_lit_t *) lit, AST_LIT_KIND_STRING, ctx.current.region);
   } else {
     return NULL;
