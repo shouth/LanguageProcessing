@@ -188,11 +188,6 @@ static ast_lit_t *parse_string_lit(void)
   }
 }
 
-static int check_lit(void)
-{
-  return check(TOKEN_NUMBER) || check(TOKEN_TRUE) || check(TOKEN_FALSE) || check(TOKEN_STRING);
-}
-
 static ast_lit_t *parse_lit(void)
 {
   if (check(TOKEN_NUMBER)) {
@@ -205,11 +200,6 @@ static ast_lit_t *parse_lit(void)
     error_unexpected();
     return NULL;
   }
-}
-
-static int check_std_type(void)
-{
-  return check(TOKEN_INTEGER) || check(TOKEN_BOOLEAN) || check(TOKEN_CHAR);
 }
 
 static ast_type_t *init_ast_type(ast_type_t *type, ast_type_kind_t kind, region_t region)
@@ -252,7 +242,7 @@ static ast_type_t *parse_type(void)
 {
   if (check(TOKEN_ARRAY)) {
     return parse_array_type();
-  } else if (check_std_type()) {
+  } else if (check(TOKEN_INTEGER) || check(TOKEN_BOOLEAN) || check(TOKEN_CHAR)) {
     return parse_std_type();
   } else {
     error_unexpected();
@@ -356,13 +346,13 @@ static ast_expr_t *parse_factor(void)
 {
   if (check(TOKEN_NAME)) {
     return parse_ref();
-  } else if (check_lit()) {
+  } else if (check(TOKEN_NUMBER) || check(TOKEN_TRUE) || check(TOKEN_FALSE) || check(TOKEN_STRING)) {
     return parse_expr_constant();
   } else if (check(TOKEN_LPAREN)) {
     return parse_expr_paren();
   } else if (check(TOKEN_NOT)) {
     return parse_expr_unary();
-  } else if (check_std_type()) {
+  } else if (check(TOKEN_INTEGER) || check(TOKEN_BOOLEAN) || check(TOKEN_CHAR)) {
     return parse_expr_cast();
   } else {
     error_expected("expression");
