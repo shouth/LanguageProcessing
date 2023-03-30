@@ -307,7 +307,7 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
   case AST_EXPR_KIND_BINARY:
     return analyze_binary_expr(analyzer, block, &expr->expr.binary);
   case AST_EXPR_KIND_UNARY:
-    return analyze_not_expr(analyzer, block, &expr->expr.unary);
+    return analyze_not_expr(analyzer, block, &expr->expr.not );
   case AST_EXPR_KIND_PAREN:
     return analyze_expr(analyzer, block, expr->expr.paren.inner);
   case AST_EXPR_KIND_CAST:

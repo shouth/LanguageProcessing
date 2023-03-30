@@ -601,8 +601,8 @@ ir_rvalue_t *new_ir_binary_op_rvalue(ast_expr_binary_kind_t kind, ir_operand_t *
 
 ir_rvalue_t *new_ir_not_rvalue(ir_operand_t *value)
 {
-  ir_rvalue_t *ret             = new_ir_rvalue(IR_RVALUE_NOT);
-  ret->u.unary_op_rvalue.value = value;
+  ir_rvalue_t *ret        = new_ir_rvalue(IR_RVALUE_NOT);
+  ret->u.not_rvalue.value = value;
   return ret;
 }
 
@@ -628,7 +628,7 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
     delete_ir_operand(rvalue->u.binary_op_rvalue.rhs);
     break;
   case IR_RVALUE_NOT:
-    delete_ir_operand(rvalue->u.unary_op_rvalue.value);
+    delete_ir_operand(rvalue->u.not_rvalue.value);
     break;
   case IR_RVALUE_CAST:
     delete_ir_operand(rvalue->u.cast_rvalue.value);

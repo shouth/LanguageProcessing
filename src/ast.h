@@ -154,10 +154,10 @@ struct ast__expr_s {
     ast_expr_decl_ref_t        decl_ref;
     ast_expr_array_subscript_t array_subscript;
     ast_expr_binary_t          binary;
-    ast_expr_not_t             unary;
-    ast_expr_paren_t           paren;
-    ast_expr_cast_t            cast;
-    ast_expr_constant_t        constant;
+    ast_expr_not_t not ;
+    ast_expr_paren_t    paren;
+    ast_expr_cast_t     cast;
+    ast_expr_constant_t constant;
   } expr;
 
   ast_expr_kind_t kind;

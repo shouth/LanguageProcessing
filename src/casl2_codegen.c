@@ -335,7 +335,7 @@ void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
     }
     break;
   case IR_RVALUE_NOT:
-    codegen_load(codegen, "GR1", stmt->rhs->u.unary_op_rvalue.value);
+    codegen_load(codegen, "GR1", stmt->rhs->u.not_rvalue.value);
     codegen_print(codegen, "XOR", "GR1, BC1");
     break;
   case IR_RVALUE_CAST:

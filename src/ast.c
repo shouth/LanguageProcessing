@@ -68,7 +68,7 @@ static void delete_ast_expr(ast_expr_t *expr)
       delete_ast_expr(expr->expr.binary.rhs);
       break;
     case AST_EXPR_KIND_UNARY:
-      delete_ast_expr(expr->expr.unary.expr);
+      delete_ast_expr(expr->expr.not .expr);
       break;
     case AST_EXPR_KIND_PAREN:
       delete_ast_expr(expr->expr.paren.inner);

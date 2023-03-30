@@ -181,7 +181,7 @@ typedef struct {
     } binary_op_rvalue;
     struct {
       ir_operand_t *value;
-    } unary_op_rvalue;
+    } not_rvalue;
     struct {
       const ir_type_t *type;
       ir_operand_t    *value;
