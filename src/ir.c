@@ -1,6 +1,8 @@
 #include <assert.h>
 
+#include "ir.h"
 #include "mppl.h"
+#include "source.h"
 #include "utility.h"
 
 int ir_type_is_kind(const ir_type_t *type, ir_type_kind_t kind)
@@ -17,7 +19,7 @@ int ir_type_is_std(const ir_type_t *type)
 
 static ir_type_t *new_ir_type(ir_type_kind_t kind)
 {
-  ir_type_t *ret = new (ir_type_t);
+  ir_type_t *ret = xmalloc(sizeof(ir_type_t));
   ret->kind      = kind;
   ret->next      = NULL;
   return ret;
@@ -134,20 +136,20 @@ static uint64_t ir_type_hasher(const void *ptr)
 {
   const ir_type_t *p = ptr;
   ir_type_t       *cur;
-  uint64_t         ret = fnv1_int(p->kind);
+  uint64_t         ret = fnv1(&p->kind, sizeof(ir_type_kind_t));
 
   switch (p->kind) {
   case IR_TYPE_PROCEDURE:
     cur = p->u.procedure_type.param_types;
     while (cur) {
-      ret = 31 * ret + fnv1_ptr(cur->u.ref);
+      ret = 31 * ret + fnv1(&cur->u.ref, sizeof(const ir_type_t *));
       cur = cur->next;
     }
     break;
   case IR_TYPE_ARRAY:
     cur = p->u.array_type.base_type;
-    ret = 31 * ret + fnv1_ptr(cur->u.ref);
-    ret = 31 * ret + fnv1_int(p->u.array_type.size);
+    ret = 31 * ret + fnv1(&cur->u.ref, sizeof(const ir_type_t *));
+    ret = 31 * ret + fnv1(&p->u.array_type.size, sizeof(long));
     break;
   default:
     /* do nothing */
@@ -258,7 +260,7 @@ void ir_scope_start(ir_factory_t *factory, ir_item_t *owner)
   ir_scope_t *scope;
   assert(factory && owner);
 
-  scope               = new (ir_scope_t);
+  scope               = xmalloc(sizeof(ir_scope_t));
   scope->next         = factory->scope;
   factory->scope      = scope;
   scope->owner        = owner;
@@ -278,7 +280,7 @@ void ir_scope_end(ir_factory_t *factory, const ir_block_t *block)
   scope          = factory->scope;
   factory->scope = scope->next;
 
-  scope->owner->body         = new (ir_body_t);
+  scope->owner->body         = xmalloc(sizeof(ir_body_t));
   scope->owner->body->inner  = block;
   scope->owner->body->items  = scope->items.head;
   scope->owner->body->locals = scope->locals.head;
@@ -297,7 +299,7 @@ static ir_local_t *ir_scope_append_local(ir_scope_t *scope, ir_local_t *local)
 
 static ir_local_t *new_ir_local(ir_local_kind_t kind)
 {
-  ir_local_t *ret = new (ir_local_t);
+  ir_local_t *ret = xmalloc(sizeof(ir_local_t));
   ret->kind       = kind;
   ret->next       = NULL;
   return ret;
@@ -310,7 +312,7 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, long pos)
   ir_item_pos_t      *item_pos;
   assert(factory && item);
 
-  item_pos         = new (ir_item_pos_t);
+  item_pos         = xmalloc(sizeof(ir_item_pos_t));
   item_pos->pos    = pos;
   item_pos->next   = NULL;
   *item->refs.tail = item_pos;
@@ -373,7 +375,7 @@ void delete_ir_local(ir_local_t *local)
 
 ir_place_t *new_ir_place(const ir_local_t *local)
 {
-  ir_place_t *ret   = new (ir_place_t);
+  ir_place_t *ret   = xmalloc(sizeof(ir_place_t));
   ret->local        = local;
   ret->place_access = NULL;
   return ret;
@@ -382,7 +384,7 @@ ir_place_t *new_ir_place(const ir_local_t *local)
 ir_place_t *new_ir_index_place(const ir_local_t *local, ir_operand_t *index)
 {
   ir_place_t *ret                               = new_ir_place(local);
-  ret->place_access                             = new (ir_place_access_t);
+  ret->place_access                             = xmalloc(sizeof(ir_place_access_t));
   ret->place_access->kind                       = IR_PLACE_ACCESS_INDEX;
   ret->place_access->u.index_place_access.index = index;
   return ret;
@@ -415,7 +417,7 @@ void delete_ir_place(ir_place_t *place)
 
 static ir_constant_t *new_ir_constant(ir_constant_kind_t kind, const ir_type_t *type)
 {
-  ir_constant_t *ret = new (ir_constant_t);
+  ir_constant_t *ret = xmalloc(sizeof(ir_constant_t));
   ret->kind          = kind;
   ret->type          = type;
   ret->next          = NULL;
@@ -500,19 +502,19 @@ static int ir_constant_comparator(const void *lhs, const void *rhs)
 static uint64_t ir_constant_hasher(const void *ptr)
 {
   const ir_constant_t *p   = ptr;
-  uint64_t             ret = fnv1_int(p->kind);
+  uint64_t             ret = fnv1(&p->kind, sizeof(ir_constant_kind_t));
   switch (p->kind) {
   case IR_CONSTANT_NUMBER:
-    ret = 31 * ret + fnv1_int(p->u.number_constant.value);
+    ret = 31 * ret + fnv1(&p->u.number_constant.value, sizeof(unsigned long));
     break;
   case IR_CONSTANT_BOOLEAN:
-    ret = 31 * ret + fnv1_int(p->u.boolean_constant.value);
+    ret = 31 * ret + fnv1(&p->u.boolean_constant.value, sizeof(int));
     break;
   case IR_CONSTANT_CHAR:
-    ret = 31 * ret + fnv1_int(p->u.char_constant.value);
+    ret = 31 * ret + fnv1(&p->u.char_constant.value, sizeof(int));
     break;
   case IR_CONSTANT_STRING:
-    ret = 31 * ret + fnv1_ptr(p->u.string_constant.value);
+    ret = 31 * ret + fnv1(&p->u.string_constant.value, sizeof(symbol_t *));
     break;
   }
   return ret;
@@ -525,7 +527,7 @@ const ir_type_t *ir_constant_type(const ir_constant_t *constant)
 
 static ir_operand_t *new_ir_operand(ir_operand_kind_t kind)
 {
-  ir_operand_t *ret = new (ir_operand_t);
+  ir_operand_t *ret = xmalloc(sizeof(ir_operand_t));
   ret->kind         = kind;
   ret->next         = NULL;
   return ret;
@@ -578,7 +580,7 @@ void delete_ir_operand(ir_operand_t *operand)
 
 static ir_rvalue_t *new_ir_rvalue(ir_rvalue_kind_t kind)
 {
-  ir_rvalue_t *ret = new (ir_rvalue_t);
+  ir_rvalue_t *ret = xmalloc(sizeof(ir_rvalue_t));
   ret->kind        = kind;
   return ret;
 }
@@ -639,7 +641,7 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
 
 static ir_stmt_t *new_ir_stmt(ir_stmt_kind_t kind)
 {
-  ir_stmt_t *ret = new (ir_stmt_t);
+  ir_stmt_t *ret = xmalloc(sizeof(ir_stmt_t));
   ret->kind      = kind;
   ret->next      = NULL;
   return ret;
@@ -676,7 +678,7 @@ void delete_ir_stmt(ir_stmt_t *stmt)
 
 ir_block_t *ir_block(ir_factory_t *factory)
 {
-  ir_block_t *ret       = new (ir_block_t);
+  ir_block_t *ret       = xmalloc(sizeof(ir_block_t));
   ret->stmt             = NULL;
   ret->stmt_tail        = &ret->stmt;
   ret->next             = NULL;
@@ -786,7 +788,7 @@ void delete_ir_block(ir_block_t *block)
 
 ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, const symbol_t *symbol, region_t name_region, const ir_type_t *type)
 {
-  ir_item_t *ret   = new (ir_item_t);
+  ir_item_t *ret   = xmalloc(sizeof(ir_item_t));
   ret->kind        = kind;
   ret->type        = type;
   ret->symbol      = symbol;
@@ -854,7 +856,7 @@ static void delete_ir_item(ir_item_t *item)
 
 ir_factory_t *new_ir_factory(void)
 {
-  ir_factory_t *ret = new (ir_factory_t);
+  ir_factory_t *ret = xmalloc(sizeof(ir_factory_t));
   ret->scope        = NULL;
 
   ret->blocks.head = NULL;
@@ -876,7 +878,7 @@ ir_factory_t *new_ir_factory(void)
 
 ir_t *new_ir(const source_t *source, ir_item_t *items, ir_factory_t *factory)
 {
-  ir_t *ret      = new (ir_t);
+  ir_t *ret      = xmalloc(sizeof(ir_t));
   ret->source    = source;
   ret->items     = items;
   ret->blocks    = factory->blocks.head;

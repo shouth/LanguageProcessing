@@ -11,7 +11,7 @@ int hash_default_comp(const void *lhs, const void *rhs)
 
 uint64_t hash_default_hasher(const void *ptr)
 {
-  return fnv1_ptr(ptr);
+  return fnv1(&ptr, sizeof(void *));
 }
 
 static void hash_init_buckets(hash_t *table)
@@ -19,7 +19,7 @@ static void hash_init_buckets(hash_t *table)
   long i;
   table->size       = 0;
   table->bucket_cnt = table->capacity + NBHD_RANGE;
-  table->buckets    = new_arr(hash_entry_t, table->bucket_cnt);
+  table->buckets    = xmalloc(sizeof(hash_entry_t) * table->bucket_cnt);
   for (i = 0; i < table->bucket_cnt; i++) {
     table->buckets[i].hop   = 0;
     table->buckets[i].key   = NULL;
@@ -32,7 +32,7 @@ hash_t *hash_new(hash_comp_t *comparator, hash_hasher_t *hasher)
   hash_t *ret;
   assert(comparator && hasher);
 
-  ret              = new (hash_t);
+  ret              = xmalloc(sizeof(hash_t));
   ret->capacity    = 1 << 6;
   ret->load_factor = 60;
   ret->comparator  = comparator;

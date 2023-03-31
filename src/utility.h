@@ -9,12 +9,7 @@
 
 void *xmalloc(long size);
 
-#define new(type) ((type *) xmalloc(sizeof(type)))
-#define new_arr(type, size) ((type *) xmalloc(sizeof(type) * (size)))
-
-uint64_t fnv1(const char *ptr, long len);
-uint64_t fnv1_int(uint64_t value);
-uint64_t fnv1_ptr(const void *ptr);
+uint64_t fnv1(const void *ptr, long len);
 
 int popcount(uint64_t n);
 int trailing0(uint64_t n);

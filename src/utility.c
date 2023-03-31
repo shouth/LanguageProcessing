@@ -15,7 +15,7 @@ void *xmalloc(long size)
   return ret;
 }
 
-uint64_t fnv1(const char *ptr, long len)
+uint64_t fnv1(const void *ptr, long len)
 {
   uint64_t ret   = 0xcbf29ce484222325;
   uint64_t prime = 0x00000100000001b3;
@@ -23,23 +23,9 @@ uint64_t fnv1(const char *ptr, long len)
 
   for (i = 0; i < len; i++) {
     ret *= prime;
-    ret ^= ptr[i];
+    ret ^= ((char *) ptr)[i];
   }
   return ret;
-}
-
-uint64_t fnv1_int(uint64_t value)
-{
-  char buf[sizeof(value)];
-  memcpy(buf, &value, sizeof(value));
-  return fnv1(buf, sizeof(value));
-}
-
-uint64_t fnv1_ptr(const void *ptr)
-{
-  char buf[sizeof(ptr)];
-  memcpy(buf, &ptr, sizeof(ptr));
-  return fnv1(buf, sizeof(ptr));
 }
 
 #if defined(__GNUC__) || defined(__clang__)

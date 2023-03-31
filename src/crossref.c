@@ -1,6 +1,7 @@
 #include <assert.h>
 
 #include "mppl.h"
+#include "utility.h"
 
 typedef struct impl_crossref_item crossref_item_t;
 struct impl_crossref_item {
@@ -112,13 +113,13 @@ void print_crossref(const ir_t *ir)
   assert(ir);
 
   cnt   = crossref_count_item(ir->items);
-  items = new_arr(crossref_item_t, cnt);
+  items = xmalloc(sizeof(crossref_item_t) * cnt);
   crossref_init_item(items, ir->items, NULL);
-  sort = new_arr(crossref_item_t *, cnt);
+  sort = xmalloc(sizeof(crossref_item_t *) * cnt);
   for (i = 0; i < cnt; i++) {
     sort[i] = items + i;
   }
-  qsort(sort, cnt, sizeof(sort[0]), crossref_item_ptr_compare);
+  qsort(sort, cnt, sizeof(crossref_item_t *), crossref_item_ptr_compare);
   crossref.source = ir->source;
   for (i = 0; i < cnt; i++) {
     const ir_item_t *item = sort[i]->item;
