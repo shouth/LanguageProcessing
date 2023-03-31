@@ -192,6 +192,7 @@ static token_kind_t lex_delimited(void)
   } else if (check(EOF)) {
     return TOKEN_EOF;
   } else {
+    bump();
     return TOKEN_UNKNOWN;
   }
 }
