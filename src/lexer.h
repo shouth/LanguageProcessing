@@ -2,7 +2,6 @@
 #define LEXER_H
 
 #include "source.h"
-#include <stddef.h>
 
 typedef enum {
   TOKEN_NAME,
