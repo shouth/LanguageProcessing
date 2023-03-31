@@ -20,8 +20,22 @@ int popcount(uint64_t n);
 int trailing0(uint64_t n);
 int leading0(uint64_t n);
 
-#define unreachable() \
-  (fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__), exit(EXIT_FAILURE))
+#if defined(__GNUC__) || defined(__clang__)
+#define intrinsic_unreachable() __builtin_unreachable()
+#elif defined(_MSC_VER)
+#define intrinsic_unreachable() __assume(0)
+#else
+#define intrinsic_unreachable()
+#endif
+
+#define unreachable()                                                                          \
+  do {                                                                                         \
+    fprintf(stderr, "internal error: entered unreachable code [%s:%d]\n", __FILE__, __LINE__); \
+    exit(EXIT_FAILURE);                                                                        \
+    intrinsic_unreachable();                                                                   \
+  } while (0)
+
+#undef intrinsic_unreachable
 
 typedef uintptr_t            hash_hop_t;
 typedef int                  hash_comp_t(const void *, const void *);
