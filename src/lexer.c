@@ -18,21 +18,7 @@ void lexer_init(lexer_t *lexer, const source_t *src)
 
 static int is_alphabet(int c)
 {
-  /* clang-format off */
-  switch (c) {
-  case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h':
-  case 'i': case 'j': case 'k': case 'l': case 'm': case 'n': case 'o': case 'p':
-  case 'q': case 'r': case 's': case 't': case 'u': case 'v': case 'w': case 'x':
-  case 'y': case 'z':
-  case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H':
-  case 'I': case 'J': case 'K': case 'L': case 'M': case 'N': case 'O': case 'P':
-  case 'Q': case 'R': case 'S': case 'T': case 'U': case 'V': case 'W': case 'X':
-  case 'Y': case 'Z':
-    return 1;
-  default:
-    return 0;
-  }
-  /* clang-format on */
+  return !!strchr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijlmnopqrstuvwxyz", c);
 }
 
 static int is_number(int c)
@@ -42,29 +28,12 @@ static int is_number(int c)
 
 static int is_space(int c)
 {
-  /* clang-format off */
-  switch (c) {
-  case ' ': case '\t': case '\n': case '\r':
-    return 1;
-  default:
-    return 0;
-  }
-  /* clang-format on */
+  return !!strchr(" \t\n\r", c);
 }
 
 static int is_graphic(int c)
 {
-  /* clang-format off */
-  switch (c) {
-  case '!': case '"': case '#': case '$': case '%': case '&': case '\'': case '(':
-  case ')': case '*': case '+': case ',': case '-': case '.': case '/': case ':':
-  case ';': case '<': case '=': case '>': case '?': case '@': case '[': case '\\':
-  case ']': case '^': case '_': case '`': case '{': case '|': case '}': case '~':
-    return 1;
-  default:
-    return is_alphabet(c) || is_number(c) || is_space(c);
-  }
-  /* clang-format on */
+  return !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c) || is_alphabet(c) || is_number(c) || is_space(c);
 }
 
 static int peek(void)
@@ -277,7 +246,7 @@ void lex_token(lexer_t *lexer, token_t *token)
     long i;
     for (i = 0; i < keywords_size; ++i) {
       const char *ptr = token_to_str(keywords[i]);
-      long len = (long) token->region.len;
+      long        len = (long) token->region.len;
       if (!strncmp(ptr, token->ptr, len) && !ptr[len]) {
         token->type = keywords[i];
         break;
