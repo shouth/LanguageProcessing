@@ -706,18 +706,14 @@ static ast_decl_part_t *parse_decl_part_procedure(void)
 
 static ast_decl_part_t *parse_decl_part(void)
 {
-  ast_decl_part_t *seq = NULL, **tail = &seq;
-  while (1) {
-    if (check(TOKEN_VAR)) {
-      *tail = parse_decl_part_variable();
-    } else if (check(TOKEN_PROCEDURE)) {
-      *tail = parse_decl_part_procedure();
-    } else {
-      break;
-    }
-    tail = &(*tail)->next;
+  if (check(TOKEN_VAR)) {
+    return parse_decl_part_variable();
+  } else if (check(TOKEN_PROCEDURE)) {
+    return parse_decl_part_procedure();
+  } else {
+    error_unexpected();
+    return NULL;
   }
-  return seq;
 }
 
 static ast_program_t *parse_program(void)
@@ -727,8 +723,13 @@ static ast_program_t *parse_program(void)
   expect(TOKEN_PROGRAM);
   program->name = parse_ident();
   expect(TOKEN_SEMI);
-  program->decl_part = parse_decl_part();
-  program->stmt      = parse_stmt_compound();
+  {
+    ast_decl_part_t **tail = &program->decl_part;
+    while ((check(TOKEN_VAR) || check(TOKEN_PROCEDURE)) && (*tail = parse_decl_part())) {
+      tail = &(*tail)->next;
+    }
+  }
+  program->stmt = parse_stmt_compound();
   expect(TOKEN_DOT);
   expect(TOKEN_EOF);
   return program;
