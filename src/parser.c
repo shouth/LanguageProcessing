@@ -689,7 +689,7 @@ static ast_decl_part_t *parse_decl_part_procedure(void)
     while ((*tail = parse_decl_param()) && eat(TOKEN_SEMI)) {
       tail = &(*tail)->next;
     }
-    eat(TOKEN_RPAREN);
+    expect(TOKEN_RPAREN);
   } else {
     decl_part->params = NULL;
   }
