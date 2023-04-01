@@ -11,9 +11,9 @@ void *xmalloc(long size);
 
 uint64_t fnv1(const void *ptr, long len);
 
-int popcount(uint64_t n);
-int trailing0(uint64_t n);
-int leading0(uint64_t n);
+int bit_popcount(unsigned long n);
+int bit_right_most(unsigned long n);
+int bit_left_most(unsigned long n);
 
 #define unreachable()                                                                          \
   do {                                                                                         \

@@ -30,48 +30,45 @@ uint64_t fnv1(const void *ptr, long len)
 
 #if defined(__GNUC__) || defined(__clang__)
 
-int popcount(uint64_t n)
+int bit_popcount(unsigned long n)
 {
-  return __builtin_popcountll(n);
+  return __builtin_popcountl(n);
 }
 
-int trailing0(uint64_t n)
+int bit_right_most(unsigned long n)
 {
-  return __builtin_ctzll(n);
+  return __builtin_ctzl(n);
 }
 
-int leading0(uint64_t n)
+int bit_left_most(unsigned long n)
 {
-  return 63 - __builtin_clzll(n);
+  return 63 - __builtin_clzl(n);
 }
 
 #else
 
-int popcount(uint64_t n)
+int popcount(unsigned long n)
 {
-  n -= (n >> 1) & 0x5555555555555555;
-  n = (n & 0x3333333333333333) + ((n >> 2) & 0x3333333333333333);
-  n = (n + (n >> 4)) & 0x0f0f0f0f0f0f0f0f;
-  n += n >> 8;
-  n += n >> 16;
-  n += n >> 32;
-  return n & 0x000000000000007f;
+  int count = 0;
+  while (n) {
+    ++count;
+    n ^= n & (~n + 1);
+  }
+  return count;
 }
 
-int trailing0(uint64_t)
+int right_most_bit(unsigned long n)
 {
   return popcount((n & (~n + 1)) - 1);
 }
 
-int leading0(uint64_t n)
+int left_most_bit(unsigned long n)
 {
-  n |= n >> 1;
-  n |= n >> 2;
-  n |= n >> 4;
-  n |= n >> 8;
-  n |= n >> 16;
-  n |= n >> 32;
-  return popcount(n) - 1;
+  int count = 0;
+  for (; n; n >>= 1) {
+    ++count;
+  }
+  return count;
 }
 
 #endif

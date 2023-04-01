@@ -98,7 +98,7 @@ const hash_entry_t *hash_find(hash_t *table, const void *key)
   home  = table->buckets + index;
   hop   = home->hop;
   while (hop) {
-    uint8_t t = trailing0(hop);
+    uint8_t t = bit_right_most(hop);
     if (table->comparator(key, home[t].key)) {
       return home + t;
     }
@@ -128,7 +128,7 @@ void hash_insert_unsafe(hash_t *table, void *key, void *value)
     for (i = 0; i < NBHD_RANGE; i++) {
       hash_hop_t hop = entry[i].hop;
       if (hop) {
-        uint8_t t = trailing0(hop);
+        uint8_t t = bit_right_most(hop);
         if (i + t < NBHD_RANGE) {
           hash_entry_t *next = entry + i + t;
           empty->key         = next->key;
@@ -182,7 +182,7 @@ hash_entry_t *hash_remove(hash_t *table, const void *key)
   home  = table->buckets + index;
   hop   = home->hop;
   while (hop) {
-    uint8_t t = trailing0(hop);
+    uint8_t t = bit_right_most(hop);
     if (table->comparator(key, home[t].key)) {
       table->removed.key   = home[t].key;
       table->removed.value = home[t].value;
