@@ -3,29 +3,6 @@
 
 #include "ast.h"
 
-const char *ast_binary_kind_expr_to_str(ast_expr_binary_kind_t kind)
-{
-  /* clang-format off */
-  switch (kind) {
-  case AST_EXPR_BINARY_KIND_STAR:  return "*";
-  case AST_EXPR_BINARY_KIND_DIV:   return "div";
-  case AST_EXPR_BINARY_KIND_AND:   return "and";
-  case AST_EXPR_BINARY_KIND_PLUS:  return "+";
-  case AST_EXPR_BINARY_KIND_MINUS: return "-";
-  case AST_EXPR_BINARY_KIND_OR:    return "or";
-  case AST_EXPR_BINARY_KIND_EQUAL: return "=";
-  case AST_EXPR_BINARY_KIND_NOTEQ: return "<>";
-  case AST_EXPR_BINARY_KIND_LE:    return "<";
-  case AST_EXPR_BINARY_KIND_LEEQ:  return "<=";
-  case AST_EXPR_BINARY_KIND_GR:    return ">";
-  case AST_EXPR_BINARY_KIND_GREQ:  return ">=";
-
-  default:
-    unreachable();
-  }
-  /* clang-format on */
-}
-
 void ast_walk_lit(ast_visitor_t *visitor, ast_lit_t *lit)
 {
   /* do nothing */

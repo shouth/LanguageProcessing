@@ -321,6 +321,8 @@ struct ast__s {
   const source_t   *source;
 };
 
+void ast_delete(ast_t *ast);
+
 /**********     ast visitor    **********/
 
 typedef struct ast__visitor_s ast_visitor_t;
@@ -359,10 +361,5 @@ void ast_walk_decl_part(ast_visitor_t *visitor, ast_decl_part_t *decl_part);
 void ast_walk_program(ast_visitor_t *visitor, ast_program_t *program);
 void ast_walk(ast_visitor_t *visitor, ast_t *ast);
 void ast_init_visitor(ast_visitor_t *visitor);
-
-/**********     ast functions    **********/
-
-const char *ast_binary_kind_expr_to_str(ast_expr_binary_kind_t kind);
-void        ast_delete(ast_t *ast);
 
 #endif
