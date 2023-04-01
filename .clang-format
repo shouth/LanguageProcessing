@@ -2,6 +2,7 @@ BasedOnStyle: Webkit
 IndentWidth: 2
 ContinuationIndentWidth: 2
 PointerAlignment: Right
-AlignConsecutiveDeclarations: Consecutive
 AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveMacros: Consecutive
 SpaceAfterCStyleCast: true
