@@ -110,8 +110,7 @@ void pp_ident(printer_t *printer, const ast_ident_t *ident)
   printf("%.*s", (int) ident->symbol->len, ident->symbol->ptr);
   ident = ident->next;
   while (ident) {
-    printf(", ");
-    printf("%.*s", (int) ident->symbol->len, ident->symbol->ptr);
+    printf(", %.*s", (int) ident->symbol->len, ident->symbol->ptr);
     ident = ident->next;
   }
 }
