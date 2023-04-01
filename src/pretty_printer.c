@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -57,60 +58,60 @@ void pp_indent(printer_t *printer)
   }
 }
 
-void pp_symbol(printer_t *printer, const symbol_t *symbol)
+void pp_colored(unsigned long color, const char *format, va_list args)
 {
-  printf("%.*s", (int) symbol->len, symbol->ptr);
-}
-
-void pp_colored_program(printer_t *printer, const ast_ident_t *ident)
-{
-  term_set(printer->colors->program);
-  pp_symbol(printer, ident->symbol);
+  term_set(color);
+  vprintf(format, args);
   term_set(SGR_RESET);
 }
 
-void pp_keyword(printer_t *printer, const char *token)
+void pp_program_ident(printer_t *printer, const char *format, ...)
 {
-  term_set(printer->colors->keyword);
-  printf("%s", token);
-  term_set(SGR_RESET);
+  va_list args;
+  va_start(args, format);
+  pp_colored(printer->colors->program, format, args);
+  va_end(args);
 }
 
-void pp_operator(printer_t *printer, const char *token)
+void pp_keyword(printer_t *printer, const char *format, ...)
 {
-  term_set(printer->colors->operator);
-  printf("%s", token);
-  term_set(SGR_RESET);
+  va_list args;
+  va_start(args, format);
+  pp_colored(printer->colors->keyword, format, args);
+  va_end(args);
 }
 
-void pp_colored_procedure(printer_t *printer, const ast_ident_t *ident)
+void pp_operator(printer_t *printer, const char *format, ...)
 {
-  term_set(printer->colors->procedure);
-  pp_symbol(printer, ident->symbol);
-  term_set(SGR_RESET);
+  va_list args;
+  va_start(args, format);
+  pp_colored(printer->colors->operator, format, args);
+  va_end(args);
 }
 
-void pp_colored_reserved_function(printer_t *printer, const char *token)
+void pp_procedure_ident(printer_t *printer, const char *format, ...)
 {
-  term_set(printer->colors->procedure);
-  printf("%s", token);
-  term_set(SGR_RESET);
+  va_list args;
+  va_start(args, format);
+  pp_colored(printer->colors->procedure, format, args);
+  va_end(args);
 }
 
-void pp_colored_parameter(printer_t *printer, const ast_ident_t *ident)
+void pp_param_ident(printer_t *printer, const char *format, ...)
 {
-  term_set(printer->colors->argument);
-  pp_symbol(printer, ident->symbol);
-  term_set(SGR_RESET);
+  va_list args;
+  va_start(args, format);
+  pp_colored(printer->colors->argument, format, args);
+  va_end(args);
 }
 
 void pp_ident(printer_t *printer, const ast_ident_t *ident)
 {
-  pp_symbol(printer, ident->symbol);
+  printf("%.*s", (int) ident->symbol->len, ident->symbol->ptr);
   ident = ident->next;
   while (ident) {
     printf(", ");
-    pp_symbol(printer, ident->symbol);
+    printf("%.*s", (int) ident->symbol->len, ident->symbol->ptr);
     ident = ident->next;
   }
 }
@@ -121,7 +122,7 @@ void pp_lit(printer_t *printer, const ast_lit_t *lit)
   case AST_LIT_KIND_NUMBER: {
     ast_lit_number_t *number = (ast_lit_number_t *) lit;
     term_set(printer->colors->literal);
-    pp_symbol(printer, number->symbol);
+    printf("%.*s", (int) number->symbol->len, number->symbol->ptr);
     term_set(SGR_RESET);
     break;
   }
@@ -136,7 +137,7 @@ void pp_lit(printer_t *printer, const ast_lit_t *lit)
     ast_lit_string_t *string = (ast_lit_string_t *) lit;
     term_set(printer->colors->string);
     printf("'");
-    pp_symbol(printer, string->symbol);
+    printf("%.*s", (int) string->symbol->len, string->symbol->ptr);
     printf("'");
     term_set(SGR_RESET);
     break;
@@ -299,7 +300,7 @@ void pp_stmt_call(printer_t *printer, const ast_stmt_call_t *stmt)
 {
   pp_keyword(printer, "call");
   printf(" ");
-  pp_colored_procedure(printer, stmt->name);
+  pp_procedure_ident(printer, "%.*s", (int) stmt->name->symbol->len, stmt->name->symbol->ptr);
   if (stmt->args) {
     printf("(");
     pp_expr(printer, stmt->args);
@@ -309,7 +310,7 @@ void pp_stmt_call(printer_t *printer, const ast_stmt_call_t *stmt)
 
 void pp_stmt_read(printer_t *printer, const ast_stmt_read_t *stmt)
 {
-  pp_colored_reserved_function(printer, stmt->newline ? "readln" : "read");
+  pp_procedure_ident(printer, stmt->newline ? "readln" : "read");
   if (stmt->args) {
     printf("(");
     pp_expr(printer, stmt->args);
@@ -319,7 +320,7 @@ void pp_stmt_read(printer_t *printer, const ast_stmt_read_t *stmt)
 
 void pp_stmt_write(printer_t *printer, const ast_stmt_write_t *stmt)
 {
-  pp_colored_reserved_function(printer, stmt->newline ? "writeln" : "write");
+  pp_procedure_ident(printer, stmt->newline ? "writeln" : "write");
   if (stmt->formats) {
     ast_out_fmt_t *cur = stmt->formats;
     printf("(");
@@ -424,7 +425,7 @@ void pp_decl_part_procedure(printer_t *printer, const ast_decl_part_procedure_t 
 {
   pp_keyword(printer, "procedure");
   printf(" ");
-  pp_colored_procedure(printer, decl_part->name);
+  pp_procedure_ident(printer, "%.*s", decl_part->name->symbol->len, decl_part->name->symbol->ptr);
 
   if (decl_part->params) {
     const ast_decl_param_t *params = decl_part->params;
@@ -432,7 +433,7 @@ void pp_decl_part_procedure(printer_t *printer, const ast_decl_part_procedure_t 
     while (params) {
       const ast_ident_t *ident = params->names;
       while (ident) {
-        pp_colored_parameter(printer, ident);
+        pp_param_ident(printer, "%.*s", (int) ident->symbol->len, ident->symbol->ptr);
         if ((ident = ident->next)) {
           printf(", ");
         }
@@ -478,7 +479,7 @@ void pp_program(printer_t *printer, const ast_program_t *program)
 {
   pp_keyword(printer, "program");
   printf(" ");
-  pp_colored_program(printer, program->name);
+  pp_program_ident(printer, "%.*s", (int) program->name->symbol->len, program->name->symbol->ptr);
   printf(";\n");
   if (program->decl_part) {
     ++printer->indent;
