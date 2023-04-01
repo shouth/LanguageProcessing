@@ -112,10 +112,7 @@ static int check(token_kind_t kind)
 {
   if (!ctx.alive) {
     return 0;
-  }
-
-  printf("%d %d %.*s\n", token_type(ctx.next.type), token_type(kind), (int) ctx.next.region.len, ctx.next.ptr);
-  if (token_type(kind) == TOKEN_TYPE_KEYWORD) {
+  } else if (token_type(kind) == TOKEN_TYPE_KEYWORD) {
     ctx.expected[TOKEN_TYPE_INDEX_KEYWORD] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_KEYWORD);
     return ctx.next.type == TOKEN_IDENT && inspect(token_to_str(kind));
   } else if (kind == TOKEN_IDENT) {
