@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "mppl.h"
+#include "utility.h"
 
 void print_help(const char *command)
 {
@@ -28,7 +29,7 @@ int main(int argc, char **argv)
   const char *output            = NULL;
   int         flag_pretty_print = 0;
   int         flag_crossref     = 0;
-  int         flag_color_print  = 0;
+  int         flag_color_print  = -1;
 
   if (argc < 2) {
     print_help(argv[0]);
@@ -57,7 +58,8 @@ int main(int argc, char **argv)
     }
   }
 
-  term_use_ansi(flag_color_print);
+  term_ansi_stdout(flag_color_print);
+  term_ansi_stderr(flag_color_print);
 
   src = src_new(argv[i], output);
   if ((ast = parse_source(src))) {

@@ -1,6 +1,9 @@
+#define _POSIX_SOURCE
+
 #include <assert.h>
 #include <memory.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "utility.h"
@@ -73,16 +76,51 @@ int left_most_bit(unsigned long n)
 
 #endif
 
-static int use_ansi = 0;
+#if defined(__unix__) || defined(__APPLE__)
 
-void term_use_ansi(int flag)
+#include <unistd.h>
+
+static int term_check(FILE *stream)
 {
-  use_ansi = flag;
+  return isatty(fileno(stream));
+}
+
+#elif defined(_WIN32)
+
+#include <io.h>
+
+int term_check(FILE *stream)
+{
+  return _isatty(_fileno(stream));
+}
+
+#else
+
+int term_check(FILE *stream)
+{
+  /* do nothing */
+  (void) stream;
+  return 0;
+}
+
+#endif
+
+static int ansi_stdout = 0;
+static int ansi_stderr = 0;
+
+void term_ansi_stdout(int flag)
+{
+  ansi_stdout = flag == -1 ? term_check(stdout) : flag;
+}
+
+void term_ansi_stderr(int flag)
+{
+  ansi_stderr = flag == -1 ? term_check(stderr) : flag;
 }
 
 void term_set(unsigned long code)
 {
-  if (use_ansi) {
+  if (ansi_stdout) {
     if (code & SGR__FLAG) {
       printf("\033[%ldm", code ^ SGR__FLAG);
     } else {

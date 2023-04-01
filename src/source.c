@@ -7,13 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include "mppl.h"
 #include "source.h"
 
 #if defined(__unix__) || defined(__APPLE__)
+
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static long src_size(const char *filename)
 {
@@ -29,6 +29,9 @@ static long src_size(const char *filename)
 }
 
 #elif defined(_WIN32)
+
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static long src_size(const char *filename)
 {
