@@ -322,18 +322,18 @@ void pp_stmt_write(printer_t *printer, const ast_stmt_write_t *stmt)
 {
   pp_procedure_ident(printer, stmt->newline ? "writeln" : "write");
   if (stmt->formats) {
-    ast_out_fmt_t *cur = stmt->formats;
+    ast_out_fmt_t *formats = stmt->formats;
     printf("(");
-    while (cur) {
-      if (cur != stmt->formats) {
+    while (formats) {
+      if (formats != stmt->formats) {
         printf(", ");
       }
-      pp_expr(printer, cur->expr);
-      if (cur->len) {
+      pp_expr(printer, formats->expr);
+      if (formats->len) {
         printf(" : ");
-        pp_lit(printer, cur->len);
+        pp_lit(printer, formats->len);
       }
-      cur = cur->next;
+      formats = formats->next;
     }
     printf(")");
   }
