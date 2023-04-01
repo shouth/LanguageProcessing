@@ -3,6 +3,6 @@
 
 #include "ast.h"
 
-const char *pp_ast_expr_binary_kind_to_str(ast_expr_binary_kind_t kind);
+const char *pp_binary_operator_str(ast_expr_binary_kind_t kind);
 
 #endif

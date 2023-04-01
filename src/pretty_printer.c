@@ -27,7 +27,7 @@ typedef struct {
   const color_scheme_t *colors;
 } printer_t;
 
-const char *pp_ast_expr_binary_kind_to_str(ast_expr_binary_kind_t kind)
+const char *pp_binary_operator_str(ast_expr_binary_kind_t kind)
 {
   /* clang-format off */
   switch (kind) {
@@ -181,7 +181,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
       if (binary->lhs->kind != AST_EXPR_KIND_EMPTY) {
         printf(" ");
       }
-      pp_operator(printer, pp_ast_expr_binary_kind_to_str(binary->kind));
+      pp_operator(printer, pp_binary_operator_str(binary->kind));
       if (binary->lhs->kind != AST_EXPR_KIND_EMPTY) {
         printf(" ");
       }

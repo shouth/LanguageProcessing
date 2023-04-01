@@ -114,10 +114,10 @@ void error_invalid_binary_expr(
   msg_t *msg;
   assert(analyzer && expr);
   msg = new_msg(analyzer->source, expr->op_region,
-    MSG_ERROR, "invalid operands for `%s`", pp_ast_expr_binary_kind_to_str(expr->kind));
+    MSG_ERROR, "invalid operands for `%s`", pp_binary_operator_str(expr->kind));
   msg_add_inline_entry(msg, expr->lhs->region, "%s", ir_type_str(lhs_type));
   msg_add_inline_entry(msg, expr->op_region,
-    "operator `%s` takes two operands of %s", pp_ast_expr_binary_kind_to_str(expr->kind), expected);
+    "operator `%s` takes two operands of %s", pp_binary_operator_str(expr->kind), expected);
   msg_add_inline_entry(msg, expr->rhs->region, "%s", ir_type_str(rhs_type));
   msg_emit(msg);
 }
@@ -132,7 +132,7 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
 
     if (!ir_type_is_kind(rtype, IR_TYPE_INTEGER)) {
       msg_t *msg = new_msg(analyzer->source, expr->op_region,
-        MSG_ERROR, "`%s` cannot be prefixed by `%s`", ir_type_str(rtype), pp_ast_expr_binary_kind_to_str(expr->kind));
+        MSG_ERROR, "`%s` cannot be prefixed by `%s`", ir_type_str(rtype), pp_binary_operator_str(expr->kind));
       msg_emit(msg);
       exit(EXIT_FAILURE);
     }
