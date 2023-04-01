@@ -138,6 +138,7 @@ void pp_lit(printer_t *printer, const ast_lit_t *lit)
     printf("'");
     pp_symbol(printer, string->symbol);
     printf("'");
+    term_set(SGR_RESET);
     break;
   }
   }
@@ -493,7 +494,7 @@ void pretty_print(const ast_t *ast)
 {
   if (ast) {
     printer_t printer;
-    printer.indent       = 0;
+    printer.indent = 0;
     printer.colors = &monokai;
 
     term_set(SGR_RESET);
