@@ -98,8 +98,6 @@ uint64_t            hash_default_hasher(const void *ptr);
 #define SGR_BG_BRIGHT_CYAN    (SGR__FLAG | 106)
 #define SGR_BG_BRIGHT_WHITE   (SGR__FLAG | 107)
 
-typedef unsigned long color_t;
-
 void term_use_ansi(int flag);
 void term_set(unsigned long code);
 

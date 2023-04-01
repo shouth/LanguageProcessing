@@ -7,14 +7,14 @@
 #include "lexer.h"
 
 typedef struct {
-  color_t foreground;
-  color_t program;
-  color_t keyword;
-  color_t operator;
-  color_t procedure;
-  color_t argument;
-  color_t string;
-  color_t literal;
+  unsigned long foreground;
+  unsigned long program;
+  unsigned long keyword;
+  unsigned long operator;
+  unsigned long procedure;
+  unsigned long argument;
+  unsigned long string;
+  unsigned long literal;
 } color_scheme_t;
 
 const color_scheme_t monokai = {
