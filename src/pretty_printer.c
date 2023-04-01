@@ -20,7 +20,7 @@ typedef struct {
 } color_scheme_t;
 
 const color_scheme_t monokai = {
-  0xc9d1d9, 0x66d9ef, 0xf92672, 0xf92672, 0xa6e22e, 0xfd971f, 0xe6db74, 0xae81ff
+  0xC9D1D9, 0x66D9EF, 0xF92672, 0xF92672, 0xA6E22E, 0xFD971f, 0xE6DB74, 0xAE81FF
 };
 
 typedef struct {
@@ -94,16 +94,6 @@ define_colored_fprintf(pp_ident_param, argument)
 
 #undef define_colored_fprintf
 
-void pp_ident(printer_t *printer, const ast_ident_t *ident)
-{
-  pp_fprintf(printer, "%.*s", (int) ident->symbol->len, ident->symbol->ptr);
-  while ((ident = ident->next)) {
-    pp_fprintf(printer, ", %.*s", (int) ident->symbol->len, ident->symbol->ptr);
-  }
-}
-
-/* clang-format on */
-
 void pp_lit(printer_t *printer, const ast_lit_t *lit)
 {
   switch (lit->kind) {
@@ -128,6 +118,16 @@ void pp_lit(printer_t *printer, const ast_lit_t *lit)
     term_set(SGR_RESET);
     break;
   }
+  }
+}
+
+/* clang-format on */
+
+void pp_ident(printer_t *printer, const ast_ident_t *ident)
+{
+  pp_fprintf(printer, "%.*s", (int) ident->symbol->len, ident->symbol->ptr);
+  while ((ident = ident->next)) {
+    pp_fprintf(printer, ", %.*s", (int) ident->symbol->len, ident->symbol->ptr);
   }
 }
 
@@ -311,15 +311,14 @@ void pp_stmt_write(printer_t *printer, const ast_stmt_write_t *stmt)
     ast_out_fmt_t *formats = stmt->formats;
     pp_fprintf(printer, "(");
     while (formats) {
-      if (formats != stmt->formats) {
-        pp_fprintf(printer, ", ");
-      }
       pp_expr(printer, formats->expr);
       if (formats->len) {
         pp_fprintf(printer, " : ");
         pp_lit(printer, formats->len);
       }
-      formats = formats->next;
+      if ((formats = formats->next)) {
+        pp_fprintf(printer, ", ");
+      }
     }
     pp_fprintf(printer, ")");
   }
@@ -387,73 +386,62 @@ void pp_stmt(printer_t *printer, const ast_stmt_t *stmt)
   }
 }
 
-void pp_decl_part(printer_t *printer, const ast_decl_part_t *decl_part);
-
-void pp_decl_part_variable(printer_t *printer, const ast_decl_part_variable_t *decl_part)
-{
-  const ast_decl_variable_t *decls = decl_part->decls;
-
-  pp_keyword(printer, "var");
-  pp_fprintf(printer, "\n");
-  ++printer->indent;
-  while (decls) {
-    pp_indent(printer);
-    pp_ident(printer, decls->names);
-    pp_fprintf(printer, ": ");
-    pp_type(printer, decls->type);
-    pp_fprintf(printer, ";\n");
-    decls = decls->next;
-  }
-  --printer->indent;
-}
-
-void pp_decl_part_procedure(printer_t *printer, const ast_decl_part_procedure_t *decl_part)
-{
-  pp_keyword(printer, "procedure");
-  pp_fprintf(printer, " ");
-  pp_ident_procedure(printer, "%.*s", (int) decl_part->name->symbol->len, decl_part->name->symbol->ptr);
-
-  if (decl_part->params) {
-    const ast_decl_param_t *params = decl_part->params;
-    pp_fprintf(printer, "(");
-    while (params) {
-      const ast_ident_t *ident = params->names;
-      while (ident) {
-        pp_ident_param(printer, "%.*s", (int) ident->symbol->len, ident->symbol->ptr);
-        if ((ident = ident->next)) {
-          pp_fprintf(printer, ", ");
-        }
-      }
-      pp_fprintf(printer, ": ");
-      pp_type(printer, params->type);
-
-      if ((params = params->next)) {
-        pp_fprintf(printer, "; ");
-      }
-    }
-    pp_fprintf(printer, ")");
-  }
-  pp_fprintf(printer, ";\n");
-
-  if (decl_part->variables) {
-    pp_decl_part(printer, decl_part->variables);
-  }
-  pp_indent(printer);
-  pp_stmt(printer, decl_part->stmt);
-  pp_fprintf(printer, ";\n");
-}
-
 void pp_decl_part(printer_t *printer, const ast_decl_part_t *decl_part)
 {
   while (decl_part) {
     pp_indent(printer);
     switch (decl_part->kind) {
-    case AST_DECL_PART_VARIABLE:
-      pp_decl_part_variable(printer, (ast_decl_part_variable_t *) decl_part);
+    case AST_DECL_PART_VARIABLE: {
+      ast_decl_part_variable_t *variable = (ast_decl_part_variable_t *) decl_part;
+      ast_decl_variable_t      *decls    = variable->decls;
+
+      pp_keyword(printer, "var");
+      pp_fprintf(printer, "\n");
+      ++printer->indent;
+      while (decls) {
+        pp_indent(printer);
+        pp_ident(printer, decls->names);
+        pp_fprintf(printer, ": ");
+        pp_type(printer, decls->type);
+        pp_fprintf(printer, ";\n");
+        decls = decls->next;
+      }
+      --printer->indent;
       break;
-    case AST_DECL_PART_PROCEDURE:
-      pp_decl_part_procedure(printer, (ast_decl_part_procedure_t *) decl_part);
+    }
+    case AST_DECL_PART_PROCEDURE: {
+      ast_decl_part_procedure_t *procedure = (ast_decl_part_procedure_t *) decl_part;
+      pp_keyword(printer, "procedure");
+      pp_fprintf(printer, " ");
+      pp_ident_procedure(printer, "%.*s", (int) procedure->name->symbol->len, procedure->name->symbol->ptr);
+      if (procedure->params) {
+        ast_decl_param_t *params = procedure->params;
+        pp_fprintf(printer, "(");
+        while (params) {
+          ast_ident_t *ident = params->names;
+          while (ident) {
+            pp_ident_param(printer, "%.*s", (int) ident->symbol->len, ident->symbol->ptr);
+            if ((ident = ident->next)) {
+              pp_fprintf(printer, ", ");
+            }
+          }
+          pp_fprintf(printer, ": ");
+          pp_type(printer, params->type);
+          if ((params = params->next)) {
+            pp_fprintf(printer, "; ");
+          }
+        }
+        pp_fprintf(printer, ")");
+      }
+      pp_fprintf(printer, ";\n");
+      if (procedure->variables) {
+        pp_decl_part(printer, procedure->variables);
+      }
+      pp_indent(printer);
+      pp_stmt(printer, procedure->stmt);
+      pp_fprintf(printer, ";\n");
       break;
+    }
     }
     if ((decl_part = decl_part->next)) {
       pp_fprintf(printer, "\n");
