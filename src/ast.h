@@ -321,7 +321,7 @@ struct ast__s {
   const source_t   *source;
 };
 
-const char *ast_binop_str(ast_expr_binary_kind_t kind);
+const char *ast_binary_kind_expr_to_str(ast_expr_binary_kind_t kind);
 void        delete_ast(ast_t *ast);
 
 #endif
