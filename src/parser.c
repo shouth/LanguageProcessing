@@ -1,23 +1,24 @@
 #include <assert.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ast.h"
 #include "lexer.h"
 #include "message.h"
 #include "source.h"
+#include "token.h"
 #include "utility.h"
 
 static struct {
   const source_t   *src;
   lexer_t           lexer;
   symbol_context_t *symbols;
+  token_t           current, next;
 
-  token_t  current, next;
-  uint64_t expected;
-  int      within_loop;
-  int      alive, error;
+  unsigned long expected[TOKEN_TYPE_COUNT];
+  int           within_loop;
+  int           alive, error;
 } ctx;
 
 static void error_msg(msg_t *msg)
@@ -34,38 +35,47 @@ static void error_expected(const char *str)
     msg_t *msg = new_msg(ctx.src, ctx.next.region, MSG_ERROR,
       "expected %s, got `%.*s`", str, (int) ctx.next.region.len, ctx.next.ptr);
     error_msg(msg);
-    ctx.expected = 0;
+    memset(ctx.expected, 0, sizeof(ctx.expected));
   }
 }
 
 static void error_unexpected(void)
 {
   if (ctx.alive) {
-    char buf[1024], *ptr = buf;
-    int  last = leading0(ctx.expected);
-    while (ctx.expected) {
-      int current = trailing0(ctx.expected);
-      if (ptr != buf) {
-        ptr += sprintf(ptr, current != last ? ", " : " or ");
-      }
-      switch (current) {
-      case TOKEN_NAME:
-        ptr += sprintf(ptr, "identifier");
-        break;
-      case TOKEN_NUMBER:
-        ptr += sprintf(ptr, "number");
-        break;
-      case TOKEN_STRING:
-        ptr += sprintf(ptr, "string");
-        break;
-      case TOKEN_EOF:
-        ptr += sprintf(ptr, "EOF");
-        break;
-      default:
-        ptr += sprintf(ptr, "`%s`", token_to_str(current));
+    char               buf[1024], *ptr = buf;
+    token_type_index_t i;
+    token_type_index_t last_type;
+    long               last_token = -1;
+
+    for (i = TOKEN_TYPE_COUNT - 1; i >= 0; --i) {
+      if (ctx.expected[i]) {
+        last_type  = i;
+        last_token = bit_left_most(ctx.expected[i]);
         break;
       }
-      ctx.expected ^= (uint64_t) 1 << current;
+    }
+    assert(last_token != -1);
+
+    for (i = 0; i < TOKEN_TYPE_COUNT; ++i) {
+      while (ctx.expected[i]) {
+        long         current = bit_right_most(ctx.expected[i]);
+        token_kind_t kind    = (i << 8) | current;
+        if (ptr != buf) {
+          ptr += sprintf(ptr, i == last_type && current == last_token ? " or " : ", ");
+        }
+        switch (kind) {
+        case TOKEN_IDENT:
+        case TOKEN_NUMBER:
+        case TOKEN_STRING:
+        case TOKEN_EOF:
+          ptr += sprintf(ptr, "%s", token_to_str(kind));
+          break;
+        default:
+          ptr += sprintf(ptr, "`%s`", token_to_str(kind));
+          break;
+        }
+        ctx.expected[i] ^= (unsigned long) 1 << current;
+      }
     }
     error_expected(buf);
   }
@@ -74,8 +84,8 @@ static void error_unexpected(void)
 static void bump(void)
 {
   if (ctx.alive) {
-    ctx.current  = ctx.next;
-    ctx.expected = 0;
+    ctx.current = ctx.next;
+    memset(ctx.expected, 0, sizeof(ctx.expected));
     while (1) {
       lex_token(&ctx.lexer, &ctx.next);
       switch (ctx.next.type) {
@@ -93,27 +103,50 @@ static void bump(void)
   }
 }
 
-static int check(token_kind_t type)
+static int inspect(const char *str)
+{
+  return !strncmp(str, ctx.next.ptr, ctx.next.region.len) && !str[ctx.next.region.len];
+}
+
+static int check(token_kind_t kind)
 {
   if (!ctx.alive) {
     return 0;
   }
-  ctx.expected |= (uint64_t) 1 << type;
-  return ctx.next.type == type;
+
+  printf("%d %d %.*s\n", token_type(ctx.next.type), token_type(kind), (int) ctx.next.region.len, ctx.next.ptr);
+  if (token_type(kind) == TOKEN_TYPE_KEYWORD) {
+    ctx.expected[TOKEN_TYPE_INDEX_KEYWORD] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_KEYWORD);
+    return ctx.next.type == TOKEN_IDENT && inspect(token_to_str(kind));
+  } else if (kind == TOKEN_IDENT) {
+    if (ctx.next.type == TOKEN_IDENT) {
+      ctx.expected[TOKEN_TYPE_INDEX_TOKEN] |= (unsigned long) 1 << (TOKEN_IDENT ^ TOKEN_TYPE_TOKEN);
+      for (kind = TOKEN_TYPE_KEYWORD; kind < TOKEN_TYPE_KEYWORD_END; ++kind) {
+        if (inspect(token_to_str(kind))) {
+          return 0;
+        }
+      }
+      return 1;
+    }
+    return 0;
+  } else {
+    ctx.expected[TOKEN_TYPE_INDEX_TOKEN] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_TOKEN);
+    return ctx.next.type == kind;
+  }
 }
 
-static int eat(token_kind_t type)
+static int eat(token_kind_t kind)
 {
-  int ret = check(type);
+  int ret = check(kind);
   if (ret) {
     bump();
   }
   return ret;
 }
 
-static int expect(token_kind_t type)
+static int expect(token_kind_t kind)
 {
-  int ret = eat(type);
+  int ret = eat(kind);
   if (!ret) {
     error_unexpected();
   }
@@ -122,7 +155,7 @@ static int expect(token_kind_t type)
 
 static ast_ident_t *parse_ident(void)
 {
-  if (expect(TOKEN_NAME)) {
+  if (expect(TOKEN_IDENT)) {
     ast_ident_t *ident = xmalloc(sizeof(ast_ident_t));
     ident->symbol      = symbol_intern(ctx.symbols, ctx.current.ptr, ctx.current.region.len);
     ident->region      = ctx.current.region;
@@ -223,7 +256,6 @@ static ast_type_t *parse_type_array(void)
   expect(TOKEN_RSQPAREN);
   expect(TOKEN_OF);
   type->base = parse_type_std();
-
   return init_type((ast_type_t *) type, AST_TYPE_KIND_ARRAY, region_unite(left, ctx.current.region));
 }
 
@@ -310,7 +342,7 @@ static ast_expr_t *parse_expr_cast(void)
 
 static ast_expr_t *parse_factor(void)
 {
-  if (check(TOKEN_NAME)) {
+  if (check(TOKEN_IDENT)) {
     return parse_ref();
   } else if (check(TOKEN_NUMBER) || check(TOKEN_TRUE) || check(TOKEN_FALSE) || check(TOKEN_STRING)) {
     return parse_expr_constant();
@@ -607,7 +639,7 @@ static ast_stmt_t *parse_stmt_compound(void)
 
 static ast_stmt_t *parse_stmt(void)
 {
-  if (check(TOKEN_NAME)) {
+  if (check(TOKEN_IDENT)) {
     return parse_stmt_assign();
   } else if (check(TOKEN_IF)) {
     return parse_stmt_if();
@@ -658,7 +690,7 @@ static ast_decl_part_t *parse_decl_part_variable(void)
   ast_decl_variable_t     **tail      = &decl_part->decls;
 
   expect(TOKEN_VAR);
-  while ((*tail = parse_decl_variable()) && check(TOKEN_NAME)) {
+  while ((*tail = parse_decl_variable()) && check(TOKEN_IDENT)) {
     tail = &(*tail)->next;
   }
   return init_decl_part((ast_decl_part_t *) decl_part, AST_DECL_PART_VARIABLE);
@@ -739,8 +771,9 @@ ast_t *parse_source(const source_t *src)
 {
   assert(src);
 
-  ctx.src         = src;
-  ctx.symbols     = symbol_context_new();
+  ctx.src     = src;
+  ctx.symbols = symbol_context_new();
+  memset(ctx.expected, 0, sizeof(ctx.expected));
   ctx.alive       = 1;
   ctx.error       = 0;
   ctx.within_loop = 0;

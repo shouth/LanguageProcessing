@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include "message.h"
 #include "source.h"
+#include "token.h"
 
 static struct {
   lexer_t *lexer;
@@ -89,7 +90,7 @@ static token_kind_t lex_delimited(void)
     return TOKEN_WHITESPACE;
   } else if (eat_if(is_alphabet)) {
     while (eat_if(is_alphabet) || eat_if(is_number)) { }
-    return TOKEN_NAME;
+    return TOKEN_IDENT;
   } else if (eat_if(is_number)) {
     while (eat_if(is_number)) { }
     return TOKEN_NUMBER;
@@ -197,39 +198,6 @@ static token_kind_t lex_delimited(void)
   }
 }
 
-static token_kind_t keywords[] = {
-  TOKEN_PROGRAM,
-  TOKEN_VAR,
-  TOKEN_ARRAY,
-  TOKEN_OF,
-  TOKEN_BEGIN,
-  TOKEN_END,
-  TOKEN_IF,
-  TOKEN_THEN,
-  TOKEN_ELSE,
-  TOKEN_PROCEDURE,
-  TOKEN_RETURN,
-  TOKEN_CALL,
-  TOKEN_WHILE,
-  TOKEN_DO,
-  TOKEN_NOT,
-  TOKEN_OR,
-  TOKEN_DIV,
-  TOKEN_AND,
-  TOKEN_CHAR,
-  TOKEN_INTEGER,
-  TOKEN_BOOLEAN,
-  TOKEN_READ,
-  TOKEN_WRITE,
-  TOKEN_READLN,
-  TOKEN_WRITELN,
-  TOKEN_TRUE,
-  TOKEN_FALSE,
-  TOKEN_BREAK,
-};
-
-static const long keywords_size = sizeof(keywords) / sizeof(*keywords);
-
 void lex_token(lexer_t *lexer, token_t *token)
 {
   ctx.lexer = lexer;
@@ -243,18 +211,6 @@ void lex_token(lexer_t *lexer, token_t *token)
   }
 
   switch (token->type) {
-  case TOKEN_NAME: {
-    long i;
-    for (i = 0; i < keywords_size; ++i) {
-      const char *ptr = token_to_str(keywords[i]);
-      long        len = (long) token->region.len;
-      if (!strncmp(ptr, token->ptr, len) && !ptr[len]) {
-        token->type = keywords[i];
-        break;
-      }
-    }
-    return;
-  }
   case TOKEN_NUMBER: {
     token_number_t *token = (token_number_t *) ctx.token;
     errno                 = 0;
@@ -322,69 +278,4 @@ void lex_token(lexer_t *lexer, token_t *token)
     /* do nothing */
     return;
   }
-}
-
-const char *token_to_str(token_kind_t type)
-{
-  /* clang-format off */
-  switch (type) {
-  case TOKEN_NAME:      return "NAME";
-  case TOKEN_PROGRAM:   return "program";
-  case TOKEN_VAR:       return "var";
-  case TOKEN_ARRAY:     return "array";
-  case TOKEN_OF:        return "of";
-  case TOKEN_BEGIN:     return "begin";
-  case TOKEN_END:       return "end";
-  case TOKEN_IF:        return "if";
-  case TOKEN_THEN:      return "then";
-  case TOKEN_ELSE:      return "else";
-  case TOKEN_PROCEDURE: return "procedure";
-  case TOKEN_RETURN:    return "return";
-  case TOKEN_CALL:      return "call";
-  case TOKEN_WHILE:     return "while";
-  case TOKEN_DO:        return "do";
-  case TOKEN_NOT:       return "not";
-  case TOKEN_OR:        return "or";
-  case TOKEN_DIV:       return "div";
-  case TOKEN_AND:       return "and";
-  case TOKEN_CHAR:      return "char";
-  case TOKEN_INTEGER:   return "integer";
-  case TOKEN_BOOLEAN:   return "boolean";
-  case TOKEN_READLN:    return "readln";
-  case TOKEN_WRITELN:   return "writeln";
-  case TOKEN_TRUE:      return "true";
-  case TOKEN_FALSE:     return "false";
-  case TOKEN_NUMBER:    return "NUMBER";
-  case TOKEN_STRING:    return "STRING";
-  case TOKEN_PLUS:      return "+";
-  case TOKEN_MINUS:     return "-";
-  case TOKEN_STAR:      return "*";
-  case TOKEN_EQUAL:     return "=";
-  case TOKEN_NOTEQ:     return "<>";
-  case TOKEN_LE:        return "<";
-  case TOKEN_LEEQ:      return "<=";
-  case TOKEN_GR:        return ">";
-  case TOKEN_GREQ:      return ">=";
-  case TOKEN_LPAREN:    return "(";
-  case TOKEN_RPAREN:    return ")";
-  case TOKEN_LSQPAREN:  return "[";
-  case TOKEN_RSQPAREN:  return "]";
-  case TOKEN_ASSIGN:    return ":=";
-  case TOKEN_DOT:       return ".";
-  case TOKEN_COMMA:     return ",";
-  case TOKEN_COLON:     return ":";
-  case TOKEN_SEMI:      return ";";
-  case TOKEN_READ:      return "read";
-  case TOKEN_WRITE:     return "write";
-  case TOKEN_BREAK:     return "break";
-  case TOKEN_EOF:       return "EOF";
-
-  case TOKEN_UNKNOWN:   return "UNKNOWN";
-  case TOKEN_ERROR:     return "ERROR";
-
-  case TOKEN_BRACES_COMMENT:
-  case TOKEN_CSTYLE_COMMENT:
-  default:              return "";
-  }
-  /* clang-format on */
 }
