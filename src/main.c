@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     }
   }
 
-  console_ansi(flag_color_print);
+  term_use_ansi(flag_color_print);
 
   src = src_new(argv[i], output);
   if ((ast = parse_source(src))) {

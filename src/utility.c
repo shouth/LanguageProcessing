@@ -75,26 +75,18 @@ int left_most_bit(unsigned long n)
 
 static int use_ansi = 0;
 
-void console_ansi(int flag)
+void term_use_ansi(int flag)
 {
   use_ansi = flag;
 }
 
-void console_set(sgr_t code)
+void term_set(unsigned long code)
 {
   if (use_ansi) {
-    printf("\033[%dm", code);
-  }
-}
-
-void console_reset(void)
-{
-  console_set(SGR_RESET);
-}
-
-void console_24bit(color_t color)
-{
-  if (use_ansi) {
-    printf("\033[38;2;%ld;%ld;%ldm", (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
+    if (code & SGR__FLAG) {
+      printf("\033[%ldm", code ^ SGR__FLAG);
+    } else {
+      printf("\033[38;2;%ld;%ld;%ldm", (code >> 16) & 0xff, (code >> 8) & 0xff, code & 0xff);
+    }
   }
 }

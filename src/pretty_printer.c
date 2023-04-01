@@ -35,75 +35,75 @@ void pp_symbol(printer_t *printer, const symbol_t *symbol)
 void pp_colored_program(printer_t *printer, const ast_ident_t *ident)
 {
   assert(printer && ident);
-  console_24bit(printer->color_scheme->program);
+  term_set(printer->color_scheme->program);
   pp_symbol(printer, ident->symbol);
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_keyword(printer_t *printer, token_kind_t type)
 {
   assert(printer);
-  console_24bit(printer->color_scheme->keyword);
+  term_set(printer->color_scheme->keyword);
   printf("%s", token_to_str(type));
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_operator(printer_t *printer, token_kind_t type)
 {
   assert(printer);
-  console_24bit(printer->color_scheme->operator);
+  term_set(printer->color_scheme->operator);
   printf("%s", token_to_str(type));
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_procedure(printer_t *printer, const ast_ident_t *ident)
 {
   assert(printer && ident);
-  console_24bit(printer->color_scheme->procedure);
+  term_set(printer->color_scheme->procedure);
   pp_symbol(printer, ident->symbol);
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_reserved_function(printer_t *printer, token_kind_t type)
 {
   assert(printer);
-  console_24bit(printer->color_scheme->procedure);
+  term_set(printer->color_scheme->procedure);
   printf("%s", token_to_str(type));
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_parameter(printer_t *printer, const ast_ident_t *ident)
 {
   assert(printer && ident);
-  console_24bit(printer->color_scheme->argument);
+  term_set(printer->color_scheme->argument);
   pp_symbol(printer, ident->symbol);
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_string(printer_t *printer, const ast_lit_string_t *lit)
 {
   assert(printer && lit);
-  console_24bit(printer->color_scheme->string);
+  term_set(printer->color_scheme->string);
   printf("\'");
   pp_symbol(printer, lit->symbol);
   printf("\'");
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_number(printer_t *printer, const ast_lit_number_t *lit)
 {
   assert(printer && lit);
-  console_24bit(printer->color_scheme->literal);
+  term_set(printer->color_scheme->literal);
   pp_symbol(printer, lit->symbol);
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_colored_reserved_lit(printer_t *printer, token_kind_t type)
 {
   assert(printer);
-  console_24bit(printer->color_scheme->literal);
+  term_set(printer->color_scheme->literal);
   printf("%s", token_to_str(type));
-  console_reset();
+  term_set(SGR_RESET);
 }
 
 void pp_type(printer_t *printer, const ast_type_t *type)
@@ -576,7 +576,7 @@ void pretty_print(const ast_t *ast)
   printer.indent = 0;
 
   printer.color_scheme = &monokai;
-  console_reset();
+  term_set(SGR_RESET);
   pp_program(&printer, ast->program);
-  console_reset();
+  term_set(SGR_RESET);
 }

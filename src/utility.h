@@ -53,56 +53,54 @@ hash_entry_t       *hash_remove(hash_t *table, const void *key);
 int                 hash_default_comp(const void *lhs, const void *rhs);
 uint64_t            hash_default_hasher(const void *ptr);
 
-typedef enum {
-  SGR_RESET            = 0,
-  SGR_BOLD             = 1,
-  SGR_FAINT            = 2,
-  SGR_ITALIC           = 3,
-  SGR_UNDERLINE        = 4,
-  SGR_NORMAL_INTENSITY = 22,
-  SGR_NOT_ITALIC       = 23,
-  SGR_NOT_UNDERLINED   = 24,
+#define SGR__FLAG ((unsigned long) 1 << 24)
 
-  SGR_FG_BLACK   = 30,
-  SGR_FG_RED     = 31,
-  SGR_FG_GREEN   = 32,
-  SGR_FG_YELLOW  = 33,
-  SGR_FG_BLUE    = 34,
-  SGR_FG_MAGENTA = 35,
-  SGR_FG_CYAN    = 36,
-  SGR_FG_WHITE   = 37,
-  SGR_BG_BLACK   = 40,
-  SGR_BG_RED     = 41,
-  SGR_BG_GREEN   = 42,
-  SGR_BG_YELLOW  = 43,
-  SGR_BG_BLUE    = 44,
-  SGR_BG_MAGENTA = 45,
-  SGR_BG_CYAN    = 46,
-  SGR_BG_WHITE   = 47,
+#define SGR_RESET            (SGR__FLAG | 0)
+#define SGR_BOLD             (SGR__FLAG | 1)
+#define SGR_FAINT            (SGR__FLAG | 2)
+#define SGR_ITALIC           (SGR__FLAG | 3)
+#define SGR_UNDERLINE        (SGR__FLAG | 4)
+#define SGR_NORMAL_INTENSITY (SGR__FLAG | 22)
+#define SGR_NOT_ITALIC       (SGR__FLAG | 23)
+#define SGR_NOT_UNDERLINED   (SGR__FLAG | 24)
 
-  SGR_FG_BRIGHT_BLACK   = 90,
-  SGR_FG_BRIGHT_RED     = 91,
-  SGR_FG_BRIGHT_GREEN   = 92,
-  SGR_FG_BRIGHT_YELLOW  = 93,
-  SGR_FG_BRIGHT_BLUE    = 94,
-  SGR_FG_BRIGHT_MAGENTA = 95,
-  SGR_FG_BRIGHT_CYAN    = 96,
-  SGR_FG_BRIGHT_WHITE   = 97,
-  SGR_BG_BRIGHT_BLACK   = 100,
-  SGR_BG_BRIGHT_RED     = 101,
-  SGR_BG_BRIGHT_GREEN   = 102,
-  SGR_BG_BRIGHT_YELLOW  = 103,
-  SGR_BG_BRIGHT_BLUE    = 104,
-  SGR_BG_BRIGHT_MAGENTA = 105,
-  SGR_BG_BRIGHT_CYAN    = 106,
-  SGR_BG_BRIGHT_WHITE   = 107
-} sgr_t;
+#define SGR_FG_BLACK   (SGR__FLAG | 30)
+#define SGR_FG_RED     (SGR__FLAG | 31)
+#define SGR_FG_GREEN   (SGR__FLAG | 32)
+#define SGR_FG_YELLOW  (SGR__FLAG | 33)
+#define SGR_FG_BLUE    (SGR__FLAG | 34)
+#define SGR_FG_MAGENTA (SGR__FLAG | 35)
+#define SGR_FG_CYAN    (SGR__FLAG | 36)
+#define SGR_FG_WHITE   (SGR__FLAG | 37)
+#define SGR_BG_BLACK   (SGR__FLAG | 40)
+#define SGR_BG_RED     (SGR__FLAG | 41)
+#define SGR_BG_GREEN   (SGR__FLAG | 42)
+#define SGR_BG_YELLOW  (SGR__FLAG | 43)
+#define SGR_BG_BLUE    (SGR__FLAG | 44)
+#define SGR_BG_MAGENTA (SGR__FLAG | 45)
+#define SGR_BG_CYAN    (SGR__FLAG | 46)
+#define SGR_BG_WHITE   (SGR__FLAG | 47)
 
-typedef uint64_t color_t;
+#define SGR_FG_BRIGHT_BLACK   (SGR__FLAG | 90)
+#define SGR_FG_BRIGHT_RED     (SGR__FLAG | 91)
+#define SGR_FG_BRIGHT_GREEN   (SGR__FLAG | 92)
+#define SGR_FG_BRIGHT_YELLOW  (SGR__FLAG | 93)
+#define SGR_FG_BRIGHT_BLUE    (SGR__FLAG | 94)
+#define SGR_FG_BRIGHT_MAGENTA (SGR__FLAG | 95)
+#define SGR_FG_BRIGHT_CYAN    (SGR__FLAG | 96)
+#define SGR_FG_BRIGHT_WHITE   (SGR__FLAG | 97)
+#define SGR_BG_BRIGHT_BLACK   (SGR__FLAG | 100)
+#define SGR_BG_BRIGHT_RED     (SGR__FLAG | 101)
+#define SGR_BG_BRIGHT_GREEN   (SGR__FLAG | 102)
+#define SGR_BG_BRIGHT_YELLOW  (SGR__FLAG | 103)
+#define SGR_BG_BRIGHT_BLUE    (SGR__FLAG | 104)
+#define SGR_BG_BRIGHT_MAGENTA (SGR__FLAG | 105)
+#define SGR_BG_BRIGHT_CYAN    (SGR__FLAG | 106)
+#define SGR_BG_BRIGHT_WHITE   (SGR__FLAG | 107)
 
-void console_ansi(int flag);
-void console_set(sgr_t code);
-void console_reset(void);
-void console_24bit(color_t color);
+typedef unsigned long color_t;
+
+void term_use_ansi(int flag);
+void term_set(unsigned long code);
 
 #endif
