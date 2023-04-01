@@ -74,7 +74,7 @@ int main(int argc, char **argv)
   }
 
   delete_ir(ir);
-  delete_ast(ast);
+  ast_delete(ast);
   src_delete(src);
   return 0;
 }

@@ -323,7 +323,7 @@ static ast_expr_t *parse_expr_not(void)
   expect(TOKEN_NOT);
   expr->op_region = ctx.current.region;
   expr->expr      = parse_factor();
-  return init_expr((ast_expr_t *) expr, AST_EXPR_KIND_UNARY, region_unite(left, ctx.current.region));
+  return init_expr((ast_expr_t *) expr, AST_EXPR_KIND_NOT, region_unite(left, ctx.current.region));
 }
 
 static ast_expr_t *parse_expr_cast(void)
@@ -564,7 +564,7 @@ static ast_stmt_t *parse_stmt_read(void)
   return init_stmt((ast_stmt_t *) stmt, AST_STMT_KIND_READ);
 }
 
-static void maybe_error_output_format(ast_output_format_t *format, region_t colon)
+static void maybe_error_out_fmt(ast_out_fmt_t *format, region_t colon)
 {
   if (ctx.alive) {
     if (format->expr->kind == AST_EXPR_KIND_CONSTANT) {
@@ -582,16 +582,16 @@ static void maybe_error_output_format(ast_output_format_t *format, region_t colo
   }
 }
 
-static ast_output_format_t *parse_output_format(void)
+static ast_out_fmt_t *parse_out_fmt(void)
 {
-  ast_output_format_t *format = xmalloc(sizeof(ast_output_format_t));
-  format->next                = NULL;
+  ast_out_fmt_t *format = xmalloc(sizeof(ast_out_fmt_t));
+  format->next          = NULL;
 
   format->expr = parse_expr();
   if (eat(TOKEN_COLON)) {
     region_t colon = ctx.current.region;
     format->len    = parse_lit_number();
-    maybe_error_output_format(format, colon);
+    maybe_error_out_fmt(format, colon);
   } else {
     format->len = NULL;
   }
@@ -610,8 +610,8 @@ static ast_stmt_t *parse_stmt_write(void)
     error_unexpected();
   }
   if (eat(TOKEN_LPAREN)) {
-    ast_output_format_t **tail = &stmt->formats;
-    while ((*tail = parse_output_format()) && eat(TOKEN_COMMA)) {
+    ast_out_fmt_t **tail = &stmt->formats;
+    while ((*tail = parse_out_fmt()) && eat(TOKEN_COMMA)) {
       tail = &(*tail)->next;
     }
     expect(TOKEN_RPAREN);
@@ -783,7 +783,7 @@ ast_t *parse_source(const source_t *src)
     ast->symbols = ctx.symbols;
     ast->source  = src;
     if (ctx.error) {
-      delete_ast(ast);
+      ast_delete(ast);
       return NULL;
     }
     return ast;

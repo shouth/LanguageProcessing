@@ -277,7 +277,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
     case AST_EXPR_KIND_BINARY:
       pp_binary_op_expr(printer, (ast_expr_binary_t *) cur);
       break;
-    case AST_EXPR_KIND_UNARY:
+    case AST_EXPR_KIND_NOT:
       pp_not_expr(printer, (ast_expr_not_t *) cur);
       break;
     case AST_EXPR_KIND_PAREN:
@@ -393,7 +393,7 @@ void pp_stmt_write(printer_t *printer, const ast_stmt_write_t *stmt)
   assert(printer && stmt);
   pp_colored_reserved_function(printer, stmt->newline ? TOKEN_WRITELN : TOKEN_WRITE);
   if (stmt->formats) {
-    ast_output_format_t *cur = stmt->formats;
+    ast_out_fmt_t *cur = stmt->formats;
     printf("(");
     while (cur) {
       if (cur != stmt->formats) {

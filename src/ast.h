@@ -64,8 +64,8 @@ typedef struct ast__type_s       ast_type_t;
 typedef struct ast__type_array_s ast_type_array_t;
 
 struct ast__type_array_s {
-  ast_type_t *base;
   ast_lit_t  *size;
+  ast_type_t *base;
 };
 
 struct ast__type_s {
@@ -83,7 +83,7 @@ typedef enum {
   AST_EXPR_KIND_DECL_REF,
   AST_EXPR_KIND_ARRAY_SUBSCRIPT,
   AST_EXPR_KIND_BINARY,
-  AST_EXPR_KIND_UNARY,
+  AST_EXPR_KIND_NOT,
   AST_EXPR_KIND_PAREN,
   AST_EXPR_KIND_CAST,
   AST_EXPR_KIND_CONSTANT,
@@ -167,12 +167,12 @@ struct ast__expr_s {
 
 /**********     ast output format     **********/
 
-typedef struct ast_output_format_s ast_output_format_t;
+typedef struct ast__out_fmt_s ast_out_fmt_t;
 
-struct ast_output_format_s {
-  ast_output_format_t *next;
-  ast_expr_t          *expr;
-  ast_lit_t           *len;
+struct ast__out_fmt_s {
+  ast_out_fmt_t *next;
+  ast_expr_t    *expr;
+  ast_lit_t     *len;
 };
 
 /**********     ast statement     **********/
@@ -229,8 +229,8 @@ struct ast__stmt_read_s {
 };
 
 struct ast__stmt_write_s {
-  int                  newline;
-  ast_output_format_t *formats;
+  int            newline;
+  ast_out_fmt_t *formats;
 };
 
 struct ast__stmt_compound_s {
@@ -264,9 +264,9 @@ struct ast__decl_variable_s {
 };
 
 struct ast__decl_param_s {
-  ast_decl_param_t *next;
   ast_ident_t      *names;
   ast_type_t       *type;
+  ast_decl_param_t *next;
 };
 
 /**********     ast declaration part     **********/
@@ -321,7 +321,48 @@ struct ast__s {
   const source_t   *source;
 };
 
+/**********     ast visitor    **********/
+
+typedef struct ast__visitor_s ast_visitor_t;
+
+struct ast__visitor_s {
+  void (*visit_lit)(ast_visitor_t *, ast_lit_t *);
+  void (*visit_ident)(ast_visitor_t *, ast_ident_t *);
+  void (*visit_type)(ast_visitor_t *, ast_type_t *);
+  void (*visit_expr)(ast_visitor_t *, ast_expr_t *);
+  void (*visit_out_fmt)(ast_visitor_t *, ast_out_fmt_t *);
+  void (*visit_stmt)(ast_visitor_t *, ast_stmt_t *);
+  void (*visit_decl_variable)(ast_visitor_t *, ast_decl_variable_t *);
+  void (*visit_decl_param)(ast_visitor_t *, ast_decl_param_t *);
+  void (*visit_decl_part)(ast_visitor_t *, ast_decl_part_t *);
+  void (*visit_program)(ast_visitor_t *, ast_program_t *);
+};
+
+#define ast_list_walk(visitor, method, type, head, next) \
+  do {                                                   \
+    type *pointer = head;                                \
+    while (pointer) {                                    \
+      type *next_pointer = pointer->next;                \
+      visitor->method(visitor, pointer);                 \
+      pointer = next_pointer;                            \
+    }                                                    \
+  } while (0)
+
+void ast_walk_ident(ast_visitor_t *visitor, ast_ident_t *ident);
+void ast_walk_type(ast_visitor_t *visitor, ast_type_t *type);
+void ast_walk_expr(ast_visitor_t *visitor, ast_expr_t *expr);
+void ast_walk_out_fmt(ast_visitor_t *visitor, ast_out_fmt_t *out_fmt);
+void ast_walk_stmt(ast_visitor_t *visitor, ast_stmt_t *stmt);
+void ast_walk_decl_variable(ast_visitor_t *visitor, ast_decl_variable_t *variable);
+void ast_walk_decl_param(ast_visitor_t *visitor, ast_decl_param_t *param);
+void ast_walk_decl_part(ast_visitor_t *visitor, ast_decl_part_t *decl_part);
+void ast_walk_program(ast_visitor_t *visitor, ast_program_t *program);
+void ast_walk(ast_visitor_t *visitor, ast_t *ast);
+void ast_init_visitor(ast_visitor_t *visitor);
+
+/**********     ast functions    **********/
+
 const char *ast_binary_kind_expr_to_str(ast_expr_binary_kind_t kind);
-void        delete_ast(ast_t *ast);
+void        ast_delete(ast_t *ast);
 
 #endif

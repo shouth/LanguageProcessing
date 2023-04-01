@@ -306,7 +306,7 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
   }
   case AST_EXPR_KIND_BINARY:
     return analyze_binary_expr(analyzer, block, &expr->expr.binary);
-  case AST_EXPR_KIND_UNARY:
+  case AST_EXPR_KIND_NOT:
     return analyze_not_expr(analyzer, block, &expr->expr.not );
   case AST_EXPR_KIND_PAREN:
     return analyze_expr(analyzer, block, expr->expr.paren.inner);
@@ -538,8 +538,8 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
       break;
     }
     case AST_STMT_KIND_WRITE: {
-      ast_stmt_write_t    *stmt_write = (ast_stmt_write_t *) stmt;
-      ast_output_format_t *formats    = stmt_write->formats;
+      ast_stmt_write_t *stmt_write = (ast_stmt_write_t *) stmt;
+      ast_out_fmt_t    *formats    = stmt_write->formats;
 
       while (formats) {
         ast_expr_constant_t *constant = &formats->expr->expr.constant;
