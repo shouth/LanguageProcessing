@@ -132,24 +132,24 @@ static int ir_type_comparator(const void *lhs, const void *rhs)
   }
 }
 
-static uint64_t ir_type_hasher(const void *ptr)
+static unsigned long ir_type_hasher(const void *ptr)
 {
   const ir_type_t *p = ptr;
   ir_type_t       *cur;
-  uint64_t         ret = fnv1(&p->kind, sizeof(ir_type_kind_t));
+  unsigned long    ret = fnv1a(&p->kind, sizeof(ir_type_kind_t));
 
   switch (p->kind) {
   case IR_TYPE_PROCEDURE:
     cur = p->u.procedure_type.param_types;
     while (cur) {
-      ret = 31 * ret + fnv1(&cur->u.ref, sizeof(const ir_type_t *));
+      ret = 31 * ret + fnv1a(&cur->u.ref, sizeof(const ir_type_t *));
       cur = cur->next;
     }
     break;
   case IR_TYPE_ARRAY:
     cur = p->u.array_type.base_type;
-    ret = 31 * ret + fnv1(&cur->u.ref, sizeof(const ir_type_t *));
-    ret = 31 * ret + fnv1(&p->u.array_type.size, sizeof(long));
+    ret = 31 * ret + fnv1a(&cur->u.ref, sizeof(const ir_type_t *));
+    ret = 31 * ret + fnv1a(&p->u.array_type.size, sizeof(long));
     break;
   default:
     /* do nothing */
@@ -499,22 +499,22 @@ static int ir_constant_comparator(const void *lhs, const void *rhs)
   }
 }
 
-static uint64_t ir_constant_hasher(const void *ptr)
+static unsigned long ir_constant_hasher(const void *ptr)
 {
   const ir_constant_t *p   = ptr;
-  uint64_t             ret = fnv1(&p->kind, sizeof(ir_constant_kind_t));
+  unsigned long        ret = fnv1a(&p->kind, sizeof(ir_constant_kind_t));
   switch (p->kind) {
   case IR_CONSTANT_NUMBER:
-    ret = 31 * ret + fnv1(&p->u.number_constant.value, sizeof(unsigned long));
+    ret = 31 * ret + fnv1a(&p->u.number_constant.value, sizeof(unsigned long));
     break;
   case IR_CONSTANT_BOOLEAN:
-    ret = 31 * ret + fnv1(&p->u.boolean_constant.value, sizeof(int));
+    ret = 31 * ret + fnv1a(&p->u.boolean_constant.value, sizeof(int));
     break;
   case IR_CONSTANT_CHAR:
-    ret = 31 * ret + fnv1(&p->u.char_constant.value, sizeof(int));
+    ret = 31 * ret + fnv1a(&p->u.char_constant.value, sizeof(int));
     break;
   case IR_CONSTANT_STRING:
-    ret = 31 * ret + fnv1(&p->u.string_constant.value, sizeof(symbol_t *));
+    ret = 31 * ret + fnv1a(&p->u.string_constant.value, sizeof(symbol_t *));
     break;
   }
   return ret;

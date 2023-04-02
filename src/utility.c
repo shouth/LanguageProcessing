@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <memory.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,17 +17,17 @@ void *xmalloc(long size)
   return ret;
 }
 
-uint64_t fnv1(const void *ptr, long len)
+unsigned long fnv1a(const void *ptr, long len)
 {
-  uint64_t ret   = 0xcbf29ce484222325;
-  uint64_t prime = 0x00000100000001b3;
-  long     i;
+  unsigned long hash  = 0x811c9dc5;
+  unsigned long prime = 0x01000193;
+  long          i;
 
   for (i = 0; i < len; i++) {
-    ret *= prime;
-    ret ^= ((char *) ptr)[i];
+    hash ^= ((char *) ptr)[i];
+    hash *= prime;
   }
-  return ret;
+  return hash;
 }
 
 #if defined(__GNUC__) || defined(__clang__)

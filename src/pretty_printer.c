@@ -1,12 +1,16 @@
 #include <assert.h>
-#include <bits/types/FILE.h>
 #include <stdarg.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 
 #include "ast.h"
 #include "lexer.h"
+
+#if defined(__GNUC__)
+#define pp_check_format(style, fmt_idx, arg_idx) __attribute__((format(style, fmt_idx, arg_idx)))
+#else
+#define pp_check_format
+#endif
 
 typedef struct {
   unsigned long foreground;
@@ -57,7 +61,7 @@ void pp_vfprintf(printer_t *printer, const char *format, va_list args)
   vfprintf(printer->stream, format, args);
 }
 
-void pp_fprintf(printer_t *printer, const char *format, ...)
+void pp_check_format(printf, 2, 3) pp_fprintf(printer_t *printer, const char *format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -73,28 +77,28 @@ void pp_indent(printer_t *printer)
   }
 }
 
-/* clang-format off */
-
-#define define_colored_fprintf(name, color)              \
-  void name(printer_t *printer, const char *format, ...) \
-  {                                                      \
-    va_list args;                                        \
-    va_start(args, format);                              \
-    term_set(printer->colors->color);                    \
-    pp_vfprintf(printer, format, args);                  \
-    term_set(SGR_RESET);                                 \
-    va_end(args);                                        \
+#define define_colored_fprintf(name, color)                                            \
+  void pp_check_format(printf, 2, 3) name(printer_t *printer, const char *format, ...) \
+  {                                                                                    \
+    va_list args;                                                                      \
+    va_start(args, format);                                                            \
+    term_set(printer->colors->color);                                                  \
+    pp_vfprintf(printer, format, args);                                                \
+    term_set(SGR_RESET);                                                               \
+    va_end(args);                                                                      \
   }
 
-define_colored_fprintf(pp_ident_program, program)
+/* clang-format off */
 define_colored_fprintf(pp_keyword, keyword)
 define_colored_fprintf(pp_operator, operator)
+define_colored_fprintf(pp_ident_program, program)
 define_colored_fprintf(pp_ident_procedure, procedure)
 define_colored_fprintf(pp_ident_param, argument)
+/* clang-format on */
 
 #undef define_colored_fprintf
 
-void pp_lit(printer_t *printer, const ast_lit_t *lit)
+          void pp_lit(printer_t *printer, const ast_lit_t *lit)
 {
   switch (lit->kind) {
   case AST_LIT_KIND_NUMBER: {
@@ -120,8 +124,6 @@ void pp_lit(printer_t *printer, const ast_lit_t *lit)
   }
   }
 }
-
-/* clang-format on */
 
 void pp_ident(printer_t *printer, const ast_ident_t *ident)
 {

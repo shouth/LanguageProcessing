@@ -1,12 +1,6 @@
 #ifndef MPPL_H
 #define MPPL_H
 
-#include <memory.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "ast.h"
 #include "ir.h"
 

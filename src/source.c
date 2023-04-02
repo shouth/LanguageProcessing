@@ -2,7 +2,7 @@
 #define _FILE_OFFSET_BITS 64
 
 #include <assert.h>
-#include <stdint.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -234,10 +234,10 @@ static int symbol_comparator(const void *lhs, const void *rhs)
   return !symbol_compare(lhs, rhs);
 }
 
-static uint64_t symbol_hasher(const void *ptr)
+static unsigned long symbol_hasher(const void *ptr)
 {
   const symbol_t *s = ptr;
-  return fnv1(s->ptr, s->len);
+  return fnv1a(s->ptr, s->len);
 }
 
 symbol_context_t *symbol_context_new(void)

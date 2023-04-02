@@ -1,15 +1,12 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
-#include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 void *xmalloc(long size);
 
-uint64_t fnv1(const void *ptr, long len);
+unsigned long fnv1a(const void *ptr, long len);
 
 int bit_popcount(unsigned long n);
 int bit_right_most(unsigned long n);
@@ -21,22 +18,21 @@ int bit_left_most(unsigned long n);
     exit(EXIT_FAILURE);                                                                        \
   } while (0)
 
-typedef uintptr_t            hash_hop_t;
 typedef int                  hash_comp_t(const void *, const void *);
-typedef uint64_t             hash_hasher_t(const void *);
+typedef unsigned long        hash_hasher_t(const void *);
 typedef void                 hash_deleter_t(void *);
 typedef struct hash__entry_s hash_entry_t;
 
 struct hash__entry_s {
-  hash_hop_t hop;
-  void      *key;
-  void      *value;
+  unsigned long hop;
+  void         *key;
+  void         *value;
 };
 
 typedef struct {
   long           size;
   long           capacity;
-  uint8_t        load_factor;
+  int            load_factor;
   long           bucket_cnt;
   hash_entry_t  *buckets;
   hash_entry_t   removed;
@@ -51,7 +47,7 @@ void                hash_insert_unsafe(hash_t *table, void *key, void *value);
 hash_entry_t       *hash_insert(hash_t *table, void *key, void *value);
 hash_entry_t       *hash_remove(hash_t *table, const void *key);
 int                 hash_default_comp(const void *lhs, const void *rhs);
-uint64_t            hash_default_hasher(const void *ptr);
+unsigned long       hash_default_hasher(const void *ptr);
 
 #define SGR__FLAG ((unsigned long) 1 << 24)
 

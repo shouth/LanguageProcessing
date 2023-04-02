@@ -1,17 +1,17 @@
-#include "assert.h"
+#include <assert.h>
 
 #include "utility.h"
 
-#define NBHD_RANGE ((long) (sizeof(hash_hop_t) * 8))
+#define NBHD_RANGE ((long) (sizeof(void *) * 8))
 
 int hash_default_comp(const void *lhs, const void *rhs)
 {
   return lhs == rhs;
 }
 
-uint64_t hash_default_hasher(const void *ptr)
+unsigned long hash_default_hasher(const void *ptr)
 {
-  return fnv1(&ptr, sizeof(void *));
+  return fnv1a(&ptr, sizeof(void *));
 }
 
 static void hash_init_buckets(hash_t *table)
@@ -90,7 +90,7 @@ static long hash_index(hash_t *table, const void *key)
 const hash_entry_t *hash_find(hash_t *table, const void *key)
 {
   hash_entry_t *home;
-  hash_hop_t    hop;
+  unsigned long hop;
   long          index;
   assert(table && key);
 
@@ -98,11 +98,11 @@ const hash_entry_t *hash_find(hash_t *table, const void *key)
   home  = table->buckets + index;
   hop   = home->hop;
   while (hop) {
-    uint8_t t = bit_right_most(hop);
+    int t = bit_right_most(hop);
     if (table->comparator(key, home[t].key)) {
       return home + t;
     }
-    hop ^= (hash_hop_t) 1 << t;
+    hop ^= (unsigned long) 1 << t;
   }
   return NULL;
 }
@@ -126,15 +126,15 @@ void hash_insert_unsafe(hash_t *table, void *key, void *value)
   while (empty && dist >= NBHD_RANGE) {
     hash_entry_t *entry = empty - NBHD_RANGE + 1;
     for (i = 0; i < NBHD_RANGE; i++) {
-      hash_hop_t hop = entry[i].hop;
+      unsigned long hop = entry[i].hop;
       if (hop) {
-        uint8_t t = bit_right_most(hop);
+        int t = bit_right_most(hop);
         if (i + t < NBHD_RANGE) {
           hash_entry_t *next = entry + i + t;
           empty->key         = next->key;
           empty->value       = next->value;
-          next->hop ^= (hash_hop_t) 1 << t;
-          next->hop ^= (hash_hop_t) 1 << (NBHD_RANGE - i - 1);
+          next->hop ^= (unsigned long) 1 << t;
+          next->hop ^= (unsigned long) 1 << (NBHD_RANGE - i - 1);
           empty = next;
           dist -= NBHD_RANGE - 1 - i - t;
           break;
@@ -153,7 +153,7 @@ void hash_insert_unsafe(hash_t *table, void *key, void *value)
   } else {
     empty->key   = key;
     empty->value = value;
-    home->hop ^= (hash_hop_t) 1 << dist;
+    home->hop ^= (unsigned long) 1 << dist;
     table->size++;
     if (100 * table->size / table->bucket_cnt >= table->load_factor) {
       hash_grow(table);
@@ -174,7 +174,7 @@ hash_entry_t *hash_insert(hash_t *table, void *key, void *value)
 hash_entry_t *hash_remove(hash_t *table, const void *key)
 {
   hash_entry_t *home;
-  hash_hop_t    hop;
+  unsigned long hop;
   long          index;
   assert(table && key);
 
@@ -182,16 +182,16 @@ hash_entry_t *hash_remove(hash_t *table, const void *key)
   home  = table->buckets + index;
   hop   = home->hop;
   while (hop) {
-    uint8_t t = bit_right_most(hop);
+    int t = bit_right_most(hop);
     if (table->comparator(key, home[t].key)) {
       table->removed.key   = home[t].key;
       table->removed.value = home[t].value;
       home[t].key          = NULL;
-      home->hop ^= (hash_hop_t) 1 << t;
+      home->hop ^= (unsigned long) 1 << t;
       table->size--;
       return &table->removed;
     }
-    hop ^= (hash_hop_t) 1 << t;
+    hop ^= (unsigned long) 1 << t;
   }
   return NULL;
 }
