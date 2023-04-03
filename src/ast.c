@@ -58,8 +58,8 @@ void ast_walk_expr(ast_visitor_t *visitor, ast_expr_t *expr)
       break;
     }
     case AST_EXPR_KIND_NOT: {
-      ast_expr_not_t *not = (ast_expr_not_t *) expr;
-      ast_list_walk(visitor, visit_expr, ast_expr_t, not ->expr, next);
+      ast_expr_not_t *not_ = (ast_expr_not_t *) expr;
+      ast_list_walk(visitor, visit_expr, ast_expr_t, not_->expr, next);
       break;
     }
     case AST_EXPR_KIND_PAREN: {

@@ -350,6 +350,7 @@ struct ast__visitor_s {
     }                                                    \
   } while (0)
 
+void ast_walk_lit(ast_visitor_t *visitor, ast_lit_t *lit);
 void ast_walk_ident(ast_visitor_t *visitor, ast_ident_t *ident);
 void ast_walk_type(ast_visitor_t *visitor, ast_type_t *type);
 void ast_walk_expr(ast_visitor_t *visitor, ast_expr_t *expr);
