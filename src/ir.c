@@ -30,8 +30,8 @@ ir_type_t *ir_type_ref(const ir_type_t *type)
   ir_type_t *ret;
   assert(type);
 
-  ret        = new_ir_type(-1);
-  ret->u.ref = type;
+  ret           = new_ir_type(-1);
+  ret->type.ref = type;
   return ret;
 }
 
@@ -42,10 +42,10 @@ static void delete_ir_type(ir_type_t *type)
   }
   switch (type->kind) {
   case IR_TYPE_PROCEDURE:
-    delete_ir_type(type->u.procedure_type.param_types);
+    delete_ir_type(type->type.procedure.param_types);
     break;
   case IR_TYPE_ARRAY:
-    delete_ir_type(type->u.array_type.base_type);
+    delete_ir_type(type->type.array.base);
     break;
   default:
     /* do nothing */
@@ -72,20 +72,20 @@ static char *internal_ir_type_str(char *buf, const ir_type_t *type)
     break;
   case IR_TYPE_PROCEDURE: {
     buf += sprintf(buf, "procedure");
-    if (type->u.procedure_type.param_types) {
+    if (type->type.procedure.param_types) {
       buf += sprintf(buf, "(");
-      buf = internal_ir_type_str(buf, type->u.procedure_type.param_types);
+      buf = internal_ir_type_str(buf, type->type.procedure.param_types);
       buf += sprintf(buf, ")");
     }
     break;
   }
   case IR_TYPE_ARRAY:
-    buf += sprintf(buf, "array[%ld] of ", type->u.array_type.size);
-    internal_ir_type_str(buf, type->u.array_type.base_type);
+    buf += sprintf(buf, "array[%ld] of ", type->type.array.size);
+    internal_ir_type_str(buf, type->type.array.base);
     break;
   case -1:
     while (type) {
-      buf = internal_ir_type_str(buf, type->u.ref);
+      buf = internal_ir_type_str(buf, type->type.ref);
       if ((type = type->next)) {
         buf += sprintf(buf, ", ");
       }
@@ -111,10 +111,10 @@ static int ir_type_comparator(const void *lhs, const void *rhs)
   }
   switch (l->kind) {
   case IR_TYPE_PROCEDURE:
-    lcur = l->u.procedure_type.param_types;
-    rcur = r->u.procedure_type.param_types;
+    lcur = l->type.procedure.param_types;
+    rcur = r->type.procedure.param_types;
     while (lcur && rcur) {
-      if (lcur->u.ref != rcur->u.ref) {
+      if (lcur->type.ref != rcur->type.ref) {
         return 0;
       }
       lcur = lcur->next;
@@ -123,9 +123,9 @@ static int ir_type_comparator(const void *lhs, const void *rhs)
     return !lcur && !rcur;
 
   case IR_TYPE_ARRAY:
-    lcur = l->u.array_type.base_type;
-    rcur = r->u.array_type.base_type;
-    return lcur->u.ref == rcur->u.ref && l->u.array_type.size == r->u.array_type.size;
+    lcur = l->type.array.base;
+    rcur = r->type.array.base;
+    return lcur->type.ref == rcur->type.ref && l->type.array.size == r->type.array.size;
 
   default:
     return 1;
@@ -140,16 +140,16 @@ static unsigned long ir_type_hasher(const void *ptr)
 
   switch (p->kind) {
   case IR_TYPE_PROCEDURE:
-    cur = p->u.procedure_type.param_types;
+    cur = p->type.procedure.param_types;
     while (cur) {
-      ret = 31 * ret + fnv1a(&cur->u.ref, sizeof(const ir_type_t *));
+      ret = 31 * ret + fnv1a(&cur->type.ref, sizeof(const ir_type_t *));
       cur = cur->next;
     }
     break;
   case IR_TYPE_ARRAY:
-    cur = p->u.array_type.base_type;
-    ret = 31 * ret + fnv1a(&cur->u.ref, sizeof(const ir_type_t *));
-    ret = 31 * ret + fnv1a(&p->u.array_type.size, sizeof(long));
+    cur = p->type.array.base;
+    ret = 31 * ret + fnv1a(&cur->type.ref, sizeof(const ir_type_t *));
+    ret = 31 * ret + fnv1a(&p->type.array.size, sizeof(long));
     break;
   default:
     /* do nothing */
@@ -188,10 +188,10 @@ static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
 
   switch (type->kind) {
   case IR_TYPE_PROCEDURE:
-    type->u.procedure_type.param_types = ir_type_intern_chaining(factory, type->u.procedure_type.param_types);
+    type->type.procedure.param_types = ir_type_intern_chaining(factory, type->type.procedure.param_types);
     break;
   case IR_TYPE_ARRAY:
-    type->u.array_type.base_type = ir_type_intern_chaining(factory, type->u.array_type.base_type);
+    type->type.array.base = ir_type_intern_chaining(factory, type->type.array.base);
     break;
   }
   if ((entry = hash_find(factory->types.table, type))) {
@@ -223,8 +223,8 @@ const ir_type_t *ir_type_procedure(ir_factory_t *factory, ir_type_t *params)
     }
   }
 
-  procedure                               = new_ir_type(IR_TYPE_PROCEDURE);
-  procedure->u.procedure_type.param_types = params;
+  procedure                             = new_ir_type(IR_TYPE_PROCEDURE);
+  procedure->type.procedure.param_types = params;
   return ir_type_intern(factory, procedure);
 }
 
@@ -234,9 +234,9 @@ const ir_type_t *ir_type_array(ir_factory_t *factory, ir_type_t *base, long size
   assert(factory && base);
   assert(base->kind == -1);
 
-  array                         = new_ir_type(IR_TYPE_ARRAY);
-  array->u.array_type.base_type = base;
-  array->u.array_type.size      = size;
+  array                  = new_ir_type(IR_TYPE_ARRAY);
+  array->type.array.base = base;
+  array->type.array.size = size;
   return ir_type_intern(factory, array);
 }
 
@@ -326,12 +326,12 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, long pos)
   case IR_ITEM_VAR:
   case IR_ITEM_LOCAL_VAR:
   case IR_ITEM_PROCEDURE:
-    local             = new_ir_local(IR_LOCAL_VAR);
-    local->u.var.item = item;
+    local                 = new_ir_local(IR_LOCAL_VAR);
+    local->local.var.item = item;
     break;
   case IR_ITEM_ARG_VAR:
-    local             = new_ir_local(IR_LOCAL_ARG);
-    local->u.arg.item = item;
+    local                 = new_ir_local(IR_LOCAL_ARG);
+    local->local.arg.item = item;
     break;
   default:
     unreachable();
@@ -345,8 +345,8 @@ const ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type)
   ir_local_t *local;
   assert(factory && type);
 
-  local              = new_ir_local(IR_LOCAL_TEMP);
-  local->u.temp.type = type;
+  local                  = new_ir_local(IR_LOCAL_TEMP);
+  local->local.temp.type = type;
   return ir_scope_append_local(factory->scope, local);
 }
 
@@ -354,11 +354,11 @@ const ir_type_t *ir_local_type(const ir_local_t *local)
 {
   switch (local->kind) {
   case IR_LOCAL_VAR:
-    return local->u.var.item->type;
+    return local->local.var.item->type;
   case IR_LOCAL_ARG:
-    return local->u.arg.item->type;
+    return local->local.arg.item->type;
   case IR_LOCAL_TEMP:
-    return local->u.temp.type;
+    return local->local.temp.type;
   }
 
   unreachable();
@@ -373,33 +373,46 @@ void delete_ir_local(ir_local_t *local)
   free(local);
 }
 
-ir_place_t *new_ir_place(const ir_local_t *local)
+static ir_place_t *init_ir_place(ir_place_t *place, ir_place_kind_t kind)
 {
-  ir_place_t *ret   = xmalloc(sizeof(ir_place_t));
-  ret->local        = local;
-  ret->place_access = NULL;
-  return ret;
+  place->kind = kind;
+  return place;
+}
+
+ir_place_t *new_ir_plain_place(const ir_local_t *local)
+{
+  ir_place_plain_t *place = xmalloc(sizeof(ir_place_t));
+  place->local            = local;
+  return init_ir_place((ir_place_t *) place, IR_PLACE_KIND_PLAIN);
 }
 
 ir_place_t *new_ir_index_place(const ir_local_t *local, ir_operand_t *index)
 {
-  ir_place_t *ret                               = new_ir_place(local);
-  ret->place_access                             = xmalloc(sizeof(ir_place_access_t));
-  ret->place_access->kind                       = IR_PLACE_ACCESS_INDEX;
-  ret->place_access->u.index_place_access.index = index;
-  return ret;
+  ir_place_indexed_t *place = xmalloc(sizeof(ir_place_t));
+  place->local              = local;
+  place->index              = index;
+  return init_ir_place((ir_place_t *) place, IR_PLACE_KIND_INDEXED);
 }
 
 const ir_type_t *ir_place_type(ir_place_t *place)
 {
-  const ir_type_t *type;
-  assert(place);
-
-  type = ir_local_type(place->local);
-  if (type->kind == IR_TYPE_ARRAY && place->place_access && place->place_access->kind == IR_PLACE_ACCESS_INDEX) {
-    return type->u.array_type.base_type->u.ref;
-  } else {
-    return type;
+  switch (place->kind) {
+  case IR_PLACE_KIND_PLAIN: {
+    ir_place_plain_t *plain = (ir_place_plain_t *) place;
+    return ir_local_type(plain->local);
+  }
+  case IR_PLACE_KIND_INDEXED: {
+    ir_place_indexed_t *indexed = (ir_place_indexed_t *) place;
+    const ir_type_t    *type    = ir_local_type(indexed->local);
+    switch (type->kind) {
+    case IR_TYPE_ARRAY:
+      return type->type.array.base->type.ref;
+    default:
+      unreachable();
+    }
+  }
+  default:
+    unreachable();
   }
 }
 
@@ -408,9 +421,13 @@ void delete_ir_place(ir_place_t *place)
   if (!place) {
     return;
   }
-  if (place->place_access) {
-    delete_ir_operand(place->place_access->u.index_place_access.index);
-    free(place->place_access);
+  switch (place->kind) {
+  case IR_PLACE_KIND_INDEXED:
+    delete_ir_operand(place->place.indexed.index);
+    break;
+  case IR_PLACE_KIND_PLAIN:
+    /* do nothing */
+    break;
   }
   free(place);
 }
@@ -452,30 +469,30 @@ static const ir_constant_t *ir_constant_intern(ir_factory_t *factory, ir_constan
 
 const ir_constant_t *ir_number_constant(ir_factory_t *factory, unsigned long value)
 {
-  ir_constant_t *ret           = new_ir_constant(IR_CONSTANT_NUMBER, ir_type_integer(factory));
-  ret->u.number_constant.value = value;
+  ir_constant_t *ret         = new_ir_constant(IR_CONSTANT_NUMBER, ir_type_integer(factory));
+  ret->constant.number.value = value;
   return ir_constant_intern(factory, ret);
 }
 
 const ir_constant_t *ir_boolean_constant(ir_factory_t *factory, int value)
 {
-  ir_constant_t *ret            = new_ir_constant(IR_CONSTANT_BOOLEAN, ir_type_boolean(factory));
-  ret->u.boolean_constant.value = value;
+  ir_constant_t *ret          = new_ir_constant(IR_CONSTANT_BOOLEAN, ir_type_boolean(factory));
+  ret->constant.boolean.value = value;
   return ir_constant_intern(factory, ret);
 }
 
 const ir_constant_t *ir_char_constant(ir_factory_t *factory, int value)
 {
-  ir_constant_t *ret         = new_ir_constant(IR_CONSTANT_CHAR, ir_type_char(factory));
-  ret->u.char_constant.value = value;
+  ir_constant_t *ret        = new_ir_constant(IR_CONSTANT_CHAR, ir_type_char(factory));
+  ret->constant.char_.value = value;
   return ir_constant_intern(factory, ret);
 }
 
 const ir_constant_t *ir_string_constant(ir_factory_t *factory, const symbol_t *value, long len)
 {
-  ir_type_t     *base          = ir_type_ref(ir_type_char(factory));
-  ir_constant_t *ret           = new_ir_constant(IR_CONSTANT_STRING, ir_type_array(factory, base, len));
-  ret->u.string_constant.value = value;
+  ir_type_t     *base        = ir_type_ref(ir_type_char(factory));
+  ir_constant_t *ret         = new_ir_constant(IR_CONSTANT_STRING, ir_type_array(factory, base, len));
+  ret->constant.string.value = value;
   return ir_constant_intern(factory, ret);
 }
 
@@ -487,13 +504,13 @@ static int ir_constant_comparator(const void *lhs, const void *rhs)
   }
   switch (l->kind) {
   case IR_CONSTANT_NUMBER:
-    return l->u.number_constant.value == r->u.number_constant.value;
+    return l->constant.number.value == r->constant.number.value;
   case IR_CONSTANT_BOOLEAN:
-    return l->u.boolean_constant.value == r->u.boolean_constant.value;
+    return l->constant.boolean.value == r->constant.boolean.value;
   case IR_CONSTANT_CHAR:
-    return l->u.char_constant.value == r->u.char_constant.value;
+    return l->constant.char_.value == r->constant.char_.value;
   case IR_CONSTANT_STRING:
-    return l->u.string_constant.value == r->u.string_constant.value;
+    return l->constant.string.value == r->constant.string.value;
   default:
     unreachable();
   }
@@ -505,16 +522,16 @@ static unsigned long ir_constant_hasher(const void *ptr)
   unsigned long        ret = fnv1a(&p->kind, sizeof(ir_constant_kind_t));
   switch (p->kind) {
   case IR_CONSTANT_NUMBER:
-    ret = 31 * ret + fnv1a(&p->u.number_constant.value, sizeof(unsigned long));
+    ret = 31 * ret + fnv1a(&p->constant.number.value, sizeof(unsigned long));
     break;
   case IR_CONSTANT_BOOLEAN:
-    ret = 31 * ret + fnv1a(&p->u.boolean_constant.value, sizeof(int));
+    ret = 31 * ret + fnv1a(&p->constant.boolean.value, sizeof(int));
     break;
   case IR_CONSTANT_CHAR:
-    ret = 31 * ret + fnv1a(&p->u.char_constant.value, sizeof(int));
+    ret = 31 * ret + fnv1a(&p->constant.char_.value, sizeof(int));
     break;
   case IR_CONSTANT_STRING:
-    ret = 31 * ret + fnv1a(&p->u.string_constant.value, sizeof(symbol_t *));
+    ret = 31 * ret + fnv1a(&p->constant.string.value, sizeof(symbol_t *));
     break;
   }
   return ret;
@@ -535,15 +552,15 @@ static ir_operand_t *new_ir_operand(ir_operand_kind_t kind)
 
 ir_operand_t *new_ir_place_operand(ir_place_t *place)
 {
-  ir_operand_t *ret          = new_ir_operand(IR_OPERAND_PLACE);
-  ret->u.place_operand.place = place;
+  ir_operand_t *ret        = new_ir_operand(IR_OPERAND_PLACE);
+  ret->operand.place.place = place;
   return ret;
 }
 
 ir_operand_t *new_ir_constant_operand(const ir_constant_t *constant)
 {
-  ir_operand_t *ret                = new_ir_operand(IR_OPERAND_CONSTANT);
-  ret->u.constant_operand.constant = constant;
+  ir_operand_t *ret              = new_ir_operand(IR_OPERAND_CONSTANT);
+  ret->operand.constant.constant = constant;
   return ret;
 }
 
@@ -553,9 +570,9 @@ const ir_type_t *ir_operand_type(ir_operand_t *operand)
 
   switch (operand->kind) {
   case IR_OPERAND_PLACE:
-    return ir_place_type(operand->u.place_operand.place);
+    return ir_place_type(operand->operand.place.place);
   case IR_OPERAND_CONSTANT:
-    return ir_constant_type(operand->u.constant_operand.constant);
+    return ir_constant_type(operand->operand.constant.constant);
   default:
     unreachable();
   }
@@ -568,7 +585,7 @@ void delete_ir_operand(ir_operand_t *operand)
   }
   switch (operand->kind) {
   case IR_OPERAND_PLACE:
-    delete_ir_place(operand->u.place_operand.place);
+    delete_ir_place(operand->operand.place.place);
     break;
   default:
     /* do nothing */
@@ -587,32 +604,32 @@ static ir_rvalue_t *new_ir_rvalue(ir_rvalue_kind_t kind)
 
 ir_rvalue_t *new_ir_use_rvalue(ir_operand_t *operand)
 {
-  ir_rvalue_t *ret          = new_ir_rvalue(IR_RVALUE_USE);
-  ret->u.use_rvalue.operand = operand;
+  ir_rvalue_t *ret        = new_ir_rvalue(IR_RVALUE_USE);
+  ret->rvalue.use.operand = operand;
   return ret;
 }
 
 ir_rvalue_t *new_ir_binary_op_rvalue(ast_expr_binary_kind_t kind, ir_operand_t *lhs, ir_operand_t *rhs)
 {
-  ir_rvalue_t *ret             = new_ir_rvalue(IR_RVALUE_EXPR_BINARY_KIND);
-  ret->u.binary_op_rvalue.kind = kind;
-  ret->u.binary_op_rvalue.lhs  = lhs;
-  ret->u.binary_op_rvalue.rhs  = rhs;
+  ir_rvalue_t *ret        = new_ir_rvalue(IR_RVALUE_BINARY);
+  ret->rvalue.binary.kind = kind;
+  ret->rvalue.binary.lhs  = lhs;
+  ret->rvalue.binary.rhs  = rhs;
   return ret;
 }
 
 ir_rvalue_t *new_ir_not_rvalue(ir_operand_t *value)
 {
-  ir_rvalue_t *ret        = new_ir_rvalue(IR_RVALUE_NOT);
-  ret->u.not_rvalue.value = value;
+  ir_rvalue_t *ret       = new_ir_rvalue(IR_RVALUE_NOT);
+  ret->rvalue.not_.value = value;
   return ret;
 }
 
 ir_rvalue_t *new_ir_cast_rvalue(const ir_type_t *type, ir_operand_t *value)
 {
-  ir_rvalue_t *ret         = new_ir_rvalue(IR_RVALUE_CAST);
-  ret->u.cast_rvalue.type  = type;
-  ret->u.cast_rvalue.value = value;
+  ir_rvalue_t *ret       = new_ir_rvalue(IR_RVALUE_CAST);
+  ret->rvalue.cast.type  = type;
+  ret->rvalue.cast.value = value;
   return ret;
 }
 
@@ -623,17 +640,17 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
   }
   switch (rvalue->kind) {
   case IR_RVALUE_USE:
-    delete_ir_operand(rvalue->u.use_rvalue.operand);
+    delete_ir_operand(rvalue->rvalue.use.operand);
     break;
-  case IR_RVALUE_EXPR_BINARY_KIND:
-    delete_ir_operand(rvalue->u.binary_op_rvalue.lhs);
-    delete_ir_operand(rvalue->u.binary_op_rvalue.rhs);
+  case IR_RVALUE_BINARY:
+    delete_ir_operand(rvalue->rvalue.binary.lhs);
+    delete_ir_operand(rvalue->rvalue.binary.rhs);
     break;
   case IR_RVALUE_NOT:
-    delete_ir_operand(rvalue->u.not_rvalue.value);
+    delete_ir_operand(rvalue->rvalue.not_.value);
     break;
   case IR_RVALUE_CAST:
-    delete_ir_operand(rvalue->u.cast_rvalue.value);
+    delete_ir_operand(rvalue->rvalue.cast.value);
     break;
   }
   free(rvalue);
@@ -655,18 +672,18 @@ void delete_ir_stmt(ir_stmt_t *stmt)
 
   switch (stmt->kind) {
   case IR_STMT_ASSIGN:
-    delete_ir_place(stmt->u.stmt_assign.lhs);
-    delete_ir_rvalue(stmt->u.stmt_assign.rhs);
+    delete_ir_place(stmt->stmt.assign.lhs);
+    delete_ir_rvalue(stmt->stmt.assign.rhs);
     break;
   case IR_STMT_CALL:
-    delete_ir_place(stmt->u.stmt_call.func);
-    delete_ir_operand(stmt->u.stmt_call.args);
+    delete_ir_place(stmt->stmt.call.func);
+    delete_ir_operand(stmt->stmt.call.args);
     break;
   case IR_STMT_READ:
-    delete_ir_place(stmt->u.stmt_read.ref);
+    delete_ir_place(stmt->stmt.read.ref);
     break;
   case IR_STMT_WRITE:
-    delete_ir_operand(stmt->u.stmt_write.value);
+    delete_ir_operand(stmt->stmt.write.value);
     break;
   default:
     /* do nothing */
@@ -697,24 +714,24 @@ void ir_block_append_block(ir_block_t *block, ir_stmt_t *stmt)
 
 void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs)
 {
-  ir_stmt_t *ret         = new_ir_stmt(IR_STMT_ASSIGN);
-  ret->u.stmt_assign.lhs = lhs;
-  ret->u.stmt_assign.rhs = rhs;
+  ir_stmt_t *ret       = new_ir_stmt(IR_STMT_ASSIGN);
+  ret->stmt.assign.lhs = lhs;
+  ret->stmt.assign.rhs = rhs;
   ir_block_append_block(block, ret);
 }
 
 void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_operand_t *args)
 {
-  ir_stmt_t *ret        = new_ir_stmt(IR_STMT_CALL);
-  ret->u.stmt_call.func = func;
-  ret->u.stmt_call.args = args;
+  ir_stmt_t *ret      = new_ir_stmt(IR_STMT_CALL);
+  ret->stmt.call.func = func;
+  ret->stmt.call.args = args;
   ir_block_append_block(block, ret);
 }
 
 void ir_block_push_read(ir_block_t *block, ir_place_t *ref)
 {
-  ir_stmt_t *ret       = new_ir_stmt(IR_STMT_READ);
-  ret->u.stmt_read.ref = ref;
+  ir_stmt_t *ret     = new_ir_stmt(IR_STMT_READ);
+  ret->stmt.read.ref = ref;
   ir_block_append_block(block, ret);
 }
 
@@ -726,9 +743,9 @@ void ir_block_push_readln(ir_block_t *block)
 
 void ir_block_push_write(ir_block_t *block, ir_operand_t *value, const ir_constant_t *len)
 {
-  ir_stmt_t *ret          = new_ir_stmt(IR_STMT_WRITE);
-  ret->u.stmt_write.value = value;
-  ret->u.stmt_write.len   = len;
+  ir_stmt_t *ret        = new_ir_stmt(IR_STMT_WRITE);
+  ret->stmt.write.value = value;
+  ret->stmt.write.len   = len;
   ir_block_append_block(block, ret);
 }
 
@@ -741,17 +758,17 @@ void ir_block_push_writeln(ir_block_t *block)
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next)
 {
   assert(block->termn.kind == -1);
-  block->termn.kind              = IR_TERMN_GOTO;
-  block->termn.u.goto_termn.next = next;
+  block->termn.kind             = IR_TERMN_GOTO;
+  block->termn.termn.goto_.next = next;
 }
 
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els)
 {
   assert(block->termn.kind == -1);
-  block->termn.kind            = IR_TERMN_IF;
-  block->termn.u.if_termn.cond = cond;
-  block->termn.u.if_termn.then = then;
-  block->termn.u.if_termn.els  = els;
+  block->termn.kind           = IR_TERMN_IF;
+  block->termn.termn.if_.cond = cond;
+  block->termn.termn.if_.then = then;
+  block->termn.termn.if_.els  = els;
 }
 
 void ir_block_terminate_return(ir_block_t *block)
@@ -763,9 +780,9 @@ void ir_block_terminate_return(ir_block_t *block)
 void ir_block_terminate_arg(ir_block_t *block, const ir_operand_t *arg, const ir_block_t *next)
 {
   assert(block->termn.kind == -1);
-  block->termn.kind             = IR_TERMN_ARG;
-  block->termn.u.arg_termn.arg  = arg;
-  block->termn.u.arg_termn.next = next;
+  block->termn.kind           = IR_TERMN_ARG;
+  block->termn.termn.arg.arg  = arg;
+  block->termn.termn.arg.next = next;
 }
 
 void delete_ir_block(ir_block_t *block)
@@ -775,7 +792,7 @@ void delete_ir_block(ir_block_t *block)
   }
   switch (block->termn.kind) {
   case IR_TERMN_IF:
-    delete_ir_operand(block->termn.u.if_termn.cond);
+    delete_ir_operand(block->termn.termn.if_.cond);
     break;
   default:
     /* do nothing */
