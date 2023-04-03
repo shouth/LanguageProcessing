@@ -309,11 +309,10 @@ typedef enum {
 
 typedef struct ir__block_s ir_block_t;
 
-typedef struct ir__termn_s        ir_termn_t;
-typedef struct ir__termn_goto_s   ir_termn_goto_t;
-typedef struct ir__termn_if_s     ir_termn_if_t;
-typedef struct ir__termn_return_s ir_termn_return_t;
-typedef struct ir__termn_arg_s    ir_termn_arg_t;
+typedef struct ir__termn_s      ir_termn_t;
+typedef struct ir__termn_goto_s ir_termn_goto_t;
+typedef struct ir__termn_if_s   ir_termn_if_t;
+typedef struct ir__termn_arg_s  ir_termn_arg_t;
 
 struct ir__termn_goto_s {
   const ir_block_t *next;
@@ -324,6 +323,7 @@ struct ir__termn_if_s {
   const ir_block_t *then;
   const ir_block_t *els;
 };
+
 struct ir__termn_arg_s {
   const ir_operand_t *arg;
   const ir_block_t   *next;
