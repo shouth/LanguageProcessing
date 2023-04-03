@@ -218,7 +218,6 @@ typedef struct ir__rvalue_not_s    ir_rvalue_not_t;
 typedef struct ir__rvalue_cast_s   ir_rvalue_cast_t;
 
 struct ir__rvalue_use_s {
-
   ir_operand_t *operand;
 };
 

@@ -38,8 +38,6 @@ void maybe_error_undeclared(analyzer_t *analyzer, const symbol_t *symbol, region
 
 const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
 {
-  assert(analyzer && type);
-
   switch (type->kind) {
   case AST_TYPE_KIND_BOOLEAN:
     return ir_type_boolean(analyzer->factory);
@@ -47,7 +45,6 @@ const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
     return ir_type_char(analyzer->factory);
   case AST_TYPE_KIND_INTEGER:
     return ir_type_integer(analyzer->factory);
-
   case AST_TYPE_KIND_ARRAY: {
     const ir_type_t *base_type     = analyze_type(analyzer, type->type.array.base);
     ir_type_t       *base_type_ref = ir_type_ref(base_type);
@@ -61,7 +58,6 @@ const ir_type_t *analyze_type(analyzer_t *analyzer, ast_type_t *type)
     return ir_type_array(analyzer->factory, base_type_ref, size);
   }
   }
-
   unreachable();
 }
 
@@ -69,8 +65,6 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
 
 ir_place_t *analyze_lvalue(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *expr)
 {
-  assert(analyzer && expr);
-
   switch (expr->kind) {
   case AST_EXPR_KIND_DECL_REF: {
     ast_ident_t *ident  = expr->expr.decl_ref.decl;
@@ -124,8 +118,6 @@ void error_invalid_binary_expr(
 
 ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_binary_t *expr)
 {
-  assert(analyzer && expr);
-
   if (expr->lhs->kind == AST_EXPR_KIND_EMPTY) {
     ir_operand_t    *rhs   = analyze_expr(analyzer, block, expr->rhs);
     const ir_type_t *rtype = ir_operand_type(rhs);
@@ -224,51 +216,43 @@ ir_operand_t *analyze_binary_expr(analyzer_t *analyzer, ir_block_t **block, ast_
 
 ir_operand_t *analyze_not_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_not_t *expr)
 {
-  assert(analyzer && expr);
-
-  {
-    ir_operand_t     *operand = analyze_expr(analyzer, block, expr->expr);
-    const ir_type_t  *type    = ir_operand_type(operand);
-    const ir_local_t *result  = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
-    ir_block_push_assign(*block, new_ir_plain_place(result), new_ir_not_rvalue(operand));
-    if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
-      msg_t *msg = new_msg(analyzer->source, expr->op_region,
-        MSG_ERROR, "invalid operands for `not`");
-      msg_add_inline_entry(msg, expr->op_region, "operator `not` takes one operand of type boolean");
-      msg_add_inline_entry(msg, expr->expr->region, "%s", ir_type_str(type));
-      msg_emit(msg);
-      exit(EXIT_FAILURE);
-    }
-    return new_ir_place_operand(new_ir_plain_place(result));
+  ir_operand_t     *operand = analyze_expr(analyzer, block, expr->expr);
+  const ir_type_t  *type    = ir_operand_type(operand);
+  const ir_local_t *result  = ir_local_temp(analyzer->factory, ir_type_boolean(analyzer->factory));
+  ir_block_push_assign(*block, new_ir_plain_place(result), new_ir_not_rvalue(operand));
+  if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
+    msg_t *msg = new_msg(analyzer->source, expr->op_region,
+      MSG_ERROR, "invalid operands for `not`");
+    msg_add_inline_entry(msg, expr->op_region, "operator `not` takes one operand of type boolean");
+    msg_add_inline_entry(msg, expr->expr->region, "%s", ir_type_str(type));
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
   }
+  return new_ir_place_operand(new_ir_plain_place(result));
 }
 
 ir_operand_t *analyze_cast_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_cast_t *expr)
 {
-  assert(analyzer && block && expr);
-
-  {
-    ir_operand_t     *operand      = analyze_expr(analyzer, block, expr->cast);
-    const ir_type_t  *operand_type = ir_operand_type(operand);
-    const ir_type_t  *cast_type    = analyze_type(analyzer, expr->type);
-    const ir_local_t *result       = ir_local_temp(analyzer->factory, cast_type);
-    ir_block_push_assign(*block, new_ir_plain_place(result), new_ir_cast_rvalue(cast_type, operand));
-    if (!ir_type_is_std(operand_type)) {
-      msg_t *msg = new_msg(analyzer->source, expr->cast->region,
-        MSG_ERROR, "expression of type `%s` cannot be cast", ir_type_str(operand_type));
-      msg_add_inline_entry(msg, expr->cast->region, "expressions to be cast are of standard types");
-      msg_emit(msg);
-      exit(EXIT_FAILURE);
-    }
-    if (!ir_type_is_std(cast_type)) {
-      msg_t *msg = new_msg(analyzer->source, expr->cast->region,
-        MSG_ERROR, "expression cannot be cast to `%s`", ir_type_str(cast_type));
-      msg_add_inline_entry(msg, expr->type->region, "expressions can be cast to standard types");
-      msg_emit(msg);
-      exit(EXIT_FAILURE);
-    }
-    return new_ir_place_operand(new_ir_plain_place(result));
+  ir_operand_t     *operand      = analyze_expr(analyzer, block, expr->cast);
+  const ir_type_t  *operand_type = ir_operand_type(operand);
+  const ir_type_t  *cast_type    = analyze_type(analyzer, expr->type);
+  const ir_local_t *result       = ir_local_temp(analyzer->factory, cast_type);
+  ir_block_push_assign(*block, new_ir_plain_place(result), new_ir_cast_rvalue(cast_type, operand));
+  if (!ir_type_is_std(operand_type)) {
+    msg_t *msg = new_msg(analyzer->source, expr->cast->region,
+      MSG_ERROR, "expression of type `%s` cannot be cast", ir_type_str(operand_type));
+    msg_add_inline_entry(msg, expr->cast->region, "expressions to be cast are of standard types");
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
   }
+  if (!ir_type_is_std(cast_type)) {
+    msg_t *msg = new_msg(analyzer->source, expr->cast->region,
+      MSG_ERROR, "expression cannot be cast to `%s`", ir_type_str(cast_type));
+    msg_add_inline_entry(msg, expr->type->region, "expressions can be cast to standard types");
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+  return new_ir_place_operand(new_ir_plain_place(result));
 }
 
 ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_constant_t *expr)
@@ -291,14 +275,11 @@ ir_operand_t *analyze_constant_expr(analyzer_t *analyzer, ir_block_t **block, as
     return new_ir_constant_operand(ir_char_constant(analyzer->factory, symbol->ptr[0]));
   }
   }
-
   unreachable();
 }
 
 ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *expr)
 {
-  assert(analyzer && block && expr);
-
   switch (expr->kind) {
   case AST_EXPR_KIND_DECL_REF:
   case AST_EXPR_KIND_ARRAY_SUBSCRIPT: {
@@ -308,7 +289,7 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
   case AST_EXPR_KIND_BINARY:
     return analyze_binary_expr(analyzer, block, &expr->expr.binary);
   case AST_EXPR_KIND_NOT:
-    return analyze_not_expr(analyzer, block, &expr->expr.not );
+    return analyze_not_expr(analyzer, block, &expr->expr.not_);
   case AST_EXPR_KIND_PAREN:
     return analyze_expr(analyzer, block, expr->expr.paren.inner);
   case AST_EXPR_KIND_CAST:
@@ -322,8 +303,6 @@ ir_operand_t *analyze_expr(analyzer_t *analyzer, ir_block_t **block, ast_expr_t 
 
 ir_operand_t *analyze_stmt_call_param(analyzer_t *analyzer, ir_block_t **block, ast_expr_t *args, ir_type_t *param_type)
 {
-  assert(analyzer && block);
-
   if (args && param_type) {
     ir_block_t      *blk  = *block;
     ir_operand_t    *next = analyze_stmt_call_param(analyzer, &blk, args->next, param_type->next);
@@ -349,8 +328,6 @@ ir_operand_t *analyze_stmt_call_param(analyzer_t *analyzer, ir_block_t **block, 
 
 void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
 {
-  assert(analyzer && block && stmt);
-
   while (stmt) {
     switch (stmt->kind) {
     case AST_STMT_KIND_ASSIGN: {
@@ -588,11 +565,8 @@ void analyze_stmt(analyzer_t *analyzer, ir_block_t **block, ast_stmt_t *stmt)
 
 ir_type_t *analyze_param_types(analyzer_t *analyzer, ast_decl_param_t *decl)
 {
-  ir_type_t *ret, **last;
-  assert(analyzer);
-
-  ret  = NULL;
-  last = &ret;
+  ir_type_t  *ret  = NULL;
+  ir_type_t **last = &ret;
   while (decl) {
     ast_ident_t     *ident = decl->names;
     const ir_type_t *type  = analyze_type(analyzer, decl->type);
@@ -616,8 +590,6 @@ ir_type_t *analyze_param_types(analyzer_t *analyzer, ast_decl_param_t *decl)
 
 void analyze_variable_decl(analyzer_t *analyzer, ast_decl_variable_t *decl, int local)
 {
-  assert(analyzer && decl);
-
   while (decl) {
     ast_ident_t     *ident = decl->names;
     const ir_type_t *type  = analyze_type(analyzer, decl->type);
@@ -633,8 +605,6 @@ void analyze_variable_decl(analyzer_t *analyzer, ast_decl_variable_t *decl, int 
 
 void analyze_param_decl(analyzer_t *analyzer, ast_decl_param_t *decl)
 {
-  assert(analyzer);
-
   while (decl) {
     ast_ident_t     *ident = decl->names;
     const ir_type_t *type  = analyze_type(analyzer, decl->type);
@@ -657,8 +627,6 @@ void analyze_param_decl(analyzer_t *analyzer, ast_decl_param_t *decl)
 
 void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 {
-  assert(analyzer);
-
   while (decl_part) {
     switch (decl_part->kind) {
     case AST_DECL_PART_VARIABLE: {
@@ -696,13 +664,9 @@ void analyze_decl_part(analyzer_t *analyzer, ast_decl_part_t *decl_part)
 
 ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
 {
-  ir_item_t  *ret;
-  ir_block_t *block_begin;
-  assert(analyzer && program);
-
-  ret         = ir_item(analyzer->factory, IR_ITEM_PROGRAM, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
-  block_begin = ir_block(analyzer->factory);
-  ir_scope_start(analyzer->factory, ret);
+  ir_item_t  *item        = ir_item(analyzer->factory, IR_ITEM_PROGRAM, program->name->symbol, program->name->region, ir_type_program(analyzer->factory));
+  ir_block_t *block_begin = ir_block(analyzer->factory);
+  ir_scope_start(analyzer->factory, item);
   {
     ir_block_t *block_end = block_begin;
     analyze_decl_part(analyzer, program->decl_part);
@@ -710,7 +674,7 @@ ir_item_t *analyze_program(analyzer_t *analyzer, ast_program_t *program)
     ir_block_terminate_return(block_end);
   }
   ir_scope_end(analyzer->factory, block_begin);
-  return ret;
+  return item;
 }
 
 ir_t *analyze_ast(ast_t *ast)
