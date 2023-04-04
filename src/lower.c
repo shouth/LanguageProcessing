@@ -326,7 +326,7 @@ ir_operand_t *lower_stmt_call_param(lowerer_t *lowerer, ir_block_t **block, ast_
 
 void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
 {
-  while (stmt) {
+  for (; stmt; stmt = stmt->next) {
     switch (stmt->kind) {
     case AST_STMT_KIND_ASSIGN: {
       ast_stmt_assign_t *stmt_assign = (ast_stmt_assign_t *) stmt;
@@ -423,35 +423,33 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
 
       {
         ir_scope_t *scope = lowerer->factory->scope;
-        while (scope) {
+        for (; scope; scope = scope->next) {
           if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
             msg_t *msg = new_msg(lowerer->source, ident->region,
               MSG_ERROR, "recursive call of procedure is not allowed");
             msg_emit(msg);
             exit(EXIT_FAILURE);
           }
-          scope = scope->next;
         }
       }
 
       {
         const ir_local_t *func       = ir_local_for(lowerer->factory, item, ident->region.pos);
         ir_type_t        *param_type = ir_local_type(func)->type.procedure.param_types;
-        ast_expr_t       *expr_cur   = stmt_call->args;
-        ir_type_t        *type_cur   = param_type;
-        long              expr_cnt = 0, type_cnt = 0;
-        ir_operand_t     *arg = lower_stmt_call_param(lowerer, block, stmt_call->args, param_type);
-        while (expr_cur) {
-          expr_cnt++;
-          expr_cur = expr_cur->next;
+        ast_expr_t       *args       = stmt_call->args;
+        ir_type_t        *types      = param_type;
+        ir_operand_t     *arg        = lower_stmt_call_param(lowerer, block, stmt_call->args, param_type);
+        long              arg_cnt    = 0;
+        long              type_cnt   = 0;
+        for (; args; args = args->next) {
+          ++arg_cnt;
         }
-        while (type_cur) {
-          type_cnt++;
-          type_cur = type_cur->next;
+        for (; types; types = types->next) {
+          ++type_cnt;
         }
-        if (expr_cnt != type_cnt) {
+        if (arg_cnt != type_cnt) {
           msg_t *msg = new_msg(lowerer->source, ident->region, MSG_ERROR, "wrong number of arguments");
-          msg_add_inline_entry(msg, ident->region, "expected %ld arguments, supplied %ld arguments", type_cnt, expr_cnt);
+          msg_add_inline_entry(msg, ident->region, "expected %ld arguments, supplied %ld arguments", type_cnt, arg_cnt);
           msg_emit(msg);
           exit(EXIT_FAILURE);
         }
@@ -468,7 +466,7 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
       ast_stmt_read_t *stmt_read = (ast_stmt_read_t *) stmt;
       ast_expr_t      *args      = stmt_read->args;
 
-      while (args) {
+      for (; args; args = args->next) {
         if (args->kind != AST_EXPR_KIND_DECL_REF && args->kind != AST_EXPR_KIND_ARRAY_SUBSCRIPT) {
           msg_t *msg = new_msg(lowerer->source, args->region,
             MSG_ERROR, "cannot read value for expression");
@@ -492,7 +490,6 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
 
           ir_block_push_read(*block, ref);
         }
-        args = args->next;
       }
 
       if (stmt_read->newline) {
@@ -504,7 +501,7 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
       ast_stmt_write_t *stmt_write = (ast_stmt_write_t *) stmt;
       ast_out_fmt_t    *formats    = stmt_write->formats;
 
-      while (formats) {
+      for (; formats; formats = formats->next) {
         ast_expr_constant_t *constant = &formats->expr->expr.constant;
         ast_lit_string_t    *string   = &constant->lit->lit.string;
         if (formats->expr->kind == AST_EXPR_KIND_CONSTANT && constant->lit->kind == AST_LIT_KIND_STRING && string->str_len != 1) {
@@ -528,7 +525,6 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
             ir_block_push_write(*block, value, NULL);
           }
         }
-        formats = formats->next;
       }
 
       if (stmt_write->newline) {
@@ -544,7 +540,6 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
     case AST_STMT_KIND_EMPTY:
       break;
     }
-    stmt = stmt->next;
   }
 }
 
@@ -552,7 +547,7 @@ ir_type_t *lower_param_types(lowerer_t *lowerer, ast_decl_param_t *decl)
 {
   ir_type_t  *ret  = NULL;
   ir_type_t **last = &ret;
-  while (decl) {
+  for (; decl; decl = decl->next) {
     ast_ident_t     *ident = decl->names;
     const ir_type_t *type  = lower_type(lowerer, decl->type);
     if (!ir_type_is_std(type)) {
@@ -563,34 +558,30 @@ ir_type_t *lower_param_types(lowerer_t *lowerer, ast_decl_param_t *decl)
       msg_emit(msg);
       exit(EXIT_FAILURE);
     }
-    while (ident) {
+    for (; ident; ident = ident->next) {
       *last = ir_type_ref(type);
       last  = &(*last)->next;
-      ident = ident->next;
     }
-    decl = decl->next;
   }
   return ret;
 }
 
 void lower_variable_decl(lowerer_t *lowerer, ast_decl_variable_t *decl, int local)
 {
-  while (decl) {
+  for (; decl; decl = decl->next) {
     ast_ident_t     *ident = decl->names;
     const ir_type_t *type  = lower_type(lowerer, decl->type);
-    while (ident) {
+    for (; ident; ident = ident->next) {
       ir_item_kind_t kind = local ? IR_ITEM_LOCAL_VAR : IR_ITEM_VAR;
       maybe_error_conflict(lowerer, ident->symbol, ident->region);
       ir_item(lowerer->factory, kind, ident->symbol, ident->region, type);
-      ident = ident->next;
     }
-    decl = decl->next;
   }
 }
 
 void lower_param_decl(lowerer_t *lowerer, ast_decl_param_t *decl)
 {
-  while (decl) {
+  for (; decl; decl = decl->next) {
     ast_ident_t     *ident = decl->names;
     const ir_type_t *type  = lower_type(lowerer, decl->type);
     if (!ir_type_is_std(type)) {
@@ -601,18 +592,16 @@ void lower_param_decl(lowerer_t *lowerer, ast_decl_param_t *decl)
       msg_emit(msg);
       exit(EXIT_FAILURE);
     }
-    while (ident) {
+    for (; ident; ident = ident->next) {
       maybe_error_conflict(lowerer, ident->symbol, ident->region);
       ir_item(lowerer->factory, IR_ITEM_ARG_VAR, ident->symbol, ident->region, type);
-      ident = ident->next;
     }
-    decl = decl->next;
   }
 }
 
 void lower_decl_part(lowerer_t *lowerer, ast_decl_part_t *decl_part)
 {
-  while (decl_part) {
+  for (; decl_part; decl_part = decl_part->next) {
     switch (decl_part->kind) {
     case AST_DECL_PART_VARIABLE: {
       ast_decl_part_variable_t *decl = (ast_decl_part_variable_t *) decl_part;
@@ -643,7 +632,6 @@ void lower_decl_part(lowerer_t *lowerer, ast_decl_part_t *decl_part)
       break;
     }
     }
-    decl_part = decl_part->next;
   }
 }
 
