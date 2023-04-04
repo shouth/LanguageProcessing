@@ -178,36 +178,31 @@ ir_operand_t *lower_binary_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr
     }
     case AST_EXPR_BINARY_KIND_OR:
     case AST_EXPR_BINARY_KIND_AND: {
-      ir_block_t      *els_begin = ir_block(lowerer->factory);
-      ir_block_t      *els_end   = els_begin;
-      ir_operand_t    *rhs       = lower_expr(lowerer, &els_end, expr->rhs);
-      const ir_type_t *rtype     = ir_operand_type(rhs);
-      if (!ir_type_is_kind(ltype, IR_TYPE_BOOLEAN) || !ir_type_is_kind(rtype, IR_TYPE_BOOLEAN)) {
-        error_invalid_binary_expr(lowerer, expr, ltype, rtype, "type boolean");
-        exit(EXIT_FAILURE);
+      ir_block_t       *els          = ir_block(lowerer->factory);
+      ir_block_t       *shortcircuit = ir_block(lowerer->factory);
+      const ir_local_t *result       = ir_local_temp(lowerer->factory, ir_type_boolean(lowerer->factory));
+      ir_block_push_assign(*block, new_ir_plain_place(result), new_ir_use_rvalue(lhs));
+      switch (expr->kind) {
+      case AST_EXPR_BINARY_KIND_OR:
+        ir_block_terminate_if(*block, new_ir_place_operand(new_ir_plain_place(result)), shortcircuit, els);
+        break;
+      case AST_EXPR_BINARY_KIND_AND:
+        ir_block_terminate_if(*block, new_ir_place_operand(new_ir_plain_place(result)), els, shortcircuit);
+        break;
+      default:
+        unreachable();
+        break;
       }
-
       {
-        ir_block_t       *shortcircuit = ir_block(lowerer->factory);
-        const ir_local_t *result       = ir_local_temp(lowerer->factory, ir_type_boolean(lowerer->factory));
-        switch (expr->kind) {
-        case AST_EXPR_BINARY_KIND_OR:
-          ir_block_terminate_if(*block, lhs, shortcircuit, els_begin);
-          lhs = new_ir_constant_operand(ir_boolean_constant(lowerer->factory, 1));
-          break;
-        case AST_EXPR_BINARY_KIND_AND:
-          ir_block_terminate_if(*block, lhs, els_begin, shortcircuit);
-          lhs = new_ir_constant_operand(ir_boolean_constant(lowerer->factory, 0));
-          break;
-        default:
-          unreachable();
-          break;
+        ir_operand_t    *rhs   = lower_expr(lowerer, &els, expr->rhs);
+        const ir_type_t *rtype = ir_operand_type(rhs);
+        if (!ir_type_is_kind(ltype, IR_TYPE_BOOLEAN) || !ir_type_is_kind(rtype, IR_TYPE_BOOLEAN)) {
+          error_invalid_binary_expr(lowerer, expr, ltype, rtype, "type boolean");
+          exit(EXIT_FAILURE);
         }
-        *block = ir_block(lowerer->factory);
-        ir_block_push_assign(shortcircuit, new_ir_plain_place(result), new_ir_use_rvalue(lhs));
-        ir_block_terminate_goto(shortcircuit, *block);
-        ir_block_push_assign(els_end, new_ir_plain_place(result), new_ir_use_rvalue(rhs));
-        ir_block_terminate_goto(els_end, *block);
+        ir_block_push_assign(els, new_ir_plain_place(result), new_ir_use_rvalue(rhs));
+        ir_block_terminate_goto(els, shortcircuit);
+        *block = shortcircuit;
         return new_ir_place_operand(new_ir_plain_place(result));
       }
     }
