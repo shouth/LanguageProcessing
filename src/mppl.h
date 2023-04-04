@@ -14,7 +14,7 @@ void pretty_print(const ast_t *ast);
 
 /* analyzer.c */
 
-ir_t *analyze_ast(ast_t *ast);
+ir_t *lower_ast(ast_t *ast);
 
 /* crossref.c */
 

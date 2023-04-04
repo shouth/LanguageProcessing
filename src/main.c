@@ -67,7 +67,7 @@ int main(int argc, char **argv)
       pretty_print(ast);
     }
 
-    if ((ir = analyze_ast(ast))) {
+    if ((ir = lower_ast(ast))) {
       if (flag_crossref) {
         print_crossref(ir);
       }
