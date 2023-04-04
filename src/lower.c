@@ -352,6 +352,8 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
     case AST_STMT_KIND_IF: {
       ast_stmt_if_t   *stmt_if = (ast_stmt_if_t *) stmt;
       ir_operand_t    *cond    = lower_expr(lowerer, block, stmt_if->cond);
+      ir_block_t      *then    = ir_block(lowerer->factory);
+      ir_block_t      *join    = ir_block(lowerer->factory);
       const ir_type_t *type    = ir_operand_type(cond);
 
       if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
@@ -362,32 +364,24 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
         exit(EXIT_FAILURE);
       }
 
-      {
-        ir_block_t *then_begin = ir_block(lowerer->factory);
-        ir_block_t *then_end   = then_begin;
-        ir_block_t *join_block = ir_block(lowerer->factory);
-        lower_stmt(lowerer, &then_end, stmt_if->then_stmt);
-
-        if (stmt_if->else_stmt) {
-          ir_block_t *else_begin = ir_block(lowerer->factory);
-          ir_block_t *else_end   = else_begin;
-          lower_stmt(lowerer, &else_end, stmt_if->else_stmt);
-          ir_block_terminate_if(*block, cond, then_begin, else_begin);
-          ir_block_terminate_goto(then_end, join_block);
-          ir_block_terminate_goto(else_end, join_block);
-        } else {
-          ir_block_terminate_if(*block, cond, then_begin, join_block);
-          ir_block_terminate_goto(then_end, join_block);
-        }
-        *block = join_block;
+      if (stmt_if->else_stmt) {
+        ir_block_t *els = ir_block(lowerer->factory);
+        ir_block_terminate_if(*block, cond, then, els);
+        lower_stmt(lowerer, &then, stmt_if->then_stmt);
+        lower_stmt(lowerer, &els, stmt_if->else_stmt);
+        ir_block_terminate_goto(els, join);
+      } else {
+        ir_block_terminate_if(*block, cond, then, join);
+        lower_stmt(lowerer, &then, stmt_if->then_stmt);
       }
+      ir_block_terminate_goto(then, join);
+      *block = join;
       break;
     }
     case AST_STMT_KIND_WHILE: {
+      ast_stmt_while_t *stmt_while = (ast_stmt_while_t *) stmt;
       ir_block_t       *cond_begin = ir_block(lowerer->factory);
       ir_block_t       *cond_end   = cond_begin;
-      ir_block_t       *join_block = ir_block(lowerer->factory);
-      ast_stmt_while_t *stmt_while = (ast_stmt_while_t *) stmt;
       ir_operand_t     *cond       = lower_expr(lowerer, &cond_end, stmt_while->cond);
       const ir_type_t  *type       = ir_operand_type(cond);
 
@@ -401,17 +395,14 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
 
       {
         ir_block_t *pre_break_dest = lowerer->break_dest;
-        lowerer->break_dest        = join_block;
-        {
-          ir_block_t *do_begin = ir_block(lowerer->factory);
-          ir_block_t *do_end   = do_begin;
-          lower_stmt(lowerer, &do_end, stmt_while->do_stmt);
-          ir_block_terminate_goto(*block, cond_begin);
-          ir_block_terminate_if(cond_end, cond, do_begin, join_block);
-          ir_block_terminate_goto(do_end, cond_begin);
-        }
+        ir_block_t *do_            = ir_block(lowerer->factory);
+        lowerer->break_dest        = ir_block(lowerer->factory);
+        ir_block_terminate_if(cond_end, cond, do_, lowerer->break_dest);
+        lower_stmt(lowerer, &do_, stmt_while->do_stmt);
+        ir_block_terminate_goto(*block, cond_begin);
+        ir_block_terminate_goto(do_, cond_begin);
+        *block              = lowerer->break_dest;
         lowerer->break_dest = pre_break_dest;
-        *block              = join_block;
       }
       break;
     }
