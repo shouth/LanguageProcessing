@@ -757,6 +757,7 @@ static ast_program_t *parse_program(void)
     while ((check(TOKEN_VAR) || check(TOKEN_PROCEDURE)) && (*tail = parse_decl_part())) {
       tail = &(*tail)->next;
     }
+    *tail = NULL;
   }
   program->stmt = parse_stmt_compound();
   expect(TOKEN_DOT);
