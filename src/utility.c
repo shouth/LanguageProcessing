@@ -19,7 +19,7 @@ void *xmalloc(long size)
 
 unsigned long fnv1a(const void *ptr, long len)
 {
-  unsigned long hash  = 0x811c9dc5;
+  unsigned long hash  = 0x811C9DC5;
   unsigned long prime = 0x01000193;
   long          i;
 
@@ -123,7 +123,7 @@ void term_set(unsigned long code)
     if (code & SGR__FLAG) {
       printf("\033[%ldm", code ^ SGR__FLAG);
     } else {
-      printf("\033[38;2;%ld;%ld;%ldm", (code >> 16) & 0xff, (code >> 8) & 0xff, code & 0xff);
+      printf("\033[38;2;%ld;%ld;%ldm", (code >> 16) & 0xFF, (code >> 8) & 0xFF, code & 0xFF);
     }
   }
 }
