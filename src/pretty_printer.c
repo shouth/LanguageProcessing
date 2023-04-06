@@ -24,7 +24,7 @@ typedef struct {
 } color_scheme_t;
 
 const color_scheme_t monokai = {
-  0xC9D1D9, 0x66D9EF, 0xF92672, 0xF92672, 0xA6E22E, 0xFD971f, 0xE6DB74, 0xAE81FF
+  0xE6EDF3, 0xD2A8FF, 0xFF7B72, 0xFF7B72, 0xD2A8FF, 0xFFA657, 0x79C0FF, 0x79C0FF
 };
 
 typedef struct {
@@ -169,7 +169,7 @@ void pp_expr(printer_t *printer, const ast_expr_t *expr)
       if (binary->lhs->kind != AST_EXPR_KIND_EMPTY) {
         pp_fprintf(printer, " ");
       }
-      pp_operator(printer, pp_binary_operator_str(binary->kind));
+      pp_operator(printer, "%s", pp_binary_operator_str(binary->kind));
       if (binary->lhs->kind != AST_EXPR_KIND_EMPTY) {
         pp_fprintf(printer, " ");
       }
