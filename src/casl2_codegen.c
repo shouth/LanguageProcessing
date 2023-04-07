@@ -7,13 +7,13 @@
 #include "mppl.h"
 #include "utility.h"
 
-typedef long codegen_addr_t;
+typedef long addr_t;
 
 typedef struct {
   FILE *file;
   struct {
-    codegen_addr_t cnt;
-    hash_t        *table;
+    addr_t  cnt;
+    hash_t *table;
   } addr;
   char label[16];
   struct {
@@ -21,78 +21,74 @@ typedef struct {
     int r_int, r_char, r_ln;
     int w_int, w_char, w_bool, w_str;
   } builtin;
-} codegen_t;
+} emitter_t;
 
-codegen_addr_t codegen_addr_lookup(codegen_t *codegen, const void *ptr)
+static addr_t lookup_addr(emitter_t *emitter, const void *ptr)
 {
   const hash_entry_t *entry;
-  assert(codegen);
-  if (ptr && (entry = hash_find(codegen->addr.table, ptr))) {
-    return (codegen_addr_t) entry->value;
+  if (ptr && (entry = hash_find(emitter->addr.table, ptr))) {
+    return (addr_t) entry->value;
   } else {
     return 0;
   }
 }
 
-codegen_addr_t codegen_addr(codegen_t *codegen, const void *ptr)
+static addr_t addr_of(emitter_t *emitter, const void *ptr)
 {
-  codegen_addr_t addr;
-  assert(codegen);
-  if (!(addr = codegen_addr_lookup(codegen, ptr))) {
-    addr = ++codegen->addr.cnt;
+  addr_t addr;
+  if (!(addr = lookup_addr(emitter, ptr))) {
+    addr = ++emitter->addr.cnt;
     if (ptr) {
-      hash_insert_unsafe(codegen->addr.table, (void *) ptr, (void *) addr);
+      hash_insert_unsafe(emitter->addr.table, (void *) ptr, (void *) addr);
     }
   }
   return addr;
 }
 
-const char *codegen_label(codegen_addr_t addr)
+static const char *addr_label(addr_t addr)
 {
   static char buf[16];
   sprintf(buf, "L%ld", addr);
   return buf;
 }
 
-const char *codegen_addr_label(codegen_t *codegen, const void *ptr)
+static const char *item_label(emitter_t *emitter, const void *ptr)
 {
-  return codegen_label(codegen_addr(codegen, ptr));
+  return addr_label(addr_of(emitter, ptr));
 }
 
-void codegen_print(codegen_t *codegen, const char *instruction, const char *operand_format, ...)
+static void emit_inst(emitter_t *emitter, const char *instruction, const char *operand_format, ...)
 {
   va_list arg;
   va_start(arg, operand_format);
-  fprintf(codegen->file, "%-10s", codegen->label);
+  fprintf(emitter->file, "%-10s", emitter->label);
   if (operand_format) {
-    fprintf(codegen->file, "%-8s", instruction);
-    vfprintf(codegen->file, operand_format, arg);
+    fprintf(emitter->file, "%-8s", instruction);
+    vfprintf(emitter->file, operand_format, arg);
   } else {
-    fprintf(codegen->file, "%s", instruction);
+    fprintf(emitter->file, "%s", instruction);
   }
-  fprintf(codegen->file, "\n");
+  fprintf(emitter->file, "\n");
   va_end(arg);
-  codegen->label[0] = '\0';
+  emitter->label[0] = '\0';
 }
 
-void codegen_set_label(codegen_t *codegen, const char *label)
+static void emit_label(emitter_t *emitter, const char *label)
 {
-  if (codegen->label[0]) {
-    codegen_print(codegen, "DS", "0");
+  if (emitter->label[0]) {
+    emit_inst(emitter, "DS", "0");
   }
-  strcpy(codegen->label, label);
+  strcpy(emitter->label, label);
 }
 
-void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
+static void emit_constant(emitter_t *emitter, const ir_constant_t *constant)
 {
-  assert(codegen);
-
   while (constant) {
     switch (constant->kind) {
     case IR_CONSTANT_STRING: {
       const symbol_t *symbol = constant->constant.string.value;
-      codegen_set_label(codegen, codegen_addr_label(codegen, constant));
-      codegen_print(codegen, "DC", "\'%.*s\'", (int) symbol->len, symbol->ptr);
+      emit_label(emitter, item_label(emitter, constant));
+      emit_inst(emitter, "DC", "\'%.*s\'", (int) symbol->len, symbol->ptr);
       break;
     default:
       /* do nothing */
@@ -103,62 +99,61 @@ void codegen_constant(codegen_t *codegen, const ir_constant_t *constant)
   }
 }
 
-void codegen_check_range(codegen_t *codegen, const char *reg, const ir_local_t *local)
+static void emit_range_check(emitter_t *emitter, const char *reg, const ir_local_t *local)
 {
   const ir_type_t *type = ir_local_type(local);
-  ++codegen->builtin.e_rng;
+  ++emitter->builtin.e_rng;
   if (local->kind == IR_LOCAL_VAR
     && ir_type_is_kind(type, IR_TYPE_ARRAY)
     && ir_type_is_std(type->type.array.base->type.ref)) {
     if (type->type.array.size) {
-      codegen_print(codegen, "LD", "GR0, %s", reg);
-      codegen_print(codegen, "JMI", "ERNG");
-      codegen_print(codegen, "LAD", "GR0, %ld", type->type.array.size - 1);
-      codegen_print(codegen, "CPA", "%s, GR0", reg);
-      codegen_print(codegen, "JPL", "ERNG");
+      emit_inst(emitter, "LD", "GR0, %s", reg);
+      emit_inst(emitter, "JMI", "ERNG");
+      emit_inst(emitter, "LAD", "GR0, %ld", type->type.array.size - 1);
+      emit_inst(emitter, "CPA", "%s, GR0", reg);
+      emit_inst(emitter, "JPL", "ERNG");
     } else {
-      codegen_print(codegen, "JPL", "ERNG");
+      emit_inst(emitter, "JPL", "ERNG");
     }
   } else {
     unreachable();
   }
 }
 
-void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *operand);
+static void emit_load(emitter_t *emitter, const char *reg, const ir_operand_t *operand);
 
-void codegen_load_constant(codegen_t *codegen, const char *reg, const ir_constant_t *constant)
+static void emit_load_constant(emitter_t *emitter, const char *reg, const ir_constant_t *constant)
 {
-  assert(codegen && reg && constant);
   switch (constant->kind) {
   case IR_CONSTANT_NUMBER:
-    codegen_print(codegen, "LAD", "%s, %ld", reg, constant->constant.number.value);
+    emit_inst(emitter, "LAD", "%s, %ld", reg, constant->constant.number.value);
     break;
   case IR_CONSTANT_CHAR:
-    codegen_print(codegen, "LAD", "%s, #%04X", reg, constant->constant.char_.value);
+    emit_inst(emitter, "LAD", "%s, #%04X", reg, constant->constant.char_.value);
     break;
   case IR_CONSTANT_BOOLEAN:
-    codegen_print(codegen, "LAD", "%s, %d", reg, constant->constant.boolean.value);
+    emit_inst(emitter, "LAD", "%s, %d", reg, constant->constant.boolean.value);
     break;
   default:
     unreachable();
   }
 }
 
-void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *place)
+static void emit_load_place(emitter_t *emitter, const char *reg, const ir_place_t *place)
 {
   switch (place->kind) {
   case IR_PLACE_KIND_PLAIN: {
     ir_place_plain_t *plain = (ir_place_plain_t *) place;
     switch (plain->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "LD", "%s, %s", reg, codegen_addr_label(codegen, plain->local->local.var.item));
+      emit_inst(emitter, "LD", "%s, %s", reg, item_label(emitter, plain->local->local.var.item));
       break;
     case IR_LOCAL_ARG:
-      codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, plain->local->local.arg.item));
-      codegen_print(codegen, "LD", "%s, 0, GR7", reg);
+      emit_inst(emitter, "LD", "GR7, %s", item_label(emitter, plain->local->local.arg.item));
+      emit_inst(emitter, "LD", "%s, 0, GR7", reg);
       break;
     case IR_LOCAL_TEMP:
-      codegen_print(codegen, "POP", "%s", reg);
+      emit_inst(emitter, "POP", "%s", reg);
       break;
     default:
       unreachable();
@@ -167,11 +162,11 @@ void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *p
   }
   case IR_PLACE_KIND_INDEXED: {
     ir_place_indexed_t *indexed = (ir_place_indexed_t *) place;
-    codegen_load(codegen, "GR7", indexed->index);
-    codegen_check_range(codegen, "GR7", indexed->local);
+    emit_load(emitter, "GR7", indexed->index);
+    emit_range_check(emitter, "GR7", indexed->local);
     switch (indexed->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "LD", "%s, %s, GR7", reg, codegen_addr_label(codegen, indexed->local->local.var.item));
+      emit_inst(emitter, "LD", "%s, %s, GR7", reg, item_label(emitter, indexed->local->local.var.item));
       break;
     default:
       unreachable();
@@ -181,17 +176,15 @@ void codegen_load_place(codegen_t *codegen, const char *reg, const ir_place_t *p
   }
 }
 
-void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *operand)
+static void emit_load(emitter_t *emitter, const char *reg, const ir_operand_t *operand)
 {
-  assert(codegen && reg && operand);
-
   switch (operand->kind) {
   case IR_OPERAND_CONSTANT: {
-    codegen_load_constant(codegen, reg, operand->operand.constant.constant);
+    emit_load_constant(emitter, reg, operand->operand.constant.constant);
     break;
   }
   case IR_OPERAND_PLACE: {
-    codegen_load_place(codegen, reg, operand->operand.place.place);
+    emit_load_place(emitter, reg, operand->operand.place.place);
     break;
   }
   default:
@@ -199,21 +192,21 @@ void codegen_load(codegen_t *codegen, const char *reg, const ir_operand_t *opera
   }
 }
 
-void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
+static void emit_store(emitter_t *emitter, const char *reg, const ir_place_t *place)
 {
   switch (place->kind) {
   case IR_PLACE_KIND_PLAIN: {
     ir_place_plain_t *plain = (ir_place_plain_t *) place;
     switch (plain->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "ST", "%s, %s", reg, codegen_addr_label(codegen, plain->local->local.var.item));
+      emit_inst(emitter, "ST", "%s, %s", reg, item_label(emitter, plain->local->local.var.item));
       break;
     case IR_LOCAL_ARG:
-      codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, plain->local->local.arg.item));
-      codegen_print(codegen, "ST", "%s, 0, GR7", reg);
+      emit_inst(emitter, "LD", "GR7, %s", item_label(emitter, plain->local->local.arg.item));
+      emit_inst(emitter, "ST", "%s, 0, GR7", reg);
       break;
     case IR_LOCAL_TEMP:
-      codegen_print(codegen, "PUSH", "0, %s", reg);
+      emit_inst(emitter, "PUSH", "0, %s", reg);
       break;
     default:
       unreachable();
@@ -222,11 +215,11 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
   }
   case IR_PLACE_KIND_INDEXED: {
     ir_place_indexed_t *indexed = (ir_place_indexed_t *) place;
-    codegen_load(codegen, "GR7", indexed->index);
-    codegen_check_range(codegen, "GR7", indexed->local);
+    emit_load(emitter, "GR7", indexed->index);
+    emit_range_check(emitter, "GR7", indexed->local);
     switch (indexed->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "ST", "%s, %s, GR7", reg, codegen_addr_label(codegen, indexed->local->local.var.item));
+      emit_inst(emitter, "ST", "%s, %s, GR7", reg, item_label(emitter, indexed->local->local.var.item));
       break;
     default:
       unreachable();
@@ -236,96 +229,94 @@ void codegen_store(codegen_t *codegen, const char *reg, const ir_place_t *place)
   }
 }
 
-void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
+static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
 {
-  assert(codegen && stmt);
-
   switch (stmt->rhs->kind) {
   case IR_RVALUE_USE:
-    codegen_load(codegen, "GR1", stmt->rhs->rvalue.use.operand);
+    emit_load(emitter, "GR1", stmt->rhs->rvalue.use.operand);
     break;
   case IR_RVALUE_BINARY:
-    codegen_load(codegen, "GR2", stmt->rhs->rvalue.binary.rhs);
-    codegen_load(codegen, "GR1", stmt->rhs->rvalue.binary.lhs);
+    emit_load(emitter, "GR2", stmt->rhs->rvalue.binary.rhs);
+    emit_load(emitter, "GR1", stmt->rhs->rvalue.binary.lhs);
     switch (stmt->rhs->rvalue.binary.kind) {
     case AST_EXPR_BINARY_KIND_PLUS:
-      ++codegen->builtin.e_ov;
-      codegen_print(codegen, "ADDA", "GR1, GR2");
-      codegen_print(codegen, "JOV", "EOV");
+      ++emitter->builtin.e_ov;
+      emit_inst(emitter, "ADDA", "GR1, GR2");
+      emit_inst(emitter, "JOV", "EOV");
       break;
     case AST_EXPR_BINARY_KIND_MINUS:
-      ++codegen->builtin.e_ov;
-      codegen_print(codegen, "SUBA", "GR1, GR2");
-      codegen_print(codegen, "JOV", "EOV");
+      ++emitter->builtin.e_ov;
+      emit_inst(emitter, "SUBA", "GR1, GR2");
+      emit_inst(emitter, "JOV", "EOV");
       break;
     case AST_EXPR_BINARY_KIND_STAR:
-      ++codegen->builtin.e_ov;
-      codegen_print(codegen, "MULA", "GR1, GR2");
-      codegen_print(codegen, "JOV", "EOV");
+      ++emitter->builtin.e_ov;
+      emit_inst(emitter, "MULA", "GR1, GR2");
+      emit_inst(emitter, "JOV", "EOV");
       break;
     case AST_EXPR_BINARY_KIND_DIV:
-      ++codegen->builtin.e_div0;
-      codegen_print(codegen, "LD", "GR2, GR2");
-      codegen_print(codegen, "JZE", "EDIV0");
-      codegen_print(codegen, "DIVA", "GR1, GR2");
+      ++emitter->builtin.e_div0;
+      emit_inst(emitter, "LD", "GR2, GR2");
+      emit_inst(emitter, "JZE", "EDIV0");
+      emit_inst(emitter, "DIVA", "GR1, GR2");
       break;
     case AST_EXPR_BINARY_KIND_AND:
-      codegen_print(codegen, "AND", "GR1, GR2");
+      emit_inst(emitter, "AND", "GR1, GR2");
       break;
     case AST_EXPR_BINARY_KIND_OR:
-      codegen_print(codegen, "OR", "GR1, GR2");
+      emit_inst(emitter, "OR", "GR1, GR2");
       break;
     case AST_EXPR_BINARY_KIND_EQUAL: {
-      const char *jmp = codegen_addr_label(codegen, NULL);
-      codegen_print(codegen, "CPA", "GR1, GR2");
-      codegen_print(codegen, "LAD", "GR1, 1");
-      codegen_print(codegen, "JZE", "%s", jmp);
-      codegen_print(codegen, "XOR", "GR1, GR1");
-      codegen_set_label(codegen, jmp);
+      const char *jmp = item_label(emitter, NULL);
+      emit_inst(emitter, "CPA", "GR1, GR2");
+      emit_inst(emitter, "LAD", "GR1, 1");
+      emit_inst(emitter, "JZE", "%s", jmp);
+      emit_inst(emitter, "XOR", "GR1, GR1");
+      emit_label(emitter, jmp);
       break;
     }
     case AST_EXPR_BINARY_KIND_NOTEQ: {
-      const char *jmp = codegen_addr_label(codegen, NULL);
-      codegen_print(codegen, "SUBA", "GR1, GR2");
-      codegen_print(codegen, "JZE", "%s", jmp);
-      codegen_print(codegen, "LAD", "GR1, 1");
-      codegen_set_label(codegen, jmp);
+      const char *jmp = item_label(emitter, NULL);
+      emit_inst(emitter, "SUBA", "GR1, GR2");
+      emit_inst(emitter, "JZE", "%s", jmp);
+      emit_inst(emitter, "LAD", "GR1, 1");
+      emit_label(emitter, jmp);
       break;
     }
     case AST_EXPR_BINARY_KIND_LE: {
-      const char *jmp = codegen_addr_label(codegen, NULL);
-      codegen_print(codegen, "CPA", "GR1, GR2");
-      codegen_print(codegen, "LAD", "GR1, 1");
-      codegen_print(codegen, "JMI", "%s", jmp);
-      codegen_print(codegen, "XOR", "GR1, GR1");
-      codegen_set_label(codegen, jmp);
+      const char *jmp = item_label(emitter, NULL);
+      emit_inst(emitter, "CPA", "GR1, GR2");
+      emit_inst(emitter, "LAD", "GR1, 1");
+      emit_inst(emitter, "JMI", "%s", jmp);
+      emit_inst(emitter, "XOR", "GR1, GR1");
+      emit_label(emitter, jmp);
       break;
     }
     case AST_EXPR_BINARY_KIND_LEEQ: {
-      const char *jmp = codegen_addr_label(codegen, NULL);
-      codegen_print(codegen, "CPA", "GR2, GR1");
-      codegen_print(codegen, "XOR", "GR1, GR1");
-      codegen_print(codegen, "JMI", "%s", jmp);
-      codegen_print(codegen, "LAD", "GR1, 1");
-      codegen_set_label(codegen, jmp);
+      const char *jmp = item_label(emitter, NULL);
+      emit_inst(emitter, "CPA", "GR2, GR1");
+      emit_inst(emitter, "XOR", "GR1, GR1");
+      emit_inst(emitter, "JMI", "%s", jmp);
+      emit_inst(emitter, "LAD", "GR1, 1");
+      emit_label(emitter, jmp);
       break;
     }
     case AST_EXPR_BINARY_KIND_GR: {
-      const char *jmp = codegen_addr_label(codegen, NULL);
-      codegen_print(codegen, "CPA", "GR2, GR1");
-      codegen_print(codegen, "LAD", "GR1, 1");
-      codegen_print(codegen, "JMI", "%s", jmp);
-      codegen_print(codegen, "XOR", "GR1, GR1");
-      codegen_set_label(codegen, jmp);
+      const char *jmp = item_label(emitter, NULL);
+      emit_inst(emitter, "CPA", "GR2, GR1");
+      emit_inst(emitter, "LAD", "GR1, 1");
+      emit_inst(emitter, "JMI", "%s", jmp);
+      emit_inst(emitter, "XOR", "GR1, GR1");
+      emit_label(emitter, jmp);
       break;
     }
     case AST_EXPR_BINARY_KIND_GREQ: {
-      const char *jmp = codegen_addr_label(codegen, NULL);
-      codegen_print(codegen, "CPA", "GR1, GR2");
-      codegen_print(codegen, "XOR", "GR1, GR1");
-      codegen_print(codegen, "JMI", "%s", jmp);
-      codegen_print(codegen, "LAD", "GR1, 1");
-      codegen_set_label(codegen, jmp);
+      const char *jmp = item_label(emitter, NULL);
+      emit_inst(emitter, "CPA", "GR1, GR2");
+      emit_inst(emitter, "XOR", "GR1, GR1");
+      emit_inst(emitter, "JMI", "%s", jmp);
+      emit_inst(emitter, "LAD", "GR1, 1");
+      emit_label(emitter, jmp);
       break;
     }
     default:
@@ -333,26 +324,26 @@ void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
     }
     break;
   case IR_RVALUE_NOT:
-    codegen_load(codegen, "GR1", stmt->rhs->rvalue.not_.value);
-    codegen_print(codegen, "XOR", "GR1, BC1");
+    emit_load(emitter, "GR1", stmt->rhs->rvalue.not_.value);
+    emit_inst(emitter, "XOR", "GR1, BC1");
     break;
   case IR_RVALUE_CAST:
-    codegen_load(codegen, "GR1", stmt->rhs->rvalue.cast.value);
+    emit_load(emitter, "GR1", stmt->rhs->rvalue.cast.value);
     switch (ir_operand_type(stmt->rhs->rvalue.cast.value)->kind) {
     case IR_TYPE_INTEGER:
       switch (stmt->rhs->rvalue.cast.type->kind) {
       case IR_TYPE_BOOLEAN: {
-        const char *jmp = codegen_addr_label(codegen, NULL);
-        codegen_print(codegen, "LD", "GR1, GR1");
-        codegen_print(codegen, "JZE", "%s", jmp);
-        codegen_print(codegen, "LAD", "GR1, 1");
-        codegen_set_label(codegen, jmp);
+        const char *jmp = item_label(emitter, NULL);
+        emit_inst(emitter, "LD", "GR1, GR1");
+        emit_inst(emitter, "JZE", "%s", jmp);
+        emit_inst(emitter, "LAD", "GR1, 1");
+        emit_label(emitter, jmp);
         break;
       }
       case IR_TYPE_INTEGER:
       case IR_TYPE_CHAR:
-        codegen_print(codegen, "LAD", "GR2, #007f");
-        codegen_print(codegen, "AND", "GR1, GR2");
+        emit_inst(emitter, "LAD", "GR2, #007f");
+        emit_inst(emitter, "AND", "GR1, GR2");
         break;
       default:
         unreachable();
@@ -361,11 +352,11 @@ void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
     case IR_TYPE_CHAR:
       switch (stmt->rhs->rvalue.cast.type->kind) {
       case IR_TYPE_BOOLEAN: {
-        const char *jmp = codegen_addr_label(codegen, NULL);
-        codegen_print(codegen, "LD", "GR1, GR1");
-        codegen_print(codegen, "JZE", "%s", jmp);
-        codegen_print(codegen, "LAD", "GR1, 1");
-        codegen_set_label(codegen, jmp);
+        const char *jmp = item_label(emitter, NULL);
+        emit_inst(emitter, "LD", "GR1, GR1");
+        emit_inst(emitter, "JZE", "%s", jmp);
+        emit_inst(emitter, "LAD", "GR1, 1");
+        emit_label(emitter, jmp);
         break;
       }
       case IR_TYPE_INTEGER:
@@ -384,17 +375,17 @@ void codegen_stmt_assign(codegen_t *codegen, const ir_stmt_assign_t *stmt)
     }
     break;
   }
-  codegen_store(codegen, "GR1", stmt->lhs);
+  emit_store(emitter, "GR1", stmt->lhs);
 }
 
-void codegen_stmt_call(codegen_t *codegen, const ir_stmt_call_t *stmt)
+static void emit_stmt_call(emitter_t *emitter, const ir_stmt_call_t *stmt)
 {
   switch (stmt->func->kind) {
   case IR_PLACE_KIND_PLAIN: {
     ir_place_plain_t *func = (ir_place_plain_t *) stmt->func;
     switch (func->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "CALL", "%s", codegen_addr_label(codegen, func->local->local.var.item->body));
+      emit_inst(emitter, "CALL", "%s", item_label(emitter, func->local->local.var.item->body));
       break;
     default:
       unreachable();
@@ -407,44 +398,43 @@ void codegen_stmt_call(codegen_t *codegen, const ir_stmt_call_t *stmt)
   }
 }
 
-void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *constant)
+static void emit_push_constant_address(emitter_t *emitter, const ir_constant_t *constant)
 {
-  assert(codegen && constant);
   switch (constant->kind) {
   case IR_CONSTANT_NUMBER: {
-    codegen_addr_t tmp   = codegen_addr(codegen, NULL);
-    codegen_addr_t label = codegen_addr(codegen, NULL);
-    codegen_print(codegen, "JUMP", codegen_label(label));
-    codegen_set_label(codegen, codegen_label(tmp));
-    codegen_print(codegen, "DS", "1");
-    codegen_set_label(codegen, codegen_label(label));
-    codegen_print(codegen, "LAD", "GR0, %ld", constant->constant.number.value);
-    codegen_print(codegen, "ST", "GR0, %s", codegen_label(tmp));
-    codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
+    addr_t tmp   = addr_of(emitter, NULL);
+    addr_t label = addr_of(emitter, NULL);
+    emit_inst(emitter, "JUMP", addr_label(label));
+    emit_label(emitter, addr_label(tmp));
+    emit_inst(emitter, "DS", "1");
+    emit_label(emitter, addr_label(label));
+    emit_inst(emitter, "LAD", "GR0, %ld", constant->constant.number.value);
+    emit_inst(emitter, "ST", "GR0, %s", addr_label(tmp));
+    emit_inst(emitter, "PUSH", "%s", addr_label(tmp));
     break;
   }
   case IR_CONSTANT_CHAR: {
-    codegen_addr_t tmp   = codegen_addr(codegen, NULL);
-    codegen_addr_t label = codegen_addr(codegen, NULL);
-    codegen_print(codegen, "JUMP", codegen_label(label));
-    codegen_set_label(codegen, codegen_label(tmp));
-    codegen_print(codegen, "DS", "1");
-    codegen_set_label(codegen, codegen_label(label));
-    codegen_print(codegen, "LAD", "GR0, #%04x", constant->constant.char_.value);
-    codegen_print(codegen, "ST", "GR0, %s", codegen_label(tmp));
-    codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
+    addr_t tmp   = addr_of(emitter, NULL);
+    addr_t label = addr_of(emitter, NULL);
+    emit_inst(emitter, "JUMP", addr_label(label));
+    emit_label(emitter, addr_label(tmp));
+    emit_inst(emitter, "DS", "1");
+    emit_label(emitter, addr_label(label));
+    emit_inst(emitter, "LAD", "GR0, #%04x", constant->constant.char_.value);
+    emit_inst(emitter, "ST", "GR0, %s", addr_label(tmp));
+    emit_inst(emitter, "PUSH", "%s", addr_label(tmp));
     break;
   }
   case IR_CONSTANT_BOOLEAN: {
-    codegen_addr_t tmp   = codegen_addr(codegen, NULL);
-    codegen_addr_t label = codegen_addr(codegen, NULL);
-    codegen_print(codegen, "JUMP", codegen_label(label));
-    codegen_set_label(codegen, codegen_label(tmp));
-    codegen_print(codegen, "DS", "1");
-    codegen_set_label(codegen, codegen_label(label));
-    codegen_print(codegen, "LAD", "GR0, %ld", constant->constant.boolean.value);
-    codegen_print(codegen, "ST", "GR0, %s", codegen_label(tmp));
-    codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
+    addr_t tmp   = addr_of(emitter, NULL);
+    addr_t label = addr_of(emitter, NULL);
+    emit_inst(emitter, "JUMP", addr_label(label));
+    emit_label(emitter, addr_label(tmp));
+    emit_inst(emitter, "DS", "1");
+    emit_label(emitter, addr_label(label));
+    emit_inst(emitter, "LAD", "GR0, %ld", constant->constant.boolean.value);
+    emit_inst(emitter, "ST", "GR0, %s", addr_label(tmp));
+    emit_inst(emitter, "PUSH", "%s", addr_label(tmp));
     break;
   }
   default:
@@ -452,29 +442,29 @@ void codegen_push_constant_address(codegen_t *codegen, const ir_constant_t *cons
   }
 }
 
-void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
+static void emit_push_place_address(emitter_t *emitter, const ir_place_t *place)
 {
   switch (place->kind) {
   case IR_PLACE_KIND_PLAIN: {
     ir_place_plain_t *plain = (ir_place_plain_t *) place;
     switch (plain->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "PUSH", "%s", codegen_addr_label(codegen, plain->local->local.var.item));
+      emit_inst(emitter, "PUSH", "%s", item_label(emitter, plain->local->local.var.item));
       break;
     case IR_LOCAL_ARG:
-      codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, plain->local->local.arg.item));
-      codegen_print(codegen, "PUSH", "0, GR7");
+      emit_inst(emitter, "LD", "GR7, %s", item_label(emitter, plain->local->local.arg.item));
+      emit_inst(emitter, "PUSH", "0, GR7");
       break;
     case IR_LOCAL_TEMP: {
-      codegen_addr_t tmp   = codegen_addr(codegen, NULL);
-      codegen_addr_t label = codegen_addr(codegen, NULL);
-      codegen_print(codegen, "JUMP", "%s", codegen_label(label));
-      codegen_set_label(codegen, codegen_label(tmp));
-      codegen_print(codegen, "DS", "1");
-      codegen_set_label(codegen, codegen_label(label));
-      codegen_print(codegen, "POP", "GR1");
-      codegen_print(codegen, "ST", "GR1, %s", codegen_label(tmp));
-      codegen_print(codegen, "PUSH", "%s", codegen_label(tmp));
+      addr_t tmp   = addr_of(emitter, NULL);
+      addr_t label = addr_of(emitter, NULL);
+      emit_inst(emitter, "JUMP", "%s", addr_label(label));
+      emit_label(emitter, addr_label(tmp));
+      emit_inst(emitter, "DS", "1");
+      emit_label(emitter, addr_label(label));
+      emit_inst(emitter, "POP", "GR1");
+      emit_inst(emitter, "ST", "GR1, %s", addr_label(tmp));
+      emit_inst(emitter, "PUSH", "%s", addr_label(tmp));
       break;
     }
     default:
@@ -484,11 +474,11 @@ void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
   }
   case IR_PLACE_KIND_INDEXED: {
     ir_place_indexed_t *indexed = (ir_place_indexed_t *) place;
-    codegen_load(codegen, "GR7", indexed->index);
-    codegen_check_range(codegen, "GR7", indexed->local);
+    emit_load(emitter, "GR7", indexed->index);
+    emit_range_check(emitter, "GR7", indexed->local);
     switch (indexed->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "PUSH", "%s, GR7", codegen_addr_label(codegen, indexed->local->local.var.item));
+      emit_inst(emitter, "PUSH", "%s, GR7", item_label(emitter, indexed->local->local.var.item));
       break;
     default:
       unreachable();
@@ -498,33 +488,31 @@ void codegen_push_place_address(codegen_t *codegen, const ir_place_t *place)
   }
 }
 
-void codegen_push_operand_address(codegen_t *codegen, const ir_operand_t *operand)
+static void emit_push_operand_address(emitter_t *emitter, const ir_operand_t *operand)
 {
-  assert(codegen && operand);
-
   switch (operand->kind) {
   case IR_OPERAND_CONSTANT:
-    codegen_push_constant_address(codegen, operand->operand.constant.constant);
+    emit_push_constant_address(emitter, operand->operand.constant.constant);
     break;
   case IR_OPERAND_PLACE:
-    codegen_push_place_address(codegen, operand->operand.place.place);
+    emit_push_place_address(emitter, operand->operand.place.place);
     break;
   default:
     unreachable();
   }
 }
 
-void codegen_stmt_read(codegen_t *codegen, const ir_stmt_read_t *stmt)
+static void emit_stmt_read(emitter_t *emitter, const ir_stmt_read_t *stmt)
 {
   switch (stmt->ref->kind) {
   case IR_PLACE_KIND_PLAIN: {
     ir_place_plain_t *plain = (ir_place_plain_t *) stmt->ref;
     switch (plain->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_print(codegen, "LAD", "GR7, %s", codegen_addr_label(codegen, plain->local->local.var.item));
+      emit_inst(emitter, "LAD", "GR7, %s", item_label(emitter, plain->local->local.var.item));
       break;
     case IR_LOCAL_ARG:
-      codegen_print(codegen, "LD", "GR7, %s", codegen_addr_label(codegen, plain->local->local.arg.item));
+      emit_inst(emitter, "LD", "GR7, %s", item_label(emitter, plain->local->local.arg.item));
       break;
     default:
       unreachable();
@@ -535,7 +523,7 @@ void codegen_stmt_read(codegen_t *codegen, const ir_stmt_read_t *stmt)
     ir_place_indexed_t *indexed = (ir_place_indexed_t *) stmt->ref;
     switch (indexed->local->kind) {
     case IR_LOCAL_VAR:
-      codegen_load(codegen, "GR7", stmt->ref->place.indexed.index);
+      emit_load(emitter, "GR7", stmt->ref->place.indexed.index);
       break;
     default:
       unreachable();
@@ -547,65 +535,63 @@ void codegen_stmt_read(codegen_t *codegen, const ir_stmt_read_t *stmt)
   /* call builtin `read` functions for each types */
   switch (ir_place_type(stmt->ref)->kind) {
   case IR_TYPE_INTEGER:
-    codegen->builtin.r_int++;
-    codegen_print(codegen, "CALL", "BRINT");
+    emitter->builtin.r_int++;
+    emit_inst(emitter, "CALL", "BRINT");
     break;
   case IR_TYPE_CHAR:
-    codegen->builtin.r_char++;
-    codegen_print(codegen, "CALL", "BRCHAR");
+    emitter->builtin.r_char++;
+    emit_inst(emitter, "CALL", "BRCHAR");
     break;
   default:
     unreachable();
   }
 }
 
-void codegen_stmt_write(codegen_t *codegen, const ir_stmt_write_t *stmt)
+static void emit_stmt_write(emitter_t *emitter, const ir_stmt_write_t *stmt)
 {
-  assert(codegen && stmt);
-
   /* call builtin `write` functions for each types */
   switch (ir_operand_type(stmt->value)->kind) {
   case IR_TYPE_INTEGER:
-    codegen->builtin.w_int++;
-    codegen_load(codegen, "GR1", stmt->value);
-    codegen_print(codegen, "CALL", "BSINT");
+    emitter->builtin.w_int++;
+    emit_load(emitter, "GR1", stmt->value);
+    emit_inst(emitter, "CALL", "BSINT");
     if (stmt->len) {
-      codegen_load_constant(codegen, "GR1", stmt->len);
+      emit_load_constant(emitter, "GR1", stmt->len);
     } else {
-      codegen_print(codegen, "LD", "GR1, GR2");
+      emit_inst(emitter, "LD", "GR1, GR2");
     }
-    codegen_print(codegen, "CALL", "BWSTR");
+    emit_inst(emitter, "CALL", "BWSTR");
     break;
   case IR_TYPE_BOOLEAN:
-    codegen->builtin.w_bool++;
-    codegen_load(codegen, "GR1", stmt->value);
-    codegen_print(codegen, "CALL", "BSBOOL");
+    emitter->builtin.w_bool++;
+    emit_load(emitter, "GR1", stmt->value);
+    emit_inst(emitter, "CALL", "BSBOOL");
     if (stmt->len) {
-      codegen_load_constant(codegen, "GR1", stmt->len);
+      emit_load_constant(emitter, "GR1", stmt->len);
     } else {
-      codegen_print(codegen, "LD", "GR1, GR2");
+      emit_inst(emitter, "LD", "GR1, GR2");
     }
-    codegen_print(codegen, "CALL", "BWSTR");
+    emit_inst(emitter, "CALL", "BWSTR");
     break;
   case IR_TYPE_CHAR:
-    codegen->builtin.w_char++;
-    codegen_load(codegen, "GR1", stmt->value);
-    codegen_print(codegen, "CALL", "BSCHAR");
+    emitter->builtin.w_char++;
+    emit_load(emitter, "GR1", stmt->value);
+    emit_inst(emitter, "CALL", "BSCHAR");
     if (stmt->len) {
-      codegen_load_constant(codegen, "GR1", stmt->len);
+      emit_load_constant(emitter, "GR1", stmt->len);
     } else {
-      codegen_print(codegen, "LAD", "GR1, 1");
+      emit_inst(emitter, "LAD", "GR1, 1");
     }
-    codegen_print(codegen, "CALL", "BWSTR");
+    emit_inst(emitter, "CALL", "BWSTR");
     break;
   case IR_TYPE_ARRAY: {
     const ir_constant_t *constant = stmt->value->operand.constant.constant;
     const ir_type_t     *type     = ir_constant_type(constant);
-    codegen->builtin.w_str++;
-    codegen_print(codegen, "LAD", "GR2, %ld", type->type.array.size);
-    codegen_print(codegen, "LAD", "GR3, %s", codegen_addr_label(codegen, constant));
-    codegen_print(codegen, "LD", "GR1, GR2");
-    codegen_print(codegen, "CALL", "BWSTR");
+    emitter->builtin.w_str++;
+    emit_inst(emitter, "LAD", "GR2, %ld", type->type.array.size);
+    emit_inst(emitter, "LAD", "GR3, %s", item_label(emitter, constant));
+    emit_inst(emitter, "LD", "GR1, GR2");
+    emit_inst(emitter, "CALL", "BWSTR");
     break;
   }
   default:
@@ -613,53 +599,51 @@ void codegen_stmt_write(codegen_t *codegen, const ir_stmt_write_t *stmt)
   }
 }
 
-void codegen_stmt(codegen_t *codegen, const ir_stmt_t *stmt)
+static void emit_stmt(emitter_t *emitter, const ir_stmt_t *stmt)
 {
-  assert(codegen);
-
   while (stmt) {
     switch (stmt->kind) {
     case IR_STMT_ASSIGN:
-      codegen_stmt_assign(codegen, &stmt->stmt.assign);
+      emit_stmt_assign(emitter, &stmt->stmt.assign);
       break;
     case IR_STMT_CALL:
-      codegen_stmt_call(codegen, &stmt->stmt.call);
+      emit_stmt_call(emitter, &stmt->stmt.call);
       break;
     case IR_STMT_READ:
-      codegen_stmt_read(codegen, &stmt->stmt.read);
+      emit_stmt_read(emitter, &stmt->stmt.read);
       break;
     case IR_STMT_READLN:
-      codegen->builtin.r_ln++;
-      codegen_print(codegen, "CALL", "BRLN");
+      emitter->builtin.r_ln++;
+      emit_inst(emitter, "CALL", "BRLN");
       break;
     case IR_STMT_WRITE:
-      codegen_stmt_write(codegen, &stmt->stmt.write);
+      emit_stmt_write(emitter, &stmt->stmt.write);
       break;
     case IR_STMT_WRITELN:
-      codegen->builtin.w_char++;
-      codegen_print(codegen, "LD", "GR1, BCLF");
-      codegen_print(codegen, "CALL", "BSCHAR");
-      codegen_print(codegen, "LAD", "GR1, 1");
-      codegen_print(codegen, "CALL", "BWSTR");
+      emitter->builtin.w_char++;
+      emit_inst(emitter, "LD", "GR1, BCLF");
+      emit_inst(emitter, "CALL", "BSCHAR");
+      emit_inst(emitter, "LAD", "GR1, 1");
+      emit_inst(emitter, "CALL", "BWSTR");
       break;
     }
     stmt = stmt->next;
   }
 }
 
-void codegen_block(codegen_t *codegen, const ir_block_t *block)
+static void emit_block(emitter_t *emitter, const ir_block_t *block)
 {
-  assert(codegen && block);
+  assert(emitter && block);
 
-  codegen_set_label(codegen, codegen_addr_label(codegen, block));
-  codegen_stmt(codegen, block->stmt);
+  emit_label(emitter, item_label(emitter, block));
+  emit_stmt(emitter, block->stmt);
   switch (block->termn.kind) {
   case IR_TERMN_GOTO: {
     const ir_block_t *next = block->termn.termn.goto_.next;
-    if (codegen_addr_lookup(codegen, next)) {
-      codegen_print(codegen, "JUMP", "%s", codegen_addr_label(codegen, next));
+    if (lookup_addr(emitter, next)) {
+      emit_inst(emitter, "JUMP", "%s", item_label(emitter, next));
     } else {
-      codegen_block(codegen, next);
+      emit_block(emitter, next);
     }
     break;
   }
@@ -668,91 +652,89 @@ void codegen_block(codegen_t *codegen, const ir_block_t *block)
     const ir_block_t   *then = block->termn.termn.if_.then;
     const ir_block_t   *els  = block->termn.termn.if_.els;
 
-    codegen_load(codegen, "GR1", cond);
-    codegen_print(codegen, "LD", "GR1, GR1");
-    if (codegen_addr_lookup(codegen, then)) {
-      codegen_print(codegen, "JNZ", "%s", codegen_addr_label(codegen, then));
-      if (codegen_addr_lookup(codegen, els)) {
-        codegen_print(codegen, "JUMP", "%s", codegen_addr_label(codegen, els));
+    emit_load(emitter, "GR1", cond);
+    emit_inst(emitter, "LD", "GR1, GR1");
+    if (lookup_addr(emitter, then)) {
+      emit_inst(emitter, "JNZ", "%s", item_label(emitter, then));
+      if (lookup_addr(emitter, els)) {
+        emit_inst(emitter, "JUMP", "%s", item_label(emitter, els));
       } else {
-        codegen_block(codegen, els);
+        emit_block(emitter, els);
       }
     } else {
-      if (codegen_addr_lookup(codegen, els)) {
-        codegen_print(codegen, "JZE", "%s", codegen_addr_label(codegen, els));
-        codegen_block(codegen, then);
+      if (lookup_addr(emitter, els)) {
+        emit_inst(emitter, "JZE", "%s", item_label(emitter, els));
+        emit_block(emitter, then);
       } else {
-        codegen_print(codegen, "JZE", "%s", codegen_addr_label(codegen, els));
-        codegen_block(codegen, then);
-        codegen_block(codegen, els);
+        emit_inst(emitter, "JZE", "%s", item_label(emitter, els));
+        emit_block(emitter, then);
+        emit_block(emitter, els);
       }
     }
     break;
   }
   case IR_TERMN_RETURN:
-    codegen_print(codegen, "RET", NULL);
+    emit_inst(emitter, "RET", NULL);
     break;
   case IR_TERMN_ARG:
-    codegen_push_operand_address(codegen, block->termn.termn.arg.arg);
-    codegen_block(codegen, block->termn.termn.arg.next);
+    emit_push_operand_address(emitter, block->termn.termn.arg.arg);
+    emit_block(emitter, block->termn.termn.arg.next);
     break;
   default:
     unreachable();
   }
 }
 
-void codegen_item(codegen_t *codegen, const ir_item_t *item)
+static void emit_item(emitter_t *cg, const ir_item_t *item)
 {
-  assert(codegen);
-
   while (item) {
     switch (item->kind) {
     case IR_ITEM_PROGRAM:
-      codegen_print(codegen, "CALL", codegen_addr_label(codegen, item->body->inner));
-      codegen_print(codegen, "SVC", "0");
-      codegen_item(codegen, item->body->items);
-      codegen_block(codegen, item->body->inner);
+      emit_inst(cg, "CALL", item_label(cg, item->body->inner));
+      emit_inst(cg, "SVC", "0");
+      emit_item(cg, item->body->items);
+      emit_block(cg, item->body->inner);
       break;
     case IR_ITEM_PROCEDURE:
-      codegen_item(codegen, item->body->items);
-      codegen_set_label(codegen, codegen_addr_label(codegen, item->body));
+      emit_item(cg, item->body->items);
+      emit_label(cg, item_label(cg, item->body));
       {
         ir_item_t *items = item->body->items;
-        codegen_print(codegen, "POP", "GR2");
+        emit_inst(cg, "POP", "GR2");
         while (items) {
           if (items->kind == IR_ITEM_ARG_VAR) {
-            codegen_print(codegen, "POP", "GR1");
-            codegen_print(codegen, "ST", "GR1, %s", codegen_addr_label(codegen, items));
+            emit_inst(cg, "POP", "GR1");
+            emit_inst(cg, "ST", "GR1, %s", item_label(cg, items));
           }
           items = items->next;
         }
-        codegen_print(codegen, "PUSH", "0, GR2");
-        codegen_block(codegen, item->body->inner);
+        emit_inst(cg, "PUSH", "0, GR2");
+        emit_block(cg, item->body->inner);
       }
       break;
     case IR_ITEM_VAR:
     case IR_ITEM_LOCAL_VAR:
-      codegen_set_label(codegen, codegen_addr_label(codegen, item));
+      emit_label(cg, item_label(cg, item));
       switch (item->type->kind) {
       case IR_TYPE_INTEGER:
       case IR_TYPE_BOOLEAN:
       case IR_TYPE_CHAR:
-        codegen_print(codegen, "DS", "1");
+        emit_inst(cg, "DS", "1");
         break;
       case IR_TYPE_ARRAY:
-        codegen_print(codegen, "DS", "%ld", item->type->type.array.size);
+        emit_inst(cg, "DS", "%ld", item->type->type.array.size);
         break;
       default:
         unreachable();
       }
       break;
     case IR_ITEM_ARG_VAR:
-      codegen_set_label(codegen, codegen_addr_label(codegen, item));
+      emit_label(cg, item_label(cg, item));
       switch (item->type->kind) {
       case IR_TYPE_INTEGER:
       case IR_TYPE_BOOLEAN:
       case IR_TYPE_CHAR:
-        codegen_print(codegen, "DS", "1");
+        emit_inst(cg, "DS", "1");
         break;
       default:
         unreachable();
@@ -763,278 +745,278 @@ void codegen_item(codegen_t *codegen, const ir_item_t *item)
   }
 }
 
-void codegen_builtin(codegen_t *codegen)
+static void codegen_builtin(emitter_t *emitter)
 {
   int builtin_write = 0;
   int builtin_read  = 0;
-  codegen_set_label(codegen, "BCSP");
-  codegen_print(codegen, "DC", "#%04X", (int) ' ');
-  codegen_set_label(codegen, "BCLF");
-  codegen_print(codegen, "DC", "#%04X", (int) '\n');
-  codegen_set_label(codegen, "BCTAB");
-  codegen_print(codegen, "DC", "#%04X", (int) '\t');
-  codegen_set_label(codegen, "BC1");
-  codegen_print(codegen, "DC", "1");
-  codegen_set_label(codegen, "BC10");
-  codegen_print(codegen, "DC", "10");
-  codegen_set_label(codegen, "BCH30");
-  codegen_print(codegen, "DC", "#0030");
+  emit_label(emitter, "BCSP");
+  emit_inst(emitter, "DC", "#%04X", (int) ' ');
+  emit_label(emitter, "BCLF");
+  emit_inst(emitter, "DC", "#%04X", (int) '\n');
+  emit_label(emitter, "BCTAB");
+  emit_inst(emitter, "DC", "#%04X", (int) '\t');
+  emit_label(emitter, "BC1");
+  emit_inst(emitter, "DC", "1");
+  emit_label(emitter, "BC10");
+  emit_inst(emitter, "DC", "10");
+  emit_label(emitter, "BCH30");
+  emit_inst(emitter, "DC", "#0030");
 
-  if (codegen->builtin.w_int) {
+  if (emitter->builtin.w_int) {
     builtin_write = 1;
-    codegen_set_label(codegen, "BSINT");
-    codegen_print(codegen, "LAD", "GR4, 6");
-    codegen_print(codegen, "XOR", "GR5, GR5");
-    codegen_print(codegen, "CPA", "GR1, GR5");
-    codegen_print(codegen, "JPL", "BSINT0");
-    codegen_print(codegen, "SUBA", "GR5, GR1");
-    codegen_print(codegen, "LD", "GR1, GR5");
+    emit_label(emitter, "BSINT");
+    emit_inst(emitter, "LAD", "GR4, 6");
+    emit_inst(emitter, "XOR", "GR5, GR5");
+    emit_inst(emitter, "CPA", "GR1, GR5");
+    emit_inst(emitter, "JPL", "BSINT0");
+    emit_inst(emitter, "SUBA", "GR5, GR1");
+    emit_inst(emitter, "LD", "GR1, GR5");
 
-    codegen_set_label(codegen, "BSINT0");
-    codegen_print(codegen, "LD", "GR2, GR1");
-    codegen_print(codegen, "LD", "GR3, GR1");
-    codegen_print(codegen, "DIVA", "GR3, BC10");
-    codegen_print(codegen, "MULA", "GR3, BC10");
-    codegen_print(codegen, "SUBA", "GR2, GR3");
-    codegen_print(codegen, "ADDA", "GR2, BCH30");
-    codegen_print(codegen, "SUBA", "GR4, BC1");
-    codegen_print(codegen, "ST", "GR2, BSBUF, GR4");
-    codegen_print(codegen, "DIVA", "GR1, BC10");
-    codegen_print(codegen, "JNZ", "BSINT0");
-    codegen_print(codegen, "LD", "GR5, GR5");
-    codegen_print(codegen, "JZE", "BSINT1");
-    codegen_print(codegen, "LAD", "GR2, #%04X", (int) '-');
-    codegen_print(codegen, "SUBA", "GR4, BC1");
-    codegen_print(codegen, "ST", "GR2, BSBUF, GR4");
+    emit_label(emitter, "BSINT0");
+    emit_inst(emitter, "LD", "GR2, GR1");
+    emit_inst(emitter, "LD", "GR3, GR1");
+    emit_inst(emitter, "DIVA", "GR3, BC10");
+    emit_inst(emitter, "MULA", "GR3, BC10");
+    emit_inst(emitter, "SUBA", "GR2, GR3");
+    emit_inst(emitter, "ADDA", "GR2, BCH30");
+    emit_inst(emitter, "SUBA", "GR4, BC1");
+    emit_inst(emitter, "ST", "GR2, BSBUF, GR4");
+    emit_inst(emitter, "DIVA", "GR1, BC10");
+    emit_inst(emitter, "JNZ", "BSINT0");
+    emit_inst(emitter, "LD", "GR5, GR5");
+    emit_inst(emitter, "JZE", "BSINT1");
+    emit_inst(emitter, "LAD", "GR2, #%04X", (int) '-');
+    emit_inst(emitter, "SUBA", "GR4, BC1");
+    emit_inst(emitter, "ST", "GR2, BSBUF, GR4");
 
-    codegen_set_label(codegen, "BSINT1");
-    codegen_print(codegen, "LAD", "GR2, 6");
-    codegen_print(codegen, "SUBA", "GR2, GR4");
-    codegen_print(codegen, "LAD", "GR3, BSBUF, GR4");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BSINT1");
+    emit_inst(emitter, "LAD", "GR2, 6");
+    emit_inst(emitter, "SUBA", "GR2, GR4");
+    emit_inst(emitter, "LAD", "GR3, BSBUF, GR4");
+    emit_inst(emitter, "RET", NULL);
   }
 
-  if (codegen->builtin.w_bool) {
+  if (emitter->builtin.w_bool) {
     builtin_write = 1;
-    codegen_set_label(codegen, "BCTRUE");
-    codegen_print(codegen, "DC", "'TRUE'");
-    codegen_set_label(codegen, "BCFALSE");
-    codegen_print(codegen, "DC", "'FALSE'");
+    emit_label(emitter, "BCTRUE");
+    emit_inst(emitter, "DC", "'TRUE'");
+    emit_label(emitter, "BCFALSE");
+    emit_inst(emitter, "DC", "'FALSE'");
 
-    codegen_set_label(codegen, "BSBOOL");
-    codegen_print(codegen, "LD", "GR1, GR1");
-    codegen_print(codegen, "JNZ", "BSBOOL0");
-    codegen_print(codegen, "LAD", "GR3, BCFALSE");
-    codegen_print(codegen, "LAD", "GR2, 5");
-    codegen_print(codegen, "RET", NULL);
-    codegen_set_label(codegen, "BSBOOL0");
-    codegen_print(codegen, "LAD", "GR3, BCTRUE");
-    codegen_print(codegen, "LAD", "GR2, 4");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BSBOOL");
+    emit_inst(emitter, "LD", "GR1, GR1");
+    emit_inst(emitter, "JNZ", "BSBOOL0");
+    emit_inst(emitter, "LAD", "GR3, BCFALSE");
+    emit_inst(emitter, "LAD", "GR2, 5");
+    emit_inst(emitter, "RET", NULL);
+    emit_label(emitter, "BSBOOL0");
+    emit_inst(emitter, "LAD", "GR3, BCTRUE");
+    emit_inst(emitter, "LAD", "GR2, 4");
+    emit_inst(emitter, "RET", NULL);
   }
 
-  if (codegen->builtin.w_char) {
+  if (emitter->builtin.w_char) {
     builtin_write = 1;
-    codegen_set_label(codegen, "BSCHAR");
-    codegen_print(codegen, "ST", "GR1, BSBUF");
-    codegen_print(codegen, "LAD", "GR3, BSBUF");
-    codegen_print(codegen, "LAD", "GR2, 1");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BSCHAR");
+    emit_inst(emitter, "ST", "GR1, BSBUF");
+    emit_inst(emitter, "LAD", "GR3, BSBUF");
+    emit_inst(emitter, "LAD", "GR2, 1");
+    emit_inst(emitter, "RET", NULL);
   }
 
-  if (codegen->builtin.w_str) {
+  if (emitter->builtin.w_str) {
     builtin_write = 1;
   }
 
   if (builtin_write) {
-    codegen_set_label(codegen, "BSBUF");
-    codegen_print(codegen, "DS", "6");
-    codegen_set_label(codegen, "BOBUF");
-    codegen_print(codegen, "DS", "256");
-    codegen_set_label(codegen, "BOCUR");
-    codegen_print(codegen, "DC", "0");
+    emit_label(emitter, "BSBUF");
+    emit_inst(emitter, "DS", "6");
+    emit_label(emitter, "BOBUF");
+    emit_inst(emitter, "DS", "256");
+    emit_label(emitter, "BOCUR");
+    emit_inst(emitter, "DC", "0");
 
-    codegen_set_label(codegen, "BFLUSH");
-    codegen_print(codegen, "OUT", "BOBUF, BOCUR");
-    codegen_print(codegen, "XOR", "GR0, GR0");
-    codegen_print(codegen, "ST", "GR0, BOCUR");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BFLUSH");
+    emit_inst(emitter, "OUT", "BOBUF, BOCUR");
+    emit_inst(emitter, "XOR", "GR0, GR0");
+    emit_inst(emitter, "ST", "GR0, BOCUR");
+    emit_inst(emitter, "RET", NULL);
 
-    codegen_set_label(codegen, "BWSTR");
-    codegen_print(codegen, "LD", "GR1, GR1");
-    codegen_print(codegen, "JPL", "BWSTR0");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BWSTR");
+    emit_inst(emitter, "LD", "GR1, GR1");
+    emit_inst(emitter, "JPL", "BWSTR0");
+    emit_inst(emitter, "RET", NULL);
 
-    codegen_set_label(codegen, "BWSTR0");
-    codegen_print(codegen, "CPA", "GR2, GR1");
-    codegen_print(codegen, "JMI", "BWSTR1");
-    codegen_print(codegen, "LD", "GR4, 0, GR3");
-    codegen_print(codegen, "ADDA", "GR3, BC1");
-    codegen_print(codegen, "JUMP", "BWSTR2");
+    emit_label(emitter, "BWSTR0");
+    emit_inst(emitter, "CPA", "GR2, GR1");
+    emit_inst(emitter, "JMI", "BWSTR1");
+    emit_inst(emitter, "LD", "GR4, 0, GR3");
+    emit_inst(emitter, "ADDA", "GR3, BC1");
+    emit_inst(emitter, "JUMP", "BWSTR2");
 
-    codegen_set_label(codegen, "BWSTR1");
-    codegen_print(codegen, "LD", "GR4, BCSP");
+    emit_label(emitter, "BWSTR1");
+    emit_inst(emitter, "LD", "GR4, BCSP");
 
-    codegen_set_label(codegen, "BWSTR2");
-    codegen_print(codegen, "SUBA", "GR1, BC1");
-    codegen_print(codegen, "LD", "GR5, BOCUR");
-    codegen_print(codegen, "ST", "GR4, BOBUF, GR5");
-    codegen_print(codegen, "ADDA", "GR5, BC1");
-    codegen_print(codegen, "ST", "GR5, BOCUR");
-    codegen_print(codegen, "CPA", "GR4, BCLF");
-    codegen_print(codegen, "JNZ", "BWSTR3");
-    codegen_print(codegen, "CALL", "BFLUSH");
-    codegen_print(codegen, "JUMP", "BWSTR4");
+    emit_label(emitter, "BWSTR2");
+    emit_inst(emitter, "SUBA", "GR1, BC1");
+    emit_inst(emitter, "LD", "GR5, BOCUR");
+    emit_inst(emitter, "ST", "GR4, BOBUF, GR5");
+    emit_inst(emitter, "ADDA", "GR5, BC1");
+    emit_inst(emitter, "ST", "GR5, BOCUR");
+    emit_inst(emitter, "CPA", "GR4, BCLF");
+    emit_inst(emitter, "JNZ", "BWSTR3");
+    emit_inst(emitter, "CALL", "BFLUSH");
+    emit_inst(emitter, "JUMP", "BWSTR4");
 
-    codegen_set_label(codegen, "BWSTR3");
-    codegen_print(codegen, "LAD", "GR4, 256");
-    codegen_print(codegen, "CPA", "GR5, GR4");
-    codegen_print(codegen, "JNZ", "BWSTR4");
-    codegen_print(codegen, "CALL", "BFLUSH");
+    emit_label(emitter, "BWSTR3");
+    emit_inst(emitter, "LAD", "GR4, 256");
+    emit_inst(emitter, "CPA", "GR5, GR4");
+    emit_inst(emitter, "JNZ", "BWSTR4");
+    emit_inst(emitter, "CALL", "BFLUSH");
 
-    codegen_set_label(codegen, "BWSTR4");
-    codegen_print(codegen, "JUMP", "BWSTR");
+    emit_label(emitter, "BWSTR4");
+    emit_inst(emitter, "JUMP", "BWSTR");
   }
 
-  if (codegen->builtin.r_int) {
+  if (emitter->builtin.r_int) {
     builtin_read = 1;
-    codegen_set_label(codegen, "BRINT");
-    codegen_print(codegen, "XOR", "GR0, GR0");
-    codegen_print(codegen, "CALL", "BRREAD");
+    emit_label(emitter, "BRINT");
+    emit_inst(emitter, "XOR", "GR0, GR0");
+    emit_inst(emitter, "CALL", "BRREAD");
 
-    codegen_set_label(codegen, "BRINT0");
-    codegen_print(codegen, "CALL", "BRTOP");
-    codegen_print(codegen, "CPA", "GR1, BCSP");
-    codegen_print(codegen, "JZE", "BRINT1");
-    codegen_print(codegen, "CPA", "GR1, BCLF");
-    codegen_print(codegen, "JZE", "BRINT1");
-    codegen_print(codegen, "CPA", "GR1, BCTAB");
-    codegen_print(codegen, "JZE", "BRINT1");
-    codegen_print(codegen, "SUBA", "GR1, BCH30");
-    codegen_print(codegen, "JMI", "BRINT2");
-    codegen_print(codegen, "CPA", "GR1, BC10");
-    codegen_print(codegen, "JPL", "BRINT2");
-    codegen_print(codegen, "MULA", "GR0, BC10");
-    codegen_print(codegen, "JOV", "EOV");
-    codegen_print(codegen, "ADDA", "GR0, GR1");
+    emit_label(emitter, "BRINT0");
+    emit_inst(emitter, "CALL", "BRTOP");
+    emit_inst(emitter, "CPA", "GR1, BCSP");
+    emit_inst(emitter, "JZE", "BRINT1");
+    emit_inst(emitter, "CPA", "GR1, BCLF");
+    emit_inst(emitter, "JZE", "BRINT1");
+    emit_inst(emitter, "CPA", "GR1, BCTAB");
+    emit_inst(emitter, "JZE", "BRINT1");
+    emit_inst(emitter, "SUBA", "GR1, BCH30");
+    emit_inst(emitter, "JMI", "BRINT2");
+    emit_inst(emitter, "CPA", "GR1, BC10");
+    emit_inst(emitter, "JPL", "BRINT2");
+    emit_inst(emitter, "MULA", "GR0, BC10");
+    emit_inst(emitter, "JOV", "EOV");
+    emit_inst(emitter, "ADDA", "GR0, GR1");
 
-    codegen_set_label(codegen, "BRINT1");
-    codegen_print(codegen, "ADDA", "GR2, BC1");
-    codegen_print(codegen, "ST", "GR2, BICUR");
-    codegen_print(codegen, "CPA", "GR2, BILEN");
-    codegen_print(codegen, "JMI", "BRINT0");
+    emit_label(emitter, "BRINT1");
+    emit_inst(emitter, "ADDA", "GR2, BC1");
+    emit_inst(emitter, "ST", "GR2, BICUR");
+    emit_inst(emitter, "CPA", "GR2, BILEN");
+    emit_inst(emitter, "JMI", "BRINT0");
 
-    codegen_set_label(codegen, "BRINT2");
-    codegen_print(codegen, "ST", "GR0, 0, GR7");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BRINT2");
+    emit_inst(emitter, "ST", "GR0, 0, GR7");
+    emit_inst(emitter, "RET", NULL);
   }
 
-  if (codegen->builtin.r_char) {
+  if (emitter->builtin.r_char) {
     builtin_read = 1;
-    codegen_set_label(codegen, "BRCHAR");
-    codegen_print(codegen, "CALL", "BRREAD");
-    codegen_print(codegen, "CALL", "BRTOP");
-    codegen_print(codegen, "ADDA", "GR2, BC1");
-    codegen_print(codegen, "ST", "GR2, BICUR");
-    codegen_print(codegen, "ST", "GR1, 0, GR7");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BRCHAR");
+    emit_inst(emitter, "CALL", "BRREAD");
+    emit_inst(emitter, "CALL", "BRTOP");
+    emit_inst(emitter, "ADDA", "GR2, BC1");
+    emit_inst(emitter, "ST", "GR2, BICUR");
+    emit_inst(emitter, "ST", "GR1, 0, GR7");
+    emit_inst(emitter, "RET", NULL);
   }
 
-  if (codegen->builtin.r_ln) {
+  if (emitter->builtin.r_ln) {
     builtin_read = 1;
-    codegen_set_label(codegen, "BRLN");
-    codegen_print(codegen, "XOR", "GR0, GR0");
-    codegen_print(codegen, "ST", "GR0, BILEN");
-    codegen_print(codegen, "ST", "GR0, BICUR");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BRLN");
+    emit_inst(emitter, "XOR", "GR0, GR0");
+    emit_inst(emitter, "ST", "GR0, BILEN");
+    emit_inst(emitter, "ST", "GR0, BICUR");
+    emit_inst(emitter, "RET", NULL);
   }
 
   if (builtin_read) {
-    codegen_set_label(codegen, "BIBUF");
-    codegen_print(codegen, "DS", "256");
-    codegen_set_label(codegen, "BILEN");
-    codegen_print(codegen, "DC", "0");
-    codegen_set_label(codegen, "BICUR");
-    codegen_print(codegen, "DC", "0");
+    emit_label(emitter, "BIBUF");
+    emit_inst(emitter, "DS", "256");
+    emit_label(emitter, "BILEN");
+    emit_inst(emitter, "DC", "0");
+    emit_label(emitter, "BICUR");
+    emit_inst(emitter, "DC", "0");
 
-    codegen_set_label(codegen, "BRREAD");
-    codegen_print(codegen, "LD", "GR1, BICUR");
-    codegen_print(codegen, "LD", "GR2, BICUR");
-    codegen_print(codegen, "CPA", "GR1, BILEN");
-    codegen_print(codegen, "JMI", "BRREAD0");
-    codegen_print(codegen, "IN", "BIBUF, BILEN");
-    codegen_print(codegen, "XOR", "GR0, GR0");
-    codegen_print(codegen, "ST", "GR0, BICUR");
+    emit_label(emitter, "BRREAD");
+    emit_inst(emitter, "LD", "GR1, BICUR");
+    emit_inst(emitter, "LD", "GR2, BICUR");
+    emit_inst(emitter, "CPA", "GR1, BILEN");
+    emit_inst(emitter, "JMI", "BRREAD0");
+    emit_inst(emitter, "IN", "BIBUF, BILEN");
+    emit_inst(emitter, "XOR", "GR0, GR0");
+    emit_inst(emitter, "ST", "GR0, BICUR");
 
-    codegen_set_label(codegen, "BRREAD0");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BRREAD0");
+    emit_inst(emitter, "RET", NULL);
 
-    codegen_set_label(codegen, "BRTOP");
-    codegen_print(codegen, "LD", "GR1, BICUR");
-    codegen_print(codegen, "LD", "GR2, BICUR");
-    codegen_print(codegen, "CPA", "GR1, BILEN");
-    codegen_print(codegen, "JMI", "BRTOP0");
-    codegen_print(codegen, "XOR", "GR1, GR1");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BRTOP");
+    emit_inst(emitter, "LD", "GR1, BICUR");
+    emit_inst(emitter, "LD", "GR2, BICUR");
+    emit_inst(emitter, "CPA", "GR1, BILEN");
+    emit_inst(emitter, "JMI", "BRTOP0");
+    emit_inst(emitter, "XOR", "GR1, GR1");
+    emit_inst(emitter, "RET", NULL);
 
-    codegen_set_label(codegen, "BRTOP0");
-    codegen_print(codegen, "LD", "GR1, BIBUF, GR2");
-    codegen_print(codegen, "RET", NULL);
+    emit_label(emitter, "BRTOP0");
+    emit_inst(emitter, "LD", "GR1, BIBUF, GR2");
+    emit_inst(emitter, "RET", NULL);
   }
 
-  if (codegen->builtin.e_ov) {
+  if (emitter->builtin.e_ov) {
     const char *msg = "runtime error: overflow";
-    codegen_set_label(codegen, "EMOV");
-    codegen_print(codegen, "DC", "'%s'", msg);
-    codegen_set_label(codegen, "EMLOV");
-    codegen_print(codegen, "DC", "%ld", strlen(msg));
-    codegen_set_label(codegen, "EOV");
-    codegen_print(codegen, "CALL", "BFLUSH");
-    codegen_print(codegen, "OUT", "EMOV, EMLOV");
-    codegen_print(codegen, "OUT", "BCLF, BC1");
-    codegen_print(codegen, "SVC", "1");
+    emit_label(emitter, "EMOV");
+    emit_inst(emitter, "DC", "'%s'", msg);
+    emit_label(emitter, "EMLOV");
+    emit_inst(emitter, "DC", "%ld", strlen(msg));
+    emit_label(emitter, "EOV");
+    emit_inst(emitter, "CALL", "BFLUSH");
+    emit_inst(emitter, "OUT", "EMOV, EMLOV");
+    emit_inst(emitter, "OUT", "BCLF, BC1");
+    emit_inst(emitter, "SVC", "1");
   }
 
-  if (codegen->builtin.e_div0) {
+  if (emitter->builtin.e_div0) {
     const char *msg = "runtime error: division by 0";
-    codegen_set_label(codegen, "EMDIV0");
-    codegen_print(codegen, "DC", "'%s'", msg);
-    codegen_set_label(codegen, "EMLDIV0");
-    codegen_print(codegen, "DC", "%ld", strlen(msg));
-    codegen_set_label(codegen, "EDIV0");
-    codegen_print(codegen, "CALL", "BFLUSH");
-    codegen_print(codegen, "OUT", "EMDIV0, EMLDIV0");
-    codegen_print(codegen, "OUT", "BCLF, BC1");
-    codegen_print(codegen, "SVC", "2");
+    emit_label(emitter, "EMDIV0");
+    emit_inst(emitter, "DC", "'%s'", msg);
+    emit_label(emitter, "EMLDIV0");
+    emit_inst(emitter, "DC", "%ld", strlen(msg));
+    emit_label(emitter, "EDIV0");
+    emit_inst(emitter, "CALL", "BFLUSH");
+    emit_inst(emitter, "OUT", "EMDIV0, EMLDIV0");
+    emit_inst(emitter, "OUT", "BCLF, BC1");
+    emit_inst(emitter, "SVC", "2");
   }
 
-  if (codegen->builtin.e_rng) {
+  if (emitter->builtin.e_rng) {
     const char *msg = "runtime error: index out of range";
-    codegen_set_label(codegen, "EMRNG");
-    codegen_print(codegen, "DC", "'%s'", msg);
-    codegen_set_label(codegen, "EMLRNG");
-    codegen_print(codegen, "DC", "%ld", strlen(msg));
-    codegen_set_label(codegen, "ERNG");
-    codegen_print(codegen, "CALL", "BFLUSH");
-    codegen_print(codegen, "OUT", "EMRNG, EMLRNG");
-    codegen_print(codegen, "OUT", "BCLF, BC1");
-    codegen_print(codegen, "SVC", "3");
+    emit_label(emitter, "EMRNG");
+    emit_inst(emitter, "DC", "'%s'", msg);
+    emit_label(emitter, "EMLRNG");
+    emit_inst(emitter, "DC", "%ld", strlen(msg));
+    emit_label(emitter, "ERNG");
+    emit_inst(emitter, "CALL", "BFLUSH");
+    emit_inst(emitter, "OUT", "EMRNG, EMLRNG");
+    emit_inst(emitter, "OUT", "BCLF, BC1");
+    emit_inst(emitter, "SVC", "3");
   }
 }
 
-void codegen_ir(codegen_t *codegen, const ir_t *ir)
+static void emit_ir(emitter_t *codegen, const ir_t *ir)
 {
-  codegen_set_label(codegen, "PROGRAM");
-  codegen_print(codegen, "START", NULL);
-  codegen_item(codegen, ir->items);
+  emit_label(codegen, "PROGRAM");
+  emit_inst(codegen, "START", NULL);
+  emit_item(codegen, ir->items);
   codegen_builtin(codegen);
-  codegen_constant(codegen, ir->constants);
-  codegen_print(codegen, "END", NULL);
+  emit_constant(codegen, ir->constants);
+  emit_inst(codegen, "END", NULL);
 }
 
 void codegen_casl2(const ir_t *ir)
 {
-  codegen_t codegen;
+  emitter_t codegen;
   assert(ir);
 
   codegen.file           = fopen(ir->source->out_name, "w");
@@ -1050,7 +1032,7 @@ void codegen_casl2(const ir_t *ir)
   codegen.builtin.w_int  = 0;
   codegen.builtin.w_char = 0;
   codegen.builtin.w_bool = 0;
-  codegen_ir(&codegen, ir);
+  emit_ir(&codegen, ir);
   hash_delete(codegen.addr.table, NULL, NULL);
   fclose(codegen.file);
 }
