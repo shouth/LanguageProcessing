@@ -288,15 +288,15 @@ struct ir__stmt_write_s {
 };
 
 struct ir__stmt_s {
-  ir_stmt_kind_t kind;
-  ir_stmt_t     *next;
-
   union {
     ir_stmt_assign_t assign;
     ir_stmt_call_t   call;
     ir_stmt_read_t   read;
     ir_stmt_write_t  write;
   } stmt;
+
+  ir_stmt_kind_t kind;
+  ir_stmt_t     *next;
 };
 
 typedef enum {
@@ -334,6 +334,7 @@ struct ir__termn_s {
     ir_termn_if_t   if_;
     ir_termn_arg_t  arg;
   } termn;
+
   ir_termn_kind_t kind;
 };
 

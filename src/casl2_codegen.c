@@ -232,13 +232,16 @@ static void emit_store(emitter_t *emitter, const char *reg, const ir_place_t *pl
 static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
 {
   switch (stmt->rhs->kind) {
-  case IR_RVALUE_USE:
-    emit_load(emitter, "GR1", stmt->rhs->rvalue.use.operand);
+  case IR_RVALUE_USE: {
+    ir_rvalue_use_t *use = (ir_rvalue_use_t *) stmt->rhs;
+    emit_load(emitter, "GR1", use->operand);
     break;
-  case IR_RVALUE_BINARY:
-    emit_load(emitter, "GR2", stmt->rhs->rvalue.binary.rhs);
-    emit_load(emitter, "GR1", stmt->rhs->rvalue.binary.lhs);
-    switch (stmt->rhs->rvalue.binary.kind) {
+  }
+  case IR_RVALUE_BINARY: {
+    ir_rvalue_binary_t *binary = (ir_rvalue_binary_t *) stmt->rhs;
+    emit_load(emitter, "GR2", binary->rhs);
+    emit_load(emitter, "GR1", binary->lhs);
+    switch (binary->kind) {
     case AST_EXPR_BINARY_KIND_PLUS:
       ++emitter->builtin.e_ov;
       emit_inst(emitter, "ADDA", "GR1, GR2");
@@ -259,12 +262,6 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
       emit_inst(emitter, "LD", "GR2, GR2");
       emit_inst(emitter, "JZE", "EDIV0");
       emit_inst(emitter, "DIVA", "GR1, GR2");
-      break;
-    case AST_EXPR_BINARY_KIND_AND:
-      emit_inst(emitter, "AND", "GR1, GR2");
-      break;
-    case AST_EXPR_BINARY_KIND_OR:
-      emit_inst(emitter, "OR", "GR1, GR2");
       break;
     case AST_EXPR_BINARY_KIND_EQUAL: {
       const char *jmp = item_label(emitter, NULL);
@@ -323,15 +320,19 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
       unreachable();
     }
     break;
-  case IR_RVALUE_NOT:
-    emit_load(emitter, "GR1", stmt->rhs->rvalue.not_.value);
+  }
+  case IR_RVALUE_NOT: {
+    ir_rvalue_not_t *not_ = (ir_rvalue_not_t *) stmt->rhs;
+    emit_load(emitter, "GR1", not_->value);
     emit_inst(emitter, "XOR", "GR1, BC1");
     break;
-  case IR_RVALUE_CAST:
-    emit_load(emitter, "GR1", stmt->rhs->rvalue.cast.value);
-    switch (ir_operand_type(stmt->rhs->rvalue.cast.value)->kind) {
+  }
+  case IR_RVALUE_CAST: {
+    ir_rvalue_cast_t *cast = (ir_rvalue_cast_t *) stmt->rhs;
+    emit_load(emitter, "GR1", cast->value);
+    switch (ir_operand_type(cast->value)->kind) {
     case IR_TYPE_INTEGER:
-      switch (stmt->rhs->rvalue.cast.type->kind) {
+      switch (cast->type->kind) {
       case IR_TYPE_BOOLEAN: {
         const char *jmp = item_label(emitter, NULL);
         emit_inst(emitter, "LD", "GR1, GR1");
@@ -350,7 +351,7 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
       }
       break;
     case IR_TYPE_CHAR:
-      switch (stmt->rhs->rvalue.cast.type->kind) {
+      switch (cast->type->kind) {
       case IR_TYPE_BOOLEAN: {
         const char *jmp = item_label(emitter, NULL);
         emit_inst(emitter, "LD", "GR1, GR1");
@@ -374,6 +375,7 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
       unreachable();
     }
     break;
+  }
   }
   emit_store(emitter, "GR1", stmt->lhs);
 }
@@ -601,23 +603,23 @@ static void emit_stmt_write(emitter_t *emitter, const ir_stmt_write_t *stmt)
 
 static void emit_stmt(emitter_t *emitter, const ir_stmt_t *stmt)
 {
-  while (stmt) {
+  for (; stmt; stmt = stmt->next) {
     switch (stmt->kind) {
     case IR_STMT_ASSIGN:
-      emit_stmt_assign(emitter, &stmt->stmt.assign);
+      emit_stmt_assign(emitter, (ir_stmt_assign_t *) stmt);
       break;
     case IR_STMT_CALL:
-      emit_stmt_call(emitter, &stmt->stmt.call);
+      emit_stmt_call(emitter, (ir_stmt_call_t *) stmt);
       break;
     case IR_STMT_READ:
-      emit_stmt_read(emitter, &stmt->stmt.read);
+      emit_stmt_read(emitter, (ir_stmt_read_t *) stmt);
       break;
     case IR_STMT_READLN:
       emitter->builtin.r_ln++;
       emit_inst(emitter, "CALL", "BRLN");
       break;
     case IR_STMT_WRITE:
-      emit_stmt_write(emitter, &stmt->stmt.write);
+      emit_stmt_write(emitter, (ir_stmt_write_t *) stmt);
       break;
     case IR_STMT_WRITELN:
       emitter->builtin.w_char++;
@@ -627,48 +629,42 @@ static void emit_stmt(emitter_t *emitter, const ir_stmt_t *stmt)
       emit_inst(emitter, "CALL", "BWSTR");
       break;
     }
-    stmt = stmt->next;
   }
 }
 
 static void emit_block(emitter_t *emitter, const ir_block_t *block)
 {
-  assert(emitter && block);
-
   emit_label(emitter, item_label(emitter, block));
   emit_stmt(emitter, block->stmt);
   switch (block->termn.kind) {
   case IR_TERMN_GOTO: {
-    const ir_block_t *next = block->termn.termn.goto_.next;
-    if (lookup_addr(emitter, next)) {
-      emit_inst(emitter, "JUMP", "%s", item_label(emitter, next));
+    ir_termn_goto_t *goto_ = (ir_termn_goto_t *) &block->termn;
+    if (lookup_addr(emitter, goto_->next)) {
+      emit_inst(emitter, "JUMP", "%s", item_label(emitter, goto_->next));
     } else {
-      emit_block(emitter, next);
+      emit_block(emitter, goto_->next);
     }
     break;
   }
   case IR_TERMN_IF: {
-    const ir_operand_t *cond = block->termn.termn.if_.cond;
-    const ir_block_t   *then = block->termn.termn.if_.then;
-    const ir_block_t   *els  = block->termn.termn.if_.els;
-
-    emit_load(emitter, "GR1", cond);
+    ir_termn_if_t *if_ = (ir_termn_if_t *) &block->termn;
+    emit_load(emitter, "GR1", if_->cond);
     emit_inst(emitter, "LD", "GR1, GR1");
-    if (lookup_addr(emitter, then)) {
-      emit_inst(emitter, "JNZ", "%s", item_label(emitter, then));
-      if (lookup_addr(emitter, els)) {
-        emit_inst(emitter, "JUMP", "%s", item_label(emitter, els));
+    if (lookup_addr(emitter, if_->then)) {
+      emit_inst(emitter, "JNZ", "%s", item_label(emitter, if_->then));
+      if (lookup_addr(emitter, if_->els)) {
+        emit_inst(emitter, "JUMP", "%s", item_label(emitter, if_->els));
       } else {
-        emit_block(emitter, els);
+        emit_block(emitter, if_->els);
       }
     } else {
-      if (lookup_addr(emitter, els)) {
-        emit_inst(emitter, "JZE", "%s", item_label(emitter, els));
-        emit_block(emitter, then);
+      if (lookup_addr(emitter, if_->els)) {
+        emit_inst(emitter, "JZE", "%s", item_label(emitter, if_->els));
+        emit_block(emitter, if_->then);
       } else {
-        emit_inst(emitter, "JZE", "%s", item_label(emitter, els));
-        emit_block(emitter, then);
-        emit_block(emitter, els);
+        emit_inst(emitter, "JZE", "%s", item_label(emitter, if_->els));
+        emit_block(emitter, if_->then);
+        emit_block(emitter, if_->els);
       }
     }
     break;
@@ -676,65 +672,67 @@ static void emit_block(emitter_t *emitter, const ir_block_t *block)
   case IR_TERMN_RETURN:
     emit_inst(emitter, "RET", NULL);
     break;
-  case IR_TERMN_ARG:
-    emit_push_operand_address(emitter, block->termn.termn.arg.arg);
-    emit_block(emitter, block->termn.termn.arg.next);
+  case IR_TERMN_ARG: {
+    ir_termn_arg_t *arg = (ir_termn_arg_t *) &block->termn;
+    emit_push_operand_address(emitter, arg->arg);
+    emit_block(emitter, arg->next);
     break;
+  }
   default:
     unreachable();
   }
 }
 
-static void emit_item(emitter_t *cg, const ir_item_t *item)
+static void emit_item(emitter_t *emitter, const ir_item_t *item)
 {
   while (item) {
     switch (item->kind) {
     case IR_ITEM_PROGRAM:
-      emit_inst(cg, "CALL", item_label(cg, item->body->inner));
-      emit_inst(cg, "SVC", "0");
-      emit_item(cg, item->body->items);
-      emit_block(cg, item->body->inner);
+      emit_inst(emitter, "CALL", item_label(emitter, item->body->inner));
+      emit_inst(emitter, "SVC", "0");
+      emit_item(emitter, item->body->items);
+      emit_block(emitter, item->body->inner);
       break;
     case IR_ITEM_PROCEDURE:
-      emit_item(cg, item->body->items);
-      emit_label(cg, item_label(cg, item->body));
+      emit_item(emitter, item->body->items);
+      emit_label(emitter, item_label(emitter, item->body));
       {
         ir_item_t *items = item->body->items;
-        emit_inst(cg, "POP", "GR2");
+        emit_inst(emitter, "POP", "GR2");
         while (items) {
           if (items->kind == IR_ITEM_ARG_VAR) {
-            emit_inst(cg, "POP", "GR1");
-            emit_inst(cg, "ST", "GR1, %s", item_label(cg, items));
+            emit_inst(emitter, "POP", "GR1");
+            emit_inst(emitter, "ST", "GR1, %s", item_label(emitter, items));
           }
           items = items->next;
         }
-        emit_inst(cg, "PUSH", "0, GR2");
-        emit_block(cg, item->body->inner);
+        emit_inst(emitter, "PUSH", "0, GR2");
+        emit_block(emitter, item->body->inner);
       }
       break;
     case IR_ITEM_VAR:
     case IR_ITEM_LOCAL_VAR:
-      emit_label(cg, item_label(cg, item));
+      emit_label(emitter, item_label(emitter, item));
       switch (item->type->kind) {
       case IR_TYPE_INTEGER:
       case IR_TYPE_BOOLEAN:
       case IR_TYPE_CHAR:
-        emit_inst(cg, "DS", "1");
+        emit_inst(emitter, "DS", "1");
         break;
       case IR_TYPE_ARRAY:
-        emit_inst(cg, "DS", "%ld", item->type->type.array.size);
+        emit_inst(emitter, "DS", "%ld", item->type->type.array.size);
         break;
       default:
         unreachable();
       }
       break;
     case IR_ITEM_ARG_VAR:
-      emit_label(cg, item_label(cg, item));
+      emit_label(emitter, item_label(emitter, item));
       switch (item->type->kind) {
       case IR_TYPE_INTEGER:
       case IR_TYPE_BOOLEAN:
       case IR_TYPE_CHAR:
-        emit_inst(cg, "DS", "1");
+        emit_inst(emitter, "DS", "1");
         break;
       default:
         unreachable();
@@ -745,7 +743,7 @@ static void emit_item(emitter_t *cg, const ir_item_t *item)
   }
 }
 
-static void codegen_builtin(emitter_t *emitter)
+static void emit_builtin(emitter_t *emitter)
 {
   int builtin_write = 0;
   int builtin_read  = 0;
@@ -1009,7 +1007,7 @@ static void emit_ir(emitter_t *codegen, const ir_t *ir)
   emit_label(codegen, "PROGRAM");
   emit_inst(codegen, "START", NULL);
   emit_item(codegen, ir->items);
-  codegen_builtin(codegen);
+  emit_builtin(codegen);
   emit_constant(codegen, ir->constants);
   emit_inst(codegen, "END", NULL);
 }
