@@ -14,7 +14,7 @@ typedef struct {
   ir_block_t     *break_dest;
 } lowerer_t;
 
-void maybe_error_conflict(lowerer_t *lowerer, const symbol_t *symbol, region_t region)
+static void maybe_error_conflict(lowerer_t *lowerer, const symbol_t *symbol, region_t region)
 {
   ir_item_t *item = ir_item_lookup_scope(lowerer->factory->scope, symbol);
   if (item) {
@@ -26,7 +26,7 @@ void maybe_error_conflict(lowerer_t *lowerer, const symbol_t *symbol, region_t r
   }
 }
 
-void maybe_error_undeclared(lowerer_t *lowerer, const symbol_t *symbol, region_t region)
+static void maybe_error_undeclared(lowerer_t *lowerer, const symbol_t *symbol, region_t region)
 {
   if (!ir_item_lookup(lowerer->factory->scope, symbol)) {
     msg_t *msg = new_msg(lowerer->source, region,
@@ -36,7 +36,7 @@ void maybe_error_undeclared(lowerer_t *lowerer, const symbol_t *symbol, region_t
   }
 }
 
-const ir_type_t *lower_type(lowerer_t *lowerer, ast_type_t *type)
+static const ir_type_t *lower_type(lowerer_t *lowerer, ast_type_t *type)
 {
   switch (type->kind) {
   case AST_TYPE_KIND_BOOLEAN:
@@ -61,9 +61,9 @@ const ir_type_t *lower_type(lowerer_t *lowerer, ast_type_t *type)
   unreachable();
 }
 
-ir_operand_t *lower_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *expr);
+static ir_operand_t *lower_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *expr);
 
-ir_place_t *lower_lvalue(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *expr)
+static ir_place_t *lower_lvalue(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *expr)
 {
   switch (expr->kind) {
   case AST_EXPR_KIND_DECL_REF: {
@@ -101,13 +101,11 @@ ir_place_t *lower_lvalue(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *exp
   }
 }
 
-void error_invalid_binary_expr(
+static void error_invalid_binary_expr(
   lowerer_t *lowerer, ast_expr_binary_t *expr,
   const ir_type_t *lhs_type, const ir_type_t *rhs_type, const char *expected)
 {
-  msg_t *msg;
-  assert(lowerer && expr);
-  msg = new_msg(lowerer->source, expr->op_region,
+  msg_t *msg = new_msg(lowerer->source, expr->op_region,
     MSG_ERROR, "invalid operands for `%s`", pp_binary_operator_str(expr->kind));
   msg_add_inline_entry(msg, expr->lhs->region, "%s", ir_type_str(lhs_type));
   msg_add_inline_entry(msg, expr->op_region,
@@ -116,7 +114,7 @@ void error_invalid_binary_expr(
   msg_emit(msg);
 }
 
-ir_operand_t *lower_binary_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_binary_t *expr)
+static ir_operand_t *lower_binary_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_binary_t *expr)
 {
   if (expr->lhs->kind == AST_EXPR_KIND_EMPTY) {
     ir_operand_t    *rhs   = lower_expr(lowerer, block, expr->rhs);
@@ -191,7 +189,6 @@ ir_operand_t *lower_binary_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr
         break;
       default:
         unreachable();
-        break;
       }
       {
         ir_operand_t    *rhs   = lower_expr(lowerer, &els, expr->rhs);
@@ -212,7 +209,7 @@ ir_operand_t *lower_binary_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr
   }
 }
 
-ir_operand_t *lower_not_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_not_t *expr)
+static ir_operand_t *lower_not_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_not_t *expr)
 {
   ir_operand_t     *operand = lower_expr(lowerer, block, expr->expr);
   const ir_type_t  *type    = ir_operand_type(operand);
@@ -229,7 +226,7 @@ ir_operand_t *lower_not_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_no
   return new_ir_place_operand(new_ir_plain_place(result));
 }
 
-ir_operand_t *lower_cast_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_cast_t *expr)
+static ir_operand_t *lower_cast_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_cast_t *expr)
 {
   ir_operand_t     *operand      = lower_expr(lowerer, block, expr->cast);
   const ir_type_t  *operand_type = ir_operand_type(operand);
@@ -253,10 +250,8 @@ ir_operand_t *lower_cast_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_c
   return new_ir_place_operand(new_ir_plain_place(result));
 }
 
-ir_operand_t *lower_constant_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_constant_t *expr)
+static ir_operand_t *lower_constant_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_constant_t *expr)
 {
-  assert(lowerer && block && expr);
-
   switch (expr->lit->kind) {
   case AST_LIT_KIND_NUMBER:
     return new_ir_constant_operand(ir_number_constant(lowerer->factory, expr->lit->lit.number.value));
@@ -276,7 +271,7 @@ ir_operand_t *lower_constant_expr(lowerer_t *lowerer, ir_block_t **block, ast_ex
   unreachable();
 }
 
-ir_operand_t *lower_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *expr)
+static ir_operand_t *lower_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *expr)
 {
   switch (expr->kind) {
   case AST_EXPR_KIND_DECL_REF:
@@ -299,7 +294,7 @@ ir_operand_t *lower_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *exp
   }
 }
 
-ir_operand_t *lower_stmt_call_param(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *args, ir_type_t *param_type)
+static ir_operand_t *lower_stmt_call_param(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *args, ir_type_t *param_type)
 {
   if (args && param_type) {
     ir_block_t      *blk  = *block;
@@ -324,7 +319,7 @@ ir_operand_t *lower_stmt_call_param(lowerer_t *lowerer, ir_block_t **block, ast_
   }
 }
 
-void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
+static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
 {
   for (; stmt; stmt = stmt->next) {
     switch (stmt->kind) {
@@ -543,7 +538,7 @@ void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
   }
 }
 
-ir_type_t *lower_param_types(lowerer_t *lowerer, ast_decl_param_t *decl)
+static ir_type_t *lower_param_types(lowerer_t *lowerer, ast_decl_param_t *decl)
 {
   ir_type_t  *ret  = NULL;
   ir_type_t **last = &ret;
@@ -566,7 +561,7 @@ ir_type_t *lower_param_types(lowerer_t *lowerer, ast_decl_param_t *decl)
   return ret;
 }
 
-void lower_variable_decl(lowerer_t *lowerer, ast_decl_variable_t *decl, int local)
+static void lower_variable_decl(lowerer_t *lowerer, ast_decl_variable_t *decl, int local)
 {
   for (; decl; decl = decl->next) {
     ast_ident_t     *ident = decl->names;
@@ -579,7 +574,7 @@ void lower_variable_decl(lowerer_t *lowerer, ast_decl_variable_t *decl, int loca
   }
 }
 
-void lower_param_decl(lowerer_t *lowerer, ast_decl_param_t *decl)
+static void lower_param_decl(lowerer_t *lowerer, ast_decl_param_t *decl)
 {
   for (; decl; decl = decl->next) {
     ast_ident_t     *ident = decl->names;
@@ -599,7 +594,7 @@ void lower_param_decl(lowerer_t *lowerer, ast_decl_param_t *decl)
   }
 }
 
-void lower_decl_part(lowerer_t *lowerer, ast_decl_part_t *decl_part)
+static void lower_decl_part(lowerer_t *lowerer, ast_decl_part_t *decl_part)
 {
   for (; decl_part; decl_part = decl_part->next) {
     switch (decl_part->kind) {
@@ -635,7 +630,7 @@ void lower_decl_part(lowerer_t *lowerer, ast_decl_part_t *decl_part)
   }
 }
 
-ir_item_t *lower_program(lowerer_t *lowerer, ast_program_t *program)
+static ir_item_t *lower_program(lowerer_t *lowerer, ast_program_t *program)
 {
   ir_item_t  *item        = ir_item(lowerer->factory, IR_ITEM_PROGRAM, program->name->symbol, program->name->region, ir_type_program(lowerer->factory));
   ir_block_t *block_begin = ir_block(lowerer->factory);
