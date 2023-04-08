@@ -376,6 +376,76 @@ static ir_operand_t *lower_stmt_call_param(lowerer_t *lowerer, ir_block_t **bloc
   }
 }
 
+static void maybe_error_invalid_assign(lowerer_t *lowerer, ast_stmt_assign_t *stmt, ir_place_t *lhs, ir_operand_t *rhs)
+{
+  const ir_type_t *ltype = ir_place_type(lhs);
+  const ir_type_t *rtype = ir_operand_type(rhs);
+  if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
+    msg_t *msg = new_msg(lowerer->source, stmt->op_region,
+      MSG_ERROR, "invalid operands for `:=`");
+    msg_add_inline_entry(msg, stmt->lhs->region, "%s", ir_type_str(ltype));
+    msg_add_inline_entry(msg, stmt->op_region,
+      "operator `:=` takes two operands of the same standard type");
+    msg_add_inline_entry(msg, stmt->rhs->region, "%s", ir_type_str(rtype));
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void maybe_error_invalid_condition(lowerer_t *lowerer, ast_expr_t *expr, ir_operand_t *condition)
+{
+  const ir_type_t *type = ir_operand_type(condition);
+  if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
+    msg_t *msg = new_msg(lowerer->source, expr->region,
+      MSG_ERROR, "expression of type `%s` cannot be condition", ir_type_str(type));
+    msg_add_inline_entry(msg, expr->region, "condition expressions are of type boolean");
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void maybe_error_non_procedure(lowerer_t *lowerer, ast_stmt_call_t *stmt, ir_item_t *item)
+{
+  if (item->kind != IR_ITEM_PROCEDURE) {
+    msg_t *msg = new_msg(lowerer->source, stmt->name->region,
+      MSG_ERROR, "`%.*s` is not a procedure", (int) stmt->name->symbol->len, stmt->name->symbol->ptr);
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void maybe_error_recursive_call(lowerer_t *lowerer, ast_stmt_call_t *stmt, ir_item_t *item)
+{
+  ir_scope_t *scope = lowerer->factory->scope;
+  for (; scope; scope = scope->next) {
+    if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
+      msg_t *msg = new_msg(lowerer->source, stmt->name->region,
+        MSG_ERROR, "recursive call of procedure is not allowed");
+      msg_emit(msg);
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+static void maybe_error_arg_count_mismatch(lowerer_t *lowerer, ast_stmt_call_t *stmt, ir_type_t *types)
+{
+  ast_expr_t *args     = stmt->args;
+  long        arg_cnt  = 0;
+  long        type_cnt = 0;
+  for (; args; args = args->next) {
+    ++arg_cnt;
+  }
+  for (; types; types = types->next) {
+    ++type_cnt;
+  }
+  if (arg_cnt != type_cnt) {
+    msg_t *msg = new_msg(lowerer->source, stmt->name->region, MSG_ERROR, "wrong number of arguments");
+    msg_add_inline_entry(msg, stmt->name->region, "expected %ld arguments, supplied %ld arguments", type_cnt, arg_cnt);
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+}
+
 static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
 {
   for (; stmt; stmt = stmt->next) {
@@ -384,38 +454,18 @@ static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
       ast_stmt_assign_t *assign = (ast_stmt_assign_t *) stmt;
       ir_place_t        *lhs    = lower_lvalue(lowerer, block, assign->lhs);
       ir_operand_t      *rhs    = lower_expr(lowerer, block, assign->rhs);
-      const ir_type_t   *ltype  = ir_place_type(lhs);
-      const ir_type_t   *rtype  = ir_operand_type(rhs);
 
-      if (ltype != rtype || !ir_type_is_std(ltype) || !ir_type_is_std(rtype)) {
-        msg_t *msg = new_msg(lowerer->source, assign->op_region,
-          MSG_ERROR, "invalid operands for `:=`");
-        msg_add_inline_entry(msg, assign->lhs->region, "%s", ir_type_str(ltype));
-        msg_add_inline_entry(msg, assign->op_region,
-          "operator `:=` takes two operands of the same standard type");
-        msg_add_inline_entry(msg, assign->rhs->region, "%s", ir_type_str(rtype));
-        msg_emit(msg);
-        exit(EXIT_FAILURE);
-      }
-
+      maybe_error_invalid_assign(lowerer, assign, lhs, rhs);
       ir_block_push_assign(*block, lhs, new_ir_use_rvalue(rhs));
       break;
     }
     case AST_STMT_KIND_IF: {
-      ast_stmt_if_t   *if_  = (ast_stmt_if_t *) stmt;
-      ir_operand_t    *cond = lower_expr(lowerer, block, if_->cond);
-      ir_block_t      *then = ir_block(lowerer->factory);
-      ir_block_t      *els  = ir_block(lowerer->factory);
-      const ir_type_t *type = ir_operand_type(cond);
+      ast_stmt_if_t *if_  = (ast_stmt_if_t *) stmt;
+      ir_operand_t  *cond = lower_expr(lowerer, block, if_->cond);
+      ir_block_t    *then = ir_block(lowerer->factory);
+      ir_block_t    *els  = ir_block(lowerer->factory);
 
-      if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
-        msg_t *msg = new_msg(lowerer->source, if_->cond->region,
-          MSG_ERROR, "expression of type `%s` cannot be condition", ir_type_str(type));
-        msg_add_inline_entry(msg, if_->cond->region, "condition expressions are of type boolean");
-        msg_emit(msg);
-        exit(EXIT_FAILURE);
-      }
-
+      maybe_error_invalid_condition(lowerer, if_->cond, cond);
       ir_block_terminate_if(*block, cond, then, els);
       lower_stmt(lowerer, &then, if_->then_stmt);
       if (if_->else_stmt) {
@@ -429,29 +479,23 @@ static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
       break;
     }
     case AST_STMT_KIND_WHILE: {
-      ast_stmt_while_t *while_         = (ast_stmt_while_t *) stmt;
-      ir_block_t       *cond_begin     = ir_block(lowerer->factory);
-      ir_block_t       *cond_end       = cond_begin;
-      ir_operand_t     *cond           = lower_expr(lowerer, &cond_end, while_->cond);
-      ir_block_t       *pre_break_dest = lowerer->break_dest;
-      ir_block_t       *do_            = ir_block(lowerer->factory);
-      const ir_type_t  *type           = ir_operand_type(cond);
+      ast_stmt_while_t *while_ = (ast_stmt_while_t *) stmt;
+      ir_block_t       *top    = ir_block(lowerer->factory);
+      ir_block_terminate_goto(*block, top);
+      *block = top;
+      {
+        ir_operand_t *cond     = lower_expr(lowerer, block, while_->cond);
+        ir_block_t   *do_      = ir_block(lowerer->factory);
+        ir_block_t   *pre_dest = lowerer->break_dest;
 
-      if (!ir_type_is_kind(type, IR_TYPE_BOOLEAN)) {
-        msg_t *msg = new_msg(lowerer->source, while_->cond->region,
-          MSG_ERROR, "expression of type `%s` cannot be condition", ir_type_str(type));
-        msg_add_inline_entry(msg, while_->cond->region, "condition expressions are of type boolean");
-        msg_emit(msg);
-        exit(EXIT_FAILURE);
+        maybe_error_invalid_condition(lowerer, while_->cond, cond);
+        lowerer->break_dest = ir_block(lowerer->factory);
+        ir_block_terminate_if(*block, cond, do_, lowerer->break_dest);
+        lower_stmt(lowerer, &do_, while_->do_stmt);
+        ir_block_terminate_goto(do_, top);
+        *block              = lowerer->break_dest;
+        lowerer->break_dest = pre_dest;
       }
-
-      lowerer->break_dest = ir_block(lowerer->factory);
-      ir_block_terminate_if(cond_end, cond, do_, lowerer->break_dest);
-      lower_stmt(lowerer, &do_, while_->do_stmt);
-      ir_block_terminate_goto(*block, cond_begin);
-      ir_block_terminate_goto(do_, cond_begin);
-      *block              = lowerer->break_dest;
-      lowerer->break_dest = pre_break_dest;
       break;
     }
     case AST_STMT_KIND_BREAK: {
@@ -460,53 +504,17 @@ static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
       break;
     }
     case AST_STMT_KIND_CALL: {
-      ast_stmt_call_t *call  = (ast_stmt_call_t *) stmt;
-      ast_ident_t     *ident = call->name;
-      ir_item_t       *item  = ir_item_lookup(lowerer->factory->scope, ident->symbol);
+      ast_stmt_call_t  *call       = (ast_stmt_call_t *) stmt;
+      ir_item_t        *item       = ir_item_lookup(lowerer->factory->scope, call->name->symbol);
+      const ir_local_t *func       = ir_local_for(lowerer->factory, item, call->name->region.pos);
+      ir_type_t        *param_type = ((ir_type_procedure_t *) ir_local_type(func))->param_types;
+      ir_operand_t     *arg        = lower_stmt_call_param(lowerer, block, call->args, param_type);
 
-      maybe_error_undeclared(lowerer, ident->symbol, ident->region);
-      if (item->kind != IR_ITEM_PROCEDURE) {
-        const symbol_t *symbol = call->name->symbol;
-        msg_t          *msg    = new_msg(lowerer->source, ident->region,
-                      MSG_ERROR, "`%.*s` is not a procedure", (int) symbol->len, symbol->ptr);
-        msg_emit(msg);
-        exit(EXIT_FAILURE);
-      }
-
-      {
-        ir_scope_t *scope = lowerer->factory->scope;
-        for (; scope; scope = scope->next) {
-          if (scope->owner->symbol == item->symbol && scope->owner->kind == IR_ITEM_PROCEDURE) {
-            msg_t *msg = new_msg(lowerer->source, ident->region,
-              MSG_ERROR, "recursive call of procedure is not allowed");
-            msg_emit(msg);
-            exit(EXIT_FAILURE);
-          }
-        }
-      }
-
-      {
-        const ir_local_t *func       = ir_local_for(lowerer->factory, item, ident->region.pos);
-        ir_type_t        *param_type = ir_local_type(func)->type.procedure.param_types;
-        ast_expr_t       *args       = call->args;
-        ir_type_t        *types      = param_type;
-        ir_operand_t     *arg        = lower_stmt_call_param(lowerer, block, call->args, param_type);
-        long              arg_cnt    = 0;
-        long              type_cnt   = 0;
-        for (; args; args = args->next) {
-          ++arg_cnt;
-        }
-        for (; types; types = types->next) {
-          ++type_cnt;
-        }
-        if (arg_cnt != type_cnt) {
-          msg_t *msg = new_msg(lowerer->source, ident->region, MSG_ERROR, "wrong number of arguments");
-          msg_add_inline_entry(msg, ident->region, "expected %ld arguments, supplied %ld arguments", type_cnt, arg_cnt);
-          msg_emit(msg);
-          exit(EXIT_FAILURE);
-        }
-        ir_block_push_call(*block, new_ir_plain_place(func), arg);
-      }
+      maybe_error_undeclared(lowerer, call->name->symbol, call->name->region);
+      maybe_error_non_procedure(lowerer, call, item);
+      maybe_error_recursive_call(lowerer, call, item);
+      maybe_error_arg_count_mismatch(lowerer, call, param_type);
+      ir_block_push_call(*block, new_ir_plain_place(func), arg);
       break;
     }
     case AST_STMT_KIND_RETURN: {
