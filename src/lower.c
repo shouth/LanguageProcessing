@@ -446,6 +446,32 @@ static void maybe_error_arg_count_mismatch(lowerer_t *lowerer, ast_stmt_call_t *
   }
 }
 
+static void maybe_error_invalid_read_arg(lowerer_t *lowerer, ast_expr_t *arg, ir_place_t *ref)
+{
+  const ir_type_t *type = ir_place_type(ref);
+  if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
+    msg_t *msg = new_msg(lowerer->source, arg->region,
+      MSG_ERROR, "cannot read value for reference to `%s`", ir_type_str(type));
+    msg_add_inline_entry(msg, arg->region,
+      "arguments for read statements are of reference to integer or char");
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void maybe_error_invalid_write_arg(lowerer_t *lowerer, ast_out_fmt_t *fmt, ir_operand_t *value)
+{
+  const ir_type_t *type = ir_operand_type(value);
+  if (!ir_type_is_std(type)) {
+    msg_t *msg = new_msg(lowerer->source, fmt->expr->region,
+      MSG_ERROR, "cannot write value of type `%s`", ir_type_str(type));
+    msg_add_inline_entry(msg, fmt->expr->region,
+      "arguments for write statements are of standard types");
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+}
+
 static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
 {
   for (; stmt; stmt = stmt->next) {
@@ -527,29 +553,10 @@ static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
       ast_expr_t      *args = read->args;
 
       for (; args; args = args->next) {
-        if (args->kind != AST_EXPR_KIND_DECL_REF && args->kind != AST_EXPR_KIND_ARRAY_SUBSCRIPT) {
-          msg_t *msg = new_msg(lowerer->source, args->region,
-            MSG_ERROR, "cannot read value for expression");
-          msg_add_inline_entry(msg, args->region,
-            "arguments for read statements are of reference to integer or char");
-          msg_emit(msg);
-          exit(EXIT_FAILURE);
-        }
-        {
-          ir_place_t      *ref  = lower_lvalue(lowerer, block, args);
-          const ir_type_t *type = ir_place_type(ref);
-          if (!ir_type_is_kind(type, IR_TYPE_INTEGER) && !ir_type_is_kind(type, IR_TYPE_CHAR)) {
-            msg_t *msg = new_msg(lowerer->source, args->region,
-              MSG_ERROR, "cannot read value for reference to `%s`", ir_type_str(type));
-            msg_add_inline_entry(msg, args->region,
-              "arguments for read statements are of reference to integer or char");
-            msg_emit(msg);
-            exit(EXIT_FAILURE);
-          }
-          ir_block_push_read(*block, ref);
-        }
+        ir_place_t *ref = lower_lvalue(lowerer, block, args);
+        maybe_error_invalid_read_arg(lowerer, args, ref);
+        ir_block_push_read(*block, ref);
       }
-
       if (read->newline) {
         ir_block_push_readln(*block);
       }
@@ -566,17 +573,8 @@ static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
           const ir_constant_t *constant = ir_string_constant(lowerer->factory, string->symbol, string->str_len);
           ir_block_push_write(*block, new_ir_constant_operand(constant), NULL);
         } else {
-          ir_operand_t    *value = lower_expr(lowerer, block, formats->expr);
-          const ir_type_t *type  = ir_operand_type(value);
-          if (!ir_type_is_std(type)) {
-            msg_t *msg = new_msg(lowerer->source, formats->expr->region,
-              MSG_ERROR, "cannot write value of type `%s`", ir_type_str(type));
-            msg_add_inline_entry(msg, formats->expr->region,
-              "arguments for write statements are of standard types");
-            msg_emit(msg);
-            exit(EXIT_FAILURE);
-          }
-
+          ir_operand_t *value = lower_expr(lowerer, block, formats->expr);
+          maybe_error_invalid_write_arg(lowerer, formats, value);
           if (formats->len) {
             ir_block_push_write(*block, value, ir_number_constant(lowerer->factory, formats->len->lit.number.value));
           } else {
@@ -584,7 +582,6 @@ static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
           }
         }
       }
-
       if (write->newline) {
         ir_block_push_writeln(*block);
       }
