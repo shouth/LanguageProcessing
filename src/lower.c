@@ -174,7 +174,7 @@ static void maybe_error_invalid_logical(
   }
 }
 
-static ir_operand_t *lower_binary_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_binary_t *expr)
+static ir_operand_t *lower_expr_binary(lowerer_t *lowerer, ir_block_t **block, ast_expr_binary_t *expr)
 {
   if (expr->lhs->kind == AST_EXPR_KIND_EMPTY) {
     ir_operand_t *rhs = lower_expr(lowerer, block, expr->rhs);
@@ -261,7 +261,7 @@ static void maybe_error_invalid_inversion(lowerer_t *lowerer, ast_expr_not_t *ex
   }
 }
 
-static ir_operand_t *lower_not_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_not_t *expr)
+static ir_operand_t *lower_expr_not(lowerer_t *lowerer, ir_block_t **block, ast_expr_not_t *expr)
 {
   ir_operand_t     *operand = lower_expr(lowerer, block, expr->expr);
   const ir_local_t *result  = ir_local_temp(lowerer->factory, ir_type_boolean(lowerer->factory));
@@ -293,7 +293,7 @@ static void maybe_error_invalid_cast_type(lowerer_t *lowerer, ast_expr_cast_t *e
   }
 }
 
-static ir_operand_t *lower_cast_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_cast_t *expr)
+static ir_operand_t *lower_expr_cast(lowerer_t *lowerer, ir_block_t **block, ast_expr_cast_t *expr)
 {
   ir_operand_t     *operand = lower_expr(lowerer, block, expr->cast);
   const ir_type_t  *type    = lower_type(lowerer, expr->type);
@@ -314,7 +314,7 @@ static void maybe_error_invalid_char_constant(lowerer_t *lowerer, ast_lit_string
   }
 }
 
-static ir_operand_t *lower_constant_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr_constant_t *expr)
+static ir_operand_t *lower_expr_constant(lowerer_t *lowerer, ast_expr_constant_t *expr)
 {
   switch (expr->lit->kind) {
   case AST_LIT_KIND_NUMBER:
@@ -337,15 +337,15 @@ static ir_operand_t *lower_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr
   case AST_EXPR_KIND_ARRAY_SUBSCRIPT:
     return new_ir_place_operand(lower_lvalue(lowerer, block, expr));
   case AST_EXPR_KIND_BINARY:
-    return lower_binary_expr(lowerer, block, (ast_expr_binary_t *) expr);
+    return lower_expr_binary(lowerer, block, (ast_expr_binary_t *) expr);
   case AST_EXPR_KIND_NOT:
-    return lower_not_expr(lowerer, block, (ast_expr_not_t *) expr);
+    return lower_expr_not(lowerer, block, (ast_expr_not_t *) expr);
   case AST_EXPR_KIND_PAREN:
     return lower_expr(lowerer, block, ((ast_expr_paren_t *) expr)->inner);
   case AST_EXPR_KIND_CAST:
-    return lower_cast_expr(lowerer, block, (ast_expr_cast_t *) expr);
+    return lower_expr_cast(lowerer, block, (ast_expr_cast_t *) expr);
   case AST_EXPR_KIND_CONSTANT:
-    return lower_constant_expr(lowerer, block, (ast_expr_constant_t *) expr);
+    return lower_expr_constant(lowerer, (ast_expr_constant_t *) expr);
   default:
     unreachable();
   }
