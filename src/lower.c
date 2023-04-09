@@ -351,26 +351,32 @@ static ir_operand_t *lower_expr(lowerer_t *lowerer, ir_block_t **block, ast_expr
   }
 }
 
-static ir_operand_t *lower_stmt_call_param(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *args, ir_type_t *param_type)
+static void maybe_error_arg_type_mismatch(lowerer_t *lowerer, ast_expr_t *arg, const ir_type_t *param_type, const ir_type_t *arg_type)
 {
-  if (args && param_type) {
-    ir_block_t      *blk  = *block;
-    ir_operand_t    *next = lower_stmt_call_param(lowerer, &blk, args->next, param_type->next);
-    ir_operand_t    *ret  = lower_expr(lowerer, &blk, args);
-    const ir_type_t *type = ir_operand_type(ret);
-    ret->next             = next;
-    if (param_type->type.ref != type) {
-      msg_t *msg = new_msg(lowerer->source, args->region, MSG_ERROR, "mismatching argument type");
-      char   expected[1024], found[1024];
-      strcpy(expected, ir_type_str(param_type->type.ref));
-      strcpy(found, ir_type_str(type));
-      msg_add_inline_entry(msg, args->region, "expected `%s`, found `%s`", expected, found);
-      msg_emit(msg);
-      exit(EXIT_FAILURE);
-    }
+  if (param_type->type.ref != arg_type) {
+    msg_t *msg = new_msg(lowerer->source, arg->region, MSG_ERROR, "mismatching argument type");
+    char   expected[1024], found[1024];
+    strcpy(expected, ir_type_str(param_type->type.ref));
+    strcpy(found, ir_type_str(arg_type));
+    msg_add_inline_entry(msg, arg->region, "expected `%s`, found `%s`", expected, found);
+    msg_emit(msg);
+    exit(EXIT_FAILURE);
+  }
+}
+
+static ir_operand_t *lower_stmt_call_param(lowerer_t *lowerer, ir_block_t **block, ast_expr_t *exprs, const ir_type_t *param_types)
+{
+  if (exprs && param_types) {
+    ir_block_t      *blk      = *block;
+    ir_operand_t    *next     = lower_stmt_call_param(lowerer, &blk, exprs->next, param_types->next);
+    ir_operand_t    *arg      = lower_expr(lowerer, &blk, exprs);
+    const ir_type_t *arg_type = ir_operand_type(arg);
+    arg->next                 = next;
+
+    maybe_error_arg_type_mismatch(lowerer, exprs, param_types, arg_type);
     *block = ir_block(lowerer->factory);
-    ir_block_terminate_arg(blk, ret, *block);
-    return ret;
+    ir_block_terminate_arg(blk, arg, *block);
+    return arg;
   } else {
     return NULL;
   }
@@ -427,7 +433,7 @@ static void maybe_error_recursive_call(lowerer_t *lowerer, ast_stmt_call_t *stmt
   }
 }
 
-static void maybe_error_arg_count_mismatch(lowerer_t *lowerer, ast_stmt_call_t *stmt, ir_type_t *types)
+static void maybe_error_arg_count_mismatch(lowerer_t *lowerer, ast_stmt_call_t *stmt, const ir_type_t *types)
 {
   ast_expr_t *args     = stmt->args;
   long        arg_cnt  = 0;
@@ -530,17 +536,20 @@ static void lower_stmt(lowerer_t *lowerer, ir_block_t **block, ast_stmt_t *stmt)
       break;
     }
     case AST_STMT_KIND_CALL: {
-      ast_stmt_call_t  *call       = (ast_stmt_call_t *) stmt;
-      ir_item_t        *item       = ir_item_lookup(lowerer->factory->scope, call->name->symbol);
-      const ir_local_t *func       = ir_local_for(lowerer->factory, item, call->name->region.pos);
-      ir_type_t        *param_type = ((ir_type_procedure_t *) ir_local_type(func))->param_types;
-      ir_operand_t     *arg        = lower_stmt_call_param(lowerer, block, call->args, param_type);
-
+      ast_stmt_call_t *call = (ast_stmt_call_t *) stmt;
       maybe_error_undeclared(lowerer, call->name->symbol, call->name->region);
-      maybe_error_non_procedure(lowerer, call, item);
-      maybe_error_recursive_call(lowerer, call, item);
-      maybe_error_arg_count_mismatch(lowerer, call, param_type);
-      ir_block_push_call(*block, new_ir_plain_place(func), arg);
+      {
+        ir_item_t *item = ir_item_lookup(lowerer->factory->scope, call->name->symbol);
+        maybe_error_non_procedure(lowerer, call, item);
+        maybe_error_recursive_call(lowerer, call, item);
+        {
+          const ir_local_t *func        = ir_local_for(lowerer->factory, item, call->name->region.pos);
+          const ir_type_t  *param_types = ((ir_type_procedure_t *) ir_local_type(func))->param_types;
+          ir_operand_t     *arg         = lower_stmt_call_param(lowerer, block, call->args, param_types);
+          maybe_error_arg_count_mismatch(lowerer, call, param_types);
+          ir_block_push_call(*block, new_ir_plain_place(func), arg);
+        }
+      }
       break;
     }
     case AST_STMT_KIND_RETURN: {

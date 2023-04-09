@@ -307,37 +307,38 @@ static ir_local_t *new_ir_local(ir_local_kind_t kind)
 
 const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, long pos)
 {
-  const hash_entry_t *entry;
-  ir_local_t         *local;
-  ir_item_pos_t      *item_pos;
-  assert(factory && item);
+  ir_item_pos_t *item_pos = xmalloc(sizeof(ir_item_pos_t));
+  item_pos->pos           = pos;
+  item_pos->next          = NULL;
+  *item->refs.tail        = item_pos;
+  item->refs.tail         = &item_pos->next;
 
-  item_pos         = xmalloc(sizeof(ir_item_pos_t));
-  item_pos->pos    = pos;
-  item_pos->next   = NULL;
-  *item->refs.tail = item_pos;
-  item->refs.tail  = &item_pos->next;
-
-  if ((entry = hash_find(factory->scope->locals.table, item))) {
-    return entry->value;
+  {
+    const hash_entry_t *entry;
+    if ((entry = hash_find(factory->scope->locals.table, item))) {
+      return entry->value;
+    }
   }
 
-  switch (item->kind) {
-  case IR_ITEM_VAR:
-  case IR_ITEM_LOCAL_VAR:
-  case IR_ITEM_PROCEDURE:
-    local                 = new_ir_local(IR_LOCAL_VAR);
-    local->local.var.item = item;
-    break;
-  case IR_ITEM_ARG_VAR:
-    local                 = new_ir_local(IR_LOCAL_ARG);
-    local->local.arg.item = item;
-    break;
-  default:
-    unreachable();
+  {
+    ir_local_t *local;
+    switch (item->kind) {
+    case IR_ITEM_VAR:
+    case IR_ITEM_LOCAL_VAR:
+    case IR_ITEM_PROCEDURE:
+      local                 = new_ir_local(IR_LOCAL_VAR);
+      local->local.var.item = item;
+      break;
+    case IR_ITEM_ARG_VAR:
+      local                 = new_ir_local(IR_LOCAL_ARG);
+      local->local.arg.item = item;
+      break;
+    default:
+      unreachable();
+    }
+    hash_insert_unsafe(factory->scope->locals.table, item, local);
+    return ir_scope_append_local(factory->scope, local);
   }
-  hash_insert_unsafe(factory->scope->locals.table, item, local);
-  return ir_scope_append_local(factory->scope, local);
 }
 
 const ir_local_t *ir_local_temp(ir_factory_t *factory, const ir_type_t *type)
