@@ -636,9 +636,9 @@ static void emit_block(emitter_t *emitter, const ir_block_t *block)
 {
   emit_label(emitter, item_label(emitter, block));
   emit_stmt(emitter, block->stmt);
-  switch (block->termn.kind) {
+  switch (block->termn->kind) {
   case IR_TERMN_GOTO: {
-    ir_termn_goto_t *goto_ = (ir_termn_goto_t *) &block->termn;
+    ir_termn_goto_t *goto_ = (ir_termn_goto_t *) block->termn;
     if (lookup_addr(emitter, goto_->next)) {
       emit_inst(emitter, "JUMP", "%s", item_label(emitter, goto_->next));
     } else {
@@ -647,7 +647,7 @@ static void emit_block(emitter_t *emitter, const ir_block_t *block)
     break;
   }
   case IR_TERMN_IF: {
-    ir_termn_if_t *if_ = (ir_termn_if_t *) &block->termn;
+    ir_termn_if_t *if_ = (ir_termn_if_t *) block->termn;
     emit_load(emitter, "GR1", if_->cond);
     emit_inst(emitter, "LD", "GR1, GR1");
     if (lookup_addr(emitter, if_->then)) {
@@ -673,7 +673,7 @@ static void emit_block(emitter_t *emitter, const ir_block_t *block)
     emit_inst(emitter, "RET", NULL);
     break;
   case IR_TERMN_ARG: {
-    ir_termn_arg_t *arg = (ir_termn_arg_t *) &block->termn;
+    ir_termn_arg_t *arg = (ir_termn_arg_t *) block->termn;
     emit_push_operand_address(emitter, arg->arg);
     emit_block(emitter, arg->next);
     break;

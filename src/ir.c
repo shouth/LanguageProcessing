@@ -657,7 +657,7 @@ void delete_ir_rvalue(ir_rvalue_t *rvalue)
   free(rvalue);
 }
 
-static ir_stmt_t *new_ir_stmt(ir_stmt_kind_t kind)
+static ir_stmt_t *ir_stmt_new(ir_stmt_kind_t kind)
 {
   ir_stmt_t *ret = xmalloc(sizeof(ir_stmt_t));
   ret->kind      = kind;
@@ -667,30 +667,28 @@ static ir_stmt_t *new_ir_stmt(ir_stmt_kind_t kind)
 
 void delete_ir_stmt(ir_stmt_t *stmt)
 {
-  if (!stmt) {
-    return;
+  if (stmt) {
+    switch (stmt->kind) {
+    case IR_STMT_ASSIGN:
+      delete_ir_place(stmt->stmt.assign.lhs);
+      delete_ir_rvalue(stmt->stmt.assign.rhs);
+      break;
+    case IR_STMT_CALL:
+      delete_ir_place(stmt->stmt.call.func);
+      delete_ir_operand(stmt->stmt.call.args);
+      break;
+    case IR_STMT_READ:
+      delete_ir_place(stmt->stmt.read.ref);
+      break;
+    case IR_STMT_WRITE:
+      delete_ir_operand(stmt->stmt.write.value);
+      break;
+    default:
+      /* do nothing */
+      break;
+    }
+    delete_ir_stmt(stmt->next);
   }
-
-  switch (stmt->kind) {
-  case IR_STMT_ASSIGN:
-    delete_ir_place(stmt->stmt.assign.lhs);
-    delete_ir_rvalue(stmt->stmt.assign.rhs);
-    break;
-  case IR_STMT_CALL:
-    delete_ir_place(stmt->stmt.call.func);
-    delete_ir_operand(stmt->stmt.call.args);
-    break;
-  case IR_STMT_READ:
-    delete_ir_place(stmt->stmt.read.ref);
-    break;
-  case IR_STMT_WRITE:
-    delete_ir_operand(stmt->stmt.write.value);
-    break;
-  default:
-    /* do nothing */
-    break;
-  }
-  delete_ir_stmt(stmt->next);
   free(stmt);
 }
 
@@ -700,107 +698,112 @@ ir_block_t *ir_block(ir_factory_t *factory)
   ret->stmt             = NULL;
   ret->stmt_tail        = &ret->stmt;
   ret->next             = NULL;
-  ret->termn.kind       = -1;
+  ret->termn            = NULL;
   *factory->blocks.tail = ret;
   factory->blocks.tail  = &ret->next;
   return ret;
 }
 
-void ir_block_append_block(ir_block_t *block, ir_stmt_t *stmt)
+static void ir_block_append_block(ir_block_t *block, ir_stmt_t *stmt)
 {
-  assert(block->termn.kind == -1);
+  assert(block && stmt);
   *block->stmt_tail = stmt;
   block->stmt_tail  = &stmt->next;
 }
 
 void ir_block_push_assign(ir_block_t *block, ir_place_t *lhs, ir_rvalue_t *rhs)
 {
-  ir_stmt_t *ret       = new_ir_stmt(IR_STMT_ASSIGN);
-  ret->stmt.assign.lhs = lhs;
-  ret->stmt.assign.rhs = rhs;
-  ir_block_append_block(block, ret);
+  ir_stmt_assign_t *stmt = (ir_stmt_assign_t *) ir_stmt_new(IR_STMT_ASSIGN);
+  stmt->lhs              = lhs;
+  stmt->rhs              = rhs;
+  ir_block_append_block(block, (ir_stmt_t *) stmt);
 }
 
 void ir_block_push_call(ir_block_t *block, ir_place_t *func, ir_operand_t *args)
 {
-  ir_stmt_t *ret      = new_ir_stmt(IR_STMT_CALL);
-  ret->stmt.call.func = func;
-  ret->stmt.call.args = args;
-  ir_block_append_block(block, ret);
+  ir_stmt_call_t *stmt = (ir_stmt_call_t *) ir_stmt_new(IR_STMT_CALL);
+  stmt->func           = func;
+  stmt->args           = args;
+  ir_block_append_block(block, (ir_stmt_t *) stmt);
 }
 
 void ir_block_push_read(ir_block_t *block, ir_place_t *ref)
 {
-  ir_stmt_t *ret     = new_ir_stmt(IR_STMT_READ);
-  ret->stmt.read.ref = ref;
-  ir_block_append_block(block, ret);
+  ir_stmt_read_t *stmt = (ir_stmt_read_t *) ir_stmt_new(IR_STMT_READ);
+  stmt->ref            = ref;
+  ir_block_append_block(block, (ir_stmt_t *) stmt);
 }
 
 void ir_block_push_readln(ir_block_t *block)
 {
-  ir_stmt_t *ret = new_ir_stmt(IR_STMT_READLN);
-  ir_block_append_block(block, ret);
+  ir_block_append_block(block, ir_stmt_new(IR_STMT_READLN));
 }
 
 void ir_block_push_write(ir_block_t *block, ir_operand_t *value, const ir_constant_t *len)
 {
-  ir_stmt_t *ret        = new_ir_stmt(IR_STMT_WRITE);
-  ret->stmt.write.value = value;
-  ret->stmt.write.len   = len;
-  ir_block_append_block(block, ret);
+  ir_stmt_write_t *stmt = (ir_stmt_write_t *) ir_stmt_new(IR_STMT_WRITE);
+  stmt->value           = value;
+  stmt->len             = len;
+  ir_block_append_block(block, (ir_stmt_t *) stmt);
 }
 
 void ir_block_push_writeln(ir_block_t *block)
 {
-  ir_stmt_t *ret = new_ir_stmt(IR_STMT_WRITELN);
-  ir_block_append_block(block, ret);
+  ir_block_append_block(block, ir_stmt_new(IR_STMT_WRITELN));
+}
+
+static ir_termn_t *ir_block_terminate(ir_block_t *block, ir_termn_kind_t kind)
+{
+  block->termn       = xmalloc(sizeof(ir_termn_t));
+  block->termn->kind = kind;
+  return block->termn;
 }
 
 void ir_block_terminate_goto(ir_block_t *block, const ir_block_t *next)
 {
-  assert(block->termn.kind == -1);
-  block->termn.kind             = IR_TERMN_GOTO;
-  block->termn.termn.goto_.next = next;
+  ir_termn_goto_t *termn = (ir_termn_goto_t *) ir_block_terminate(block, IR_TERMN_GOTO);
+  termn->next            = next;
 }
 
 void ir_block_terminate_if(ir_block_t *block, ir_operand_t *cond, const ir_block_t *then, const ir_block_t *els)
 {
-  assert(block->termn.kind == -1);
-  block->termn.kind           = IR_TERMN_IF;
-  block->termn.termn.if_.cond = cond;
-  block->termn.termn.if_.then = then;
-  block->termn.termn.if_.els  = els;
+  ir_termn_if_t *termn = (ir_termn_if_t *) ir_block_terminate(block, IR_TERMN_IF);
+  termn->cond          = cond;
+  termn->then          = then;
+  termn->els           = els;
 }
 
 void ir_block_terminate_return(ir_block_t *block)
 {
-  assert(block->termn.kind == -1);
-  block->termn.kind = IR_TERMN_RETURN;
+  ir_block_terminate(block, IR_TERMN_RETURN);
 }
 
 void ir_block_terminate_arg(ir_block_t *block, const ir_operand_t *arg, const ir_block_t *next)
 {
-  assert(block->termn.kind == -1);
-  block->termn.kind           = IR_TERMN_ARG;
-  block->termn.termn.arg.arg  = arg;
-  block->termn.termn.arg.next = next;
+  ir_termn_arg_t *termn = (ir_termn_arg_t *) ir_block_terminate(block, IR_TERMN_ARG);
+  termn->arg            = arg;
+  termn->next           = next;
 }
 
 void delete_ir_block(ir_block_t *block)
 {
-  if (!block) {
-    return;
+  if (block) {
+    if (block->termn) {
+      switch (block->termn->kind) {
+      case IR_TERMN_IF: {
+        ir_termn_if_t *if_ = (ir_termn_if_t *) block->termn;
+        delete_ir_operand(if_->cond);
+        break;
+      }
+      default:
+        /* do nothing */
+        break;
+      }
+    }
+    free(block->termn);
+    delete_ir_stmt(block->stmt);
+    delete_ir_block(block->next);
   }
-  switch (block->termn.kind) {
-  case IR_TERMN_IF:
-    delete_ir_operand(block->termn.termn.if_.cond);
-    break;
-  default:
-    /* do nothing */
-    break;
-  }
-  delete_ir_stmt(block->stmt);
-  delete_ir_block(block->next);
   free(block);
 }
 

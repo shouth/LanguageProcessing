@@ -342,7 +342,7 @@ struct ir__block_s {
   ir_block_t *next;
   ir_stmt_t  *stmt;
   ir_stmt_t **stmt_tail;
-  ir_termn_t  termn;
+  ir_termn_t *termn;
 };
 
 ir_block_t *ir_block(ir_factory_t *factory);
