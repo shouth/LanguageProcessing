@@ -42,10 +42,10 @@ static void error_expected(const char *str)
 static void error_unexpected(void)
 {
   if (ctx.alive) {
-    char               buf[1024], *ptr = buf;
-    token_type_index_t i;
-    token_type_index_t last_type;
-    long               last_token = -1;
+    char             buf[1024], *ptr = buf;
+    token_category_t i;
+    token_category_t last_type;
+    long             last_token = -1;
 
     for (i = TOKEN_TYPE_COUNT - 1; i >= 0; --i) {
       if (ctx.expected[i]) {
@@ -112,12 +112,12 @@ static int check(token_kind_t kind)
 {
   if (!ctx.alive) {
     return 0;
-  } else if (token_type(kind) == TOKEN_TYPE_KEYWORD) {
-    ctx.expected[TOKEN_TYPE_INDEX_KEYWORD] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_KEYWORD);
+  } else if (token_category(kind) == TOKEN_TYPE_KEYWORD) {
+    ctx.expected[TOKEN_CATEGORY_KEYWORD] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_KEYWORD);
     return ctx.next.type == TOKEN_IDENT && inspect(token_to_str(kind));
   } else if (kind == TOKEN_IDENT) {
     if (ctx.next.type == TOKEN_IDENT) {
-      ctx.expected[TOKEN_TYPE_INDEX_TOKEN] |= (unsigned long) 1 << (TOKEN_IDENT ^ TOKEN_TYPE_TOKEN);
+      ctx.expected[TOKEN_CATEGORY_TOKEN] |= (unsigned long) 1 << (TOKEN_IDENT ^ TOKEN_TYPE_TOKEN);
       for (kind = TOKEN_TYPE_KEYWORD; kind < TOKEN_TYPE_KEYWORD_END; ++kind) {
         if (inspect(token_to_str(kind))) {
           return 0;
@@ -127,7 +127,7 @@ static int check(token_kind_t kind)
     }
     return 0;
   } else {
-    ctx.expected[TOKEN_TYPE_INDEX_TOKEN] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_TOKEN);
+    ctx.expected[TOKEN_CATEGORY_TOKEN] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_TOKEN);
     return ctx.next.type == kind;
   }
 }
