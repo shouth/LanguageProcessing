@@ -49,22 +49,22 @@ int bit_left_most(unsigned long n)
 
 #else
 
-int popcount(unsigned long n)
+int bit_popcount(unsigned long n)
 {
   int count = 0;
   while (n) {
     ++count;
-    n ^= n & (~n + 1);
+    n &= n - 1;
   }
   return count;
 }
 
-int right_most_bit(unsigned long n)
+int bit_right_most(unsigned long n)
 {
-  return popcount((n & (~n + 1)) - 1);
+  return bit_popcount((n & (~n + 1)) - 1);
 }
 
-int left_most_bit(unsigned long n)
+int bit_left_most(unsigned long n)
 {
   int count = 0;
   for (; n; n >>= 1) {
