@@ -200,7 +200,7 @@ static const ir_type_t *ir_type_intern(ir_factory_t *factory, ir_type_t *type)
     }
     return entry->value;
   }
-  hash_insert_unsafe(factory->types.table, type, type);
+  hash_insert_unchecked(factory->types.table, type, type);
   *factory->types.tail = type;
   factory->types.tail  = &type->next;
   return type;
@@ -336,7 +336,7 @@ const ir_local_t *ir_local_for(ir_factory_t *factory, ir_item_t *item, long pos)
     default:
       unreachable();
     }
-    hash_insert_unsafe(factory->scope->locals.table, item, local);
+    hash_insert_unchecked(factory->scope->locals.table, item, local);
     return ir_scope_append_local(factory->scope, local);
   }
 }
@@ -462,7 +462,7 @@ static const ir_constant_t *ir_constant_intern(ir_factory_t *factory, ir_constan
     }
     return entry->value;
   }
-  hash_insert_unsafe(factory->constants.table, constant, constant);
+  hash_insert_unchecked(factory->constants.table, constant, constant);
   *factory->constants.tail = constant;
   factory->constants.tail  = &constant->next;
   return constant;
@@ -821,7 +821,7 @@ ir_item_t *ir_item(ir_factory_t *factory, ir_item_kind_t kind, const symbol_t *s
 
   if (kind != IR_ITEM_PROGRAM) {
     assert(!ir_item_lookup_scope(factory->scope, symbol));
-    hash_insert_unsafe(factory->scope->items.table, (void *) symbol, ret);
+    hash_insert_unchecked(factory->scope->items.table, (void *) symbol, ret);
     *factory->scope->items.tail = ret;
     factory->scope->items.tail  = &ret->next;
   }

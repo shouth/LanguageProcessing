@@ -39,7 +39,7 @@ static addr_t addr_of(emitter_t *emitter, const void *ptr)
   if (!(addr = lookup_addr(emitter, ptr))) {
     addr = ++emitter->addr.cnt;
     if (ptr) {
-      hash_insert_unsafe(emitter->addr.table, (void *) ptr, (void *) addr);
+      hash_insert_unchecked(emitter->addr.table, (void *) ptr, (void *) addr);
     }
   }
   return addr;

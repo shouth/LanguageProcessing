@@ -20,7 +20,7 @@ static void hash_init_buckets(hash_t *table)
   table->size       = 0;
   table->bucket_cnt = table->capacity + NBHD_RANGE;
   table->buckets    = xmalloc(sizeof(hash_entry_t) * table->bucket_cnt);
-  for (i = 0; i < table->bucket_cnt; i++) {
+  for (i = 0; i < table->bucket_cnt; ++i) {
     table->buckets[i].hop   = 0;
     table->buckets[i].key   = NULL;
     table->buckets[i].value = NULL;
@@ -73,9 +73,9 @@ static void hash_grow(hash_t *table)
   old_bucket_cnt = table->bucket_cnt;
   table->capacity <<= 1;
   hash_init_buckets(table);
-  for (i = 0; i < old_bucket_cnt; i++) {
+  for (i = 0; i < old_bucket_cnt; ++i) {
     if (old_buckets[i].key) {
-      hash_insert_unsafe(table, old_buckets[i].key, old_buckets[i].value);
+      hash_insert_unchecked(table, old_buckets[i].key, old_buckets[i].value);
     }
   }
   free(old_buckets);
@@ -107,16 +107,13 @@ const hash_entry_t *hash_find(hash_t *table, const void *key)
   return NULL;
 }
 
-void hash_insert_unsafe(hash_t *table, void *key, void *value)
+const hash_entry_t *hash_insert_unchecked(hash_t *table, void *key, void *value)
 {
-  hash_entry_t *home, *empty = NULL;
-  long          dist, index;
-  long          i;
-  assert(table && key && value);
-
-  index = hash_index(table, key);
-  home  = table->buckets + index;
-  for (dist = 0; dist < NBHD_RANGE * 8; dist++) {
+  long          index = hash_index(table, key);
+  long          dist;
+  hash_entry_t *home  = table->buckets + index;
+  hash_entry_t *empty = NULL;
+  for (dist = 0; dist < NBHD_RANGE * 8; ++dist) {
     if (!home[dist].key) {
       empty = home + dist;
       break;
@@ -125,10 +122,10 @@ void hash_insert_unsafe(hash_t *table, void *key, void *value)
 
   while (empty && dist >= NBHD_RANGE) {
     hash_entry_t *entry = empty - NBHD_RANGE + 1;
-    for (i = 0; i < NBHD_RANGE; i++) {
-      unsigned long hop = entry[i].hop;
-      if (hop) {
-        int t = bit_right_most(hop);
+    long          i;
+    for (i = 0; i < NBHD_RANGE; ++i) {
+      if (entry[i].hop) {
+        int t = bit_right_most(entry[i].hop);
         if (i + t < NBHD_RANGE) {
           hash_entry_t *next = entry + i + t;
           empty->key         = next->key;
@@ -149,7 +146,7 @@ void hash_insert_unsafe(hash_t *table, void *key, void *value)
 
   if (!empty) {
     hash_grow(table);
-    hash_insert_unsafe(table, key, value);
+    return hash_insert_unchecked(table, key, value);
   } else {
     empty->key   = key;
     empty->value = value;
@@ -158,16 +155,17 @@ void hash_insert_unsafe(hash_t *table, void *key, void *value)
     if (100 * table->size / table->bucket_cnt >= table->load_factor) {
       hash_grow(table);
     }
+    return empty;
   }
 }
 
-hash_entry_t *hash_insert(hash_t *table, void *key, void *value)
+const hash_entry_t *hash_insert(hash_t *table, void *key, void *value)
 {
   hash_entry_t *ret;
   assert(table && key && value);
 
   ret = hash_remove(table, key);
-  hash_insert_unsafe(table, key, value);
+  hash_insert_unchecked(table, key, value);
   return ret;
 }
 

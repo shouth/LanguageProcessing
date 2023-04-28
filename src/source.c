@@ -269,7 +269,7 @@ const symbol_t *symbol_intern(symbol_context_t *context, const char *ptr, long l
   } else {
     symbol_t *nsymbol = xmalloc(sizeof(symbol_t));
     *nsymbol          = symbol;
-    hash_insert_unsafe(context->table, nsymbol, nsymbol);
+    hash_insert_unchecked(context->table, nsymbol, nsymbol);
     return nsymbol;
   }
 }
