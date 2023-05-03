@@ -6,7 +6,9 @@
 
 void *xmalloc(long size);
 
-unsigned long fnv1a(const void *ptr, long len);
+#define FNV1A_SEED 0x811C9DC5
+
+unsigned long fnv1a(unsigned long hash, const void *ptr, long len);
 
 int bit_popcount(unsigned long n);
 int bit_right_most(unsigned long n);

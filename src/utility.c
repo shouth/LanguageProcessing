@@ -17,9 +17,8 @@ void *xmalloc(long size)
   return ret;
 }
 
-unsigned long fnv1a(const void *ptr, long len)
+unsigned long fnv1a(unsigned long hash, const void *ptr, long len)
 {
-  unsigned long hash  = 0x811C9DC5;
   unsigned long prime = 0x01000193;
   long          i;
 

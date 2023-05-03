@@ -11,7 +11,7 @@ int hash_default_comp(const void *lhs, const void *rhs)
 
 unsigned long hash_default_hasher(const void *ptr)
 {
-  return fnv1a(&ptr, sizeof(void *));
+  return fnv1a(FNV1A_SEED, &ptr, sizeof(void *));
 }
 
 static void hash_init_buckets(hash_t *table)
