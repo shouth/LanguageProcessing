@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 
 #include "mppl.h"
 #include "utility.h"
@@ -26,9 +27,10 @@ static void crossref_print_ns(crossref_t *crossref, const crossref_item_t *ns)
   crossref_print_ns(crossref, ns->owner);
 }
 
-static void crossref_print_type(const ir_type_t *type)
+static void crossref_print_type(const type_t *type)
 {
-  printf("%s", ir_type_str(type));
+  /* TODO: implement */
+  /* printf("%s", ir_type_str(type)) */
 }
 
 static void crossref_print_location(crossref_t *crossref, long pos)
@@ -93,7 +95,7 @@ static int crossref_item_compare(const void *lhs, const void *rhs)
     return -1;
   } else if (l && !r) {
     return 1;
-  } else if ((ret = symbol_compare(l->item->symbol, r->item->symbol))) {
+  } else if ((ret = strcmp(l->item->symbol->ptr, r->item->symbol->ptr))) {
     return ret;
   } else {
     return crossref_item_compare(l->owner, r->owner);

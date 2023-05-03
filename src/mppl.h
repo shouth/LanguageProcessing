@@ -2,19 +2,16 @@
 #define MPPL_H
 
 #include "ast.h"
+#include "context.h"
 #include "ir.h"
 
 /* parser.c */
 
-ast_t *parse_source(const source_t *src);
+ast_t *parse_source(context_t *context, const source_t *src);
 
 /* pretty_print.c */
 
 void pretty_print(const ast_t *ast);
-
-/* analyzer.c */
-
-ir_t *lower_ast(ast_t *ast);
 
 /* crossref.c */
 

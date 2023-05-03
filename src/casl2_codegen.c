@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "context.h"
 #include "ir.h"
 #include "mppl.h"
 #include "utility.h"
@@ -101,19 +102,23 @@ static void emit_constant(emitter_t *emitter, const ir_constant_t *constant)
 
 static void emit_range_check(emitter_t *emitter, const char *reg, const ir_local_t *local)
 {
-  const ir_type_t *type = ir_local_type(local);
+  const type_t *type = ir_local_type(local);
   ++emitter->builtin.e_rng;
-  if (local->kind == IR_LOCAL_VAR
-    && ir_type_is_kind(type, IR_TYPE_ARRAY)
-    && ir_type_is_std(type->type.array.base->type.ref)) {
-    if (type->type.array.size) {
-      emit_inst(emitter, "LD", "GR0, %s", reg);
-      emit_inst(emitter, "JMI", "ERNG");
-      emit_inst(emitter, "LAD", "GR0, %ld", type->type.array.size - 1);
-      emit_inst(emitter, "CPA", "%s, GR0", reg);
-      emit_inst(emitter, "JPL", "ERNG");
+  if (local->kind == IR_LOCAL_VAR && type->kind == TYPE_ARRAY) {
+    const type_array_t *array = (type_array_t *) type;
+    const type_t       *base  = array->base->types[0];
+    if (base->kind == TYPE_INTEGER || base->kind == TYPE_CHAR || type->kind == TYPE_BOOLEAN) {
+      if (type->type.array.size) {
+        emit_inst(emitter, "LD", "GR0, %s", reg);
+        emit_inst(emitter, "JMI", "ERNG");
+        emit_inst(emitter, "LAD", "GR0, %ld", type->type.array.size - 1);
+        emit_inst(emitter, "CPA", "%s, GR0", reg);
+        emit_inst(emitter, "JPL", "ERNG");
+      } else {
+        emit_inst(emitter, "JPL", "ERNG");
+      }
     } else {
-      emit_inst(emitter, "JPL", "ERNG");
+      unreachable();
     }
   } else {
     unreachable();
@@ -331,9 +336,9 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
     ir_rvalue_cast_t *cast = (ir_rvalue_cast_t *) stmt->rhs;
     emit_load(emitter, "GR1", cast->value);
     switch (ir_operand_type(cast->value)->kind) {
-    case IR_TYPE_INTEGER:
+    case TYPE_INTEGER:
       switch (cast->type->kind) {
-      case IR_TYPE_BOOLEAN: {
+      case TYPE_BOOLEAN: {
         const char *jmp = item_label(emitter, NULL);
         emit_inst(emitter, "LD", "GR1, GR1");
         emit_inst(emitter, "JZE", "%s", jmp);
@@ -341,8 +346,8 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
         emit_label(emitter, jmp);
         break;
       }
-      case IR_TYPE_INTEGER:
-      case IR_TYPE_CHAR:
+      case TYPE_INTEGER:
+      case TYPE_CHAR:
         emit_inst(emitter, "LAD", "GR2, #007f");
         emit_inst(emitter, "AND", "GR1, GR2");
         break;
@@ -350,9 +355,9 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
         unreachable();
       }
       break;
-    case IR_TYPE_CHAR:
+    case TYPE_CHAR:
       switch (cast->type->kind) {
-      case IR_TYPE_BOOLEAN: {
+      case TYPE_BOOLEAN: {
         const char *jmp = item_label(emitter, NULL);
         emit_inst(emitter, "LD", "GR1, GR1");
         emit_inst(emitter, "JZE", "%s", jmp);
@@ -360,15 +365,15 @@ static void emit_stmt_assign(emitter_t *emitter, const ir_stmt_assign_t *stmt)
         emit_label(emitter, jmp);
         break;
       }
-      case IR_TYPE_INTEGER:
-      case IR_TYPE_CHAR:
+      case TYPE_INTEGER:
+      case TYPE_CHAR:
         /* do nothing */
         break;
       default:
         unreachable();
       }
       break;
-    case IR_TYPE_BOOLEAN:
+    case TYPE_BOOLEAN:
       /* do nothing */
       break;
     default:
@@ -536,11 +541,11 @@ static void emit_stmt_read(emitter_t *emitter, const ir_stmt_read_t *stmt)
 
   /* call builtin `read` functions for each types */
   switch (ir_place_type(stmt->ref)->kind) {
-  case IR_TYPE_INTEGER:
+  case TYPE_INTEGER:
     emitter->builtin.r_int++;
     emit_inst(emitter, "CALL", "BRINT");
     break;
-  case IR_TYPE_CHAR:
+  case TYPE_CHAR:
     emitter->builtin.r_char++;
     emit_inst(emitter, "CALL", "BRCHAR");
     break;
@@ -553,7 +558,7 @@ static void emit_stmt_write(emitter_t *emitter, const ir_stmt_write_t *stmt)
 {
   /* call builtin `write` functions for each types */
   switch (ir_operand_type(stmt->value)->kind) {
-  case IR_TYPE_INTEGER:
+  case TYPE_INTEGER:
     emitter->builtin.w_int++;
     emit_load(emitter, "GR1", stmt->value);
     emit_inst(emitter, "CALL", "BSINT");
@@ -564,7 +569,7 @@ static void emit_stmt_write(emitter_t *emitter, const ir_stmt_write_t *stmt)
     }
     emit_inst(emitter, "CALL", "BWSTR");
     break;
-  case IR_TYPE_BOOLEAN:
+  case TYPE_BOOLEAN:
     emitter->builtin.w_bool++;
     emit_load(emitter, "GR1", stmt->value);
     emit_inst(emitter, "CALL", "BSBOOL");
@@ -575,7 +580,7 @@ static void emit_stmt_write(emitter_t *emitter, const ir_stmt_write_t *stmt)
     }
     emit_inst(emitter, "CALL", "BWSTR");
     break;
-  case IR_TYPE_CHAR:
+  case TYPE_CHAR:
     emitter->builtin.w_char++;
     emit_load(emitter, "GR1", stmt->value);
     emit_inst(emitter, "CALL", "BSCHAR");
@@ -586,9 +591,9 @@ static void emit_stmt_write(emitter_t *emitter, const ir_stmt_write_t *stmt)
     }
     emit_inst(emitter, "CALL", "BWSTR");
     break;
-  case IR_TYPE_ARRAY: {
+  case TYPE_ARRAY: {
     const ir_constant_t *constant = stmt->value->operand.constant.constant;
-    const ir_type_t     *type     = ir_constant_type(constant);
+    const type_t        *type     = ir_constant_type(constant);
     emitter->builtin.w_str++;
     emit_inst(emitter, "LAD", "GR2, %ld", type->type.array.size);
     emit_inst(emitter, "LAD", "GR3, %s", item_label(emitter, constant));
@@ -714,12 +719,12 @@ static void emit_item(emitter_t *emitter, const ir_item_t *item)
     case IR_ITEM_LOCAL_VAR:
       emit_label(emitter, item_label(emitter, item));
       switch (item->type->kind) {
-      case IR_TYPE_INTEGER:
-      case IR_TYPE_BOOLEAN:
-      case IR_TYPE_CHAR:
+      case TYPE_INTEGER:
+      case TYPE_BOOLEAN:
+      case TYPE_CHAR:
         emit_inst(emitter, "DS", "1");
         break;
-      case IR_TYPE_ARRAY:
+      case TYPE_ARRAY:
         emit_inst(emitter, "DS", "%ld", item->type->type.array.size);
         break;
       default:
@@ -729,9 +734,9 @@ static void emit_item(emitter_t *emitter, const ir_item_t *item)
     case IR_ITEM_ARG_VAR:
       emit_label(emitter, item_label(emitter, item));
       switch (item->type->kind) {
-      case IR_TYPE_INTEGER:
-      case IR_TYPE_BOOLEAN:
-      case IR_TYPE_CHAR:
+      case TYPE_INTEGER:
+      case TYPE_BOOLEAN:
+      case TYPE_CHAR:
         emit_inst(emitter, "DS", "1");
         break;
       default:
