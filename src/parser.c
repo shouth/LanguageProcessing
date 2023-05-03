@@ -34,7 +34,7 @@ static void error_expected(const char *str)
   assert(*str != 0);
   if (parser.alive) {
     msg_t *msg = new_msg(parser.src, parser.next.region, MSG_ERROR,
-      "expected %s, got `%.*s`", str, (int) parser.next.region.len, parser.next.ptr);
+      "expected %s, got `%s`", str, parser.next.ptr);
     error_msg(msg);
     memset(parser.expected, 0, sizeof(parser.expected));
   }

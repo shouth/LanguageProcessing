@@ -23,7 +23,7 @@ static void crossref_print_ns(crossref_t *crossref, const crossref_item_t *ns)
   }
 
   symbol = ns->item->symbol;
-  printf(" @ %.*s", (int) symbol->len, symbol->ptr);
+  printf(" @ %s", symbol->ptr);
   crossref_print_ns(crossref, ns->owner);
 }
 
@@ -125,7 +125,7 @@ void print_crossref(const ir_t *ir)
   crossref.source = ir->source;
   for (i = 0; i < cnt; i++) {
     const ir_item_t *item = sort[i]->item;
-    printf("Name | %.*s", (int) item->symbol->len, item->symbol->ptr);
+    printf("Name | %s", item->symbol->ptr);
     crossref_print_ns(&crossref, sort[i]->owner);
     printf("\n");
     printf("Type | ");

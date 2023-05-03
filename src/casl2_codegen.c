@@ -89,7 +89,7 @@ static void emit_constant(emitter_t *emitter, const ir_constant_t *constant)
     case IR_CONSTANT_STRING: {
       const symbol_t *symbol = constant->constant.string.value;
       emit_label(emitter, item_label(emitter, constant));
-      emit_inst(emitter, "DC", "\'%.*s\'", (int) symbol->len, symbol->ptr);
+      emit_inst(emitter, "DC", "\'%s\'", symbol->ptr);
       break;
     default:
       /* do nothing */
