@@ -104,7 +104,7 @@ define_colored_fprintf(pp_ident_param, argument)
   case AST_LIT_KIND_NUMBER: {
     ast_lit_number_t *number = (ast_lit_number_t *) lit;
     term_set(printer->colors->literal);
-    pp_fprintf(printer, "%.*s", (int) number->symbol->len, number->symbol->ptr);
+    pp_fprintf(printer, "%s", number->symbol->ptr);
     term_set(SGR_RESET);
     break;
   }
@@ -118,7 +118,7 @@ define_colored_fprintf(pp_ident_param, argument)
   case AST_LIT_KIND_STRING: {
     ast_lit_string_t *string = (ast_lit_string_t *) lit;
     term_set(printer->colors->string);
-    pp_fprintf(printer, "'%.*s'", (int) string->symbol->len, string->symbol->ptr);
+    pp_fprintf(printer, "'%s'", string->symbol->ptr);
     term_set(SGR_RESET);
     break;
   }
@@ -127,9 +127,9 @@ define_colored_fprintf(pp_ident_param, argument)
 
 void pp_ident(printer_t *printer, const ast_ident_t *ident)
 {
-  pp_fprintf(printer, "%.*s", (int) ident->symbol->len, ident->symbol->ptr);
+  pp_fprintf(printer, "%s", ident->symbol->ptr);
   while ((ident = ident->next)) {
-    pp_fprintf(printer, ", %.*s", (int) ident->symbol->len, ident->symbol->ptr);
+    pp_fprintf(printer, ", %s", ident->symbol->ptr);
   }
 }
 
@@ -288,7 +288,7 @@ void pp_stmt_call(printer_t *printer, const ast_stmt_call_t *stmt)
 {
   pp_keyword(printer, "call");
   pp_fprintf(printer, " ");
-  pp_ident_procedure(printer, "%.*s", (int) stmt->name->symbol->len, stmt->name->symbol->ptr);
+  pp_ident_procedure(printer, "%s", stmt->name->symbol->ptr);
   if (stmt->args) {
     pp_fprintf(printer, "(");
     pp_expr(printer, stmt->args);
@@ -415,14 +415,14 @@ void pp_decl_part(printer_t *printer, const ast_decl_part_t *decl_part)
       ast_decl_part_procedure_t *procedure = (ast_decl_part_procedure_t *) decl_part;
       pp_keyword(printer, "procedure");
       pp_fprintf(printer, " ");
-      pp_ident_procedure(printer, "%.*s", (int) procedure->name->symbol->len, procedure->name->symbol->ptr);
+      pp_ident_procedure(printer, "%s", procedure->name->symbol->ptr);
       if (procedure->params) {
         ast_decl_param_t *params = procedure->params;
         pp_fprintf(printer, "(");
         while (params) {
           ast_ident_t *ident = params->names;
           while (ident) {
-            pp_ident_param(printer, "%.*s", (int) ident->symbol->len, ident->symbol->ptr);
+            pp_ident_param(printer, "%s", ident->symbol->ptr);
             if ((ident = ident->next)) {
               pp_fprintf(printer, ", ");
             }
@@ -455,7 +455,7 @@ void pp_program(printer_t *printer, const ast_program_t *program)
 {
   pp_keyword(printer, "program");
   pp_fprintf(printer, " ");
-  pp_ident_program(printer, "%.*s", (int) program->name->symbol->len, program->name->symbol->ptr);
+  pp_ident_program(printer, "%s", program->name->symbol->ptr);
   pp_fprintf(printer, ";\n");
   if (program->decl_part) {
     ++printer->indent;
