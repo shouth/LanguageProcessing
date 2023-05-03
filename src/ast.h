@@ -1,6 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
+#include "context.h"
 #include "source.h"
 
 /**********     ast literal     **********/
@@ -316,9 +317,8 @@ struct ast__program_s {
 typedef struct ast__s ast_t;
 
 struct ast__s {
-  ast_program_t    *program;
-  symbol_context_t *symbols;
-  const source_t   *source;
+  ast_program_t  *program;
+  const source_t *source;
 };
 
 void ast_delete(ast_t *ast);

@@ -253,7 +253,6 @@ void ast_delete(ast_t *ast)
     visitor.visit_decl_part     = &delete_decl_part;
     visitor.visit_program       = &delete_program;
     ast_walk(&visitor, ast);
-    symbol_context_delete(ast->symbols);
   }
   free(ast);
 }
