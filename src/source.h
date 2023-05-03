@@ -32,18 +32,4 @@ region_t region_from(long pos, long len);
 region_t region_unite(region_t a, region_t b);
 int      region_compare(region_t a, region_t b);
 
-typedef struct {
-  const char *ptr;
-  long        len;
-} symbol_t;
-
-typedef struct {
-  hash_t *table;
-} symbol_context_t;
-
-int               symbol_compare(const symbol_t *lhs, const symbol_t *rhs);
-symbol_context_t *symbol_context_new(void);
-void              symbol_context_delete(symbol_context_t *context);
-const symbol_t   *symbol_intern(symbol_context_t *context, const char *ptr, long len);
-
 #endif
