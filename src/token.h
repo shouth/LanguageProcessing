@@ -8,7 +8,7 @@ typedef enum {
   TOKEN_CATEGORY_TOKEN,
   TOKEN_CATEGORY_ERROR,
 
-  TOKEN_TYPE_COUNT
+  TOKEN_CATEGORY_COUNT
 } token_category_t;
 
 #define token_category(kind) (kind & 0xFF00)

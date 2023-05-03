@@ -17,7 +17,7 @@ static struct {
   context_t      *context;
   token_t         current, next;
 
-  unsigned long expected[TOKEN_TYPE_COUNT];
+  unsigned long expected[TOKEN_CATEGORY_COUNT];
   int           within_loop;
   int           alive, error;
 } parser;
@@ -48,7 +48,7 @@ static void error_unexpected(void)
     token_category_t last_type;
     long             last_token = -1;
 
-    for (i = TOKEN_TYPE_COUNT - 1; i >= 0; --i) {
+    for (i = TOKEN_CATEGORY_COUNT - 1; i >= 0; --i) {
       if (parser.expected[i]) {
         last_type  = i;
         last_token = bit_left_most(parser.expected[i]);
@@ -57,7 +57,7 @@ static void error_unexpected(void)
     }
     assert(last_token != -1);
 
-    for (i = 0; i < TOKEN_TYPE_COUNT; ++i) {
+    for (i = 0; i < TOKEN_CATEGORY_COUNT; ++i) {
       while (parser.expected[i]) {
         long         current = bit_right_most(parser.expected[i]);
         token_kind_t kind    = (i << 8) | current;
