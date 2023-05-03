@@ -18,7 +18,7 @@ static unsigned long symbol_hash(const void *value)
   return fnv1a(FNV1A_SEED, x->ptr, x->len);
 }
 
-void symbol_deleter(void *value)
+static void symbol_deleter(void *value)
 {
   symbol_t *x = value;
   free((void *) x->ptr);
