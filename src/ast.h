@@ -328,16 +328,16 @@ void ast_delete(ast_t *ast);
 typedef struct ast__visitor_s ast_visitor_t;
 
 struct ast__visitor_s {
-  void (*visit_lit)(ast_visitor_t *, ast_lit_t *);
-  void (*visit_ident)(ast_visitor_t *, ast_ident_t *);
-  void (*visit_type)(ast_visitor_t *, ast_type_t *);
-  void (*visit_expr)(ast_visitor_t *, ast_expr_t *);
-  void (*visit_out_fmt)(ast_visitor_t *, ast_out_fmt_t *);
-  void (*visit_stmt)(ast_visitor_t *, ast_stmt_t *);
-  void (*visit_decl_variable)(ast_visitor_t *, ast_decl_variable_t *);
-  void (*visit_decl_param)(ast_visitor_t *, ast_decl_param_t *);
-  void (*visit_decl_part)(ast_visitor_t *, ast_decl_part_t *);
-  void (*visit_program)(ast_visitor_t *, ast_program_t *);
+  void (*visit_lit)(ast_visitor_t *, const ast_lit_t *);
+  void (*visit_ident)(ast_visitor_t *, const ast_ident_t *);
+  void (*visit_type)(ast_visitor_t *, const ast_type_t *);
+  void (*visit_expr)(ast_visitor_t *, const ast_expr_t *);
+  void (*visit_out_fmt)(ast_visitor_t *, const ast_out_fmt_t *);
+  void (*visit_stmt)(ast_visitor_t *, const ast_stmt_t *);
+  void (*visit_decl_variable)(ast_visitor_t *, const ast_decl_variable_t *);
+  void (*visit_decl_param)(ast_visitor_t *, const ast_decl_param_t *);
+  void (*visit_decl_part)(ast_visitor_t *, const ast_decl_part_t *);
+  void (*visit_program)(ast_visitor_t *, const ast_program_t *);
 };
 
 #define ast_list_walk(visitor, method, type, head, next) \
@@ -350,17 +350,17 @@ struct ast__visitor_s {
     }                                                    \
   } while (0)
 
-void ast_walk_lit(ast_visitor_t *visitor, ast_lit_t *lit);
-void ast_walk_ident(ast_visitor_t *visitor, ast_ident_t *ident);
-void ast_walk_type(ast_visitor_t *visitor, ast_type_t *type);
-void ast_walk_expr(ast_visitor_t *visitor, ast_expr_t *expr);
-void ast_walk_out_fmt(ast_visitor_t *visitor, ast_out_fmt_t *out_fmt);
-void ast_walk_stmt(ast_visitor_t *visitor, ast_stmt_t *stmt);
-void ast_walk_decl_variable(ast_visitor_t *visitor, ast_decl_variable_t *variable);
-void ast_walk_decl_param(ast_visitor_t *visitor, ast_decl_param_t *param);
-void ast_walk_decl_part(ast_visitor_t *visitor, ast_decl_part_t *decl_part);
-void ast_walk_program(ast_visitor_t *visitor, ast_program_t *program);
-void ast_walk(ast_visitor_t *visitor, ast_t *ast);
+void ast_walk_lit(ast_visitor_t *visitor, const ast_lit_t *lit);
+void ast_walk_ident(ast_visitor_t *visitor, const ast_ident_t *ident);
+void ast_walk_type(ast_visitor_t *visitor, const ast_type_t *type);
+void ast_walk_expr(ast_visitor_t *visitor, const ast_expr_t *expr);
+void ast_walk_out_fmt(ast_visitor_t *visitor, const ast_out_fmt_t *out_fmt);
+void ast_walk_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt);
+void ast_walk_decl_variable(ast_visitor_t *visitor, const ast_decl_variable_t *variable);
+void ast_walk_decl_param(ast_visitor_t *visitor, const ast_decl_param_t *param);
+void ast_walk_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_part);
+void ast_walk_program(ast_visitor_t *visitor, const ast_program_t *program);
+void ast_walk(ast_visitor_t *visitor, const ast_t *ast);
 void ast_init_visitor(ast_visitor_t *visitor);
 
 #endif

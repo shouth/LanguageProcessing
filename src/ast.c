@@ -3,21 +3,21 @@
 
 #include "ast.h"
 
-void ast_walk_lit(ast_visitor_t *visitor, ast_lit_t *lit)
+void ast_walk_lit(ast_visitor_t *visitor, const ast_lit_t *lit)
 {
   /* do nothing */
   (void) visitor;
   (void) lit;
 }
 
-void ast_walk_ident(ast_visitor_t *visitor, ast_ident_t *ident)
+void ast_walk_ident(ast_visitor_t *visitor, const ast_ident_t *ident)
 {
   /* do nothing */
   (void) visitor;
   (void) ident;
 }
 
-void ast_walk_type(ast_visitor_t *visitor, ast_type_t *type)
+void ast_walk_type(ast_visitor_t *visitor, const ast_type_t *type)
 {
   if (type) {
     switch (type->kind) {
@@ -36,7 +36,7 @@ void ast_walk_type(ast_visitor_t *visitor, ast_type_t *type)
   }
 }
 
-void ast_walk_expr(ast_visitor_t *visitor, ast_expr_t *expr)
+void ast_walk_expr(ast_visitor_t *visitor, const ast_expr_t *expr)
 {
   if (expr) {
     switch (expr->kind) {
@@ -85,7 +85,7 @@ void ast_walk_expr(ast_visitor_t *visitor, ast_expr_t *expr)
   }
 }
 
-void ast_walk_out_fmt(ast_visitor_t *visitor, ast_out_fmt_t *out_fmt)
+void ast_walk_out_fmt(ast_visitor_t *visitor, const ast_out_fmt_t *out_fmt)
 {
   if (out_fmt) {
     ast_list_walk(visitor, visit_expr, ast_expr_t, out_fmt->expr, next);
@@ -93,7 +93,7 @@ void ast_walk_out_fmt(ast_visitor_t *visitor, ast_out_fmt_t *out_fmt)
   }
 }
 
-void ast_walk_stmt(ast_visitor_t *visitor, ast_stmt_t *stmt)
+void ast_walk_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
 {
   if (stmt) {
     switch (stmt->kind) {
@@ -147,7 +147,7 @@ void ast_walk_stmt(ast_visitor_t *visitor, ast_stmt_t *stmt)
   }
 }
 
-void ast_walk_decl_variable(ast_visitor_t *visitor, ast_decl_variable_t *variable)
+void ast_walk_decl_variable(ast_visitor_t *visitor, const ast_decl_variable_t *variable)
 {
   if (variable) {
     ast_list_walk(visitor, visit_ident, ast_ident_t, variable->names, next);
@@ -155,7 +155,7 @@ void ast_walk_decl_variable(ast_visitor_t *visitor, ast_decl_variable_t *variabl
   }
 }
 
-void ast_walk_decl_param(ast_visitor_t *visitor, ast_decl_param_t *param)
+void ast_walk_decl_param(ast_visitor_t *visitor, const ast_decl_param_t *param)
 {
   if (param) {
     ast_list_walk(visitor, visit_ident, ast_ident_t, param->names, next);
@@ -163,7 +163,7 @@ void ast_walk_decl_param(ast_visitor_t *visitor, ast_decl_param_t *param)
   }
 }
 
-void ast_walk_decl_part(ast_visitor_t *visitor, ast_decl_part_t *decl_part)
+void ast_walk_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_part)
 {
   if (decl_part) {
     switch (decl_part->kind) {
@@ -184,7 +184,7 @@ void ast_walk_decl_part(ast_visitor_t *visitor, ast_decl_part_t *decl_part)
   }
 }
 
-void ast_walk_program(ast_visitor_t *visitor, ast_program_t *program)
+void ast_walk_program(ast_visitor_t *visitor, const ast_program_t *program)
 {
   if (program) {
     ast_list_walk(visitor, visit_ident, ast_ident_t, program->name, next);
@@ -193,7 +193,7 @@ void ast_walk_program(ast_visitor_t *visitor, ast_program_t *program)
   }
 }
 
-void ast_walk(ast_visitor_t *visitor, ast_t *ast)
+void ast_walk(ast_visitor_t *visitor, const ast_t *ast)
 {
   if (ast) {
     visitor->visit_program(visitor, ast->program);
@@ -218,11 +218,11 @@ void ast_init_visitor(ast_visitor_t *visitor)
 
 /* clang-format off */
 
-#define define_deleter(name, type, walker)         \
-  void name(ast_visitor_t *visitor, type *pointer) \
-  {                                                \
-    walker(visitor, pointer);                      \
-    free(pointer);                                 \
+#define define_deleter(name, type, walker)               \
+  void name(ast_visitor_t *visitor, const type *pointer) \
+  {                                                      \
+    walker(visitor, pointer);                            \
+    free((void *) pointer);                              \
   }
 
 define_deleter(delete_lit, ast_lit_t, ast_walk_lit)
