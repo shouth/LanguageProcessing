@@ -3,7 +3,7 @@
 
 #include "ast.h"
 #include "context.h"
-#include "mppl.h"
+#include "mpplc.h"
 #include "utility.h"
 
 typedef struct scope__s    scope_t;

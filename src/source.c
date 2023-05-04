@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mppl.h"
 #include "source.h"
 
 #if defined(__unix__) || defined(__APPLE__)

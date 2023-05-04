@@ -15,6 +15,10 @@ void pretty(context_t *);
 
 /* resolve.c */
 
-void resolve(context_t *ctx);
+void resolve(context_t *);
+
+/* check.c */
+
+void check(context_t *);
 
 #endif
