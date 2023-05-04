@@ -38,7 +38,4 @@ const type_t   *ctx_mk_type_array(context_t *, const substs_t *, long);
 const type_t   *ctx_mk_type_program(context_t *);
 const type_t   *ctx_mk_type_procedure(context_t *, const substs_t *);
 
-void mpplc_init(context_t *, const char *, const char *);
-void mpplc_deinit(context_t *);
-
 #endif
