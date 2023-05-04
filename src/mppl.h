@@ -11,7 +11,7 @@ int parse(context_t *);
 
 /* pretty_print.c */
 
-void ast_pretty(context_t *);
+void pretty(context_t *);
 
 /* resolve.c */
 

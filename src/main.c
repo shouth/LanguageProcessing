@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     context_t *ctx = ctx_new(argv[i], output);
     if (parse(ctx)) {
       if (flag_pretty_print) {
-        ast_pretty(ctx);
+        pretty(ctx);
       }
 
       resolve(ctx);
