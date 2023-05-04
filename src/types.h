@@ -10,6 +10,24 @@ struct symbol__s {
   long        len;
 };
 
+/**********     location     **********/
+
+typedef struct location__s location_t;
+
+struct location__s {
+  long line;
+  long col;
+};
+
+/**********     region     **********/
+
+typedef struct region__s region_t;
+
+struct region__s {
+  long pos;
+  long len;
+};
+
 /**********     type     **********/
 
 typedef enum {
@@ -64,6 +82,7 @@ typedef struct def__s def_t;
 struct def__s {
   const void     *ast;
   const symbol_t *name;
+  region_t        region;
   def_kind_t      kind;
   const type_t   *type;
   def_t          *inner;

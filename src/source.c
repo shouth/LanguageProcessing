@@ -152,7 +152,7 @@ void src_delete(source_t *src)
   free(src);
 }
 
-location_t source_location(const source_t *src, long index)
+location_t src_location(const source_t *src, long index)
 {
   long left, right, middle;
   assert(src && src->lines);

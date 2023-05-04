@@ -187,7 +187,7 @@ void msg_emit(msg_t *msg)
 
   for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
     if (cur0->next == NULL) {
-      location_t loc = source_location(msg->src, cur0->region.pos);
+      location_t loc = src_location(msg->src, cur0->region.pos);
       long       tmp = loc.line;
       left_margin    = 0;
       while (tmp > 0) {
@@ -208,7 +208,7 @@ void msg_emit(msg_t *msg)
   }
 
   {
-    location_t loc = source_location(msg->src, msg->region.pos);
+    location_t loc = src_location(msg->src, msg->region.pos);
     printf("%*.s", left_margin, "");
     term_set(SGR_BOLD);
     term_set(SGR_FG_BRIGHT_BLUE);
@@ -218,8 +218,8 @@ void msg_emit(msg_t *msg)
   }
 
   for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
-    location_t begin = source_location(msg->src, cur0->region.pos);
-    location_t end   = source_location(msg->src, cur0->region.pos + cur0->region.len);
+    location_t begin = src_location(msg->src, cur0->region.pos);
+    location_t end   = src_location(msg->src, cur0->region.pos + cur0->region.len);
     if (cur0 == msg->inline_entries) {
       term_set(SGR_BOLD);
       term_set(SGR_FG_BRIGHT_BLUE);

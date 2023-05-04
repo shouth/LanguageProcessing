@@ -3,7 +3,10 @@
 
 #include "ast.h"
 #include "context.h"
+#include "message.h"
 #include "mpplc.h"
+#include "source.h"
+#include "types.h"
 #include "utility.h"
 
 typedef struct scope__s    scope_t;
@@ -16,36 +19,51 @@ struct scope__s {
 };
 
 struct resolver__s {
-  ast_visitor_t visitor;
-  hash_t       *resolution;
-  scope_t      *scope;
-  def_t        *defs;
+  ast_visitor_t   visitor;
+  const source_t *src;
+  hash_t         *resolution;
+  scope_t        *scope;
+  def_t          *defs;
 };
 
-static def_t *add_def(resolver_t *resolver, const void *ast, const symbol_t *name, def_kind_t kind)
+void error_conflict(resolver_t *resolver, def_t *def, region_t region)
+{
+  msg_t *msg = new_msg(resolver->src, region, MSG_ERROR, "conflicting names");
+  msg_add_inline_entry(msg, def->region, "first used here");
+  msg_add_inline_entry(msg, region, "second used here");
+  msg_emit(msg);
+}
+
+void error_undeclared(resolver_t *resolver, const symbol_t *name, region_t region)
+{
+  msg_t *msg = new_msg(resolver->src, region, MSG_ERROR, "%s is not undeclared", name->ptr);
+  msg_emit(msg);
+}
+
+static def_t *add_def(resolver_t *resolver, def_kind_t kind, const void *ast, const symbol_t *name, region_t region)
 {
   const hash_entry_t *entry = hash_find(resolver->scope->def_map, name);
   if (!entry) {
-    def_t *def = xmalloc(sizeof(def_t));
-    def->ast   = ast;
-    def->name  = name;
-    def->kind  = kind;
-    def->type  = NULL;
-    def->inner = NULL;
-    def->next  = NULL;
+    def_t *def  = xmalloc(sizeof(def_t));
+    def->ast    = ast;
+    def->name   = name;
+    def->region = region;
+    def->kind   = kind;
+    def->type   = NULL;
+    def->inner  = NULL;
+    def->next   = NULL;
 
     *resolver->scope->defs = def;
     resolver->scope->defs  = &def->next;
     hash_insert_unchecked(resolver->scope->def_map, (void *) name, def);
     return def;
   } else {
-    /* TODO: emit error message for conflict */
-    printf("coflict detected!\n");
+    error_conflict(resolver, entry->value, region);
     return NULL;
   }
 }
 
-static void resolve_def(resolver_t *resolver, const void *ast, const symbol_t *name)
+static void resolve_def(resolver_t *resolver, const void *ast, const symbol_t *name, region_t region)
 {
   scope_t     *scope = resolver->scope;
   const def_t *def   = NULL;
@@ -60,8 +78,7 @@ static void resolve_def(resolver_t *resolver, const void *ast, const symbol_t *n
   if (def) {
     hash_insert_unchecked(resolver->resolution, (void *) ast, (void *) def);
   } else {
-    /* TODO: emit error message for resolution failure */
-    printf("resolution failure!\n");
+    error_undeclared(resolver, name, region);
   }
 }
 
@@ -89,12 +106,12 @@ static void visit_expr(ast_visitor_t *visitor, const ast_expr_t *expr)
   switch (expr->kind) {
   case AST_EXPR_KIND_ARRAY_SUBSCRIPT: {
     const ast_expr_array_subscript_t *subscript = (ast_expr_array_subscript_t *) expr;
-    resolve_def((resolver_t *) visitor, subscript->decl, subscript->decl->symbol);
+    resolve_def((resolver_t *) visitor, subscript->decl, subscript->decl->symbol, subscript->decl->region);
     break;
   }
   case AST_EXPR_KIND_DECL_REF: {
     const ast_expr_decl_ref_t *ref = (ast_expr_decl_ref_t *) expr;
-    resolve_def((resolver_t *) visitor, ref->decl, ref->decl->symbol);
+    resolve_def((resolver_t *) visitor, ref->decl, ref->decl->symbol, ref->decl->region);
     break;
   }
   default:
@@ -108,7 +125,7 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
   switch (stmt->kind) {
   case AST_STMT_KIND_CALL: {
     const ast_stmt_call_t *call = (ast_stmt_call_t *) stmt;
-    resolve_def((resolver_t *) visitor, call->name, call->name->symbol);
+    resolve_def((resolver_t *) visitor, call->name, call->name->symbol, call->name->region);
     break;
   }
   default:
@@ -122,7 +139,7 @@ static void visit_decl_variable(ast_visitor_t *visitor, const ast_decl_variable_
 {
   ast_ident_t *ident = variable->names;
   for (; ident; ident = ident->next) {
-    add_def((resolver_t *) visitor, variable, ident->symbol, DEF_VAR);
+    add_def((resolver_t *) visitor, DEF_VAR, variable, ident->symbol, ident->region);
   }
 }
 
@@ -130,7 +147,7 @@ static void visit_decl_param(ast_visitor_t *visitor, const ast_decl_param_t *par
 {
   ast_ident_t *ident = param->names;
   for (; ident; ident = ident->next) {
-    add_def((resolver_t *) visitor, param, ident->symbol, DEF_PARAM);
+    add_def((resolver_t *) visitor, DEF_PARAM, param, ident->symbol, ident->region);
   }
 }
 
@@ -140,7 +157,7 @@ static void visit_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_
   case AST_DECL_PART_PROCEDURE: {
     const ast_decl_part_procedure_t *proc = (ast_decl_part_procedure_t *) decl_part;
 
-    def_t *def = add_def((resolver_t *) visitor, proc, proc->name->symbol, DEF_PROCEDURE);
+    def_t *def = add_def((resolver_t *) visitor, DEF_PROCEDURE, proc, proc->name->symbol, proc->name->region);
     if (def) {
       push_scope((resolver_t *) visitor, &def->inner);
       ast_walk_decl_part(visitor, decl_part);
@@ -156,7 +173,7 @@ static void visit_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_
 
 static void visit_program(ast_visitor_t *visitor, const ast_program_t *program)
 {
-  def_t *def = add_def((resolver_t *) visitor, program, program->name->symbol, DEF_PROGRAM);
+  def_t *def = add_def((resolver_t *) visitor, DEF_PROGRAM, program, program->name->symbol, program->name->region);
   if (def) {
     push_scope((resolver_t *) visitor, &def->inner);
     ast_walk_program(visitor, program);
@@ -168,6 +185,7 @@ void mpplc_resolve(context_t *ctx)
 {
   resolver_t     resolver;
   ast_visitor_t *visitor = (ast_visitor_t *) &resolver;
+  resolver.src           = ctx->src;
   resolver.resolution    = hash_new(&hash_default_comp, &hash_default_hasher);
   resolver.scope         = NULL;
   resolver.defs          = NULL;
