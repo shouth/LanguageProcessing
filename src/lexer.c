@@ -6,11 +6,6 @@
 #include "source.h"
 #include "token.h"
 
-static struct {
-  lexer_t *lexer;
-  token_t *token;
-} ctx;
-
 void lexer_init(lexer_t *lexer, const source_t *src)
 {
   lexer->pos = 0;
@@ -37,230 +32,225 @@ static int is_graphic(int c)
   return !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c) || is_alphabet(c) || is_number(c) || is_space(c);
 }
 
-static int peek(void)
+static int peek(lexer_t *lexer)
 {
-  if (ctx.lexer->pos >= ctx.lexer->src->src_len) {
+  if (lexer->pos >= lexer->src->src_len) {
     return EOF;
   } else {
-    return ctx.lexer->src->src[ctx.lexer->pos];
+    return lexer->src->src[lexer->pos];
   }
 }
 
-static int bump(void)
+static int bump(lexer_t *lexer)
 {
-  int result = peek();
+  int result = peek(lexer);
   if (result != EOF) {
-    ++ctx.lexer->pos;
+    ++lexer->pos;
   }
   return result;
 }
 
-static int check(int c)
+static int check(lexer_t *lexer, int c)
 {
-  return peek() == c;
+  return peek(lexer) == c;
 }
 
-static int check_if(int (*pred)(int))
+static int check_if(lexer_t *lexer, int (*pred)(int))
 {
-  return pred(peek());
+  return pred(peek(lexer));
 }
 
-static int eat(int c)
+static int eat(lexer_t *lexer, int c)
 {
-  int result = check(c);
+  int result = check(lexer, c);
   if (result) {
-    ++ctx.lexer->pos;
+    ++lexer->pos;
   }
   return result;
 }
 
-static int eat_if(int (*pred)(int))
+static int eat_if(lexer_t *lexer, int (*pred)(int))
 {
-  int result = check_if(pred);
+  int result = check_if(lexer, pred);
   if (result) {
-    ++ctx.lexer->pos;
+    ++lexer->pos;
   }
   return result;
 }
 
-static token_kind_t lex_delimited(void)
+static token_kind_t lex_delimited(lexer_t *lexer, token_t *token)
 {
-  if (eat_if(is_space)) {
-    while (eat_if(is_space)) { }
+  if (eat_if(lexer, is_space)) {
+    while (eat_if(lexer, is_space)) { }
     return TOKEN_WHITESPACE;
-  } else if (eat_if(is_alphabet)) {
-    while (eat_if(is_alphabet) || eat_if(is_number)) { }
+  } else if (eat_if(lexer, is_alphabet)) {
+    while (eat_if(lexer, is_alphabet) || eat_if(lexer, is_number)) { }
     return TOKEN_IDENT;
-  } else if (eat_if(is_number)) {
-    while (eat_if(is_number)) { }
+  } else if (eat_if(lexer, is_number)) {
+    while (eat_if(lexer, is_number)) { }
     return TOKEN_NUMBER;
-  } else if (eat('{')) {
-    token_braces_comment_t *token = (token_braces_comment_t *) ctx.token;
+  } else if (eat(lexer, '{')) {
+    token_braces_comment_t *comment = (token_braces_comment_t *) token;
     while (1) {
-      if (eat('}')) {
-        token->terminated = 1;
+      if (eat(lexer, '}')) {
+        comment->terminated = 1;
         break;
-      } else if (check(EOF) || !check_if(is_graphic)) {
-        token->terminated = 0;
+      } else if (check(lexer, EOF) || !check_if(lexer, is_graphic)) {
+        comment->terminated = 0;
         break;
       } else {
-        bump();
+        bump(lexer);
       }
     }
     return TOKEN_BRACES_COMMENT;
-  } else if (eat('/')) {
-    if (eat('*')) {
-      token_cstyle_comment_t *token = (token_cstyle_comment_t *) ctx.token;
+  } else if (eat(lexer, '/')) {
+    if (eat(lexer, '*')) {
+      token_cstyle_comment_t *comment = (token_cstyle_comment_t *) token;
       while (1) {
-        if (eat('*') && eat('/')) {
-          token->terminated = 1;
+        if (eat(lexer, '*') && eat(lexer, '/')) {
+          comment->terminated = 1;
           break;
-        } else if (check(EOF) || !check_if(is_graphic)) {
-          token->terminated = 0;
+        } else if (check(lexer, EOF) || !check_if(lexer, is_graphic)) {
+          comment->terminated = 0;
           break;
         } else {
-          bump();
+          bump(lexer);
         }
       }
       return TOKEN_CSTYLE_COMMENT;
     } else {
       return TOKEN_UNKNOWN;
     }
-  } else if (eat('\'')) {
-    token_string_t *token = (token_string_t *) ctx.token;
-    token->len            = 0;
-    token->str_len        = 0;
-    token->ptr            = ctx.token->ptr + 1;
+  } else if (eat(lexer, '\'')) {
+    token_string_t *comment = (token_string_t *) token;
+    comment->len            = 0;
+    comment->str_len        = 0;
+    comment->ptr            = comment->ptr + 1;
     while (1) {
-      if (eat('\'')) {
-        if (!eat('\'')) {
-          token->terminated = 1;
+      if (eat(lexer, '\'')) {
+        if (!eat(lexer, '\'')) {
+          comment->terminated = 1;
           break;
         }
-        ++token->len;
-      } else if (check('\r') || check('\n') || check(EOF) || !check_if(is_graphic)) {
-        token->terminated = 0;
+        ++comment->len;
+      } else if (check(lexer, '\r') || check(lexer, '\n') || check(lexer, EOF) || !check_if(lexer, is_graphic)) {
+        comment->terminated = 0;
         break;
       } else {
-        bump();
+        bump(lexer);
       }
-      ++token->len;
-      ++token->str_len;
+      ++comment->len;
+      ++comment->str_len;
     }
     return TOKEN_STRING;
-  } else if (eat('+')) {
+  } else if (eat(lexer, '+')) {
     return TOKEN_PLUS;
-  } else if (eat('-')) {
+  } else if (eat(lexer, '-')) {
     return TOKEN_MINUS;
-  } else if (eat('*')) {
+  } else if (eat(lexer, '*')) {
     return TOKEN_STAR;
-  } else if (eat('=')) {
+  } else if (eat(lexer, '=')) {
     return TOKEN_EQUAL;
-  } else if (eat('(')) {
+  } else if (eat(lexer, '(')) {
     return TOKEN_LPAREN;
-  } else if (eat(')')) {
+  } else if (eat(lexer, ')')) {
     return TOKEN_RPAREN;
-  } else if (eat('[')) {
+  } else if (eat(lexer, '[')) {
     return TOKEN_LSQPAREN;
-  } else if (eat(']')) {
+  } else if (eat(lexer, ']')) {
     return TOKEN_RSQPAREN;
-  } else if (eat('.')) {
+  } else if (eat(lexer, '.')) {
     return TOKEN_DOT;
-  } else if (eat(',')) {
+  } else if (eat(lexer, ',')) {
     return TOKEN_COMMA;
-  } else if (eat(';')) {
+  } else if (eat(lexer, ';')) {
     return TOKEN_SEMI;
-  } else if (eat('<')) {
-    if (eat('>')) {
+  } else if (eat(lexer, '<')) {
+    if (eat(lexer, '>')) {
       return TOKEN_NOTEQ;
-    } else if (eat('=')) {
+    } else if (eat(lexer, '=')) {
       return TOKEN_LEEQ;
     } else {
       return TOKEN_LE;
     }
-  } else if (eat('>')) {
-    if (eat('=')) {
+  } else if (eat(lexer, '>')) {
+    if (eat(lexer, '=')) {
       return TOKEN_GREQ;
     } else {
       return TOKEN_GR;
     }
-  } else if (eat(':')) {
-    if (eat('=')) {
+  } else if (eat(lexer, ':')) {
+    if (eat(lexer, '=')) {
       return TOKEN_ASSIGN;
     } else {
       return TOKEN_COLON;
     }
-  } else if (check(EOF)) {
+  } else if (check(lexer, EOF)) {
     return TOKEN_EOF;
   } else {
-    bump();
+    bump(lexer);
     return TOKEN_UNKNOWN;
   }
 }
 
 void lex_token(lexer_t *lexer, token_t *token)
 {
-  ctx.lexer = lexer;
-  ctx.token = token;
-
-  {
-    long pos      = ctx.lexer->pos;
-    token->ptr    = lexer->src->src + pos;
-    token->type   = lex_delimited();
-    token->region = region_from(pos, ctx.lexer->pos - pos);
-  }
+  long pos      = lexer->pos;
+  token->ptr    = lexer->src->src + pos;
+  token->type   = lex_delimited(lexer, token);
+  token->region = region_from(pos, lexer->pos - pos);
 
   switch (token->type) {
   case TOKEN_NUMBER: {
-    token_number_t *token = (token_number_t *) ctx.token;
-    errno                 = 0;
-    token->value          = strtoul(ctx.token->ptr, NULL, 10);
-    if (errno == ERANGE || token->value > 32767) {
-      msg_t *msg = new_msg(lexer->src, ctx.token->region, MSG_ERROR, "number is too large");
-      msg_add_inline_entry(msg, ctx.token->region, "number needs to be less than 32768");
+    token_number_t *number = (token_number_t *) token;
+    errno                  = 0;
+    number->value          = strtoul(token->ptr, NULL, 10);
+    if (errno == ERANGE || number->value > 32767) {
+      msg_t *msg = new_msg(lexer->src, token->region, MSG_ERROR, "number is too large");
+      msg_add_inline_entry(msg, token->region, "number needs to be less than 32768");
       msg_emit(msg);
-      ctx.token->type = TOKEN_ERROR;
+      token->type = TOKEN_ERROR;
     }
     return;
   }
   case TOKEN_STRING: {
-    token_string_t *token = (token_string_t *) ctx.token;
-    if (!token->terminated) {
-      if (check(EOF)) {
-        msg_emit(new_msg(lexer->src, ctx.token->region, MSG_ERROR, "string is unterminated"));
+    token_string_t *string = (token_string_t *) token;
+    if (!string->terminated) {
+      if (check(lexer, EOF)) {
+        msg_emit(new_msg(lexer->src, token->region, MSG_ERROR, "string is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(ctx.lexer->pos, 1),
+        msg_emit(new_msg(lexer->src, region_from(lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
-      ctx.token->type = TOKEN_ERROR;
+      token->type = TOKEN_ERROR;
     }
     return;
   }
   case TOKEN_BRACES_COMMENT: {
-    token_braces_comment_t *token = (token_braces_comment_t *) ctx.token;
-    if (!token->terminated) {
-      if (check(EOF)) {
-        msg_emit(new_msg(lexer->src, region_from(ctx.token->region.pos, 1),
+    token_braces_comment_t *comment = (token_braces_comment_t *) token;
+    if (!comment->terminated) {
+      if (check(lexer, EOF)) {
+        msg_emit(new_msg(lexer->src, region_from(token->region.pos, 1),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(ctx.lexer->pos, 1),
+        msg_emit(new_msg(lexer->src, region_from(lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
-      ctx.token->type = TOKEN_ERROR;
+      token->type = TOKEN_ERROR;
     }
     return;
   }
   case TOKEN_CSTYLE_COMMENT: {
-    token_cstyle_comment_t *token = (token_cstyle_comment_t *) ctx.token;
-    if (!token->terminated) {
-      if (check(EOF)) {
-        msg_emit(new_msg(lexer->src, region_from(ctx.token->region.pos, 2),
+    token_cstyle_comment_t *comment = (token_cstyle_comment_t *) token;
+    if (!comment->terminated) {
+      if (check(lexer, EOF)) {
+        msg_emit(new_msg(lexer->src, region_from(token->region.pos, 2),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(ctx.lexer->pos, 1),
+        msg_emit(new_msg(lexer->src, region_from(lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
-      ctx.token->type = TOKEN_ERROR;
+      token->type = TOKEN_ERROR;
     }
     return;
   }
