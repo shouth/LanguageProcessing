@@ -23,9 +23,11 @@ static unsigned long symbol_hash(const void *value)
 
 static void symbol_deleter(void *value)
 {
-  symbol_t *x = value;
-  free((void *) x->ptr);
-  free(x);
+  if (value) {
+    symbol_t *x = value;
+    free((void *) x->ptr);
+  }
+  free(value);
 }
 
 const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
