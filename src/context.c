@@ -4,6 +4,7 @@
 
 #include "ast.h"
 #include "context.h"
+#include "mpplc.h"
 #include "source.h"
 #include "types.h"
 #include "utility.h"
