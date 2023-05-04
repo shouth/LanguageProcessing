@@ -468,7 +468,7 @@ void pp_program(printer_t *printer, const ast_program_t *program)
   pp_fprintf(printer, ".\n");
 }
 
-void pretty(context_t *ctx)
+void mpplc_pretty(context_t *ctx)
 {
   printer_t printer;
   printer.indent = 0;

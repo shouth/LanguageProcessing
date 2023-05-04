@@ -164,7 +164,7 @@ static void visit_program(ast_visitor_t *visitor, const ast_program_t *program)
   }
 }
 
-void resolve(context_t *ctx)
+void mpplc_resolve(context_t *ctx)
 {
   resolver_t     resolver;
   ast_visitor_t *visitor = (ast_visitor_t *) &resolver;

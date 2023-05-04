@@ -766,7 +766,7 @@ static ast_program_t *parse_program(parser_t *parser)
   return program;
 }
 
-int parse(context_t *ctx)
+int mpplc_parse(context_t *ctx)
 {
   parser_t parser;
   parser.src     = ctx->src;

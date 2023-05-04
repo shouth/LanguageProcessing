@@ -61,15 +61,17 @@ int main(int argc, char **argv)
   term_ansi_stderr(flag_color_print);
 
   {
-    context_t *ctx = ctx_new(argv[i], output);
-    if (parse(ctx)) {
+    context_t ctx;
+    mpplc_init(&ctx, argv[i], output);
+    if (mpplc_parse(&ctx)) {
       if (flag_pretty_print) {
-        pretty(ctx);
+        mpplc_pretty(&ctx);
       }
 
-      resolve(ctx);
+      mpplc_resolve(&ctx);
+      mpplc_check(&ctx);
     }
-    ctx_delete(ctx);
+    mpplc_deinit(&ctx);
   }
   return EXIT_SUCCESS;
 }

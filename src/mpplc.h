@@ -7,18 +7,18 @@
 
 /* parser.c */
 
-int parse(context_t *);
+int mpplc_parse(context_t *);
 
 /* pretty_print.c */
 
-void pretty(context_t *);
+void mpplc_pretty(context_t *);
 
 /* resolve.c */
 
-void resolve(context_t *);
+void mpplc_resolve(context_t *);
 
 /* check.c */
 
-void check(context_t *);
+void mpplc_check(context_t *);
 
 #endif

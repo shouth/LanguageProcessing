@@ -174,10 +174,9 @@ const type_t *ctx_mk_type_procedure(context_t *ctx, const substs_t *params)
   return mk_type(ctx, (type_t *) &type, TYPE_PROCEDURE);
 }
 
-context_t *ctx_new(const char *in_name, const char *out_name)
+void mpplc_init(context_t *ctx, const char *in_name, const char *out_name)
 {
-  context_t *ctx = xmalloc(sizeof(context_t));
-  ctx->in_name   = xmalloc(strlen(in_name) + 1);
+  ctx->in_name = xmalloc(strlen(in_name) + 1);
   strcpy(ctx->in_name, in_name);
 
   if (out_name) {
@@ -207,20 +206,19 @@ context_t *ctx_new(const char *in_name, const char *out_name)
     ctx->type_string  = mk_type(ctx, &type, TYPE_STRING);
     ctx->type_program = mk_type(ctx, &type, TYPE_PROGRAM);
   }
-  return ctx;
 }
 
-static void ctx_delete_defs(def_t *def)
+static void delete_defs(def_t *def)
 {
   while (def) {
     def_t *next = def->next;
-    ctx_delete_defs(def->inner);
+    delete_defs(def->inner);
     free(def);
     def = next;
   }
 }
 
-void ctx_delete(context_t *ctx)
+void mpplc_deinit(context_t *ctx)
 {
   if (ctx) {
     free(ctx->in_name);
@@ -228,12 +226,11 @@ void ctx_delete(context_t *ctx)
 
     src_delete(ctx->src);
     ast_delete(ctx->ast);
-    ctx_delete_defs(ctx->defs);
+    delete_defs(ctx->defs);
     hash_delete(ctx->resolution, NULL, NULL);
 
     hash_delete(ctx->symbol_interner, symbol_deleter, NULL);
     hash_delete(ctx->substs_interner, free, NULL);
     hash_delete(ctx->type_interner, free, NULL);
   }
-  free(ctx);
 }
