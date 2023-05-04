@@ -137,7 +137,7 @@ static unsigned long type_hash(const void *value)
   return hash;
 }
 
-static const type_t *type_make(context_t *ctx, type_t *type, type_kind_t kind)
+static const type_t *mk_type(context_t *ctx, type_t *type, type_kind_t kind)
 {
   type->kind = kind;
   {
@@ -162,14 +162,14 @@ const type_t *ctx_mk_type_array(context_t *ctx, const substs_t *base, long size)
   type_array_t type;
   type.base = base;
   type.size = size;
-  return type_make(ctx, (type_t *) &type, TYPE_ARRAY);
+  return mk_type(ctx, (type_t *) &type, TYPE_ARRAY);
 }
 
 const type_t *ctx_mk_type_procedure(context_t *ctx, const substs_t *params)
 {
   type_procedure_t type;
   type.params = params;
-  return type_make(ctx, (type_t *) &type, TYPE_PROCEDURE);
+  return mk_type(ctx, (type_t *) &type, TYPE_PROCEDURE);
 }
 
 context_t *ctx_new(const char *in_name, const char *out_name)
@@ -199,11 +199,11 @@ context_t *ctx_new(const char *in_name, const char *out_name)
 
   {
     type_t type;
-    ctx->type_boolean = type_make(ctx, &type, TYPE_BOOLEAN);
-    ctx->type_char    = type_make(ctx, &type, TYPE_CHAR);
-    ctx->type_integer = type_make(ctx, &type, TYPE_INTEGER);
-    ctx->type_string  = type_make(ctx, &type, TYPE_STRING);
-    ctx->type_program = type_make(ctx, &type, TYPE_PROGRAM);
+    ctx->type_boolean = mk_type(ctx, &type, TYPE_BOOLEAN);
+    ctx->type_char    = mk_type(ctx, &type, TYPE_CHAR);
+    ctx->type_integer = mk_type(ctx, &type, TYPE_INTEGER);
+    ctx->type_string  = mk_type(ctx, &type, TYPE_STRING);
+    ctx->type_program = mk_type(ctx, &type, TYPE_PROGRAM);
   }
   return ctx;
 }
