@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
 #include "context.h"
 #include "mppl.h"
+#include "source.h"
 #include "utility.h"
 
 void print_help(const char *command)
@@ -22,12 +24,7 @@ void print_help(const char *command)
 
 int main(int argc, char **argv)
 {
-  context_t context;
-  source_t *src = NULL;
-  ast_t    *ast = NULL;
-  ir_t     *ir  = NULL;
-  long      i;
-
+  long        i;
   const char *output            = NULL;
   int         flag_pretty_print = 0;
   int         flag_crossref     = 0;
@@ -63,26 +60,16 @@ int main(int argc, char **argv)
   term_ansi_stdout(flag_color_print);
   term_ansi_stderr(flag_color_print);
 
-  ctx_init(&context);
-  src = src_new(argv[i], output);
-  if ((ast = parse_source(&context, src))) {
-    if (flag_pretty_print) {
-      pretty_print(ast);
-    }
-
-    /*
-    if ((ir = lower_ast(&context, ast))) {
-      if (flag_crossref) {
-        print_crossref(ir);
+  {
+    context_t *ctx = ctx_new(argv[i], output);
+    if (parse(ctx)) {
+      if (flag_pretty_print) {
+        ast_pretty(ctx);
       }
-      codegen_casl2(ir);
-    }
-    */
-  }
 
-  delete_ir(ir);
-  ast_delete(ast);
-  src_delete(src);
-  ctx_deinit(&context);
-  return 0;
+      resolve(ctx);
+    }
+    ctx_delete(ctx);
+  }
+  return EXIT_SUCCESS;
 }

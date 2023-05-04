@@ -1,8 +1,11 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
 #include "context.h"
 #include "source.h"
+#include "types.h"
 #include "utility.h"
 
 static int symbol_comp(const void *lhs, const void *rhs)
@@ -25,7 +28,7 @@ static void symbol_deleter(void *value)
   free(x);
 }
 
-const symbol_t *symbol(context_t *ctx, const char *ptr, long len)
+const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
 {
   symbol_t key;
   key.ptr = ptr;
@@ -59,7 +62,7 @@ static unsigned long substs_hash(const void *value)
   return fnv1a(FNV1A_SEED, x->types, sizeof(type_t *) * x->count);
 }
 
-const substs_t *substs(context_t *ctx, const type_t **types, long count)
+const substs_t *ctx_mk_substs(context_t *ctx, const type_t **types, long count)
 {
   substs_t key;
   key.types = types;
@@ -148,13 +151,13 @@ static const type_t *type_make(context_t *ctx, type_t *type, type_kind_t kind)
   }
 }
 
-const type_t *type_integer(context_t *ctx) { return ctx->type_integer; }
-const type_t *type_boolean(context_t *ctx) { return ctx->type_boolean; }
-const type_t *type_char(context_t *ctx) { return ctx->type_char; }
-const type_t *type_string(context_t *ctx) { return ctx->type_string; }
-const type_t *type_program(context_t *ctx) { return ctx->type_program; }
+const type_t *ctx_mk_type_integer(context_t *ctx) { return ctx->type_integer; }
+const type_t *ctx_mk_type_boolean(context_t *ctx) { return ctx->type_boolean; }
+const type_t *ctx_mk_type_char(context_t *ctx) { return ctx->type_char; }
+const type_t *ctx_mk_type_string(context_t *ctx) { return ctx->type_string; }
+const type_t *ctx_mk_type_program(context_t *ctx) { return ctx->type_program; }
 
-const type_t *type_array(context_t *ctx, const substs_t *base, long size)
+const type_t *ctx_mk_type_array(context_t *ctx, const substs_t *base, long size)
 {
   type_array_t type;
   type.base = base;
@@ -162,15 +165,34 @@ const type_t *type_array(context_t *ctx, const substs_t *base, long size)
   return type_make(ctx, (type_t *) &type, TYPE_ARRAY);
 }
 
-const type_t *type_procedure(context_t *ctx, const substs_t *params)
+const type_t *ctx_mk_type_procedure(context_t *ctx, const substs_t *params)
 {
   type_procedure_t type;
   type.params = params;
   return type_make(ctx, (type_t *) &type, TYPE_PROCEDURE);
 }
 
-context_t *ctx_init(context_t *ctx)
+context_t *ctx_new(const char *in_name, const char *out_name)
 {
+  context_t *ctx = xmalloc(sizeof(context_t));
+  ctx->in_name   = xmalloc(strlen(in_name) + 1);
+  strcpy(ctx->in_name, in_name);
+
+  if (out_name) {
+    ctx->out_name = xmalloc(strlen(out_name) + 1);
+    strcpy(ctx->out_name, out_name);
+  } else {
+    long in_name_len = strlen(in_name);
+    ctx->out_name    = xmalloc(in_name_len + 1);
+    sscanf(ctx->in_name, "%s.mpl", ctx->out_name);
+    sprintf(ctx->out_name + in_name_len - 4, ".csl");
+  }
+
+  ctx->src        = src_new(in_name);
+  ctx->ast        = NULL;
+  ctx->defs       = NULL;
+  ctx->resolution = NULL;
+
   ctx->symbol_interner = hash_new(&symbol_comp, &symbol_hash);
   ctx->substs_interner = hash_new(&substs_comp, &substs_hash);
   ctx->type_interner   = hash_new(&type_comp, &type_hash);
@@ -186,9 +208,30 @@ context_t *ctx_init(context_t *ctx)
   return ctx;
 }
 
-void ctx_deinit(context_t *ctx)
+static void ctx_delete_defs(def_t *def)
 {
-  hash_delete(ctx->symbol_interner, symbol_deleter, NULL);
-  hash_delete(ctx->substs_interner, free, NULL);
-  hash_delete(ctx->type_interner, free, NULL);
+  while (def) {
+    def_t *next = def->next;
+    ctx_delete_defs(def->inner);
+    free(def);
+    def = next;
+  }
+}
+
+void ctx_delete(context_t *ctx)
+{
+  if (ctx) {
+    free(ctx->in_name);
+    free(ctx->out_name);
+
+    src_delete(ctx->src);
+    ast_delete(ctx->ast);
+    ctx_delete_defs(ctx->defs);
+    hash_delete(ctx->resolution, NULL, NULL);
+
+    hash_delete(ctx->symbol_interner, symbol_deleter, NULL);
+    hash_delete(ctx->substs_interner, free, NULL);
+    hash_delete(ctx->type_interner, free, NULL);
+  }
+  free(ctx);
 }

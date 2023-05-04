@@ -155,7 +155,7 @@ static ast_ident_t *parse_ident(void)
 {
   if (expect(TOKEN_IDENT)) {
     ast_ident_t *ident = xmalloc(sizeof(ast_ident_t));
-    ident->symbol      = symbol(parser.context, parser.current.ptr, parser.current.region.len);
+    ident->symbol      = ctx_mk_symbol(parser.context, parser.current.ptr, parser.current.region.len);
     ident->region      = parser.current.region;
     ident->next        = NULL;
     return ident;
@@ -175,7 +175,7 @@ static ast_lit_t *parse_lit_number(void)
 {
   if (expect(TOKEN_NUMBER)) {
     ast_lit_number_t *lit = xmalloc(sizeof(ast_lit_t));
-    lit->symbol           = symbol(parser.context, parser.current.ptr, parser.current.region.len);
+    lit->symbol           = ctx_mk_symbol(parser.context, parser.current.ptr, parser.current.region.len);
     lit->value            = parser.current.data.number.value;
     return init_lit((ast_lit_t *) lit, AST_LIT_KIND_NUMBER, parser.current.region);
   } else {
@@ -201,7 +201,7 @@ static ast_lit_t *parse_lit_string(void)
     ast_lit_string_t *lit   = xmalloc(sizeof(ast_lit_t));
     token_string_t   *token = (token_string_t *) &parser.current;
     lit->str_len            = token->str_len;
-    lit->symbol             = symbol(parser.context, token->ptr, token->len);
+    lit->symbol             = ctx_mk_symbol(parser.context, token->ptr, token->len);
     return init_lit((ast_lit_t *) lit, AST_LIT_KIND_STRING, parser.current.region);
   } else {
     return NULL;
@@ -766,27 +766,22 @@ static ast_program_t *parse_program(void)
   return program;
 }
 
-ast_t *parse_source(context_t *context, const source_t *src)
+int parse(context_t *ctx)
 {
-  assert(src);
-
-  parser.src     = src;
-  parser.context = context;
+  parser.src     = ctx->src;
+  parser.context = ctx;
   memset(parser.expected, 0, sizeof(parser.expected));
   parser.alive       = 1;
   parser.error       = 0;
   parser.within_loop = 0;
-  lexer_init(&parser.lexer, src);
+  lexer_init(&parser.lexer, parser.src);
   bump();
 
-  {
-    ast_t *ast   = xmalloc(sizeof(ast_t));
-    ast->program = parse_program();
-    ast->source  = src;
-    if (parser.error) {
-      ast_delete(ast);
-      return NULL;
-    }
-    return ast;
+  ctx->ast          = xmalloc(sizeof(ast_t));
+  ctx->ast->program = parse_program();
+  if (parser.error) {
+    ast_delete(ctx->ast);
+    ctx->ast = NULL;
   }
+  return !parser.error;
 }

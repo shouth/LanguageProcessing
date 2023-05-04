@@ -214,7 +214,7 @@ void msg_emit(msg_t *msg)
     term_set(SGR_FG_BRIGHT_BLUE);
     printf("--> ");
     term_set(SGR_RESET);
-    printf("%s:%ld:%ld\n", msg->src->in_name, loc.line, loc.col);
+    printf("%s:%ld:%ld\n", msg->src->filename, loc.line, loc.col);
   }
 
   for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {

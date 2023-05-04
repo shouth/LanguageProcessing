@@ -2,7 +2,6 @@
 #define _FILE_OFFSET_BITS 64
 
 #include <assert.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -96,40 +95,24 @@ static const char *src_next_line(const char *str)
   return str + 1;
 }
 
-source_t *src_new(const char *in_name, const char *out_name)
+source_t *src_new(const char *filename)
 {
   source_t *src = xmalloc(sizeof(source_t));
-  long      in_name_len;
-  assert(in_name);
 
-  in_name_len = strlen(in_name);
+  src->filename = xmalloc(strlen(filename) + 1);
+  strcpy(src->filename, filename);
 
-  src->in_name = xmalloc(sizeof(*src->in_name) * (in_name_len + 1));
-  strcpy(src->in_name, in_name);
-
-  if (out_name) {
-    src->out_name = xmalloc(sizeof(*src->out_name) * strlen(out_name));
-    strcpy(src->out_name, out_name);
-  } else {
-    if (strncmp(in_name + in_name_len - 4, ".mpl", 4) != 0) {
-      fprintf(stderr, "error: filename needs to end with `.mpl`\n");
-      exit(EXIT_FAILURE);
-    }
-    src->out_name = xmalloc(sizeof(*src->out_name) * (in_name_len + 1));
-    sprintf(src->out_name, "%.*s.csl", (int) (in_name_len - 4), in_name);
-  }
-
-  src->src_len = src_size(in_name);
+  src->src_len = src_size(filename);
   src->src     = xmalloc(sizeof(*src->src) * (src->src_len + 1));
   {
-    FILE *file = fopen(in_name, "r");
+    FILE *file = fopen(filename, "r");
     if (!file) {
-      fprintf(stderr, "error: failed to open `%s`\n", in_name);
+      fprintf(stderr, "error: failed to open `%s`\n", filename);
       exit(EXIT_FAILURE);
     }
     fread(src->src, sizeof(*src->src), src->src_len, file);
     if (ferror(file)) {
-      fprintf(stderr, "error: failed to read `%s`\n", in_name);
+      fprintf(stderr, "error: failed to read `%s`\n", filename);
       exit(EXIT_FAILURE);
     }
     fclose(file);
@@ -162,10 +145,11 @@ source_t *src_new(const char *in_name, const char *out_name)
 
 void src_delete(source_t *src)
 {
-  free(src->in_name);
-  free(src->out_name);
-  free(src->src);
-  free(src->lines);
+  if (src) {
+    free(src->filename);
+    free(src->src);
+    free(src->lines);
+  }
   free(src);
 }
 

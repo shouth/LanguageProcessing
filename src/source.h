@@ -2,18 +2,16 @@
 #define SOURCE_H
 
 #include "utility.h"
-#include <stddef.h>
 
 typedef struct {
-  char *in_name;
-  char *out_name;
+  char *filename;
   char *src;
   long  src_len;
   long *lines;
   long  lines_len;
 } source_t;
 
-source_t *src_new(const char *filename, const char *output);
+source_t *src_new(const char *filename);
 void      src_delete(source_t *src);
 
 typedef struct {

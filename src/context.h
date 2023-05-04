@@ -1,63 +1,22 @@
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
+#include "ast.h"
 #include "source.h"
+#include "types.h"
 #include "utility.h"
-
-typedef struct symbol__s symbol_t;
-typedef struct type__s   type_t;
-
-/**********     symbol     **********/
-
-struct symbol__s {
-  const char *ptr;
-  long        len;
-};
-
-/**********     type     **********/
-
-typedef enum {
-  TYPE_INTEGER,
-  TYPE_BOOLEAN,
-  TYPE_CHAR,
-  TYPE_STRING,
-  TYPE_ARRAY,
-  TYPE_PROGRAM,
-  TYPE_PROCEDURE
-} type_kind_t;
-
-typedef struct substs__s         substs_t;
-typedef struct type__procedure_s type_procedure_t;
-typedef struct type__array_s     type_array_t;
-
-struct substs__s {
-  const type_t **types;
-  long           count;
-};
-
-struct type__procedure_s {
-  const substs_t *params;
-};
-
-struct type__array_s {
-  const substs_t *base;
-  long            size;
-};
-
-struct type__s {
-  union {
-    type_procedure_t procedure;
-    type_array_t     array;
-  } type;
-
-  type_kind_t kind;
-};
-
-/**********     context     **********/
 
 typedef struct context__s context_t;
 
 struct context__s {
+  char *in_name;
+  char *out_name;
+
+  source_t *src;
+  ast_t    *ast;
+  def_t    *defs;
+  hash_t   *resolution;
+
   hash_t *symbol_interner;
   hash_t *substs_interner;
   hash_t *type_interner;
@@ -69,16 +28,16 @@ struct context__s {
   const type_t *type_program;
 };
 
-const symbol_t *symbol(context_t *, const char *, long);
-const substs_t *substs(context_t *, const type_t **, long);
-const type_t   *type_integer(context_t *);
-const type_t   *type_boolean(context_t *);
-const type_t   *type_char(context_t *);
-const type_t   *type_string(context_t *);
-const type_t   *type_array(context_t *, const substs_t *, long);
-const type_t   *type_program(context_t *);
-const type_t   *type_procedure(context_t *, const substs_t *);
-context_t      *ctx_init(context_t *);
-void            ctx_deinit(context_t *);
+const symbol_t *ctx_mk_symbol(context_t *, const char *, long);
+const substs_t *ctx_mk_substs(context_t *, const type_t **, long);
+const type_t   *ctx_mk_type_integer(context_t *);
+const type_t   *ctx_mk_type_boolean(context_t *);
+const type_t   *ctx_mk_type_char(context_t *);
+const type_t   *ctx_mk_type_string(context_t *);
+const type_t   *ctx_mk_type_array(context_t *, const substs_t *, long);
+const type_t   *ctx_mk_type_program(context_t *);
+const type_t   *ctx_mk_type_procedure(context_t *, const substs_t *);
+context_t      *ctx_new(const char *in_name, const char *out_name);
+void            ctx_delete(context_t *);
 
 #endif

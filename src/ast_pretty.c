@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "ast.h"
+#include "context.h"
 #include "lexer.h"
 
 #if defined(__GNUC__)
@@ -23,7 +24,7 @@ typedef struct {
   unsigned long literal;
 } color_scheme_t;
 
-const color_scheme_t monokai = {
+const color_scheme_t github = {
   0xE6EDF3, 0xD2A8FF, 0xFF7B72, 0xFF7B72, 0xD2A8FF, 0xFFA657, 0xA5D6FF, 0x79C0FF
 };
 
@@ -467,16 +468,14 @@ void pp_program(printer_t *printer, const ast_program_t *program)
   pp_fprintf(printer, ".\n");
 }
 
-void pretty_print(const ast_t *ast)
+void ast_pretty(context_t *ctx)
 {
-  if (ast) {
-    printer_t printer;
-    printer.indent = 0;
-    printer.colors = &monokai;
-    printer.stream = stdout;
+  printer_t printer;
+  printer.indent = 0;
+  printer.colors = &github;
+  printer.stream = stdout;
 
-    term_set(SGR_RESET);
-    pp_program(&printer, ast->program);
-    term_set(SGR_RESET);
-  }
+  term_set(SGR_RESET);
+  pp_program(&printer, ctx->ast->program);
+  term_set(SGR_RESET);
 }

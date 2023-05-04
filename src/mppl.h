@@ -3,22 +3,18 @@
 
 #include "ast.h"
 #include "context.h"
-#include "ir.h"
+#include "utility.h"
 
 /* parser.c */
 
-ast_t *parse_source(context_t *context, const source_t *src);
+int parse(context_t *);
 
 /* pretty_print.c */
 
-void pretty_print(const ast_t *ast);
+void ast_pretty(context_t *);
 
-/* crossref.c */
+/* resolve.c */
 
-void print_crossref(const ir_t *ir);
-
-/* codegen.c */
-
-void codegen_casl2(const ir_t *ir);
+void resolve(context_t *ctx);
 
 #endif
