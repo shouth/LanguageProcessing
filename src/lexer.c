@@ -125,7 +125,7 @@ static token_kind_t lex_delimited(lexer_t *lexer, token_t *token)
     token_string_t *comment = (token_string_t *) token;
     comment->len            = 0;
     comment->str_len        = 0;
-    comment->ptr            = comment->ptr + 1;
+    comment->ptr            = token->ptr + 1;
     while (1) {
       if (eat(lexer, '\'')) {
         if (!eat(lexer, '\'')) {
