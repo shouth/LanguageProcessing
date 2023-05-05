@@ -118,6 +118,7 @@ static void visit_expr(ast_visitor_t *visitor, const ast_expr_t *expr)
     /* do nothing */
     break;
   }
+  ast_walk_expr(visitor, expr);
 }
 
 static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
