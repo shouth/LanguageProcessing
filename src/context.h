@@ -16,10 +16,11 @@ struct context__s {
   ast_t    *ast;
   def_t    *defs;
   hash_t   *resolution;
+  hash_t   *types;
 
-  hash_t *symbol_interner;
-  hash_t *substs_interner;
-  hash_t *type_interner;
+  hash_t  *symbol_interner;
+  hash_t  *type_interner;
+  subst_t *subst_loan;
 
   const type_t *type_integer;
   const type_t *type_boolean;
@@ -29,13 +30,13 @@ struct context__s {
 };
 
 const symbol_t *ctx_mk_symbol(context_t *, const char *, long);
-const substs_t *ctx_mk_substs(context_t *, const type_t **, long);
+subst_t        *ctx_loan_subst(context_t *, const type_t *);
 const type_t   *ctx_mk_type_integer(context_t *);
 const type_t   *ctx_mk_type_boolean(context_t *);
 const type_t   *ctx_mk_type_char(context_t *);
 const type_t   *ctx_mk_type_string(context_t *);
-const type_t   *ctx_mk_type_array(context_t *, const substs_t *, long);
+const type_t   *ctx_mk_type_array(context_t *, subst_t *, long);
 const type_t   *ctx_mk_type_program(context_t *);
-const type_t   *ctx_mk_type_procedure(context_t *, const substs_t *);
+const type_t   *ctx_mk_type_procedure(context_t *, subst_t *);
 
 #endif

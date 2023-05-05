@@ -49,7 +49,6 @@ static def_t *add_def(resolver_t *resolver, def_kind_t kind, const void *ast, co
     def->name   = name;
     def->region = region;
     def->kind   = kind;
-    def->type   = NULL;
     def->inner  = NULL;
     def->next   = NULL;
 

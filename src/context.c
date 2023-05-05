@@ -52,34 +52,17 @@ const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
   }
 }
 
-static int substs_comp(const void *lhs, const void *rhs)
+subst_t *ctx_loan_subst(context_t *ctx, const type_t *type)
 {
-  const substs_t *l = lhs;
-  const substs_t *r = rhs;
-  return l->count == r->count && !memcmp(l->types, r->types, l->count);
-}
-
-static unsigned long substs_hash(const void *value)
-{
-  const substs_t *x = value;
-  return fnv1a(FNV1A_SEED, x->types, sizeof(type_t *) * x->count);
-}
-
-const substs_t *ctx_mk_substs(context_t *ctx, const type_t **types, long count)
-{
-  substs_t key;
-  key.types = types;
-  key.count = count;
-
-  {
-    const hash_entry_t *entry = hash_find(ctx->substs_interner, &key);
-    if (!entry) {
-      substs_t *substs = xmalloc(sizeof(substs_t));
-      memcpy(substs, &key, sizeof(substs_t));
-      entry = hash_insert_unchecked(ctx->substs_interner, substs, NULL);
-    }
-    return entry->key;
+  subst_t *subst = ctx->subst_loan;
+  if (ctx->subst_loan) {
+    ctx->subst_loan = subst->next;
+  } else {
+    subst = xmalloc(sizeof(subst_t));
   }
+  subst->type = type;
+  subst->next = NULL;
+  return subst;
 }
 
 static int type_comp(const void *lhs, const void *rhs)
@@ -120,13 +103,18 @@ static unsigned long type_hash(const void *value)
   switch (x->kind) {
   case TYPE_ARRAY: {
     const type_array_t *arr = value;
-    hash                    = fnv1a(hash, &arr->base, sizeof(substs_t *));
-    hash                    = fnv1a(hash, &arr->size, sizeof(long));
+
+    hash = fnv1a(hash, &arr->base->type, sizeof(type_t *));
+    hash = fnv1a(hash, &arr->size, sizeof(long));
     break;
   }
   case TYPE_PROCEDURE: {
-    const type_procedure_t *proc = value;
-    hash                         = fnv1a(hash, &proc->params, sizeof(substs_t *));
+    const type_procedure_t *proc  = value;
+    const subst_t          *subst = proc->params;
+
+    for (; subst; subst = subst->next) {
+      hash = fnv1a(hash, &subst->type, sizeof(type_t *));
+    }
     break;
   }
   case TYPE_BOOLEAN:
@@ -140,6 +128,16 @@ static unsigned long type_hash(const void *value)
   return hash;
 }
 
+static void cache_subst(context_t *ctx, subst_t *subst)
+{
+  while (subst) {
+    subst_t *next   = subst->next;
+    subst->next     = ctx->subst_loan;
+    ctx->subst_loan = subst;
+    subst           = next;
+  }
+}
+
 static const type_t *mk_type(context_t *ctx, type_t *type, type_kind_t kind)
 {
   type->kind = kind;
@@ -149,6 +147,22 @@ static const type_t *mk_type(context_t *ctx, type_t *type, type_kind_t kind)
       type_t *ntype = xmalloc(sizeof(type_t));
       memcpy(ntype, type, sizeof(type_t));
       entry = hash_insert_unchecked(ctx->type_interner, ntype, NULL);
+    } else {
+      switch (kind) {
+      case TYPE_ARRAY: {
+        type_array_t *array = (type_array_t *) type;
+        cache_subst(ctx, array->base);
+        break;
+      }
+      case TYPE_PROCEDURE: {
+        type_procedure_t *proc = (type_procedure_t *) type;
+        cache_subst(ctx, proc->params);
+        break;
+      }
+      default:
+        /* do nothing */
+        break;
+      }
     }
     return entry->key;
   }
@@ -160,7 +174,7 @@ const type_t *ctx_mk_type_char(context_t *ctx) { return ctx->type_char; }
 const type_t *ctx_mk_type_string(context_t *ctx) { return ctx->type_string; }
 const type_t *ctx_mk_type_program(context_t *ctx) { return ctx->type_program; }
 
-const type_t *ctx_mk_type_array(context_t *ctx, const substs_t *base, long size)
+const type_t *ctx_mk_type_array(context_t *ctx, subst_t *base, long size)
 {
   type_array_t type;
   type.base = base;
@@ -168,7 +182,7 @@ const type_t *ctx_mk_type_array(context_t *ctx, const substs_t *base, long size)
   return mk_type(ctx, (type_t *) &type, TYPE_ARRAY);
 }
 
-const type_t *ctx_mk_type_procedure(context_t *ctx, const substs_t *params)
+const type_t *ctx_mk_type_procedure(context_t *ctx, subst_t *params)
 {
   type_procedure_t type;
   type.params = params;
@@ -196,7 +210,6 @@ void mpplc_init(context_t *ctx, const char *in_name, const char *out_name)
   ctx->resolution = NULL;
 
   ctx->symbol_interner = hash_new(&symbol_comp, &symbol_hash);
-  ctx->substs_interner = hash_new(&substs_comp, &substs_hash);
   ctx->type_interner   = hash_new(&type_comp, &type_hash);
 
   {
@@ -231,7 +244,6 @@ void mpplc_deinit(context_t *ctx)
     hash_delete(ctx->resolution, NULL, NULL);
 
     hash_delete(ctx->symbol_interner, symbol_deleter, NULL);
-    hash_delete(ctx->substs_interner, free, NULL);
     hash_delete(ctx->type_interner, free, NULL);
   }
 }
