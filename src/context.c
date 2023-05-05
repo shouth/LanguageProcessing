@@ -128,6 +128,38 @@ static unsigned long type_hash(const void *value)
   return hash;
 }
 
+static void delete_substs(subst_t *substs)
+{
+  while (substs) {
+    subst_t *next = substs->next;
+    free(substs);
+    substs = next;
+  }
+}
+
+static void type_deleter(void *value)
+{
+  if (value) {
+    type_t *type = value;
+    switch (type->kind) {
+    case TYPE_ARRAY: {
+      type_array_t *array = value;
+      delete_substs(array->base);
+      break;
+    }
+    case TYPE_PROCEDURE: {
+      type_procedure_t *proc = value;
+      delete_substs(proc->params);
+      break;
+    }
+    default:
+      /* do nothing */
+      break;
+    }
+  }
+  free(value);
+}
+
 static void cache_subst(context_t *ctx, subst_t *subst)
 {
   while (subst) {
@@ -176,17 +208,19 @@ const type_t *ctx_mk_type_program(context_t *ctx) { return ctx->type_program; }
 
 const type_t *ctx_mk_type_array(context_t *ctx, subst_t *base, long size)
 {
-  type_array_t type;
-  type.base = base;
-  type.size = size;
-  return mk_type(ctx, (type_t *) &type, TYPE_ARRAY);
+  type_t        type;
+  type_array_t *array = (type_array_t *) &type;
+  array->base         = base;
+  array->size         = size;
+  return mk_type(ctx, &type, TYPE_ARRAY);
 }
 
 const type_t *ctx_mk_type_procedure(context_t *ctx, subst_t *params)
 {
-  type_procedure_t type;
-  type.params = params;
-  return mk_type(ctx, (type_t *) &type, TYPE_PROCEDURE);
+  type_t            type;
+  type_procedure_t *proc = (type_procedure_t *) &type;
+  proc->params           = params;
+  return mk_type(ctx, &type, TYPE_PROCEDURE);
 }
 
 void mpplc_init(context_t *ctx, const char *in_name, const char *out_name)
@@ -211,6 +245,7 @@ void mpplc_init(context_t *ctx, const char *in_name, const char *out_name)
 
   ctx->symbol_interner = hash_new(&symbol_comp, &symbol_hash);
   ctx->type_interner   = hash_new(&type_comp, &type_hash);
+  ctx->subst_loan      = NULL;
 
   {
     type_t type;
@@ -243,7 +278,7 @@ void mpplc_deinit(context_t *ctx)
     delete_defs(ctx->defs);
     hash_delete(ctx->resolution, NULL, NULL);
 
-    hash_delete(ctx->symbol_interner, symbol_deleter, NULL);
-    hash_delete(ctx->type_interner, free, NULL);
+    hash_delete(ctx->symbol_interner, &symbol_deleter, NULL);
+    hash_delete(ctx->type_interner, &type_deleter, NULL);
   }
 }
