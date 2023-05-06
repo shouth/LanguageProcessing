@@ -1,8 +1,11 @@
 #include <assert.h>
+#include <string.h>
 
 #include "ast.h"
 #include "context.h"
+#include "message.h"
 #include "mpplc.h"
+#include "pretty.h"
 #include "types.h"
 #include "utility.h"
 
@@ -30,6 +33,7 @@ static const type_t *check_lit(checker_t *checker, const ast_lit_t *lit)
   }
   case AST_LIT_KIND_STRING: {
     const ast_lit_string_t *string = (ast_lit_string_t *) lit;
+
     if (string->str_len == 1) {
       return ctx_mk_type_char(checker->ctx);
     } else {
@@ -44,22 +48,29 @@ static const type_t *check_lit(checker_t *checker, const ast_lit_t *lit)
 static const type_t *check_type(checker_t *checker, const ast_type_t *type)
 {
   switch (type->kind) {
-  case AST_TYPE_KIND_BOOLEAN: {
+  case AST_TYPE_KIND_BOOLEAN:
     return ctx_mk_type_boolean(checker->ctx);
-  }
-  case AST_TYPE_KIND_CHAR: {
+  case AST_TYPE_KIND_CHAR:
     return ctx_mk_type_char(checker->ctx);
-  }
-  case AST_TYPE_KIND_INTEGER: {
+  case AST_TYPE_KIND_INTEGER:
     return ctx_mk_type_integer(checker->ctx);
-  }
   case AST_TYPE_KIND_ARRAY: {
     const ast_type_array_t *array = (ast_type_array_t *) type;
-    const type_t           *base  = check_type(checker, array->base);
-    subst_t                *subst = ctx_loan_subst(checker->ctx, base);
+    const ast_lit_number_t *size  = (ast_lit_number_t *) array->size;
 
     assert(array->size->kind == AST_LIT_KIND_NUMBER);
-    return ctx_mk_type_array(checker->ctx, subst, ((ast_lit_number_t *) array->size)->value);
+    if (size->value == 0) {
+      msg_t *msg = new_msg(checker->ctx->src, array->size->region,
+        MSG_ERROR, "size of array needs to be greater than 0");
+      msg_emit(msg);
+      return NULL;
+    }
+
+    {
+      const type_t *base  = check_type(checker, array->base);
+      subst_t      *subst = ctx_loan_subst(checker->ctx, base);
+      return ctx_mk_type_array(checker->ctx, subst, ((ast_lit_number_t *) array->size)->value);
+    }
   }
   default:
     unreachable();
@@ -83,6 +94,7 @@ const type_t *check_def(checker_t *checker, const def_t *def)
       const ast_decl_param_t          *params = proc->params;
       subst_t                         *types  = NULL;
       subst_t                        **tail   = &types;
+
       for (; params; params = params->next) {
         const type_t      *param = check_type(checker, params->type);
         const ast_ident_t *names = params->names;
@@ -123,25 +135,45 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
     const ast_expr_array_subscript_t *subscript = (ast_expr_array_subscript_t *) expr;
     const def_t                      *def       = hash_find(checker->ctx->resolution, subscript->decl)->value;
     const type_t                     *type      = check_def(checker, def);
+    const type_t                     *index     = check_expr(checker, subscript->subscript);
+
     if (type->kind != TYPE_ARRAY) {
-      /* TODO: emit error message for nonarray */
+      msg_t *msg = new_msg(checker->ctx->src, subscript->decl->region,
+        MSG_ERROR, "`%s` is not an array", subscript->decl->symbol->ptr);
+      msg_emit(msg);
       return NULL;
     }
-    return ((type_array_t *) type)->base->type;
+
+    if (index->kind != TYPE_INTEGER) {
+      msg_t *msg = new_msg(checker->ctx->src, subscript->subscript->region,
+        MSG_ERROR, "arrays cannot be indexed by `%s`", str_type(index));
+      msg_add_inline_entry(msg, subscript->subscript->region, "array indices are of type integer");
+      msg_emit(msg);
+      return NULL;
+    }
+
+    {
+      const type_array_t *array = (type_array_t *) type;
+      return array->base->type;
+    }
   }
   case AST_EXPR_KIND_BINARY: {
     const ast_expr_binary_t *binary = (ast_expr_binary_t *) expr;
     if (binary->lhs->kind == AST_EXPR_KIND_EMPTY) {
       const type_t *rhs = check_expr(checker, binary->rhs);
+
       assert(binary->kind == AST_EXPR_BINARY_KIND_PLUS || binary->kind == AST_EXPR_BINARY_KIND_MINUS);
       if (rhs->kind != TYPE_INTEGER) {
-        /* TODO: emit error message for invalid unary */
+        msg_t *msg = new_msg(checker->ctx->src, binary->op_region,
+          MSG_ERROR, "`%s` cannot be prefixed by `%s`", str_type(rhs), pp_binary_operator_str(binary->kind));
+        msg_emit(msg);
         return NULL;
       }
       return ctx_mk_type_integer(checker->ctx);
     } else {
       const type_t *lhs = check_expr(checker, binary->lhs);
       const type_t *rhs = check_expr(checker, binary->rhs);
+
       switch (binary->kind) {
       case AST_EXPR_BINARY_KIND_EQUAL:
       case AST_EXPR_BINARY_KIND_NOTEQ:
@@ -150,7 +182,13 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
       case AST_EXPR_BINARY_KIND_GR:
       case AST_EXPR_BINARY_KIND_GREQ: {
         if (lhs != rhs || !is_std_type(lhs) || !is_std_type(rhs)) {
-          /* TODO: emit error message for invalid comparison */
+          msg_t *msg = new_msg(checker->ctx->src, binary->op_region,
+            MSG_ERROR, "invalid operands for `%s`", pp_binary_operator_str(binary->kind));
+          msg_add_inline_entry(msg, binary->lhs->region, "%s", str_type(lhs));
+          msg_add_inline_entry(msg, binary->op_region,
+            "operator `%s` takes two operands of same standard type", pp_binary_operator_str(binary->kind));
+          msg_add_inline_entry(msg, binary->rhs->region, "%s", str_type(rhs));
+          msg_emit(msg);
           return NULL;
         }
         return ctx_mk_type_boolean(checker->ctx);
@@ -160,7 +198,13 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
       case AST_EXPR_BINARY_KIND_STAR:
       case AST_EXPR_BINARY_KIND_DIV: {
         if (lhs->kind != TYPE_INTEGER || rhs->kind != TYPE_INTEGER) {
-          /* TODO: emit error message for invalid arithmetic */
+          msg_t *msg = new_msg(checker->ctx->src, binary->op_region,
+            MSG_ERROR, "invalid operands for `%s`", pp_binary_operator_str(binary->kind));
+          msg_add_inline_entry(msg, binary->lhs->region, "%s", str_type(lhs));
+          msg_add_inline_entry(msg, binary->op_region,
+            "operator `%s` takes two operands of type integer", pp_binary_operator_str(binary->kind));
+          msg_add_inline_entry(msg, binary->rhs->region, "%s", str_type(rhs));
+          msg_emit(msg);
           return NULL;
         }
         return ctx_mk_type_integer(checker->ctx);
@@ -168,7 +212,13 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
       case AST_EXPR_BINARY_KIND_OR:
       case AST_EXPR_BINARY_KIND_AND: {
         if (lhs->kind != TYPE_BOOLEAN || rhs->kind != TYPE_BOOLEAN) {
-          /* TODO: emit error message for invalid logical */
+          msg_t *msg = new_msg(checker->ctx->src, binary->op_region,
+            MSG_ERROR, "invalid operands for `%s`", pp_binary_operator_str(binary->kind));
+          msg_add_inline_entry(msg, binary->lhs->region, "%s", str_type(lhs));
+          msg_add_inline_entry(msg, binary->op_region,
+            "operator `%s` takes two operands of type boolean", pp_binary_operator_str(binary->kind));
+          msg_add_inline_entry(msg, binary->rhs->region, "%s", str_type(rhs));
+          msg_emit(msg);
           return NULL;
         }
         return ctx_mk_type_boolean(checker->ctx);
@@ -182,7 +232,11 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
     const ast_expr_not_t *not_ = (ast_expr_not_t *) expr;
     const type_t         *type = check_expr(checker, not_->expr);
     if (type->kind != TYPE_BOOLEAN) {
-      /* TODO: emit error message for invalid not */
+      msg_t *msg = new_msg(checker->ctx->src, not_->op_region,
+        MSG_ERROR, "invalid operands for `not`");
+      msg_add_inline_entry(msg, not_->op_region, "operator `not` takes one operand of type boolean");
+      msg_add_inline_entry(msg, not_->expr->region, "%s", str_type(type));
+      msg_emit(msg);
       return NULL;
     }
     return ctx_mk_type_boolean(checker->ctx);
@@ -196,11 +250,17 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
     const type_t          *value_type = check_expr(checker, cast->cast);
     const type_t          *cast_type  = check_type(checker, cast->type);
     if (!is_std_type(value_type)) {
-      /* TODO: emit error message for invalid value */
+      msg_t *msg = new_msg(checker->ctx->src, cast->cast->region,
+        MSG_ERROR, "expression of type `%s` cannot be cast", str_type(value_type));
+      msg_add_inline_entry(msg, cast->cast->region, "expressions to be cast are of standard types");
+      msg_emit(msg);
       return NULL;
     }
     if (!is_std_type(cast_type)) {
-      /* TODO: emit error message for invalid cast */
+      msg_t *msg = new_msg(checker->ctx->src, cast->cast->region,
+        MSG_ERROR, "expression cannot be cast to `%s`", str_type(cast_type));
+      msg_add_inline_entry(msg, cast->type->region, "expressions can be cast to standard types");
+      msg_emit(msg);
       return NULL;
     }
     return cast_type;
@@ -238,7 +298,13 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
     const type_t            *lhs    = check_expr(checker, assign->lhs);
     const type_t            *rhs    = check_expr(checker, assign->rhs);
     if (lhs != rhs) {
-      /* TODO: emit error message for invalid assign */
+      msg_t *msg = new_msg(checker->ctx->src, assign->op_region,
+        MSG_ERROR, "invalid operands for `:=`");
+      msg_add_inline_entry(msg, assign->lhs->region, "%s", str_type(lhs));
+      msg_add_inline_entry(msg, assign->op_region,
+        "operator `:=` takes two operands of the same standard type");
+      msg_add_inline_entry(msg, assign->rhs->region, "%s", str_type(rhs));
+      msg_emit(msg);
     }
     break;
   }
@@ -246,7 +312,10 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
     const ast_stmt_if_t *if_  = (ast_stmt_if_t *) stmt;
     const type_t        *cond = check_expr(checker, if_->cond);
     if (cond->kind != TYPE_BOOLEAN) {
-      /* TODO: emit error message for invalid condition */
+      msg_t *msg = new_msg(checker->ctx->src, if_->cond->region,
+        MSG_ERROR, "expression of type `%s` cannot be condition", str_type(cond));
+      msg_add_inline_entry(msg, if_->cond->region, "condition expressions are of type boolean");
+      msg_emit(msg);
     }
     break;
   }
@@ -254,7 +323,10 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
     const ast_stmt_while_t *while_ = (ast_stmt_while_t *) stmt;
     const type_t           *cond   = check_expr(checker, while_->cond);
     if (cond->kind != TYPE_BOOLEAN) {
-      /* TODO: emit error message for invalid condition */
+      msg_t *msg = new_msg(checker->ctx->src, while_->cond->region,
+        MSG_ERROR, "expression of type `%s` cannot be condition", str_type(cond));
+      msg_add_inline_entry(msg, while_->cond->region, "condition expressions are of type boolean");
+      msg_emit(msg);
     }
     break;
   }
@@ -265,14 +337,21 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
     const type_procedure_t *proc = (type_procedure_t *) type;
     const ast_expr_t       *args;
     const subst_t          *params;
+
     if (type->kind != TYPE_PROCEDURE) {
-      /* TODO: emit error message for calling nonprocedure */
+      msg_t *msg = new_msg(checker->ctx->src, call->name->region,
+        MSG_ERROR, "`%s` is not a procedure", call->name->symbol->ptr);
+      msg_emit(msg);
       break;
     }
+
     if (def->ast == checker->enclosure) {
-      /* TODO: emit error message for recursion */
+      msg_t *msg = new_msg(checker->ctx->src, call->name->region,
+        MSG_ERROR, "recursive call of procedure is not allowed");
+      msg_emit(msg);
       break;
     }
+
     {
       long arg_cnt   = 0;
       long param_cnt = 0;
@@ -283,13 +362,21 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
         ++param_cnt;
       }
       if (arg_cnt != param_cnt) {
-        /* TODO: emit error message for a wrong number of arguments */
+        msg_t *msg = new_msg(checker->ctx->src, call->name->region, MSG_ERROR, "wrong number of arguments");
+        msg_add_inline_entry(msg, call->name->region, "expected %ld arguments, supplied %ld arguments", param_cnt, arg_cnt);
+        msg_emit(msg);
+        break;
       }
     }
     for (args = call->args, params = proc->params; args; args = args->next, params = params->next) {
       const type_t *type = check_expr(checker, args);
       if (proc->params->type != type) {
-        /* TODO: emit error message for a mismatching argument */
+        msg_t *msg = new_msg(checker->ctx->src, args->region, MSG_ERROR, "mismatching argument type");
+        char   expected[1024], found[1024];
+        strcpy(expected, str_type(params->type));
+        strcpy(found, str_type(type));
+        msg_add_inline_entry(msg, args->region, "expected `%s`, found `%s`", expected, found);
+        msg_emit(msg);
       }
     }
     break;
@@ -301,7 +388,11 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
     for (; expr; expr = expr->next) {
       const type_t *type = check_expr(checker, expr);
       if (type->kind != TYPE_CHAR && type->kind != TYPE_INTEGER) {
-        /* TODO: emit error message for invalid read argument */
+        msg_t *msg = new_msg(checker->ctx->src, expr->region,
+          MSG_ERROR, "cannot read value for reference to `%s`", str_type(type));
+        msg_add_inline_entry(msg, expr->region,
+          "arguments for read statements are of reference to integer or char");
+        msg_emit(msg);
       }
     }
     break;

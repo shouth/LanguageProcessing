@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "types.h"
+
 void *xmalloc(long size);
+
+const char *str_type(const type_t *type);
 
 #define FNV1A_INIT 0x811C9DC5
 
