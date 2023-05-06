@@ -279,13 +279,12 @@ static void visit_out_fmt(ast_visitor_t *visitor, const ast_out_fmt_t *fmt)
 {
   checker_t    *checker = (checker_t *) visitor;
   const type_t *type    = check_expr(checker, fmt->expr);
-  if (!is_std_type(type) || type->kind != TYPE_STRING) {
-    /* TODO: emit error message for invalid expression */
-    return;
-  }
-  if (type->kind == TYPE_STRING && fmt->len != NULL) {
-    /* TODO: emit error message for invalid format */
-    return;
+  if (!is_std_type(type) && type->kind != TYPE_STRING) {
+    msg_t *msg = msg_new(checker->ctx->src, fmt->expr->region,
+      MSG_ERROR, "cannot write value of type `%s`", str_type(type));
+    msg_add_inline(msg, fmt->expr->region,
+      "arguments for write statements are of standard types");
+    msg_emit(msg);
   }
 }
 
