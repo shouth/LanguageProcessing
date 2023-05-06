@@ -259,9 +259,12 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
     break;
   }
   case AST_STMT_KIND_CALL: {
-    const ast_stmt_call_t *call = (ast_stmt_call_t *) stmt;
-    const def_t           *def  = hash_find(checker->ctx->resolution, call->name)->value;
-    const type_t          *type = check_def(checker, def);
+    const ast_stmt_call_t  *call = (ast_stmt_call_t *) stmt;
+    const def_t            *def  = hash_find(checker->ctx->resolution, call->name)->value;
+    const type_t           *type = check_def(checker, def);
+    const type_procedure_t *proc = (type_procedure_t *) type;
+    const ast_expr_t       *args;
+    const subst_t          *params;
     if (type->kind != TYPE_PROCEDURE) {
       /* TODO: emit error message for calling nonprocedure */
       break;
@@ -270,13 +273,9 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
       /* TODO: emit error message for recursion */
       break;
     }
-
     {
-      const type_procedure_t *proc = (type_procedure_t *) type;
-      const ast_expr_t       *args;
-      const subst_t          *params;
-      long                    arg_cnt   = 0;
-      long                    param_cnt = 0;
+      long arg_cnt   = 0;
+      long param_cnt = 0;
       for (args = call->args; args; args = args->next) {
         ++arg_cnt;
       }
@@ -286,11 +285,11 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
       if (arg_cnt != param_cnt) {
         /* TODO: emit error message for a wrong number of arguments */
       }
-      for (args = call->args, params = proc->params; args; args = args->next, params = params->next) {
-        const type_t *type = check_expr(checker, args);
-        if (proc->params->type != type) {
-          /* TODO: emit error message for a mismatching argument */
-        }
+    }
+    for (args = call->args, params = proc->params; args; args = args->next, params = params->next) {
+      const type_t *type = check_expr(checker, args);
+      if (proc->params->type != type) {
+        /* TODO: emit error message for a mismatching argument */
       }
     }
     break;
