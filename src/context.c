@@ -88,9 +88,16 @@ static int type_comp(const void *lhs, const void *rhs)
     return larr->base == rarr->base && larr->size == rarr->size;
   }
   case TYPE_PROCEDURE: {
-    const type_procedure_t *lproc = lhs;
-    const type_procedure_t *rproc = rhs;
-    return lproc->params == rproc->params;
+    const type_procedure_t *lproc   = lhs;
+    const type_procedure_t *rproc   = rhs;
+    const subst_t          *lparams = lproc->params;
+    const subst_t          *rparams = rproc->params;
+    for (; lparams && rparams; lparams = lparams->next, rparams = rparams->next) {
+      if (lparams->type != rparams->type) {
+        return 0;
+      }
+    }
+    return !lparams && !rparams;
   }
   }
   unreachable();
