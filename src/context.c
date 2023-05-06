@@ -135,12 +135,12 @@ static unsigned long type_hash(const void *value)
   return hash;
 }
 
-static void delete_substs(subst_t *substs)
+static void delete_subst(subst_t *subst)
 {
-  while (substs) {
-    subst_t *next = substs->next;
-    free(substs);
-    substs = next;
+  while (subst) {
+    subst_t *next = subst->next;
+    free(subst);
+    subst = next;
   }
 }
 
@@ -151,12 +151,12 @@ static void type_deleter(void *value)
     switch (type->kind) {
     case TYPE_ARRAY: {
       type_array_t *array = value;
-      delete_substs(array->base);
+      delete_subst(array->base);
       break;
     }
     case TYPE_PROCEDURE: {
       type_procedure_t *proc = value;
-      delete_substs(proc->params);
+      delete_subst(proc->params);
       break;
     }
     default:
@@ -287,5 +287,6 @@ void mpplc_deinit(context_t *ctx)
 
     hash_delete(ctx->symbol_interner, &symbol_deleter, NULL);
     hash_delete(ctx->type_interner, &type_deleter, NULL);
+    delete_subst(ctx->subst_loan);
   }
 }
