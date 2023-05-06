@@ -6,7 +6,7 @@
 
 void *xmalloc(long size);
 
-#define FNV1A_SEED 0x811C9DC5
+#define FNV1A_INIT 0x811C9DC5
 
 unsigned long fnv1a(unsigned long hash, const void *ptr, long len);
 

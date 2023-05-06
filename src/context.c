@@ -19,7 +19,7 @@ static int symbol_comp(const void *lhs, const void *rhs)
 static unsigned long symbol_hash(const void *value)
 {
   const symbol_t *x = value;
-  return fnv1a(FNV1A_SEED, x->ptr, x->len);
+  return fnv1a(FNV1A_INIT, x->ptr, x->len);
 }
 
 static void symbol_deleter(void *value)
@@ -106,7 +106,7 @@ static int type_comp(const void *lhs, const void *rhs)
 static unsigned long type_hash(const void *value)
 {
   const type_t *x    = value;
-  unsigned long hash = fnv1a(FNV1A_SEED, &x->kind, sizeof(type_kind_t));
+  unsigned long hash = fnv1a(FNV1A_INIT, &x->kind, sizeof(type_kind_t));
   switch (x->kind) {
   case TYPE_ARRAY: {
     const type_array_t *arr = value;
