@@ -11,6 +11,7 @@ typedef struct checker__s checker_t;
 struct checker__s {
   ast_visitor_t visitor;
   context_t    *ctx;
+  const void   *enclosure;
 };
 
 static int is_std_type(const type_t *type)
@@ -263,6 +264,11 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
     const type_t          *type = check_def(checker, def);
     if (type->kind != TYPE_PROCEDURE) {
       /* TODO: emit error message for calling nonprocedure */
+      break;
+    }
+    if (def->ast == checker->enclosure) {
+      /* TODO: emit error message for recursion */
+      break;
     }
 
     {
@@ -308,6 +314,32 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
   ast_walk_stmt(visitor, stmt);
 }
 
+void visit_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_part)
+{
+  checker_t *checker = (checker_t *) visitor;
+  switch (decl_part->kind) {
+  case AST_DECL_PART_PROCEDURE: {
+    const void *outer  = checker->enclosure;
+    checker->enclosure = decl_part;
+    ast_walk_decl_part(visitor, decl_part);
+    checker->enclosure = outer;
+    break;
+  }
+  default:
+    ast_walk_decl_part(visitor, decl_part);
+    break;
+  }
+}
+
+void visit_program(ast_visitor_t *visitor, const ast_program_t *program)
+{
+  checker_t  *checker = (checker_t *) visitor;
+  const void *outer   = checker->enclosure;
+  checker->enclosure  = program;
+  ast_walk_program(visitor, program);
+  checker->enclosure = outer;
+}
+
 void mpplc_check(context_t *ctx)
 {
   checker_t      checker;
@@ -317,7 +349,9 @@ void mpplc_check(context_t *ctx)
   checker.ctx = ctx;
 
   ast_init_visitor(visitor);
-  visitor->visit_out_fmt = &visit_out_fmt;
-  visitor->visit_stmt    = &visit_stmt;
+  visitor->visit_out_fmt   = &visit_out_fmt;
+  visitor->visit_stmt      = &visit_stmt;
+  visitor->visit_decl_part = &visit_decl_part;
+  visitor->visit_program   = &visit_program;
   ast_walk(visitor, ctx->ast);
 }
