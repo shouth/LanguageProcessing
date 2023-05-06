@@ -33,7 +33,7 @@ static void error_expected(parser_t *parser, const char *str)
 {
   assert(*str != 0);
   if (parser->alive) {
-    msg_t *msg = new_msg(parser->src, parser->next.region, MSG_ERROR,
+    msg_t *msg = msg_new(parser->src, parser->next.region, MSG_ERROR,
       "expected %s, got `%.*s`", str, (int) parser->next.region.len, parser->next.ptr);
     error_msg(parser, msg);
     memset(parser->expected, 0, sizeof(parser->expected));
@@ -504,7 +504,7 @@ static void maybe_error_break_stmt(parser_t *parser)
 {
   if (parser->alive) {
     if (!parser->within_loop) {
-      msg_t *msg = new_msg(parser->src, parser->current.region,
+      msg_t *msg = msg_new(parser->src, parser->current.region,
         MSG_ERROR, "break statement not within loop");
       error_msg(parser, msg);
     }
@@ -574,8 +574,8 @@ static void maybe_error_out_fmt(parser_t *parser, ast_out_fmt_t *format, region_
         ast_lit_string_t *lit = (ast_lit_string_t *) expr->lit;
         if (lit->str_len != 1) {
           region_t region = region_unite(colon, format->len->region);
-          msg_t   *msg    = new_msg(parser->src, region, MSG_ERROR, "wrong output format");
-          msg_add_inline_entry(msg, region, "field width cannot be used for string");
+          msg_t   *msg    = msg_new(parser->src, region, MSG_ERROR, "wrong output format");
+          msg_add_inline(msg, region, "field width cannot be used for string");
           error_msg(parser, msg);
         }
       }

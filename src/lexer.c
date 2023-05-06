@@ -206,8 +206,8 @@ void lex_token(lexer_t *lexer, token_t *token)
     errno                  = 0;
     number->value          = strtoul(token->ptr, NULL, 10);
     if (errno == ERANGE || number->value > 32767) {
-      msg_t *msg = new_msg(lexer->src, token->region, MSG_ERROR, "number is too large");
-      msg_add_inline_entry(msg, token->region, "number needs to be less than 32768");
+      msg_t *msg = msg_new(lexer->src, token->region, MSG_ERROR, "number is too large");
+      msg_add_inline(msg, token->region, "number needs to be less than 32768");
       msg_emit(msg);
       token->type = TOKEN_ERROR;
     }
@@ -217,9 +217,9 @@ void lex_token(lexer_t *lexer, token_t *token)
     token_string_t *string = (token_string_t *) token;
     if (!string->terminated) {
       if (check(lexer, EOF)) {
-        msg_emit(new_msg(lexer->src, token->region, MSG_ERROR, "string is unterminated"));
+        msg_emit(msg_new(lexer->src, token->region, MSG_ERROR, "string is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(lexer->pos, 1),
+        msg_emit(msg_new(lexer->src, region_from(lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
       token->type = TOKEN_ERROR;
@@ -230,10 +230,10 @@ void lex_token(lexer_t *lexer, token_t *token)
     token_braces_comment_t *comment = (token_braces_comment_t *) token;
     if (!comment->terminated) {
       if (check(lexer, EOF)) {
-        msg_emit(new_msg(lexer->src, region_from(token->region.pos, 1),
+        msg_emit(msg_new(lexer->src, region_from(token->region.pos, 1),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(lexer->pos, 1),
+        msg_emit(msg_new(lexer->src, region_from(lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
       token->type = TOKEN_ERROR;
@@ -244,10 +244,10 @@ void lex_token(lexer_t *lexer, token_t *token)
     token_cstyle_comment_t *comment = (token_cstyle_comment_t *) token;
     if (!comment->terminated) {
       if (check(lexer, EOF)) {
-        msg_emit(new_msg(lexer->src, region_from(token->region.pos, 2),
+        msg_emit(msg_new(lexer->src, region_from(token->region.pos, 2),
           MSG_ERROR, "comment is unterminated"));
       } else {
-        msg_emit(new_msg(lexer->src, region_from(lexer->pos, 1),
+        msg_emit(msg_new(lexer->src, region_from(lexer->pos, 1),
           MSG_ERROR, "nongraphical character"));
       }
       token->type = TOKEN_ERROR;
@@ -256,10 +256,10 @@ void lex_token(lexer_t *lexer, token_t *token)
   }
   case TOKEN_UNKNOWN: {
     if (is_graphic(token->ptr[0])) {
-      msg_emit(new_msg(lexer->src, token->region,
+      msg_emit(msg_new(lexer->src, token->region,
         MSG_ERROR, "stray `%c` in program", token->ptr[0]));
     } else {
-      msg_emit(new_msg(lexer->src, token->region,
+      msg_emit(msg_new(lexer->src, token->region,
         MSG_ERROR, "stray \\%03o in program", (unsigned char) token->ptr[0]));
     }
     return;

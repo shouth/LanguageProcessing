@@ -6,7 +6,7 @@
 
 #include "message.h"
 
-msg_t *new_msg(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...)
+msg_t *msg_new(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...)
 {
   msg_t  *ret;
   va_list args;
@@ -26,35 +26,35 @@ msg_t *new_msg(const source_t *src, region_t region, msg_level_t level, const ch
   return ret;
 }
 
-void delete_msg_entry(msg_entry_t *entry)
+static void delete_entry(msg_entry_t *entry)
 {
   if (!entry) {
     return;
   }
-  delete_msg_entry(entry->next);
+  delete_entry(entry->next);
   free(entry);
 }
 
-void delete_msg_inline_entry(msg_inline_entry_t *entry)
+static void delete_inline(msg_inline_entry_t *entry)
 {
   if (!entry) {
     return;
   }
-  delete_msg_inline_entry(entry->next);
+  delete_inline(entry->next);
   free(entry);
 }
 
-void delete_msg(msg_t *msg)
+void msg_delete(msg_t *msg)
 {
   if (!msg) {
     return;
   }
-  delete_msg_entry(msg->entries);
-  delete_msg_inline_entry(msg->inline_entries);
+  delete_entry(msg->entries);
+  delete_inline(msg->inline_entries);
   free(msg);
 }
 
-void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
+void msg_add(msg_t *msg, msg_level_t level, const char *fmt, ...)
 {
   msg_entry_t  *entry;
   msg_entry_t **cur;
@@ -74,7 +74,7 @@ void msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...)
   *cur         = entry;
 }
 
-void msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...)
+void msg_add_inline(msg_t *msg, region_t region, const char *fmt, ...)
 {
   msg_inline_entry_t  *entry;
   msg_inline_entry_t **cur;
@@ -99,7 +99,7 @@ void msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...)
   *cur        = entry;
 }
 
-void set_level_color(msg_level_t level)
+static void set_level(msg_level_t level)
 {
   switch (level) {
   case MSG_HELP:
@@ -120,7 +120,7 @@ void set_level_color(msg_level_t level)
   }
 }
 
-void put_sanitized(int c)
+static void put_sanitized(int c)
 {
   if (c == '\t') {
     putchar(' ');
@@ -145,7 +145,7 @@ void put_sanitized(int c)
   putchar(c);
 }
 
-const char *level_str(msg_level_t level)
+static const char *str_level(msg_level_t level)
 {
   switch (level) {
   case MSG_HELP:
@@ -182,7 +182,7 @@ void msg_emit(msg_t *msg)
     }
   }
   if (!has_primary) {
-    msg_add_inline_entry(msg, msg->region, "");
+    msg_add_inline(msg, msg->region, "");
   }
 
   for (cur0 = msg->inline_entries; cur0; cur0 = cur0->next) {
@@ -198,9 +198,9 @@ void msg_emit(msg_t *msg)
   }
 
   {
-    set_level_color(msg->level);
+    set_level(msg->level);
     term_set(SGR_BOLD);
-    printf("%s", level_str(msg->level));
+    printf("%s", str_level(msg->level));
     term_set(SGR_RESET);
     term_set(SGR_BOLD);
     printf(": %s\n", msg->msg);
@@ -247,7 +247,7 @@ void msg_emit(msg_t *msg)
       offset += begin.col - 1;
 
       has_primary = region_compare(cur0->region, msg->region) == 0;
-      set_level_color(has_primary ? msg->level : MSG_NOTE);
+      set_level(has_primary ? msg->level : MSG_NOTE);
       for (i = 0; i < cur0->region.len; i++) {
         put_sanitized(msg->src->src[offset + i]);
       }
@@ -270,7 +270,7 @@ void msg_emit(msg_t *msg)
       offset += begin.col - 1;
 
       term_set(SGR_BOLD);
-      set_level_color(has_primary ? msg->level : MSG_NOTE);
+      set_level(has_primary ? msg->level : MSG_NOTE);
       m = has_primary ? '^' : '-';
       for (i = 0; i < cur0->region.len; i++) {
         putchar(m);
@@ -295,7 +295,7 @@ void msg_emit(msg_t *msg)
       offset += i;
 
       has_primary = region_compare(cur0->region, msg->region) == 0;
-      set_level_color(has_primary ? msg->level : MSG_NOTE);
+      set_level(has_primary ? msg->level : MSG_NOTE);
       for (; offset < msg->src->lines[begin.line]; offset++) {
         put_sanitized(msg->src->src[offset]);
       }
@@ -309,7 +309,7 @@ void msg_emit(msg_t *msg)
       offset = msg->src->lines[begin.line - 1];
       m      = has_primary ? '^' : '-';
       term_set(SGR_BOLD);
-      set_level_color(has_primary ? msg->level : MSG_NOTE);
+      set_level(has_primary ? msg->level : MSG_NOTE);
       for (i = 0; i < begin.col; i++) {
         putchar('_');
         c = msg->src->src[offset + i];
@@ -326,11 +326,11 @@ void msg_emit(msg_t *msg)
       for (i = begin.line; i < end.line; i++) {
         long line_len = msg->src->lines[i + 1] - msg->src->lines[i];
         term_set(SGR_BOLD);
-        set_level_color(has_primary ? msg->level : MSG_NOTE);
+        set_level(has_primary ? msg->level : MSG_NOTE);
         printf("%*.ld | | ", left_margin, i + 1);
         term_set(SGR_RESET);
 
-        set_level_color(has_primary ? msg->level : MSG_NOTE);
+        set_level(has_primary ? msg->level : MSG_NOTE);
         j      = 0;
         offset = msg->src->lines[i];
         if (i == end.line - 1) {
@@ -352,7 +352,7 @@ void msg_emit(msg_t *msg)
       term_set(SGR_RESET);
 
       term_set(SGR_BOLD);
-      set_level_color(has_primary ? msg->level : MSG_NOTE);
+      set_level(has_primary ? msg->level : MSG_NOTE);
       offset = msg->src->lines[end.line - 1];
       putchar('|');
       for (i = 0; i < end.col - 1; i++) {
@@ -375,13 +375,13 @@ void msg_emit(msg_t *msg)
 
   for (cur1 = msg->entries; cur1; cur1 = cur1->next) {
     printf("%*.s = ", left_margin, "");
-    set_level_color(cur1->level);
+    set_level(cur1->level);
     term_set(SGR_BOLD);
-    printf("%s", level_str(cur1->level));
+    printf("%s", str_level(cur1->level));
     term_set(SGR_RESET);
     printf(": %s\n", cur1->msg);
   }
 
   putchar('\n');
-  delete_msg(msg);
+  msg_delete(msg);
 }

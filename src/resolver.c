@@ -28,15 +28,15 @@ struct resolver__s {
 
 void error_conflict(resolver_t *resolver, def_t *def, region_t region)
 {
-  msg_t *msg = new_msg(resolver->src, region, MSG_ERROR, "conflicting names");
-  msg_add_inline_entry(msg, def->region, "first used here");
-  msg_add_inline_entry(msg, region, "second used here");
+  msg_t *msg = msg_new(resolver->src, region, MSG_ERROR, "conflicting names");
+  msg_add_inline(msg, def->region, "first used here");
+  msg_add_inline(msg, region, "second used here");
   msg_emit(msg);
 }
 
 void error_undeclared(resolver_t *resolver, const symbol_t *name, region_t region)
 {
-  msg_t *msg = new_msg(resolver->src, region, MSG_ERROR, "%s is not undeclared", name->ptr);
+  msg_t *msg = msg_new(resolver->src, region, MSG_ERROR, "%s is not undeclared", name->ptr);
   msg_emit(msg);
 }
 

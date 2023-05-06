@@ -34,10 +34,10 @@ typedef struct {
   msg_entry_t        *entries;
 } msg_t;
 
-msg_t *new_msg(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...);
-void   delete_msg(msg_t *msg);
-void   msg_add_entry(msg_t *msg, msg_level_t level, const char *fmt, ...);
-void   msg_add_inline_entry(msg_t *msg, region_t region, const char *fmt, ...);
+msg_t *msg_new(const source_t *src, region_t region, msg_level_t level, const char *fmt, ...);
+void   msg_delete(msg_t *msg);
+void   msg_add(msg_t *msg, msg_level_t level, const char *fmt, ...);
+void   msg_add_inline(msg_t *msg, region_t region, const char *fmt, ...);
 void   msg_emit(msg_t *msg);
 
 #endif
