@@ -19,7 +19,7 @@ struct checker__s {
 
 static const type_t *record_type(checker_t *checker, const void *ast, const type_t *type)
 {
-  hash_insert_unchecked(checker->ctx->types, (void *) ast, (void *) type);
+  hash_insert_unchecked(checker->ctx->infer_result, (void *) ast, (void *) type);
   return type;
 }
 
@@ -32,18 +32,18 @@ static const type_t *check_lit(checker_t *checker, const ast_lit_t *lit)
 {
   switch (lit->kind) {
   case AST_LIT_KIND_BOOLEAN: {
-    return ctx_mk_type_boolean(checker->ctx);
+    return checker->ctx->types.boolean;
   }
   case AST_LIT_KIND_NUMBER: {
-    return ctx_mk_type_integer(checker->ctx);
+    return checker->ctx->types.integer;
   }
   case AST_LIT_KIND_STRING: {
     const ast_lit_string_t *string = (ast_lit_string_t *) lit;
 
     if (string->str_len == 1) {
-      return ctx_mk_type_char(checker->ctx);
+      return checker->ctx->types.char_;
     } else {
-      return ctx_mk_type_string(checker->ctx);
+      return checker->ctx->types.string;
     }
   }
   default:
@@ -55,13 +55,13 @@ static const type_t *check_type(checker_t *checker, const ast_type_t *type)
 {
   switch (type->kind) {
   case AST_TYPE_KIND_BOOLEAN: {
-    return ctx_mk_type_boolean(checker->ctx);
+    return checker->ctx->types.boolean;
   }
   case AST_TYPE_KIND_CHAR: {
-    return ctx_mk_type_char(checker->ctx);
+    return checker->ctx->types.char_;
   }
   case AST_TYPE_KIND_INTEGER: {
-    return ctx_mk_type_integer(checker->ctx);
+    return checker->ctx->types.integer;
   }
   case AST_TYPE_KIND_ARRAY: {
     const ast_type_array_t *array = (ast_type_array_t *) type;
@@ -77,7 +77,7 @@ static const type_t *check_type(checker_t *checker, const ast_type_t *type)
 
     {
       const type_t *base  = check_type(checker, array->base);
-      subst_t      *subst = ctx_loan_subst(checker->ctx, base);
+      subst_t      *subst = ctx_mk_subst(checker->ctx, base);
       return ctx_mk_type_array(checker->ctx, subst, ((ast_lit_number_t *) array->size)->value);
     }
   }
@@ -88,13 +88,13 @@ static const type_t *check_type(checker_t *checker, const ast_type_t *type)
 
 const type_t *check_def(checker_t *checker, const def_t *def)
 {
-  const hash_entry_t *entry = hash_find(checker->ctx->types, def->ast);
+  const hash_entry_t *entry = hash_find(checker->ctx->infer_result, def->ast);
   if (entry) {
     return entry->value;
   } else {
     switch (def->kind) {
     case DEF_PROGRAM: {
-      return record_type(checker, def->ast, ctx_mk_type_program(checker->ctx));
+      return record_type(checker, def->ast, checker->ctx->types.program);
     }
     case DEF_PROCEDURE: {
       const ast_decl_part_procedure_t *proc   = def->ast;
@@ -106,7 +106,7 @@ const type_t *check_def(checker_t *checker, const def_t *def)
         const type_t      *param = check_type(checker, params->type);
         const ast_ident_t *names = params->names;
         for (; names; names = names->next) {
-          subst_t *subst = ctx_loan_subst(checker->ctx, param);
+          subst_t *subst = ctx_mk_subst(checker->ctx, param);
           *tail          = subst;
           tail           = &subst->next;
         }
@@ -176,7 +176,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
         return NULL;
       }
 
-      return ctx_mk_type_integer(checker->ctx);
+      return checker->ctx->types.integer;
     } else {
       const type_t *lhs = check_expr(checker, binary->lhs);
       const type_t *rhs = check_expr(checker, binary->rhs);
@@ -199,7 +199,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
           return NULL;
         }
 
-        return ctx_mk_type_boolean(checker->ctx);
+        return checker->ctx->types.boolean;
       }
       case AST_EXPR_BINARY_KIND_PLUS:
       case AST_EXPR_BINARY_KIND_MINUS:
@@ -216,7 +216,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
           return NULL;
         }
 
-        return ctx_mk_type_integer(checker->ctx);
+        return checker->ctx->types.integer;
       }
       case AST_EXPR_BINARY_KIND_OR:
       case AST_EXPR_BINARY_KIND_AND: {
@@ -231,7 +231,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
           return NULL;
         }
 
-        return ctx_mk_type_boolean(checker->ctx);
+        return checker->ctx->types.boolean;
       }
       default:
         unreachable();
@@ -252,7 +252,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
       return NULL;
     }
 
-    return ctx_mk_type_boolean(checker->ctx);
+    return checker->ctx->types.boolean;
   }
   case AST_EXPR_KIND_PAREN: {
     const ast_expr_paren_t *paren = (ast_expr_paren_t *) expr;
@@ -470,8 +470,8 @@ void mpplc_check(context_t *ctx)
   checker_t      checker;
   ast_visitor_t *visitor = (ast_visitor_t *) &checker;
 
-  ctx->types  = hash_new(&hash_default_comp, &hash_default_hasher);
-  checker.ctx = ctx;
+  ctx->infer_result = hash_new(&hash_default_comp, &hash_default_hasher);
+  checker.ctx       = ctx;
 
   ast_init_visitor(visitor);
   visitor->visit_out_fmt   = &visit_out_fmt;

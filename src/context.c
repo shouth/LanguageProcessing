@@ -52,7 +52,7 @@ const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
   }
 }
 
-subst_t *ctx_loan_subst(context_t *ctx, const type_t *type)
+subst_t *ctx_mk_subst(context_t *ctx, const type_t *type)
 {
   subst_t *subst = ctx->subst_loan;
   if (ctx->subst_loan) {
@@ -207,12 +207,6 @@ static const type_t *mk_type(context_t *ctx, type_t *type, type_kind_t kind)
   }
 }
 
-const type_t *ctx_mk_type_integer(context_t *ctx) { return ctx->type_integer; }
-const type_t *ctx_mk_type_boolean(context_t *ctx) { return ctx->type_boolean; }
-const type_t *ctx_mk_type_char(context_t *ctx) { return ctx->type_char; }
-const type_t *ctx_mk_type_string(context_t *ctx) { return ctx->type_string; }
-const type_t *ctx_mk_type_program(context_t *ctx) { return ctx->type_program; }
-
 const type_t *ctx_mk_type_array(context_t *ctx, subst_t *base, long size)
 {
   type_t        type;
@@ -256,11 +250,11 @@ void mpplc_init(context_t *ctx, const char *in_name, const char *out_name)
 
   {
     type_t type;
-    ctx->type_boolean = mk_type(ctx, &type, TYPE_BOOLEAN);
-    ctx->type_char    = mk_type(ctx, &type, TYPE_CHAR);
-    ctx->type_integer = mk_type(ctx, &type, TYPE_INTEGER);
-    ctx->type_string  = mk_type(ctx, &type, TYPE_STRING);
-    ctx->type_program = mk_type(ctx, &type, TYPE_PROGRAM);
+    ctx->types.boolean = mk_type(ctx, &type, TYPE_BOOLEAN);
+    ctx->types.char_   = mk_type(ctx, &type, TYPE_CHAR);
+    ctx->types.integer = mk_type(ctx, &type, TYPE_INTEGER);
+    ctx->types.string  = mk_type(ctx, &type, TYPE_STRING);
+    ctx->types.program = mk_type(ctx, &type, TYPE_PROGRAM);
   }
 }
 
