@@ -28,29 +28,28 @@ msg_t *msg_new(const source_t *src, region_t region, msg_level_t level, const ch
 
 static void delete_entry(msg_entry_t *entry)
 {
-  if (!entry) {
-    return;
+  while (entry) {
+    msg_entry_t *next = entry->next;
+    free(entry);
+    entry = next;
   }
-  delete_entry(entry->next);
-  free(entry);
 }
 
 static void delete_inline(msg_inline_entry_t *entry)
 {
-  if (!entry) {
-    return;
+  while (entry) {
+    msg_inline_entry_t *next = entry->next;
+    free(entry);
+    entry = next;
   }
-  delete_inline(entry->next);
-  free(entry);
 }
 
 void msg_delete(msg_t *msg)
 {
-  if (!msg) {
-    return;
+  if (msg) {
+    delete_entry(msg->entries);
+    delete_inline(msg->inline_entries);
   }
-  delete_entry(msg->entries);
-  delete_inline(msg->inline_entries);
   free(msg);
 }
 
