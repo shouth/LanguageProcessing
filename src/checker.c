@@ -22,7 +22,7 @@ static const type_t *record_type(checker_t *checker, const void *ast, const type
   if (!type) {
     return NULL;
   }
-  hash_insert_unchecked(checker->ctx->infer_result, (void *) ast, (void *) type);
+  hash_update(checker->ctx->infer_result, (void *) ast, (void *) type);
   return type;
 }
 

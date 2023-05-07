@@ -54,7 +54,7 @@ static def_t *add_def(resolver_t *resolver, def_kind_t kind, const void *ast, co
 
     *resolver->scope->defs = def;
     resolver->scope->defs  = &def->next;
-    hash_insert_unchecked(resolver->scope->def_map, (void *) name, def);
+    hash_update(resolver->scope->def_map, (void *) name, def);
     return def;
   } else {
     error_conflict(resolver, entry->value, region);
@@ -75,7 +75,7 @@ static void resolve_def(resolver_t *resolver, const void *ast, const symbol_t *n
   }
 
   if (def) {
-    hash_insert_unchecked(resolver->resolution, (void *) ast, (void *) def);
+    hash_update(resolver->resolution, (void *) ast, (void *) def);
   } else {
     error_undeclared(resolver, name, region);
   }

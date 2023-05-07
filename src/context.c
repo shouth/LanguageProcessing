@@ -46,7 +46,7 @@ const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
       str[len]    = '\0';
       symbol->ptr = str;
       symbol->len = len;
-      entry       = hash_insert_unchecked(ctx->symbol_interner, symbol, NULL);
+      entry       = hash_update(ctx->symbol_interner, symbol, NULL);
     }
     return entry->key;
   }
@@ -185,7 +185,7 @@ static const type_t *mk_type(context_t *ctx, type_t *type, type_kind_t kind)
     if (!entry) {
       type_t *ntype = xmalloc(sizeof(type_t));
       memcpy(ntype, type, sizeof(type_t));
-      entry = hash_insert_unchecked(ctx->type_interner, ntype, NULL);
+      entry = hash_update(ctx->type_interner, ntype, NULL);
     } else {
       switch (kind) {
       case TYPE_ARRAY: {

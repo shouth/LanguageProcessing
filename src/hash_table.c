@@ -75,7 +75,7 @@ static void hash_grow(hash_t *table)
   hash_init_buckets(table);
   for (i = 0; i < old_bucket_cnt; ++i) {
     if (old_buckets[i].key) {
-      hash_insert_unchecked(table, old_buckets[i].key, old_buckets[i].value);
+      hash_update(table, old_buckets[i].key, old_buckets[i].value);
     }
   }
   free(old_buckets);
@@ -107,7 +107,7 @@ const hash_entry_t *hash_find(hash_t *table, const void *key)
   return NULL;
 }
 
-const hash_entry_t *hash_insert_unchecked(hash_t *table, void *key, void *value)
+const hash_entry_t *hash_update(hash_t *table, void *key, void *value)
 {
   long          index = hash_index(table, key);
   long          dist;
@@ -146,7 +146,7 @@ const hash_entry_t *hash_insert_unchecked(hash_t *table, void *key, void *value)
 
   if (!empty) {
     hash_grow(table);
-    return hash_insert_unchecked(table, key, value);
+    return hash_update(table, key, value);
   } else {
     empty->key   = key;
     empty->value = value;
@@ -157,16 +157,6 @@ const hash_entry_t *hash_insert_unchecked(hash_t *table, void *key, void *value)
     }
     return empty;
   }
-}
-
-const hash_entry_t *hash_insert(hash_t *table, void *key, void *value)
-{
-  hash_entry_t *ret;
-  assert(table && key && value);
-
-  ret = hash_remove(table, key);
-  hash_insert_unchecked(table, key, value);
-  return ret;
 }
 
 hash_entry_t *hash_remove(hash_t *table, const void *key)
