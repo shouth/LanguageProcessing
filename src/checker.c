@@ -19,6 +19,9 @@ struct checker__s {
 
 static const type_t *record_type(checker_t *checker, const void *ast, const type_t *type)
 {
+  if (!type) {
+    return NULL;
+  }
   hash_insert_unchecked(checker->ctx->infer_result, (void *) ast, (void *) type);
   return type;
 }
@@ -76,9 +79,11 @@ static const type_t *check_type(checker_t *checker, const ast_type_t *type)
     }
 
     {
-      const type_t *base  = check_type(checker, array->base);
-      subst_t      *subst = ctx_mk_subst(checker->ctx, base);
-      return ctx_mk_type_array(checker->ctx, subst, ((ast_lit_number_t *) array->size)->value);
+      const type_t *base = check_type(checker, array->base);
+      if (!base) {
+        return NULL;
+      }
+      return ctx_mk_type_array(checker->ctx, ctx_mk_subst(checker->ctx, base), ((ast_lit_number_t *) array->size)->value);
     }
   }
   default:
@@ -142,6 +147,10 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
     const type_t *type  = check_def(checker, def);
     const type_t *index = check_expr(checker, subscript->subscript);
 
+    if (!type || !index) {
+      return NULL;
+    }
+
     if (type->kind != TYPE_ARRAY) {
       msg_t *msg = msg_new(checker->ctx->src, subscript->decl->region,
         MSG_ERROR, "`%s` is not an array", subscript->decl->symbol->ptr);
@@ -168,6 +177,10 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
     if (binary->lhs->kind == AST_EXPR_KIND_EMPTY) {
       const type_t *rhs = check_expr(checker, binary->rhs);
 
+      if (!rhs) {
+        return NULL;
+      }
+
       assert(binary->kind == AST_EXPR_BINARY_KIND_PLUS || binary->kind == AST_EXPR_BINARY_KIND_MINUS);
       if (rhs->kind != TYPE_INTEGER) {
         msg_t *msg = msg_new(checker->ctx->src, binary->op_region,
@@ -180,6 +193,10 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
     } else {
       const type_t *lhs = check_expr(checker, binary->lhs);
       const type_t *rhs = check_expr(checker, binary->rhs);
+
+      if (!lhs || !rhs) {
+        return NULL;
+      }
 
       switch (binary->kind) {
       case AST_EXPR_BINARY_KIND_EQUAL:
@@ -243,6 +260,10 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
 
     const type_t *type = check_expr(checker, not_->expr);
 
+    if (!type) {
+      return NULL;
+    }
+
     if (type->kind != TYPE_BOOLEAN) {
       msg_t *msg = msg_new(checker->ctx->src, not_->op_region,
         MSG_ERROR, "invalid operands for `not`");
@@ -263,6 +284,10 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
 
     const type_t *value_type = check_expr(checker, cast->cast);
     const type_t *cast_type  = check_type(checker, cast->type);
+
+    if (!value_type || !cast_type) {
+      return NULL;
+    }
 
     if (!is_std_type(value_type)) {
       msg_t *msg = msg_new(checker->ctx->src, cast->cast->region,
@@ -301,6 +326,10 @@ static void check_stmt(checker_t *checker, const ast_stmt_t *stmt)
     const type_t *lhs = check_expr(checker, assign->lhs);
     const type_t *rhs = check_expr(checker, assign->rhs);
 
+    if (!lhs || !rhs) {
+      return;
+    }
+
     if (lhs != rhs) {
       msg_t *msg = msg_new(checker->ctx->src, assign->op_region,
         MSG_ERROR, "invalid operands for `:=`");
@@ -319,6 +348,10 @@ static void check_stmt(checker_t *checker, const ast_stmt_t *stmt)
 
     const type_t *cond = check_expr(checker, if_->cond);
 
+    if (!cond) {
+      return;
+    }
+
     if (cond->kind != TYPE_BOOLEAN) {
       msg_t *msg = msg_new(checker->ctx->src, if_->cond->region,
         MSG_ERROR, "expression of type `%s` cannot be condition", str_type(cond));
@@ -333,6 +366,10 @@ static void check_stmt(checker_t *checker, const ast_stmt_t *stmt)
     const ast_stmt_while_t *while_ = (ast_stmt_while_t *) stmt;
 
     const type_t *cond = check_expr(checker, while_->cond);
+
+    if (!cond) {
+      return;
+    }
 
     if (cond->kind != TYPE_BOOLEAN) {
       msg_t *msg = msg_new(checker->ctx->src, while_->cond->region,
@@ -349,6 +386,10 @@ static void check_stmt(checker_t *checker, const ast_stmt_t *stmt)
 
     const def_t  *def  = hash_find(checker->ctx->resolution, call->name)->value;
     const type_t *type = check_def(checker, def);
+
+    if (!type) {
+      return;
+    }
 
     if (type->kind != TYPE_PROCEDURE) {
       msg_t *msg = msg_new(checker->ctx->src, call->name->region,
@@ -424,6 +465,11 @@ static void visit_out_fmt(ast_visitor_t *visitor, const ast_out_fmt_t *fmt)
 {
   checker_t    *checker = (checker_t *) visitor;
   const type_t *type    = check_expr(checker, fmt->expr);
+
+  if (!type) {
+    return;
+  }
+
   if (!is_std_type(type) && type->kind != TYPE_STRING) {
     msg_t *msg = msg_new(checker->ctx->src, fmt->expr->region,
       MSG_ERROR, "cannot write value of type `%s`", str_type(type));
