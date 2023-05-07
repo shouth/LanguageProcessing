@@ -138,7 +138,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
     const ast_expr_decl_ref_t *ref = (ast_expr_decl_ref_t *) expr;
 
     const def_t *def = hash_find(checker->ctx->resolution, ref->decl)->value;
-    return check_def(checker, def);
+    return record_type(checker, expr, check_def(checker, def));
   }
   case AST_EXPR_KIND_ARRAY_SUBSCRIPT: {
     const ast_expr_array_subscript_t *subscript = (ast_expr_array_subscript_t *) expr;
@@ -168,7 +168,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
 
     {
       const type_array_t *array = (type_array_t *) type;
-      return array->base->type;
+      return record_type(checker, expr, array->base->type);
     }
   }
   case AST_EXPR_KIND_BINARY: {
@@ -189,7 +189,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
         return NULL;
       }
 
-      return checker->ctx->types.integer;
+      return record_type(checker, expr, checker->ctx->types.integer);
     } else {
       const type_t *lhs = check_expr(checker, binary->lhs);
       const type_t *rhs = check_expr(checker, binary->rhs);
@@ -216,7 +216,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
           return NULL;
         }
 
-        return checker->ctx->types.boolean;
+        return record_type(checker, expr, checker->ctx->types.boolean);
       }
       case AST_EXPR_BINARY_KIND_PLUS:
       case AST_EXPR_BINARY_KIND_MINUS:
@@ -233,7 +233,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
           return NULL;
         }
 
-        return checker->ctx->types.integer;
+        return record_type(checker, expr, checker->ctx->types.integer);
       }
       case AST_EXPR_BINARY_KIND_OR:
       case AST_EXPR_BINARY_KIND_AND: {
@@ -248,7 +248,7 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
           return NULL;
         }
 
-        return checker->ctx->types.boolean;
+        return record_type(checker, expr, checker->ctx->types.boolean);
       }
       default:
         unreachable();
@@ -273,11 +273,11 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
       return NULL;
     }
 
-    return checker->ctx->types.boolean;
+    return record_type(checker, expr, checker->ctx->types.boolean);
   }
   case AST_EXPR_KIND_PAREN: {
     const ast_expr_paren_t *paren = (ast_expr_paren_t *) expr;
-    return check_expr(checker, paren->inner);
+    return record_type(checker, expr, check_expr(checker, paren->inner));
   }
   case AST_EXPR_KIND_CAST: {
     const ast_expr_cast_t *cast = (ast_expr_cast_t *) expr;
@@ -305,11 +305,11 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
       return NULL;
     }
 
-    return cast_type;
+    return record_type(checker, expr, cast_type);
   }
   case AST_EXPR_KIND_CONSTANT: {
     const ast_expr_constant_t *constant = (ast_expr_constant_t *) expr;
-    return check_lit(checker, constant->lit);
+    return record_type(checker, expr, check_lit(checker, constant->lit));
   }
   default:
     return NULL;
