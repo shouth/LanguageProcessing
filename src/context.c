@@ -280,10 +280,10 @@ void mpplc_deinit(context_t *ctx)
     src_delete(ctx->src);
     ast_delete(ctx->ast);
     delete_defs(ctx->defs);
-    hash_map_delete(ctx->resolution, NULL, NULL);
+    hash_map_delete(ctx->resolution);
 
-    hash_map_delete(ctx->symbol_interner, &symbol_deleter, NULL);
-    hash_map_delete(ctx->type_interner, &type_deleter, NULL);
+    hash_map_delete(ctx->symbol_interner);
+    hash_map_delete(ctx->type_interner);
     delete_subst(ctx->subst_loan);
   }
 }

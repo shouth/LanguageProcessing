@@ -95,7 +95,7 @@ static def_t **pop_scope(resolver_t *resolver)
   scope_t *scope  = resolver->scope;
   def_t  **defs   = scope->defs;
   resolver->scope = scope->outer;
-  hash_map_delete(scope->def_map, NULL, NULL);
+  hash_map_delete(scope->def_map);
   free(scope);
   return defs;
 }
