@@ -41,7 +41,6 @@ typedef struct {
   int                load_factor;
   long               bucket_cnt;
   hash_map_entry_t  *buckets;
-  hash_map_entry_t   removed;
   hash_map_comp_t   *comparator;
   hash_map_hasher_t *hasher;
 } hash_map_t;
@@ -50,7 +49,7 @@ hash_map_t             *hash_map_new(hash_map_comp_t *comparator, hash_map_hashe
 void                    hash_map_delete(hash_map_t *table);
 const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key);
 void                    hash_map_update(hash_map_t *table, void *key, void *value);
-hash_map_entry_t       *hash_map_remove(hash_map_t *table, const void *key);
+int                     hash_map_remove(hash_map_t *table, const void *key);
 
 #define SGR__FLAG ((unsigned long) 1 << 24)
 

@@ -108,14 +108,14 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
     empty->key   = key;
     empty->value = value;
     home->hop ^= (unsigned long) 1 << dist;
-    table->size++;
+    ++table->size;
     if (100 * table->size / table->bucket_cnt >= table->load_factor) {
       grow_buckets(table);
     }
   }
 }
 
-hash_map_entry_t *hash_map_remove(hash_map_t *table, const void *key)
+int hash_map_remove(hash_map_t *table, const void *key)
 {
   long              index = calc_index(table, key);
   hash_map_entry_t *home  = table->buckets + index;
@@ -123,22 +123,20 @@ hash_map_entry_t *hash_map_remove(hash_map_t *table, const void *key)
   while (hop) {
     int t = bit_right_most(hop);
     if (table->comparator(key, home[t].key)) {
-      table->removed.key   = home[t].key;
-      table->removed.value = home[t].value;
-      home[t].key          = NULL;
+      home[t].key = NULL;
       home->hop ^= (unsigned long) 1 << t;
-      table->size--;
-      return &table->removed;
+      --table->size;
+      return 1;
     }
     hop ^= (unsigned long) 1 << t;
   }
-  return NULL;
+  return 0;
 }
 
 hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
 {
   hash_map_t *map  = xmalloc(sizeof(hash_map_t));
-  map->capacity    = 1 << 6;
+  map->capacity    = 1 << 4;
   map->load_factor = 60;
   map->comparator  = comparator ? comparator : &default_comp;
   map->hasher      = hasher ? hasher : &default_hasher;
