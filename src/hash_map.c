@@ -59,43 +59,41 @@ const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key)
     if (table->comparator(key, home[t].key)) {
       return home + t;
     }
-    hop ^= 1ul << t;
+    hop &= ~(1ul << t);
   }
   return NULL;
 }
 
 void hash_map_update(hash_map_t *table, void *key, void *value)
 {
-  long              index = calc_index(table, key);
-  long              dist;
-  hash_map_entry_t *home  = table->buckets + index;
-  hash_map_entry_t *empty = NULL;
-  for (dist = 0; dist < NBHD_RANGE * 8; ++dist) {
-    if (!home[dist].key) {
-      empty = home + dist;
+  hash_map_entry_t *home = table->buckets + calc_index(table, key);
+  hash_map_entry_t *empty;
+
+  for (empty = home; empty - home < NBHD_RANGE * 8; ++empty) {
+    if (!empty->key) {
       break;
     }
   }
+  if (empty - home == NBHD_RANGE * 8) {
+    empty = NULL;
+  }
 
-  while (empty && dist >= NBHD_RANGE) {
-    hash_map_entry_t *entry = empty - NBHD_RANGE + 1;
-    long              i;
-    for (i = 0; i < NBHD_RANGE; ++i) {
-      if (entry[i].hop) {
-        int t = bit_right_most(entry[i].hop);
-        if (i + t < NBHD_RANGE) {
-          hash_map_entry_t *next = entry + i + t;
-          empty->key             = next->key;
-          empty->value           = next->value;
-          next->hop ^= 1ul << t;
-          next->hop ^= 1ul << (NBHD_RANGE - i - 1);
-          empty = next;
-          dist -= NBHD_RANGE - 1 - i - t;
+  while (empty && empty - home >= NBHD_RANGE) {
+    hash_map_entry_t *bucket = empty - NBHD_RANGE + 1;
+    for (; bucket < empty; ++bucket) {
+      if (bucket->hop) {
+        hash_map_entry_t *occupied = bucket + bit_right_most(bucket->hop);
+        if (occupied < empty) {
+          empty->key   = occupied->key;
+          empty->value = occupied->value;
+          bucket->hop &= ~(1ul << (occupied - bucket));
+          bucket->hop |= 1ul << (empty - bucket);
+          empty = occupied;
           break;
         }
       }
     }
-    if (i == NBHD_RANGE) {
+    if (bucket == empty) {
       empty->key = NULL;
       empty      = NULL;
     }
@@ -107,7 +105,7 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
   } else {
     empty->key   = key;
     empty->value = value;
-    home->hop ^= 1ul << dist;
+    home->hop |= 1ul << (empty - home);
     ++table->size;
     if (100 * table->size / table->bucket_cnt >= table->load_factor) {
       grow_buckets(table);
@@ -124,11 +122,11 @@ int hash_map_remove(hash_map_t *table, const void *key)
     int t = bit_right_most(hop);
     if (table->comparator(key, home[t].key)) {
       home[t].key = NULL;
-      home->hop ^= 1ul << t;
+      home->hop &= ~(1ul << t);
       --table->size;
       return 1;
     }
-    hop ^= 1ul << t;
+    hop &= ~(1ul << t);
   }
   return 0;
 }
