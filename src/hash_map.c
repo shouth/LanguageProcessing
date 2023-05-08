@@ -81,8 +81,9 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
   while (empty && empty - home >= NBHD_RANGE) {
     hash_map_entry_t *bucket = empty - NBHD_RANGE + 1;
     for (; bucket < empty; ++bucket) {
-      if (bucket->hop) {
-        hash_map_entry_t *occupied = bucket + bit_right_most(bucket->hop);
+      unsigned long hop = bucket->hop;
+      while (hop) {
+        hash_map_entry_t *occupied = bucket + bit_right_most(hop);
         if (occupied < empty) {
           empty->key   = occupied->key;
           empty->value = occupied->value;
@@ -91,6 +92,7 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
           empty = occupied;
           break;
         }
+        hop &= ~(1ul << (occupied - bucket));
       }
     }
     if (bucket == empty) {
