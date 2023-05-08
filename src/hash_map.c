@@ -107,9 +107,6 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
     empty->value = value;
     home->hop |= 1ul << (empty - home);
     ++table->size;
-    if (100 * table->size / table->bucket_cnt >= table->load_factor) {
-      grow_buckets(table);
-    }
   }
 }
 
@@ -134,8 +131,7 @@ int hash_map_remove(hash_map_t *table, const void *key)
 hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
 {
   hash_map_t *map  = xmalloc(sizeof(hash_map_t));
-  map->capacity    = 1 << 4;
-  map->load_factor = 60;
+  map->capacity    = NBHD_RANGE;
   map->comparator  = comparator ? comparator : &default_comp;
   map->hasher      = hasher ? hasher : &default_hasher;
   init_buckets(map);

@@ -38,7 +38,6 @@ struct hash_map__entry_s {
 typedef struct {
   long               size;
   long               capacity;
-  int                load_factor;
   long               bucket_cnt;
   hash_map_entry_t  *buckets;
   hash_map_comp_t   *comparator;
