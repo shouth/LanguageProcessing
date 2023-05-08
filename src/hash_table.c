@@ -86,14 +86,9 @@ static long hash_index(hash_t *table, const void *key)
 
 const hash_entry_t *hash_find(hash_t *table, const void *key)
 {
-  hash_entry_t *home;
-  unsigned long hop;
-  long          index;
-  assert(table && key);
-
-  index = hash_index(table, key);
-  home  = table->buckets + index;
-  hop   = home->hop;
+  long          index = hash_index(table, key);
+  hash_entry_t *home  = table->buckets + index;
+  unsigned long hop   = home->hop;
   while (hop) {
     int t = bit_right_most(hop);
     if (table->comparator(key, home[t].key)) {
