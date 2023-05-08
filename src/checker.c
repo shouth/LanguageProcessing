@@ -407,8 +407,9 @@ static void check_stmt(checker_t *checker, const ast_stmt_t *stmt)
 
     {
       const type_procedure_t *proc = (type_procedure_t *) type;
-      const ast_expr_t       *args;
-      const subst_t          *params;
+
+      const ast_expr_t *args;
+      const subst_t    *params;
 
       long arg_cnt   = 0;
       long param_cnt = 0;
