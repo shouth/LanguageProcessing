@@ -64,13 +64,10 @@ void hash_delete(hash_t *table, hash_deleter_t *key_deleter, hash_deleter_t *val
 
 static void hash_grow(hash_t *table)
 {
-  hash_entry_t *old_buckets;
-  long          old_bucket_cnt;
+  hash_entry_t *old_buckets    = table->buckets;
+  long          old_bucket_cnt = table->bucket_cnt;
   long          i;
-  assert(table);
 
-  old_buckets    = table->buckets;
-  old_bucket_cnt = table->bucket_cnt;
   table->capacity <<= 1;
   hash_init_buckets(table);
   for (i = 0; i < old_bucket_cnt; ++i) {
