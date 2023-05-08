@@ -107,7 +107,7 @@ const hash_entry_t *hash_find(hash_t *table, const void *key)
   return NULL;
 }
 
-const hash_entry_t *hash_update(hash_t *table, void *key, void *value)
+void hash_update(hash_t *table, void *key, void *value)
 {
   long          index = hash_index(table, key);
   long          dist;
@@ -146,7 +146,7 @@ const hash_entry_t *hash_update(hash_t *table, void *key, void *value)
 
   if (!empty) {
     hash_grow(table);
-    return hash_update(table, key, value);
+    hash_update(table, key, value);
   } else {
     empty->key   = key;
     empty->value = value;
@@ -155,7 +155,6 @@ const hash_entry_t *hash_update(hash_t *table, void *key, void *value)
     if (100 * table->size / table->bucket_cnt >= table->load_factor) {
       hash_grow(table);
     }
-    return empty;
   }
 }
 

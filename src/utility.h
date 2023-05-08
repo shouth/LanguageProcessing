@@ -49,7 +49,7 @@ typedef struct {
 hash_t             *hash_new(hash_comp_t *comparator, hash_hasher_t *hasher);
 void                hash_delete(hash_t *table, hash_deleter_t *key_deleter, hash_deleter_t *value_deleter);
 const hash_entry_t *hash_find(hash_t *table, const void *key);
-const hash_entry_t *hash_update(hash_t *table, void *key, void *value);
+void                hash_update(hash_t *table, void *key, void *value);
 hash_entry_t       *hash_remove(hash_t *table, const void *key);
 int                 hash_default_comp(const void *lhs, const void *rhs);
 unsigned long       hash_default_hasher(const void *ptr);
