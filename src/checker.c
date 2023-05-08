@@ -22,7 +22,7 @@ static const type_t *record_type(checker_t *checker, const void *ast, const type
   if (!type) {
     return NULL;
   }
-  hash_update(checker->ctx->infer_result, (void *) ast, (void *) type);
+  hash_map_update(checker->ctx->infer_result, (void *) ast, (void *) type);
   return type;
 }
 
@@ -93,7 +93,7 @@ static const type_t *check_type(checker_t *checker, const ast_type_t *type)
 
 const type_t *check_def(checker_t *checker, const def_t *def)
 {
-  const hash_entry_t *entry = hash_find(checker->ctx->infer_result, def->ast);
+  const hash_map_entry_t *entry = hash_map_find(checker->ctx->infer_result, def->ast);
   if (entry) {
     return entry->value;
   } else {
@@ -137,13 +137,13 @@ const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
   case AST_EXPR_KIND_DECL_REF: {
     const ast_expr_decl_ref_t *ref = (ast_expr_decl_ref_t *) expr;
 
-    const def_t *def = hash_find(checker->ctx->resolution, ref->decl)->value;
+    const def_t *def = hash_map_find(checker->ctx->resolution, ref->decl)->value;
     return record_type(checker, expr, check_def(checker, def));
   }
   case AST_EXPR_KIND_ARRAY_SUBSCRIPT: {
     const ast_expr_array_subscript_t *subscript = (ast_expr_array_subscript_t *) expr;
 
-    const def_t  *def   = hash_find(checker->ctx->resolution, subscript->decl)->value;
+    const def_t  *def   = hash_map_find(checker->ctx->resolution, subscript->decl)->value;
     const type_t *type  = check_def(checker, def);
     const type_t *index = check_expr(checker, subscript->subscript);
 
@@ -384,7 +384,7 @@ static void check_stmt(checker_t *checker, const ast_stmt_t *stmt)
   case AST_STMT_KIND_CALL: {
     const ast_stmt_call_t *call = (ast_stmt_call_t *) stmt;
 
-    const def_t  *def  = hash_find(checker->ctx->resolution, call->name)->value;
+    const def_t  *def  = hash_map_find(checker->ctx->resolution, call->name)->value;
     const type_t *type = check_def(checker, def);
 
     if (!type) {
@@ -517,7 +517,7 @@ void mpplc_check(context_t *ctx)
   checker_t      checker;
   ast_visitor_t *visitor = (ast_visitor_t *) &checker;
 
-  ctx->infer_result = hash_new(NULL, NULL);
+  ctx->infer_result = hash_map_new(NULL, NULL);
   checker.ctx       = ctx;
 
   ast_init_visitor(visitor);

@@ -38,7 +38,7 @@ const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
   key.len = len;
 
   {
-    const hash_entry_t *entry = hash_find(ctx->symbol_interner, &key);
+    const hash_map_entry_t *entry = hash_map_find(ctx->symbol_interner, &key);
     if (!entry) {
       symbol_t *symbol = xmalloc(sizeof(symbol_t));
       char     *str    = xmalloc(len + 1);
@@ -46,7 +46,7 @@ const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
       str[len]    = '\0';
       symbol->ptr = str;
       symbol->len = len;
-      hash_update(ctx->symbol_interner, symbol, NULL);
+      hash_map_update(ctx->symbol_interner, symbol, NULL);
       return symbol;
     } else {
       return entry->key;
@@ -183,11 +183,11 @@ static const type_t *mk_type(context_t *ctx, type_t *type, type_kind_t kind)
 {
   type->kind = kind;
   {
-    const hash_entry_t *entry = hash_find(ctx->type_interner, type);
+    const hash_map_entry_t *entry = hash_map_find(ctx->type_interner, type);
     if (!entry) {
       type_t *ntype = xmalloc(sizeof(type_t));
       memcpy(ntype, type, sizeof(type_t));
-      hash_update(ctx->type_interner, ntype, NULL);
+      hash_map_update(ctx->type_interner, ntype, NULL);
       return ntype;
     } else {
       switch (kind) {
@@ -247,8 +247,8 @@ void mpplc_init(context_t *ctx, const char *in_name, const char *out_name)
   ctx->defs       = NULL;
   ctx->resolution = NULL;
 
-  ctx->symbol_interner = hash_new(&symbol_comp, &symbol_hash);
-  ctx->type_interner   = hash_new(&type_comp, &type_hash);
+  ctx->symbol_interner = hash_map_new(&symbol_comp, &symbol_hash);
+  ctx->type_interner   = hash_map_new(&type_comp, &type_hash);
   ctx->subst_loan      = NULL;
 
   {
@@ -280,10 +280,10 @@ void mpplc_deinit(context_t *ctx)
     src_delete(ctx->src);
     ast_delete(ctx->ast);
     delete_defs(ctx->defs);
-    hash_delete(ctx->resolution, NULL, NULL);
+    hash_map_delete(ctx->resolution, NULL, NULL);
 
-    hash_delete(ctx->symbol_interner, &symbol_deleter, NULL);
-    hash_delete(ctx->type_interner, &type_deleter, NULL);
+    hash_map_delete(ctx->symbol_interner, &symbol_deleter, NULL);
+    hash_map_delete(ctx->type_interner, &type_deleter, NULL);
     delete_subst(ctx->subst_loan);
   }
 }

@@ -13,15 +13,15 @@ typedef struct scope__s    scope_t;
 typedef struct resolver__s resolver_t;
 
 struct scope__s {
-  scope_t *outer;
-  hash_t  *def_map;
-  def_t  **defs;
+  scope_t    *outer;
+  hash_map_t *def_map;
+  def_t     **defs;
 };
 
 struct resolver__s {
   ast_visitor_t   visitor;
   const source_t *src;
-  hash_t         *resolution;
+  hash_map_t     *resolution;
   scope_t        *scope;
   def_t          *defs;
 };
@@ -42,7 +42,7 @@ void error_undeclared(resolver_t *resolver, const symbol_t *name, region_t regio
 
 static def_t *add_def(resolver_t *resolver, def_kind_t kind, const void *ast, const symbol_t *name, region_t region)
 {
-  const hash_entry_t *entry = hash_find(resolver->scope->def_map, name);
+  const hash_map_entry_t *entry = hash_map_find(resolver->scope->def_map, name);
   if (!entry) {
     def_t *def  = xmalloc(sizeof(def_t));
     def->ast    = ast;
@@ -54,7 +54,7 @@ static def_t *add_def(resolver_t *resolver, def_kind_t kind, const void *ast, co
 
     *resolver->scope->defs = def;
     resolver->scope->defs  = &def->next;
-    hash_update(resolver->scope->def_map, (void *) name, def);
+    hash_map_update(resolver->scope->def_map, (void *) name, def);
     return def;
   } else {
     error_conflict(resolver, entry->value, region);
@@ -67,7 +67,7 @@ static void resolve_def(resolver_t *resolver, const void *ast, const symbol_t *n
   scope_t     *scope = resolver->scope;
   const def_t *def   = NULL;
   for (; scope; scope = scope->outer) {
-    const hash_entry_t *entry = hash_find(scope->def_map, name);
+    const hash_map_entry_t *entry = hash_map_find(scope->def_map, name);
     if (entry) {
       def = entry->value;
       break;
@@ -75,7 +75,7 @@ static void resolve_def(resolver_t *resolver, const void *ast, const symbol_t *n
   }
 
   if (def) {
-    hash_update(resolver->resolution, (void *) ast, (void *) def);
+    hash_map_update(resolver->resolution, (void *) ast, (void *) def);
   } else {
     error_undeclared(resolver, name, region);
   }
@@ -85,7 +85,7 @@ static void push_scope(resolver_t *resolver, def_t **defs)
 {
   scope_t *scope  = xmalloc(sizeof(scope_t));
   scope->outer    = resolver->scope;
-  scope->def_map  = hash_new(NULL, NULL);
+  scope->def_map  = hash_map_new(NULL, NULL);
   scope->defs     = defs;
   resolver->scope = scope;
 }
@@ -95,7 +95,7 @@ static def_t **pop_scope(resolver_t *resolver)
   scope_t *scope  = resolver->scope;
   def_t  **defs   = scope->defs;
   resolver->scope = scope->outer;
-  hash_delete(scope->def_map, NULL, NULL);
+  hash_map_delete(scope->def_map, NULL, NULL);
   free(scope);
   return defs;
 }
@@ -186,7 +186,7 @@ void mpplc_resolve(context_t *ctx)
   resolver_t     resolver;
   ast_visitor_t *visitor = (ast_visitor_t *) &resolver;
   resolver.src           = ctx->src;
-  resolver.resolution    = hash_new(NULL, NULL);
+  resolver.resolution    = hash_map_new(NULL, NULL);
   resolver.scope         = NULL;
   resolver.defs          = NULL;
 

@@ -12,15 +12,15 @@ struct context__s {
   char *in_name;
   char *out_name;
 
-  source_t *src;
-  ast_t    *ast;
-  def_t    *defs;
-  hash_t   *resolution;
-  hash_t   *infer_result;
+  source_t   *src;
+  ast_t      *ast;
+  def_t      *defs;
+  hash_map_t *resolution;
+  hash_map_t *infer_result;
 
-  hash_t  *symbol_interner;
-  hash_t  *type_interner;
-  subst_t *subst_loan;
+  hash_map_t *symbol_interner;
+  hash_map_t *type_interner;
+  subst_t    *subst_loan;
 
   struct {
     const type_t *integer;

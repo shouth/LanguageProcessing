@@ -24,33 +24,33 @@ int bit_left_most(unsigned long n);
     exit(EXIT_FAILURE);                                                                        \
   } while (0)
 
-typedef int                  hash_comp_t(const void *, const void *);
-typedef unsigned long        hash_hasher_t(const void *);
-typedef void                 hash_deleter_t(void *);
-typedef struct hash__entry_s hash_entry_t;
+typedef int                      hash_map_comp_t(const void *, const void *);
+typedef unsigned long            hash_map_hasher_t(const void *);
+typedef void                     hash_map_deleter_t(void *);
+typedef struct hash_map__entry_s hash_map_entry_t;
 
-struct hash__entry_s {
+struct hash_map__entry_s {
   unsigned long hop;
   void         *key;
   void         *value;
 };
 
 typedef struct {
-  long           size;
-  long           capacity;
-  int            load_factor;
-  long           bucket_cnt;
-  hash_entry_t  *buckets;
-  hash_entry_t   removed;
-  hash_comp_t   *comparator;
-  hash_hasher_t *hasher;
-} hash_t;
+  long               size;
+  long               capacity;
+  int                load_factor;
+  long               bucket_cnt;
+  hash_map_entry_t  *buckets;
+  hash_map_entry_t   removed;
+  hash_map_comp_t   *comparator;
+  hash_map_hasher_t *hasher;
+} hash_map_t;
 
-hash_t             *hash_new(hash_comp_t *comparator, hash_hasher_t *hasher);
-void                hash_delete(hash_t *table, hash_deleter_t *key_deleter, hash_deleter_t *value_deleter);
-const hash_entry_t *hash_find(hash_t *table, const void *key);
-void                hash_update(hash_t *table, void *key, void *value);
-hash_entry_t       *hash_remove(hash_t *table, const void *key);
+hash_map_t             *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher);
+void                    hash_map_delete(hash_map_t *table, hash_map_deleter_t *key_deleter, hash_map_deleter_t *value_deleter);
+const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key);
+void                    hash_map_update(hash_map_t *table, void *key, void *value);
+hash_map_entry_t       *hash_map_remove(hash_map_t *table, const void *key);
 
 #define SGR__FLAG ((unsigned long) 1 << 24)
 
