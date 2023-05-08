@@ -137,13 +137,13 @@ hash_map_entry_t *hash_map_remove(hash_map_t *table, const void *key)
 
 hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
 {
-  hash_map_t *ret  = xmalloc(sizeof(hash_map_t));
-  ret->capacity    = 1 << 6;
-  ret->load_factor = 60;
-  ret->comparator  = comparator ? comparator : &default_comp;
-  ret->hasher      = hasher ? hasher : &default_hasher;
-  init_buckets(ret);
-  return ret;
+  hash_map_t *map  = xmalloc(sizeof(hash_map_t));
+  map->capacity    = 1 << 6;
+  map->load_factor = 60;
+  map->comparator  = comparator ? comparator : &default_comp;
+  map->hasher      = hasher ? hasher : &default_hasher;
+  init_buckets(map);
+  return map;
 }
 
 void hash_map_delete(hash_map_t *table, hash_map_deleter_t *key_deleter, hash_map_deleter_t *value_deleter)
