@@ -47,7 +47,7 @@ typedef struct {
 } hash_map_t;
 
 hash_map_t             *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher);
-void                    hash_map_delete(hash_map_t *table, hash_map_deleter_t *key_deleter, hash_map_deleter_t *value_deleter);
+void                    hash_map_delete(hash_map_t *table);
 const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key);
 void                    hash_map_update(hash_map_t *table, void *key, void *value);
 hash_map_entry_t       *hash_map_remove(hash_map_t *table, const void *key);

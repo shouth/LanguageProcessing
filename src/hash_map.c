@@ -146,23 +146,10 @@ hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
   return map;
 }
 
-void hash_map_delete(hash_map_t *table, hash_map_deleter_t *key_deleter, hash_map_deleter_t *value_deleter)
+void hash_map_delete(hash_map_t *table)
 {
-  long i;
-  if (!table) {
-    return;
+  if (table) {
+    free(table->buckets);
   }
-
-  for (i = 0; i < table->bucket_cnt; i++) {
-    if (table->buckets[i].key) {
-      if (key_deleter) {
-        key_deleter(table->buckets[i].key);
-      }
-      if (value_deleter) {
-        value_deleter(table->buckets[i].value);
-      }
-    }
-  }
-  free(table->buckets);
   free(table);
 }
