@@ -4,12 +4,12 @@
 
 #define NBHD_RANGE ((long) (sizeof(unsigned long) * 8))
 
-int hash_default_comp(const void *lhs, const void *rhs)
+static int default_comp(const void *lhs, const void *rhs)
 {
   return lhs == rhs;
 }
 
-unsigned long hash_default_hasher(const void *ptr)
+static unsigned long default_hasher(const void *ptr)
 {
   return fnv1a(FNV1A_INIT, &ptr, sizeof(void *));
 }
@@ -32,8 +32,8 @@ hash_t *hash_new(hash_comp_t *comparator, hash_hasher_t *hasher)
   hash_t *ret      = xmalloc(sizeof(hash_t));
   ret->capacity    = 1 << 6;
   ret->load_factor = 60;
-  ret->comparator  = comparator;
-  ret->hasher      = hasher;
+  ret->comparator  = comparator ? comparator : &default_comp;
+  ret->hasher      = hasher ? hasher : &default_hasher;
   hash_init_buckets(ret);
   return ret;
 }

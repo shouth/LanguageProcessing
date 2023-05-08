@@ -51,8 +51,6 @@ void                hash_delete(hash_t *table, hash_deleter_t *key_deleter, hash
 const hash_entry_t *hash_find(hash_t *table, const void *key);
 void                hash_update(hash_t *table, void *key, void *value);
 hash_entry_t       *hash_remove(hash_t *table, const void *key);
-int                 hash_default_comp(const void *lhs, const void *rhs);
-unsigned long       hash_default_hasher(const void *ptr);
 
 #define SGR__FLAG ((unsigned long) 1 << 24)
 

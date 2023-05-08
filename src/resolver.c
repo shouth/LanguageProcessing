@@ -85,7 +85,7 @@ static void push_scope(resolver_t *resolver, def_t **defs)
 {
   scope_t *scope  = xmalloc(sizeof(scope_t));
   scope->outer    = resolver->scope;
-  scope->def_map  = hash_new(&hash_default_comp, &hash_default_hasher);
+  scope->def_map  = hash_new(NULL, NULL);
   scope->defs     = defs;
   resolver->scope = scope;
 }
@@ -186,7 +186,7 @@ void mpplc_resolve(context_t *ctx)
   resolver_t     resolver;
   ast_visitor_t *visitor = (ast_visitor_t *) &resolver;
   resolver.src           = ctx->src;
-  resolver.resolution    = hash_new(&hash_default_comp, &hash_default_hasher);
+  resolver.resolution    = hash_new(NULL, NULL);
   resolver.scope         = NULL;
   resolver.defs          = NULL;
 

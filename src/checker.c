@@ -517,7 +517,7 @@ void mpplc_check(context_t *ctx)
   checker_t      checker;
   ast_visitor_t *visitor = (ast_visitor_t *) &checker;
 
-  ctx->infer_result = hash_new(&hash_default_comp, &hash_default_hasher);
+  ctx->infer_result = hash_new(NULL, NULL);
   checker.ctx       = ctx;
 
   ast_init_visitor(visitor);
