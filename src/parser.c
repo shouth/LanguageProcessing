@@ -75,7 +75,7 @@ static void error_unexpected(parser_t *parser)
           ptr += sprintf(ptr, "`%s`", token_to_str(kind));
           break;
         }
-        parser->expected[i] ^= (unsigned long) 1 << current;
+        parser->expected[i] ^= 1ul << current;
       }
     }
     error_expected(parser, buf);
@@ -114,11 +114,11 @@ static int check(parser_t *parser, token_kind_t kind)
   if (!parser->alive) {
     return 0;
   } else if (token_category(kind) == TOKEN_TYPE_KEYWORD) {
-    parser->expected[TOKEN_CATEGORY_KEYWORD] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_KEYWORD);
+    parser->expected[TOKEN_CATEGORY_KEYWORD] |= 1ul << (kind ^ TOKEN_TYPE_KEYWORD);
     return parser->next.type == TOKEN_IDENT && inspect(parser, token_to_str(kind));
   } else if (kind == TOKEN_IDENT) {
     if (parser->next.type == TOKEN_IDENT) {
-      parser->expected[TOKEN_CATEGORY_TOKEN] |= (unsigned long) 1 << (TOKEN_IDENT ^ TOKEN_TYPE_TOKEN);
+      parser->expected[TOKEN_CATEGORY_TOKEN] |= 1ul << (TOKEN_IDENT ^ TOKEN_TYPE_TOKEN);
       for (kind = TOKEN_TYPE_KEYWORD; kind < TOKEN_TYPE_KEYWORD_END; ++kind) {
         if (inspect(parser, token_to_str(kind))) {
           return 0;
@@ -128,7 +128,7 @@ static int check(parser_t *parser, token_kind_t kind)
     }
     return 0;
   } else {
-    parser->expected[TOKEN_CATEGORY_TOKEN] |= (unsigned long) 1 << (kind ^ TOKEN_TYPE_TOKEN);
+    parser->expected[TOKEN_CATEGORY_TOKEN] |= 1ul << (kind ^ TOKEN_TYPE_TOKEN);
     return parser->next.type == kind;
   }
 }
