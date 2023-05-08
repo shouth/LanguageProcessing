@@ -66,15 +66,15 @@ const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key)
 
 void hash_map_update(hash_map_t *table, void *key, void *value)
 {
-  hash_map_entry_t *home = table->buckets + calc_index(table, key);
+  hash_map_entry_t *home  = table->buckets + calc_index(table, key);
+  hash_map_entry_t *fence = home + NBHD_RANGE * 8;
   hash_map_entry_t *empty;
-
-  for (empty = home; empty - home < NBHD_RANGE * 8; ++empty) {
+  for (empty = home; empty < fence; ++empty) {
     if (!empty->key) {
       break;
     }
   }
-  if (empty - home == NBHD_RANGE * 8) {
+  if (empty == fence) {
     empty = NULL;
   }
 
