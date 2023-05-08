@@ -29,10 +29,7 @@ static void hash_init_buckets(hash_t *table)
 
 hash_t *hash_new(hash_comp_t *comparator, hash_hasher_t *hasher)
 {
-  hash_t *ret;
-  assert(comparator && hasher);
-
-  ret              = xmalloc(sizeof(hash_t));
+  hash_t *ret      = xmalloc(sizeof(hash_t));
   ret->capacity    = 1 << 6;
   ret->load_factor = 60;
   ret->comparator  = comparator;
