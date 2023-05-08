@@ -14,7 +14,7 @@ static unsigned long default_hasher(const void *ptr)
   return fnv1a(FNV1A_INIT, &ptr, sizeof(void *));
 }
 
-static void hash_init_buckets(hash_map_t *table)
+static void init_buckets(hash_map_t *table)
 {
   long i;
   table->size       = 0;
@@ -27,46 +27,14 @@ static void hash_init_buckets(hash_map_t *table)
   }
 }
 
-hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
-{
-  hash_map_t *ret  = xmalloc(sizeof(hash_map_t));
-  ret->capacity    = 1 << 6;
-  ret->load_factor = 60;
-  ret->comparator  = comparator ? comparator : &default_comp;
-  ret->hasher      = hasher ? hasher : &default_hasher;
-  hash_init_buckets(ret);
-  return ret;
-}
-
-void hash_map_delete(hash_map_t *table, hash_map_deleter_t *key_deleter, hash_map_deleter_t *value_deleter)
-{
-  long i;
-  if (!table) {
-    return;
-  }
-
-  for (i = 0; i < table->bucket_cnt; i++) {
-    if (table->buckets[i].key) {
-      if (key_deleter) {
-        key_deleter(table->buckets[i].key);
-      }
-      if (value_deleter) {
-        value_deleter(table->buckets[i].value);
-      }
-    }
-  }
-  free(table->buckets);
-  free(table);
-}
-
-static void hash_grow(hash_map_t *table)
+static void grow_buckets(hash_map_t *table)
 {
   hash_map_entry_t *old_buckets    = table->buckets;
   long              old_bucket_cnt = table->bucket_cnt;
   long              i;
 
   table->capacity <<= 1;
-  hash_init_buckets(table);
+  init_buckets(table);
   for (i = 0; i < old_bucket_cnt; ++i) {
     if (old_buckets[i].key) {
       hash_map_update(table, old_buckets[i].key, old_buckets[i].value);
@@ -75,7 +43,7 @@ static void hash_grow(hash_map_t *table)
   free(old_buckets);
 }
 
-static long hash_index(hash_map_t *table, const void *key)
+static long calc_index(hash_map_t *table, const void *key)
 {
   assert(table && key);
   return table->hasher(key) & (table->capacity - 1);
@@ -83,7 +51,7 @@ static long hash_index(hash_map_t *table, const void *key)
 
 const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key)
 {
-  long              index = hash_index(table, key);
+  long              index = calc_index(table, key);
   hash_map_entry_t *home  = table->buckets + index;
   unsigned long     hop   = home->hop;
   while (hop) {
@@ -98,7 +66,7 @@ const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key)
 
 void hash_map_update(hash_map_t *table, void *key, void *value)
 {
-  long              index = hash_index(table, key);
+  long              index = calc_index(table, key);
   long              dist;
   hash_map_entry_t *home  = table->buckets + index;
   hash_map_entry_t *empty = NULL;
@@ -134,7 +102,7 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
   }
 
   if (!empty) {
-    hash_grow(table);
+    grow_buckets(table);
     hash_map_update(table, key, value);
   } else {
     empty->key   = key;
@@ -142,14 +110,14 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
     home->hop ^= (unsigned long) 1 << dist;
     table->size++;
     if (100 * table->size / table->bucket_cnt >= table->load_factor) {
-      hash_grow(table);
+      grow_buckets(table);
     }
   }
 }
 
 hash_map_entry_t *hash_map_remove(hash_map_t *table, const void *key)
 {
-  long              index = hash_index(table, key);
+  long              index = calc_index(table, key);
   hash_map_entry_t *home  = table->buckets + index;
   unsigned long     hop   = home->hop;
   while (hop) {
@@ -165,4 +133,36 @@ hash_map_entry_t *hash_map_remove(hash_map_t *table, const void *key)
     hop ^= (unsigned long) 1 << t;
   }
   return NULL;
+}
+
+hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
+{
+  hash_map_t *ret  = xmalloc(sizeof(hash_map_t));
+  ret->capacity    = 1 << 6;
+  ret->load_factor = 60;
+  ret->comparator  = comparator ? comparator : &default_comp;
+  ret->hasher      = hasher ? hasher : &default_hasher;
+  init_buckets(ret);
+  return ret;
+}
+
+void hash_map_delete(hash_map_t *table, hash_map_deleter_t *key_deleter, hash_map_deleter_t *value_deleter)
+{
+  long i;
+  if (!table) {
+    return;
+  }
+
+  for (i = 0; i < table->bucket_cnt; i++) {
+    if (table->buckets[i].key) {
+      if (key_deleter) {
+        key_deleter(table->buckets[i].key);
+      }
+      if (value_deleter) {
+        value_deleter(table->buckets[i].value);
+      }
+    }
+  }
+  free(table->buckets);
+  free(table);
 }
