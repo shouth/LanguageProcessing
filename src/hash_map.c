@@ -51,15 +51,14 @@ static long calc_index(hash_map_t *table, const void *key)
 
 const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key)
 {
-  long              index = calc_index(table, key);
-  hash_map_entry_t *home  = table->buckets + index;
-  unsigned long     hop   = home->hop;
+  hash_map_entry_t *home = table->buckets + calc_index(table, key);
+  unsigned long     hop  = home->hop;
   while (hop) {
-    int t = bit_right_most(hop);
-    if (table->comparator(key, home[t].key)) {
-      return home + t;
+    hash_map_entry_t *entry = home + bit_right_most(hop);
+    if (table->comparator(key, entry->key)) {
+      return entry;
     }
-    hop &= ~(1ul << t);
+    hop &= ~(1ul << (entry - home));
   }
   return NULL;
 }
@@ -114,28 +113,27 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
 
 int hash_map_remove(hash_map_t *table, const void *key)
 {
-  long              index = calc_index(table, key);
-  hash_map_entry_t *home  = table->buckets + index;
-  unsigned long     hop   = home->hop;
+  hash_map_entry_t *home = table->buckets + calc_index(table, key);
+  unsigned long     hop  = home->hop;
   while (hop) {
-    int t = bit_right_most(hop);
-    if (table->comparator(key, home[t].key)) {
-      home[t].key = NULL;
-      home->hop &= ~(1ul << t);
+    hash_map_entry_t *entry = home + bit_right_most(hop);
+    if (table->comparator(key, entry->key)) {
+      entry->key = NULL;
+      home->hop &= ~(1ul << (entry - home));
       --table->size;
       return 1;
     }
-    hop &= ~(1ul << t);
+    hop &= ~(1ul << (entry - home));
   }
   return 0;
 }
 
 hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
 {
-  hash_map_t *map  = xmalloc(sizeof(hash_map_t));
-  map->capacity    = NBHD_RANGE;
-  map->comparator  = comparator ? comparator : &default_comp;
-  map->hasher      = hasher ? hasher : &default_hasher;
+  hash_map_t *map = xmalloc(sizeof(hash_map_t));
+  map->capacity   = NBHD_RANGE;
+  map->comparator = comparator ? comparator : &default_comp;
+  map->hasher     = hasher ? hasher : &default_hasher;
   init_buckets(map);
   return map;
 }
