@@ -14,48 +14,48 @@ static unsigned long default_hasher(const void *ptr)
   return fnv1a(FNV1A_INIT, &ptr, sizeof(void *));
 }
 
-static void init_buckets(hash_map_t *table)
+static void init_buckets(hash_map_t *map)
 {
   long i;
-  table->size       = 0;
-  table->bucket_cnt = table->capacity + NBHD_RANGE;
-  table->buckets    = xmalloc(sizeof(hash_map_entry_t) * table->bucket_cnt);
-  for (i = 0; i < table->bucket_cnt; ++i) {
-    table->buckets[i].hop   = 0;
-    table->buckets[i].key   = NULL;
-    table->buckets[i].value = NULL;
+  map->size       = 0;
+  map->bucket_cnt = map->capacity + NBHD_RANGE;
+  map->buckets    = xmalloc(sizeof(hash_map_entry_t) * map->bucket_cnt);
+  for (i = 0; i < map->bucket_cnt; ++i) {
+    map->buckets[i].hop   = 0;
+    map->buckets[i].key   = NULL;
+    map->buckets[i].value = NULL;
   }
 }
 
-static void grow_buckets(hash_map_t *table)
+static void grow_buckets(hash_map_t *map)
 {
-  hash_map_entry_t *old_buckets    = table->buckets;
-  long              old_bucket_cnt = table->bucket_cnt;
+  hash_map_entry_t *old_buckets    = map->buckets;
+  long              old_bucket_cnt = map->bucket_cnt;
   long              i;
 
-  table->capacity <<= 1;
-  init_buckets(table);
+  map->capacity <<= 1;
+  init_buckets(map);
   for (i = 0; i < old_bucket_cnt; ++i) {
     if (old_buckets[i].key) {
-      hash_map_update(table, old_buckets[i].key, old_buckets[i].value);
+      hash_map_update(map, old_buckets[i].key, old_buckets[i].value);
     }
   }
   free(old_buckets);
 }
 
-static long calc_index(hash_map_t *table, const void *key)
+static long calc_index(hash_map_t *map, const void *key)
 {
-  assert(table && key);
-  return table->hasher(key) & (table->capacity - 1);
+  assert(map && key);
+  return map->hasher(key) & (map->capacity - 1);
 }
 
-const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key)
+const hash_map_entry_t *hash_map_find(hash_map_t *map, const void *key)
 {
-  hash_map_entry_t *home = table->buckets + calc_index(table, key);
+  hash_map_entry_t *home = map->buckets + calc_index(map, key);
   unsigned long     hop  = home->hop;
   while (hop) {
     hash_map_entry_t *entry = home + bit_right_most(hop);
-    if (table->comparator(key, entry->key)) {
+    if (map->comparator(key, entry->key)) {
       return entry;
     }
     hop &= ~(1ul << (entry - home));
@@ -63,9 +63,9 @@ const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key)
   return NULL;
 }
 
-void hash_map_update(hash_map_t *table, void *key, void *value)
+void hash_map_update(hash_map_t *map, void *key, void *value)
 {
-  hash_map_entry_t *home  = table->buckets + calc_index(table, key);
+  hash_map_entry_t *home  = map->buckets + calc_index(map, key);
   hash_map_entry_t *fence = home + NBHD_RANGE * 8;
   hash_map_entry_t *empty;
   for (empty = home; empty < fence; ++empty) {
@@ -101,26 +101,26 @@ void hash_map_update(hash_map_t *table, void *key, void *value)
   }
 
   if (!empty) {
-    grow_buckets(table);
-    hash_map_update(table, key, value);
+    grow_buckets(map);
+    hash_map_update(map, key, value);
   } else {
     empty->key   = key;
     empty->value = value;
     home->hop |= 1ul << (empty - home);
-    ++table->size;
+    ++map->size;
   }
 }
 
-int hash_map_remove(hash_map_t *table, const void *key)
+int hash_map_remove(hash_map_t *map, const void *key)
 {
-  hash_map_entry_t *home = table->buckets + calc_index(table, key);
+  hash_map_entry_t *home = map->buckets + calc_index(map, key);
   unsigned long     hop  = home->hop;
   while (hop) {
     hash_map_entry_t *entry = home + bit_right_most(hop);
-    if (table->comparator(key, entry->key)) {
+    if (map->comparator(key, entry->key)) {
       entry->key = NULL;
       home->hop &= ~(1ul << (entry - home));
-      --table->size;
+      --map->size;
       return 1;
     }
     hop &= ~(1ul << (entry - home));
@@ -138,10 +138,10 @@ hash_map_t *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher)
   return map;
 }
 
-void hash_map_delete(hash_map_t *table)
+void hash_map_delete(hash_map_t *map)
 {
-  if (table) {
-    free(table->buckets);
+  if (map) {
+    free(map->buckets);
   }
-  free(table);
+  free(map);
 }
