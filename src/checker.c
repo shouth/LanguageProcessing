@@ -91,7 +91,7 @@ static const type_t *check_type(checker_t *checker, const ast_type_t *type)
   }
 }
 
-const type_t *check_def(checker_t *checker, const def_t *def)
+static const type_t *check_def(checker_t *checker, const def_t *def)
 {
   const hash_map_entry_t *entry = hash_map_find(checker->ctx->infer_result, def->ast);
   if (entry) {
@@ -131,7 +131,7 @@ const type_t *check_def(checker_t *checker, const def_t *def)
   }
 }
 
-const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
+static const type_t *check_expr(checker_t *checker, const ast_expr_t *expr)
 {
   switch (expr->kind) {
   case AST_EXPR_KIND_DECL_REF: {
@@ -486,7 +486,7 @@ static void visit_stmt(ast_visitor_t *visitor, const ast_stmt_t *stmt)
   ast_walk_stmt(visitor, stmt);
 }
 
-void visit_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_part)
+static void visit_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_part)
 {
   checker_t *checker = (checker_t *) visitor;
   switch (decl_part->kind) {
@@ -503,7 +503,7 @@ void visit_decl_part(ast_visitor_t *visitor, const ast_decl_part_t *decl_part)
   }
 }
 
-void visit_program(ast_visitor_t *visitor, const ast_program_t *program)
+static void visit_program(ast_visitor_t *visitor, const ast_program_t *program)
 {
   checker_t  *checker = (checker_t *) visitor;
   const void *outer   = checker->enclosure;
