@@ -36,7 +36,7 @@ void error_conflict(resolver_t *resolver, def_t *def, region_t region)
 
 void error_undeclared(resolver_t *resolver, const symbol_t *name, region_t region)
 {
-  msg_t *msg = msg_new(resolver->src, region, MSG_ERROR, "%s is not undeclared", name->ptr);
+  msg_t *msg = msg_new(resolver->src, region, MSG_ERROR, "%s is not declared", name->ptr);
   msg_emit(msg);
 }
 
