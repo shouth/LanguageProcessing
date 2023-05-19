@@ -44,11 +44,12 @@ typedef struct {
   hash_map_hasher_t *hasher;
 } hash_map_t;
 
-hash_map_t             *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher);
-void                    hash_map_delete(hash_map_t *table);
-const hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key);
-void                    hash_map_update(hash_map_t *table, void *key, void *value);
-int                     hash_map_remove(hash_map_t *table, const void *key);
+hash_map_t       *hash_map_new(hash_map_comp_t *comparator, hash_map_hasher_t *hasher);
+void              hash_map_delete(hash_map_t *table);
+hash_map_entry_t *hash_map_next(hash_map_t *map, hash_map_entry_t *entry);
+hash_map_entry_t *hash_map_find(hash_map_t *table, const void *key);
+void              hash_map_update(hash_map_t *table, void *key, void *value);
+int               hash_map_remove(hash_map_t *table, const void *key);
 
 #define SGR__FLAG ((unsigned long) 1 << 24)
 

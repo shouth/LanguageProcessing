@@ -49,7 +49,23 @@ static long calc_index(hash_map_t *map, const void *key)
   return map->hasher(key) & (map->capacity - 1);
 }
 
-const hash_map_entry_t *hash_map_find(hash_map_t *map, const void *key)
+hash_map_entry_t *hash_map_next(hash_map_t *map, hash_map_entry_t *entry)
+{
+  if (!entry) {
+    entry = map->buckets;
+  } else {
+    ++entry;
+  }
+
+  for (; entry < map->buckets + map->bucket_cnt; ++entry) {
+    if (entry->key) {
+      return entry;
+    }
+  }
+  return NULL;
+}
+
+hash_map_entry_t *hash_map_find(hash_map_t *map, const void *key)
 {
   hash_map_entry_t *home = map->buckets + calc_index(map, key);
   unsigned long     hop  = home->hop;
