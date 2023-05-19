@@ -1,9 +1,7 @@
 #ifndef MPPL_H
 #define MPPL_H
 
-#include "ast.h"
 #include "context.h"
-#include "utility.h"
 
 /* context.c */
 
@@ -25,5 +23,9 @@ void mpplc_resolve(context_t *);
 /* checker.c */
 
 void mpplc_check(context_t *);
+
+/* crossref.c */
+
+void mpplc_crossref(context_t *);
 
 #endif
