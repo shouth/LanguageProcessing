@@ -22,13 +22,12 @@ static unsigned long symbol_hash(const void *value)
   return fnv1a(FNV1A_INIT, x->ptr, x->len);
 }
 
-static void symbol_deleter(void *value)
+static void delete_symbol(symbol_t *symbol)
 {
-  if (value) {
-    symbol_t *x = value;
-    free((void *) x->ptr);
+  if (symbol) {
+    free((void *) symbol->ptr);
   }
-  free(value);
+  free(symbol);
 }
 
 const symbol_t *ctx_mk_symbol(context_t *ctx, const char *ptr, long len)
@@ -146,18 +145,17 @@ static void delete_subst(subst_t *subst)
   }
 }
 
-static void type_deleter(void *value)
+static void delete_type(type_t *type)
 {
-  if (value) {
-    type_t *type = value;
+  if (type) {
     switch (type->kind) {
     case TYPE_ARRAY: {
-      type_array_t *array = value;
+      type_array_t *array = (type_array_t *) type;
       delete_subst(array->base);
       break;
     }
     case TYPE_PROCEDURE: {
-      type_procedure_t *proc = value;
+      type_procedure_t *proc = (type_procedure_t *) type;
       delete_subst(proc->params);
       break;
     }
@@ -166,7 +164,7 @@ static void type_deleter(void *value)
       break;
     }
   }
-  free(value);
+  free(type);
 }
 
 static void cache_subst(context_t *ctx, subst_t *subst)
@@ -282,8 +280,22 @@ void mpplc_deinit(context_t *ctx)
     delete_defs(ctx->defs);
     hash_map_delete(ctx->resolution);
 
-    hash_map_delete(ctx->symbol_interner);
-    hash_map_delete(ctx->type_interner);
+    if (ctx->symbol_interner) {
+      hash_map_entry_t *entry;
+      for (entry = NULL; (entry = hash_map_next(ctx->symbol_interner, entry));) {
+        delete_symbol(entry->key);
+      }
+      hash_map_delete(ctx->symbol_interner);
+    }
+
+    if (ctx->type_interner) {
+      hash_map_entry_t *entry;
+      for (entry = NULL; (entry = hash_map_next(ctx->type_interner, entry));) {
+        delete_type(entry->key);
+      }
+      hash_map_delete(ctx->type_interner);
+    }
+
     delete_subst(ctx->subst_loan);
   }
 }
