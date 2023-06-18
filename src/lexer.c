@@ -14,7 +14,7 @@ void lexer_init(lexer_t *lexer, const source_t *src)
 
 static int is_alphabet(int c)
 {
-  return !!strchr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijlmnopqrstuvwxyz", c);
+  return !!strchr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c);
 }
 
 static int is_number(int c)
