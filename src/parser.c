@@ -117,8 +117,8 @@ static int check(parser_t *parser, token_kind_t kind)
     parser->expected[TOKEN_CATEGORY_KEYWORD] |= 1ul << (kind ^ TOKEN_TYPE_KEYWORD);
     return parser->next.type == TOKEN_IDENT && inspect(parser, token_to_str(kind));
   } else if (kind == TOKEN_IDENT) {
+    parser->expected[TOKEN_CATEGORY_TOKEN] |= 1ul << (TOKEN_IDENT ^ TOKEN_TYPE_TOKEN);
     if (parser->next.type == TOKEN_IDENT) {
-      parser->expected[TOKEN_CATEGORY_TOKEN] |= 1ul << (TOKEN_IDENT ^ TOKEN_TYPE_TOKEN);
       for (kind = TOKEN_TYPE_KEYWORD; kind < TOKEN_TYPE_KEYWORD_END; ++kind) {
         if (inspect(parser, token_to_str(kind))) {
           return 0;
