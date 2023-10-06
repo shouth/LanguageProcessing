@@ -3,7 +3,11 @@
 
 #include "token.h"
 
-typedef struct Lexer Lexer;
+typedef struct {
+  const char *source;
+  long        length;
+  long        index;
+} Lexer;
 
 void lexer_init(Lexer *lexer, const char *source, long length);
 void lexer_next_token(Lexer *lexer, Token *token);
