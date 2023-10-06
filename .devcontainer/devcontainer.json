@@ -8,7 +8,7 @@
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-      "packages": "clangd"
+      "packages": "clangd-13"
     }
   },
   "customizations": {
@@ -19,7 +19,24 @@
         "llvm-vs-code-extensions.vscode-clangd",
         "eamodio.gitlens",
         "AnsonYeung.pascal-language-basics"
-      ]
+      ],
+      "settings": {
+        "[c]": {
+          "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+          "editor.formatOnSave": true,
+          "editor.formatOnType": true
+        },
+        "clangd.serverCompletionRanking": true,
+        "clangd.path": "clangd-13",
+        "cmake.buildTask": true,
+        "cmake.configureOnOpen": true,
+        "C_Cpp.intelliSenseEngine": "disabled",
+        "files.associations": {
+          "*.h": "c",
+          "*.mpl": "pascal",
+          "*.csl": "casl2"
+        }
+      }
     }
   }
 }
