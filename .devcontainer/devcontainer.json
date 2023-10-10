@@ -3,13 +3,7 @@
   "image": "omzn/kit-lpp:multiple",
   "onCreateCommand": "cp ${containerWorkspaceFolder}/.devcontainer/greeting.fish $HOME/.config/fish/conf.d/",
   "features": {
-    "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {
-      "fisher": true
-    },
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-      "packages": "clangd-13"
-    }
+    "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {}
   },
   "customizations": {
     "vscode": {
@@ -26,8 +20,6 @@
           "editor.formatOnSave": true,
           "editor.formatOnType": true
         },
-        "clangd.serverCompletionRanking": true,
-        "clangd.path": "clangd-13",
         "cmake.buildTask": true,
         "cmake.configureOnOpen": true,
         "C_Cpp.intelliSenseEngine": "disabled",
