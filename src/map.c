@@ -16,11 +16,11 @@ static int map_default_comparator(const void *left, const void *right)
   return left == right;
 }
 
-static void map_index_init(MapIndex *index, unsigned long hash, void *key)
+static void map_index_init(MapIterator *iterator, unsigned long hash, void *key)
 {
-  index->key    = key;
-  index->hash   = hash;
-  index->offset = ULONG_MAX;
+  iterator->key    = key;
+  iterator->hash   = hash;
+  iterator->offset = ULONG_MAX;
 }
 
 void map_init(Map *map, MapHasher *hasher, MapComparator *comparator)
@@ -59,61 +59,61 @@ void map_deinit(Map *map)
   free(map->buckets);
 }
 
-static MapBucket *map_bucket_at(const Map *map, const MapIndex *index)
+static MapBucket *map_bucket_at(const Map *map, const MapIterator *iterator)
 {
-  return map->buckets + (index->hash & (map->capacity - 1));
+  return map->buckets + (iterator->hash & (map->capacity - 1));
 }
 
-int map_find(const Map *map, void *key, MapIndex *index)
+int map_find(const Map *map, void *key, MapIterator *iterator)
 {
-  map_index_init(index, map->hasher(key), key);
+  map_index_init(iterator, map->hasher(key), key);
   {
-    MapBucket *bucket   = map_bucket_at(map, index);
+    MapBucket *bucket   = map_bucket_at(map, iterator);
     MapBucket *slot     = bucket;
     MapBucket *sentinel = slot + NEIGHBORHOOD - 1;
     for (; slot < sentinel; ++slot) {
-      if (bucket->hop & (1ul << (slot - bucket)) && map->comparator(index->key, slot->key)) {
-        index->offset = slot - bucket;
+      if (bucket->hop & (1ul << (slot - bucket)) && map->comparator(iterator->key, slot->key)) {
+        iterator->offset = slot - bucket;
         break;
       }
     }
   }
-  return index->offset != ULONG_MAX;
+  return iterator->offset != ULONG_MAX;
 }
 
 void *map_value(Map *map, void *key)
 {
-  MapIndex index;
+  MapIterator index;
   map_find(map, key, &index);
   return map_value_at(map, &index);
 }
 
-void *map_value_at(Map *map, MapIndex *index)
+void *map_value_at(Map *map, MapIterator *iterator)
 {
-  if (index->offset == ULONG_MAX) {
-    map_insert_at(map, index, NULL);
+  if (iterator->offset == ULONG_MAX) {
+    map_insert_at(map, iterator, NULL);
   }
 
   {
-    MapBucket *slot = map_bucket_at(map, index) + index->offset;
+    MapBucket *slot = map_bucket_at(map, iterator) + iterator->offset;
     return slot->value;
   }
 }
 
 void map_insert(Map *map, void *key, void *value)
 {
-  MapIndex index;
+  MapIterator index;
   map_find(map, key, &index);
   map_insert_at(map, &index, value);
 }
 
-void map_insert_at(Map *map, MapIndex *index, void *value)
+void map_insert_at(Map *map, MapIterator *iterator, void *value)
 {
-  MapBucket *bucket = map_bucket_at(map, index);
+  MapBucket *bucket = map_bucket_at(map, iterator);
   MapBucket *empty  = NULL;
 
-  if (index->offset != ULONG_MAX) {
-    empty = bucket + index->offset;
+  if (iterator->offset != ULONG_MAX) {
+    empty = bucket + iterator->offset;
   } else {
     MapBucket *candidate = bucket;
     MapBucket *sentinel  = bucket + NEIGHBORHOOD * 8;
@@ -156,10 +156,10 @@ void map_insert_at(Map *map, MapIndex *index, void *value)
 
   if (empty) {
     empty->hop |= 1ul << (NEIGHBORHOOD - 1);
-    empty->key   = index->key;
+    empty->key   = iterator->key;
     empty->value = value;
     bucket->hop |= 1ul << (empty - bucket);
-    index->offset = empty - bucket;
+    iterator->offset = empty - bucket;
     ++map->size;
   } else {
     Map        old      = *map;
@@ -169,31 +169,31 @@ void map_insert_at(Map *map, MapIndex *index, void *value)
     map_init_with_capacity(map, old.capacity << 1, old.hasher, old.comparator);
     for (; bucket < sentinel; ++bucket) {
       if (bucket->hop & (1ul << (NEIGHBORHOOD - 1))) {
-        MapIndex index;
-        map_index_init(&index, map->hasher(bucket->key), bucket->key);
-        map_insert_at(map, &index, bucket->value);
+        MapIterator iterator;
+        map_index_init(&iterator, map->hasher(bucket->key), bucket->key);
+        map_insert_at(map, &iterator, bucket->value);
       }
     }
-    map_insert_at(map, index, value);
+    map_insert_at(map, iterator, value);
     map_deinit(&old);
   }
 }
 
 void map_erase(Map *map, void *key)
 {
-  MapIndex index;
+  MapIterator index;
   map_find(map, key, &index);
   map_erase_at(map, &index);
 }
 
-void map_erase_at(Map *map, MapIndex *index)
+void map_erase_at(Map *map, MapIterator *iterator)
 {
-  if (index->offset != ULONG_MAX) {
-    MapBucket *bucket = map_bucket_at(map, index);
-    MapBucket *slot   = bucket + index->offset;
+  if (iterator->offset != ULONG_MAX) {
+    MapBucket *bucket = map_bucket_at(map, iterator);
+    MapBucket *slot   = bucket + iterator->offset;
 
     bucket->hop &= ~(1ul << (slot - bucket));
     slot->hop &= ~(1ul << (NEIGHBORHOOD - 1));
-    index->offset = ULONG_MAX;
+    iterator->offset = ULONG_MAX;
   }
 }
