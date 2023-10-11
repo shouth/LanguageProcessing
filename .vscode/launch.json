@@ -5,7 +5,7 @@
       "name": "(gdb) Launch",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/mppl",
+      "program": "${workspaceFolder}/build/mpplc",
       "args": [
         "-c",
         "./mpl/task2/sample29p.mpl"
