@@ -1,5 +1,4 @@
 #include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "map.h"
@@ -117,9 +116,9 @@ void map_insert_at(Map *map, MapIndex *index, void *value)
     empty = bucket + index->offset;
   } else {
     MapBucket *candidate = bucket;
-    MapBucket *sentinel  = bucket + NEIGHBORHOOD * 12;
+    MapBucket *sentinel  = bucket + NEIGHBORHOOD * 8;
     for (; candidate < sentinel; ++candidate) {
-      if (!(bucket->hop & (1ul << (NEIGHBORHOOD - 1)))) {
+      if (!(candidate->hop & (1ul << (NEIGHBORHOOD - 1)))) {
         empty = candidate;
         break;
       }
@@ -163,12 +162,11 @@ void map_insert_at(Map *map, MapIndex *index, void *value)
     index->offset = empty - bucket;
     ++map->size;
   } else {
-    MapBucket *buckets  = map->buckets;
-    MapBucket *bucket   = buckets;
-    MapBucket *sentinel = buckets + map->capacity + NEIGHBORHOOD - 1;
+    Map        old      = *map;
+    MapBucket *bucket   = old.buckets;
+    MapBucket *sentinel = old.buckets + old.capacity + NEIGHBORHOOD - 1;
 
-    printf("resize to %lu\n", map->capacity << 1);
-    map_init_with_capacity(map, map->capacity << 1, map->hasher, map->comparator);
+    map_init_with_capacity(map, old.capacity << 1, old.hasher, old.comparator);
     for (; bucket < sentinel; ++bucket) {
       if (bucket->hop & (1ul << (NEIGHBORHOOD - 1))) {
         MapIndex index;
@@ -176,8 +174,8 @@ void map_insert_at(Map *map, MapIndex *index, void *value)
         map_insert_at(map, &index, bucket->value);
       }
     }
-    free(buckets);
     map_insert_at(map, index, value);
+    map_deinit(&old);
   }
 }
 
