@@ -13,14 +13,14 @@ void *xmalloc(size_t size)
   return result;
 }
 
-unsigned long fnv1a(unsigned long hash, const void *ptr, long len)
+unsigned long fnv1a(unsigned long hash, const void *ptr, unsigned long len)
 {
-  unsigned long prime = 0x01000193ul;
-  long          i;
+  const unsigned char *data  = ptr;
+  const unsigned char *end   = data + len;
+  const unsigned long  prime = 0x01000193ul;
 
-  for (i = 0; i < len; i++) {
-    hash ^= ((char *) ptr)[i];
-    hash *= prime;
+  for (; data < end; ++data) {
+    hash = (hash ^ *data) * prime;
   }
   return 0xFFFFFFFFul & hash;
 }
