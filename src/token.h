@@ -34,10 +34,12 @@ typedef enum {
   TOKEN_KIND_ERROR
 } TokenKind;
 
-typedef struct {
+typedef struct Token Token;
+
+struct Token {
   TokenKind kind;
   long      length;
   int       terminated;
-} Token;
+};
 
 #endif
