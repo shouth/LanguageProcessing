@@ -14,9 +14,9 @@ struct MapBucket {
 };
 
 struct MapIterator {
-  unsigned long hash;
-  void         *key;
-  unsigned long offset;
+  void      *key;
+  MapBucket *bucket;
+  MapBucket *slot;
 };
 
 struct Map {
