@@ -14,6 +14,7 @@ struct MapBucket {
 };
 
 struct MapIterator {
+  Map       *parent;
   void      *key;
   MapBucket *bucket;
   MapBucket *slot;
@@ -30,12 +31,12 @@ struct Map {
 void  map_init(Map *map, MapHasher *hasher, MapComparator *comparator);
 void  map_init_with_capacity(Map *map, unsigned long capacity, MapHasher *hasher, MapComparator *comparator);
 void  map_deinit(Map *map);
-int   map_find(const Map *map, void *key, MapIterator *iterator);
+int   map_find(Map *map, void *key, MapIterator *iterator);
 void *map_value(Map *map, void *key);
-void *map_value_at(Map *map, MapIterator *iterator);
+void *map_value_at(MapIterator *iterator);
 void  map_update(Map *map, void *key, void *value);
-void  map_update_at(Map *map, MapIterator *iterator, void *value);
+void  map_update_at(MapIterator *iterator, void *value);
 void  map_erase(Map *map, void *key);
-void  map_erase_at(Map *map, MapIterator *iterator);
+void  map_erase_at(MapIterator *iterator);
 
 #endif

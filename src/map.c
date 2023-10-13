@@ -15,8 +15,9 @@ static int map_default_comparator(const void *left, const void *right)
   return left == right;
 }
 
-static void map_index_init(const Map *map, MapIterator *iterator, void *key)
+static void map_index_init(Map *map, MapIterator *iterator, void *key)
 {
+  iterator->parent = map;
   iterator->key    = key;
   iterator->bucket = map->buckets + (map->hasher(key) & (map->capacity - 1));
   iterator->slot   = NULL;
@@ -58,7 +59,7 @@ void map_deinit(Map *map)
   free(map->buckets);
 }
 
-int map_find(const Map *map, void *key, MapIterator *iterator)
+int map_find(Map *map, void *key, MapIterator *iterator)
 {
   map_index_init(map, iterator, key);
   {
@@ -78,13 +79,13 @@ void *map_value(Map *map, void *key)
 {
   MapIterator iterator;
   map_find(map, key, &iterator);
-  return map_value_at(map, &iterator);
+  return map_value_at(&iterator);
 }
 
-void *map_value_at(Map *map, MapIterator *iterator)
+void *map_value_at(MapIterator *iterator)
 {
   if (!iterator->slot) {
-    map_update_at(map, iterator, NULL);
+    map_update_at(iterator, NULL);
   }
   return iterator->slot->value;
 }
@@ -93,10 +94,10 @@ void map_update(Map *map, void *key, void *value)
 {
   MapIterator iterator;
   map_find(map, key, &iterator);
-  map_update_at(map, &iterator, value);
+  map_update_at(&iterator, value);
 }
 
-void map_update_at(Map *map, MapIterator *iterator, void *value)
+void map_update_at(MapIterator *iterator, void *value)
 {
   MapBucket *empty = iterator->slot;
 
@@ -148,22 +149,22 @@ void map_update_at(Map *map, MapIterator *iterator, void *value)
     empty->value = value;
     iterator->bucket->hop |= 1ul << (empty - iterator->bucket);
     iterator->slot = empty;
-    ++map->size;
+    ++iterator->parent->size;
   } else {
-    Map        old      = *map;
+    Map        old      = *iterator->parent;
     MapBucket *bucket   = old.buckets;
     MapBucket *sentinel = old.buckets + old.capacity + NEIGHBORHOOD - 1;
 
-    map_init_with_capacity(map, old.capacity << 1, old.hasher, old.comparator);
+    map_init_with_capacity(iterator->parent, old.capacity << 1, old.hasher, old.comparator);
     for (; bucket < sentinel; ++bucket) {
       if (bucket->hop & (1ul << (NEIGHBORHOOD - 1))) {
-        MapIterator iterator;
-        map_index_init(map, &iterator, bucket->key);
-        map_update_at(map, &iterator, bucket->value);
+        MapIterator i;
+        map_index_init(iterator->parent, &i, bucket->key);
+        map_update_at(&i, bucket->value);
       }
     }
-    map_index_init(map, iterator, iterator->key);
-    map_update_at(map, iterator, value);
+    map_index_init(iterator->parent, iterator, iterator->key);
+    map_update_at(iterator, value);
     map_deinit(&old);
   }
 }
@@ -172,15 +173,15 @@ void map_erase(Map *map, void *key)
 {
   MapIterator index;
   map_find(map, key, &index);
-  map_erase_at(map, &index);
+  map_erase_at(&index);
 }
 
-void map_erase_at(Map *map, MapIterator *iterator)
+void map_erase_at(MapIterator *iterator)
 {
   if (iterator->slot) {
     iterator->bucket->hop &= ~(1ul << (iterator->slot - iterator->bucket));
     iterator->slot->hop &= ~(1ul << (NEIGHBORHOOD - 1));
     iterator->slot = NULL;
-    --map->size;
+    --iterator->parent->size;
   }
 }
