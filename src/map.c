@@ -60,9 +60,9 @@ int map_iterator_next(MapIterator *iterator)
 {
   MapBucket *sentinel = iterator->parent->buckets + iterator->parent->mask + NEIGHBORHOOD;
   if (iterator->bucket == sentinel) {
-    ++iterator->bucket;
-  } else {
     iterator->bucket = iterator->parent->buckets;
+  } else {
+    ++iterator->bucket;
   }
 
   while (iterator->bucket < sentinel && !(iterator->bucket->hop & (1ul << (NEIGHBORHOOD - 1)))) {
@@ -161,17 +161,15 @@ void map_entry_update(MapEntry *entry, void *value)
     entry->slot = empty;
     ++entry->parent->size;
   } else {
-    Map        old      = *entry->parent;
-    MapBucket *bucket   = old.buckets;
-    MapBucket *sentinel = old.buckets + old.mask + NEIGHBORHOOD;
+    Map         old = *entry->parent;
+    MapIterator iterator;
 
     map_init_with_capacity(entry->parent, (old.mask + 1) << 1, old.hasher, old.comparator);
-    for (; bucket < sentinel; ++bucket) {
-      if (bucket->hop & (1ul << (NEIGHBORHOOD - 1))) {
-        MapEntry i;
-        map_entry_init(&i, entry->parent, bucket->key);
-        map_entry_update(&i, bucket->value);
-      }
+    map_iterator(&iterator, &old);
+    while (map_iterator_next(&iterator)) {
+      MapEntry e;
+      map_entry_init(&e, entry->parent, map_iterator_key(&iterator));
+      map_entry_update(&e, map_iterator_value(&iterator));
     }
     map_entry_init(entry, entry->parent, entry->key);
     map_entry_update(entry, value);
