@@ -91,9 +91,9 @@ void *map_value_at(Map *map, MapIterator *iterator)
 
 void map_insert(Map *map, void *key, void *value)
 {
-  MapIterator index;
-  map_find(map, key, &index);
-  map_insert_at(map, &index, value);
+  MapIterator iterator;
+  map_find(map, key, &iterator);
+  map_insert_at(map, &iterator, value);
 }
 
 void map_insert_at(Map *map, MapIterator *iterator, void *value)
