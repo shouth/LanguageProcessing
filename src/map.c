@@ -1,4 +1,3 @@
-#include <limits.h>
 #include <stdlib.h>
 
 #include "map.h"
@@ -20,7 +19,7 @@ static void map_index_init(MapIterator *iterator, unsigned long hash, void *key)
 {
   iterator->key    = key;
   iterator->hash   = hash;
-  iterator->offset = ULONG_MAX;
+  iterator->offset = -1ul;
 }
 
 void map_init(Map *map, MapHasher *hasher, MapComparator *comparator)
@@ -78,7 +77,7 @@ int map_find(const Map *map, void *key, MapIterator *iterator)
       }
     }
   }
-  return iterator->offset != ULONG_MAX;
+  return iterator->offset != -1ul;
 }
 
 void *map_value(Map *map, void *key)
@@ -90,7 +89,7 @@ void *map_value(Map *map, void *key)
 
 void *map_value_at(Map *map, MapIterator *iterator)
 {
-  if (iterator->offset == ULONG_MAX) {
+  if (iterator->offset == -1ul) {
     map_insert_at(map, iterator, NULL);
   }
 
@@ -110,11 +109,9 @@ void map_insert(Map *map, void *key, void *value)
 void map_insert_at(Map *map, MapIterator *iterator, void *value)
 {
   MapBucket *bucket = map_bucket_at(map, iterator);
-  MapBucket *empty  = NULL;
+  MapBucket *empty  = iterator->offset != -1ul ? bucket + iterator->offset : NULL;
 
-  if (iterator->offset != ULONG_MAX) {
-    empty = bucket + iterator->offset;
-  } else {
+  if (!empty) {
     MapBucket *candidate = bucket;
     MapBucket *sentinel  = bucket + NEIGHBORHOOD * 8;
     for (; candidate < sentinel; ++candidate) {
@@ -126,19 +123,21 @@ void map_insert_at(Map *map, MapIterator *iterator, void *value)
 
     if (empty) {
       while (empty - bucket >= NEIGHBORHOOD - 1) {
-        MapBucket *anchor = empty - NEIGHBORHOOD + 2;
-        for (; anchor < empty; ++anchor) {
-          MapBucket *next = anchor;
-          for (; next < empty; ++next) {
-            if (anchor->hop & (1ul << (next - anchor))) {
-              break;
+        MapBucket *home = empty - NEIGHBORHOOD + 2;
+        for (; home < empty; ++home) {
+          if (home->hop & ((1ul << (empty - home + 1)) - 1)) {
+            MapBucket *next = home;
+            for (; next < empty; ++next) {
+              if (home->hop & (1ul << (next - home))) {
+                break;
+              }
             }
-          }
-          if (next < empty) {
-            anchor->hop |= 1ul << (empty - anchor);
-            anchor->hop &= ~(1ul << (next - anchor));
-            empty->hop |= 1ul << (NEIGHBORHOOD - 1);
+
+            home->hop &= ~(1ul << (next - home));
             next->hop &= ~(1ul << (NEIGHBORHOOD - 1));
+
+            home->hop |= 1ul << (empty - home);
+            empty->hop |= 1ul << (NEIGHBORHOOD - 1);
 
             empty->key   = next->key;
             empty->value = next->value;
@@ -146,7 +145,7 @@ void map_insert_at(Map *map, MapIterator *iterator, void *value)
             break;
           }
         }
-        if (anchor == empty) {
+        if (home == empty) {
           empty = NULL;
           break;
         }
@@ -188,12 +187,12 @@ void map_erase(Map *map, void *key)
 
 void map_erase_at(Map *map, MapIterator *iterator)
 {
-  if (iterator->offset != ULONG_MAX) {
+  if (iterator->offset != -1ul) {
     MapBucket *bucket = map_bucket_at(map, iterator);
     MapBucket *slot   = bucket + iterator->offset;
 
     bucket->hop &= ~(1ul << (slot - bucket));
     slot->hop &= ~(1ul << (NEIGHBORHOOD - 1));
-    iterator->offset = ULONG_MAX;
+    iterator->offset = -1ul;
   }
 }
