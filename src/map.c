@@ -15,14 +15,6 @@ static int map_default_comparator(const void *left, const void *right)
   return left == right;
 }
 
-static void map_index_init(Map *map, MapIterator *iterator, void *key)
-{
-  iterator->parent = map;
-  iterator->key    = key;
-  iterator->bucket = map->buckets + (map->hasher(key) & (map->capacity - 1));
-  iterator->slot   = NULL;
-}
-
 void map_init(Map *map, MapHasher *hasher, MapComparator *comparator)
 {
   map_init_with_capacity(map, 1l << 4, hasher, comparator);
@@ -36,18 +28,17 @@ void map_init_with_capacity(Map *map, unsigned long capacity, MapHasher *hasher,
     for (; shift < sizeof(capacity); shift <<= 1) {
       capacity |= capacity >> shift;
     }
-    ++capacity;
   }
 
   map->size       = 0;
-  map->capacity   = capacity;
-  map->buckets    = xmalloc(sizeof(MapBucket) * (map->capacity + NEIGHBORHOOD - 1));
+  map->mask       = capacity;
+  map->buckets    = xmalloc(sizeof(MapBucket) * (map->mask + NEIGHBORHOOD));
   map->hasher     = hasher ? hasher : &map_default_hasher;
   map->comparator = comparator ? comparator : &map_default_comparator;
 
   {
     MapBucket *bucket   = map->buckets;
-    MapBucket *sentinel = map->buckets + map->capacity + NEIGHBORHOOD - 1;
+    MapBucket *sentinel = map->buckets + map->mask + NEIGHBORHOOD;
     for (; bucket < sentinel; ++bucket) {
       bucket->hop = 0;
     }
@@ -59,51 +50,70 @@ void map_deinit(Map *map)
   free(map->buckets);
 }
 
-int map_find(Map *map, void *key, MapIterator *iterator)
+void map_iterator(MapIterator *iterator, Map *map)
 {
-  map_index_init(map, iterator, key);
-  {
-    MapBucket *candidate = iterator->bucket;
-    MapBucket *sentinel  = iterator->bucket + NEIGHBORHOOD - 1;
-    for (; candidate < sentinel; ++candidate) {
-      if (iterator->bucket->hop & (1ul << (candidate - iterator->bucket)) && map->comparator(iterator->key, candidate->key)) {
-        iterator->slot = candidate;
-        break;
-      }
-    }
+  iterator->parent = map;
+  iterator->bucket = map->buckets + map->mask + NEIGHBORHOOD;
+}
+
+int map_iterator_next(MapIterator *iterator)
+{
+  MapBucket *sentinel = iterator->parent->buckets + iterator->parent->mask + NEIGHBORHOOD;
+  if (iterator->bucket == sentinel) {
+    ++iterator->bucket;
+  } else {
+    iterator->bucket = iterator->parent->buckets;
   }
-  return !!iterator->slot;
-}
 
-void *map_value(Map *map, void *key)
-{
-  MapIterator iterator;
-  map_find(map, key, &iterator);
-  return map_value_at(&iterator);
-}
-
-void *map_value_at(MapIterator *iterator)
-{
-  if (!iterator->slot) {
-    map_update_at(iterator, NULL);
+  while (iterator->bucket < sentinel && !(iterator->bucket->hop & (1ul << (NEIGHBORHOOD - 1)))) {
+    ++iterator->bucket;
   }
-  return iterator->slot->value;
+  return iterator->bucket != sentinel;
 }
 
-void map_update(Map *map, void *key, void *value)
+void *map_iterator_key(MapIterator *iterator)
 {
-  MapIterator iterator;
-  map_find(map, key, &iterator);
-  map_update_at(&iterator, value);
+  return iterator->bucket->key;
 }
 
-void map_update_at(MapIterator *iterator, void *value)
+void *map_iterator_value(MapIterator *iterator)
 {
-  MapBucket *empty = iterator->slot;
+  return iterator->bucket->value;
+}
+
+void map_iterator_update(MapIterator *iterator, void *value)
+{
+  iterator->bucket->value = value;
+}
+
+static void map_entry_init(MapEntry *entry, Map *map, void *key)
+{
+  entry->parent = map;
+  entry->key    = key;
+  entry->bucket = map->buckets + (map->hasher(key) & map->mask);
+  entry->slot   = NULL;
+}
+
+void *map_entry_key(MapEntry *entry)
+{
+  return entry->key;
+}
+
+void *map_entry_value(MapEntry *entry)
+{
+  if (!entry->slot) {
+    map_entry_update(entry, NULL);
+  }
+  return entry->slot->value;
+}
+
+void map_entry_update(MapEntry *entry, void *value)
+{
+  MapBucket *empty = entry->slot;
 
   if (!empty) {
-    MapBucket *candidate = iterator->bucket;
-    MapBucket *sentinel  = iterator->bucket + NEIGHBORHOOD * 8;
+    MapBucket *candidate = entry->bucket;
+    MapBucket *sentinel  = entry->bucket + NEIGHBORHOOD * 8;
     for (; candidate < sentinel; ++candidate) {
       if (!(candidate->hop & (1ul << (NEIGHBORHOOD - 1)))) {
         empty = candidate;
@@ -112,7 +122,7 @@ void map_update_at(MapIterator *iterator, void *value)
     }
 
     if (empty) {
-      while (empty - iterator->bucket >= NEIGHBORHOOD - 1) {
+      while (empty - entry->bucket >= NEIGHBORHOOD - 1) {
         MapBucket *bucket = empty - NEIGHBORHOOD + 2;
         for (; bucket < empty; ++bucket) {
           if (bucket->hop & ((1ul << (empty - bucket + 1)) - 1)) {
@@ -145,43 +155,78 @@ void map_update_at(MapIterator *iterator, void *value)
 
   if (empty) {
     empty->hop |= 1ul << (NEIGHBORHOOD - 1);
-    empty->key   = iterator->key;
+    empty->key   = entry->key;
     empty->value = value;
-    iterator->bucket->hop |= 1ul << (empty - iterator->bucket);
-    iterator->slot = empty;
-    ++iterator->parent->size;
+    entry->bucket->hop |= 1ul << (empty - entry->bucket);
+    entry->slot = empty;
+    ++entry->parent->size;
   } else {
-    Map        old      = *iterator->parent;
+    Map        old      = *entry->parent;
     MapBucket *bucket   = old.buckets;
-    MapBucket *sentinel = old.buckets + old.capacity + NEIGHBORHOOD - 1;
+    MapBucket *sentinel = old.buckets + old.mask + NEIGHBORHOOD;
 
-    map_init_with_capacity(iterator->parent, old.capacity << 1, old.hasher, old.comparator);
+    map_init_with_capacity(entry->parent, (old.mask + 1) << 1, old.hasher, old.comparator);
     for (; bucket < sentinel; ++bucket) {
       if (bucket->hop & (1ul << (NEIGHBORHOOD - 1))) {
-        MapIterator i;
-        map_index_init(iterator->parent, &i, bucket->key);
-        map_update_at(&i, bucket->value);
+        MapEntry i;
+        map_entry_init(&i, entry->parent, bucket->key);
+        map_entry_update(&i, bucket->value);
       }
     }
-    map_index_init(iterator->parent, iterator, iterator->key);
-    map_update_at(iterator, value);
+    map_entry_init(entry, entry->parent, entry->key);
+    map_entry_update(entry, value);
     map_deinit(&old);
   }
 }
 
-void map_erase(Map *map, void *key)
+void map_entry_erase(MapEntry *entry)
 {
-  MapIterator index;
-  map_find(map, key, &index);
-  map_erase_at(&index);
+  if (entry->slot) {
+    entry->bucket->hop &= ~(1ul << (entry->slot - entry->bucket));
+    entry->slot->hop &= ~(1ul << (NEIGHBORHOOD - 1));
+    entry->slot = NULL;
+    --entry->parent->size;
+  }
 }
 
-void map_erase_at(MapIterator *iterator)
+unsigned long map_size(Map *map)
 {
-  if (iterator->slot) {
-    iterator->bucket->hop &= ~(1ul << (iterator->slot - iterator->bucket));
-    iterator->slot->hop &= ~(1ul << (NEIGHBORHOOD - 1));
-    iterator->slot = NULL;
-    --iterator->parent->size;
+  return map->size;
+}
+
+int map_find(Map *map, void *key, MapEntry *entry)
+{
+  map_entry_init(entry, map, key);
+  {
+    MapBucket *candidate = entry->bucket;
+    MapBucket *sentinel  = entry->bucket + NEIGHBORHOOD - 1;
+    for (; candidate < sentinel; ++candidate) {
+      if (entry->bucket->hop & (1ul << (candidate - entry->bucket)) && map->comparator(entry->key, candidate->key)) {
+        entry->slot = candidate;
+        break;
+      }
+    }
   }
+  return !!entry->slot;
+}
+
+void *map_value(Map *map, void *key)
+{
+  MapEntry entry;
+  map_find(map, key, &entry);
+  return map_entry_value(&entry);
+}
+
+void map_update(Map *map, void *key, void *value)
+{
+  MapEntry entry;
+  map_find(map, key, &entry);
+  map_entry_update(&entry, value);
+}
+
+void map_erase(Map *map, void *key)
+{
+  MapEntry index;
+  map_find(map, key, &index);
+  map_entry_erase(&index);
 }
