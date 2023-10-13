@@ -84,19 +84,19 @@ void *map_value(Map *map, void *key)
 void *map_value_at(Map *map, MapIterator *iterator)
 {
   if (!iterator->slot) {
-    map_insert_at(map, iterator, NULL);
+    map_update_at(map, iterator, NULL);
   }
   return iterator->slot->value;
 }
 
-void map_insert(Map *map, void *key, void *value)
+void map_update(Map *map, void *key, void *value)
 {
   MapIterator iterator;
   map_find(map, key, &iterator);
-  map_insert_at(map, &iterator, value);
+  map_update_at(map, &iterator, value);
 }
 
-void map_insert_at(Map *map, MapIterator *iterator, void *value)
+void map_update_at(Map *map, MapIterator *iterator, void *value)
 {
   MapBucket *empty = iterator->slot;
 
@@ -159,11 +159,11 @@ void map_insert_at(Map *map, MapIterator *iterator, void *value)
       if (bucket->hop & (1ul << (NEIGHBORHOOD - 1))) {
         MapIterator iterator;
         map_index_init(map, &iterator, bucket->key);
-        map_insert_at(map, &iterator, bucket->value);
+        map_update_at(map, &iterator, bucket->value);
       }
     }
     map_index_init(map, iterator, iterator->key);
-    map_insert_at(map, iterator, value);
+    map_update_at(map, iterator, value);
     map_deinit(&old);
   }
 }

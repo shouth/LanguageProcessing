@@ -33,8 +33,8 @@ void  map_deinit(Map *map);
 int   map_find(const Map *map, void *key, MapIterator *iterator);
 void *map_value(Map *map, void *key);
 void *map_value_at(Map *map, MapIterator *iterator);
-void  map_insert(Map *map, void *key, void *value);
-void  map_insert_at(Map *map, MapIterator *iterator, void *value);
+void  map_update(Map *map, void *key, void *value);
+void  map_update_at(Map *map, MapIterator *iterator, void *value);
 void  map_erase(Map *map, void *key);
 void  map_erase_at(Map *map, MapIterator *iterator);
 
