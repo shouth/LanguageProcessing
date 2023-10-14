@@ -1,7 +1,7 @@
 #ifndef LIST_H
 #define LIST_H
 
-typedef int                 ListComparator(void *, void *);
+typedef int                 ListComparator(const void *, const void *);
 typedef struct ListNode     ListNode;
 typedef struct ListIterator ListIterator;
 typedef struct List         List;
@@ -39,6 +39,7 @@ void          list_push_front(List *list, void *value);
 void          list_push_back(List *list, void *value);
 void          list_pop_front(List *list);
 void          list_pop_back(List *list);
+void          list_clear(List *list);
 void          list_sort(List *list, ListComparator *comparator);
 
 #endif

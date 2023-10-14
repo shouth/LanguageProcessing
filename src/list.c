@@ -13,9 +13,7 @@ void list_init(List *list)
 
 void list_deinit(List *list)
 {
-  while (list_size(list) > 0) {
-    list_pop_back(list);
-  }
+  list_clear(list);
 }
 
 static void list_insert_node(List *list, ListNode *before, void *value)
@@ -110,4 +108,71 @@ void list_pop_back(List *list)
   }
 }
 
-void list_sort(List *list, ListComparator *comparator);
+void list_clear(List *list)
+{
+  ListIterator iterator;
+  list_iterator(&iterator, list);
+  while (list_iterator_next(&iterator)) {
+    list_iterator_erase(&iterator);
+  }
+}
+
+void list_sort(List *list, ListComparator *comparator)
+{
+  unsigned long chunk = 1;
+  for (; chunk < list_size(list); chunk <<= 1) {
+    unsigned long i;
+
+    ListNode *node = list->head.next;
+    ListNode *tail = &list->head;
+
+    tail->next->prev = NULL;
+    tail->next       = NULL;
+    tail->prev->next = NULL;
+    tail->prev       = NULL;
+
+    while (node) {
+      ListNode *left, *right;
+
+      left = node;
+      for (i = 0; node && i < chunk; ++i) {
+        node = node->next;
+      }
+      if (node) {
+        node->prev->next = NULL;
+      }
+
+      right = node;
+      for (i = 0; node && i < chunk; ++i) {
+        node = node->next;
+      }
+      if (node) {
+        node->prev->next = NULL;
+      }
+
+      while (left && right) {
+        if (comparator(left->data, right->data)) {
+          tail->next = left;
+          left       = left->next;
+        } else {
+          tail->next = right;
+          right      = right->next;
+        }
+        tail->next->prev = tail;
+        tail             = tail->next;
+      }
+
+      if (left || right) {
+        tail->next       = left ? left : right;
+        tail->next->prev = tail;
+
+        while (tail->next) {
+          tail = tail->next;
+        }
+      }
+    }
+
+    tail->next       = &list->head;
+    tail->next->prev = tail;
+  }
+}
