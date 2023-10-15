@@ -1,9 +1,19 @@
 {
   "name": "KIT LPP",
   "image": "omzn/kit-lpp:multiple",
-  "onCreateCommand": "cp ${containerWorkspaceFolder}/.devcontainer/greeting.fish $HOME/.config/fish/conf.d/",
+  "onCreateCommand": "bash .devcontainer/setup.bash",
   "features": {
-    "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {}
+    "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "configureZshAsDefaultShell": false,
+      "installOhMyZsh": false,
+      "installOhMyZshConfig": false,
+      "username": "automatic",
+      "userUid": "automatic",
+      "userGid": "automatic",
+      "upgradePackages": true
+    }
   },
   "customizations": {
     "vscode": {
