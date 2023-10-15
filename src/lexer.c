@@ -143,7 +143,7 @@ static void token_comment(Lexer *lexer, Token *token)
     while (1) {
       if (eat(lexer, '}')) {
         break;
-      } else if (is_newline(first(lexer)) || first(lexer) == EOS) {
+      } else if (first(lexer) == EOS) {
         token->terminated = 0;
         break;
       } else {
