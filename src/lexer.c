@@ -106,7 +106,7 @@ static void token_string(Lexer *lexer, Token *token)
         if (!eat(lexer, '\'')) {
           break;
         }
-      } else if (first(lexer) == EOS) {
+      } else if (is_newline(first(lexer)) || first(lexer) == EOS) {
         token->terminated = 0;
         break;
       } else if (!eat_if(lexer, &is_graphic)) {
@@ -143,7 +143,7 @@ static void token_comment(Lexer *lexer, Token *token)
     while (1) {
       if (eat(lexer, '}')) {
         break;
-      } else if (first(lexer) == EOS) {
+      } else if (is_newline(first(lexer)) || first(lexer) == EOS) {
         token->terminated = 0;
         break;
       } else {
