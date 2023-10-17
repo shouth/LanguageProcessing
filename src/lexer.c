@@ -4,6 +4,30 @@
 
 #define EOS -1
 
+int lexer_token_trivial(LexerToken *token)
+{
+  switch (token->kind) {
+  case LEXER_TOKEN_KIND_NEWLINE:
+  case LEXER_TOKEN_KIND_SPACE:
+  case LEXER_TOKEN_KIND_C_COMMENT:
+  case LEXER_TOKEN_KIND_BRACES_COMMENT:
+  case LEXER_TOKEN_KIND_EOF:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+int lexer_token_eof(LexerToken *token)
+{
+  switch (token->kind) {
+  case LEXER_TOKEN_KIND_EOF:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
 static void bump(Lexer *lexer)
 {
   if (lexer->_index < lexer->_size) {
