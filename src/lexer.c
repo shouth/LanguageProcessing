@@ -1,20 +1,19 @@
 #include <string.h>
 
 #include "lexer.h"
-#include "token.h"
 
 #define EOS -1
 
 static void bump(Lexer *lexer)
 {
-  if (lexer->index < lexer->length) {
-    ++lexer->index;
+  if (lexer->_index < lexer->_length) {
+    ++lexer->_index;
   }
 }
 
 static int first(Lexer *lexer)
 {
-  return lexer->index < lexer->length ? lexer->source[lexer->index] : EOS;
+  return lexer->_index < lexer->_length ? lexer->_source[lexer->_index] : EOS;
 }
 
 static int eat(Lexer *lexer, int c)
@@ -60,43 +59,43 @@ static int is_graphic(int c)
   return is_alphabet(c) || is_number(c) || is_space(c) || is_newline(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
 }
 
-static void build_token(Lexer *lexer, Token *token, TokenKind kind)
+static void build_token(Lexer *lexer, LexerToken *token, LexerTokenKind kind)
 {
   token->kind   = kind;
-  token->length = lexer->index;
+  token->length = lexer->_index;
 
-  lexer->source += lexer->index;
-  lexer->length -= lexer->index;
-  lexer->index = 0;
+  lexer->_source += lexer->_index;
+  lexer->_length -= lexer->_index;
+  lexer->_index = 0;
 }
 
-static void token_error(Lexer *lexer, Token *token)
+static void token_error(Lexer *lexer, LexerToken *token)
 {
   bump(lexer);
-  build_token(lexer, token, TOKEN_KIND_ERROR);
+  build_token(lexer, token, LEXER_TOKEN_KIND_ERROR);
 }
 
-static void token_identifier(Lexer *lexer, Token *token)
+static void token_identifier(Lexer *lexer, LexerToken *token)
 {
   if (eat_if(lexer, &is_alphabet)) {
     while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
-    build_token(lexer, token, TOKEN_KIND_IDENTIFIER);
+    build_token(lexer, token, LEXER_TOKEN_KIND_IDENTIFIER);
   } else {
     token_error(lexer, token);
   }
 }
 
-static void token_integer(Lexer *lexer, Token *token)
+static void token_integer(Lexer *lexer, LexerToken *token)
 {
   if (eat_if(lexer, &is_number)) {
     while (eat_if(lexer, &is_number)) { }
-    build_token(lexer, token, TOKEN_KIND_INTEGER);
+    build_token(lexer, token, LEXER_TOKEN_KIND_INTEGER);
   } else {
     token_error(lexer, token);
   }
 }
 
-static void token_string(Lexer *lexer, Token *token)
+static void token_string(Lexer *lexer, LexerToken *token)
 {
   if (eat(lexer, '\'')) {
     token->terminated = 1;
@@ -113,29 +112,29 @@ static void token_string(Lexer *lexer, Token *token)
         break;
       }
     }
-    build_token(lexer, token, TOKEN_KIND_STRING);
+    build_token(lexer, token, LEXER_TOKEN_KIND_STRING);
   } else {
     token_error(lexer, token);
   }
 }
 
-static void token_whitespace(Lexer *lexer, Token *token)
+static void token_whitespace(Lexer *lexer, LexerToken *token)
 {
   if (eat_if(lexer, &is_space)) {
     while (eat_if(lexer, &is_space)) { }
-    build_token(lexer, token, TOKEN_KIND_SPACE);
+    build_token(lexer, token, LEXER_TOKEN_KIND_SPACE);
   } else if (eat(lexer, '\r')) {
     eat(lexer, '\n');
-    build_token(lexer, token, TOKEN_KIND_NEWLINE);
+    build_token(lexer, token, LEXER_TOKEN_KIND_NEWLINE);
   } else if (eat(lexer, '\n')) {
     eat(lexer, '\r');
-    build_token(lexer, token, TOKEN_KIND_NEWLINE);
+    build_token(lexer, token, LEXER_TOKEN_KIND_NEWLINE);
   } else {
     token_error(lexer, token);
   }
 }
 
-static void token_comment(Lexer *lexer, Token *token)
+static void token_comment(Lexer *lexer, LexerToken *token)
 {
   if (eat(lexer, '{')) {
     token->terminated = 1;
@@ -149,7 +148,7 @@ static void token_comment(Lexer *lexer, Token *token)
         bump(lexer);
       }
     }
-    build_token(lexer, token, TOKEN_KIND_BRACES_COMMENT);
+    build_token(lexer, token, LEXER_TOKEN_KIND_BRACES_COMMENT);
   } else if (eat(lexer, '/')) {
     if (eat(lexer, '*')) {
       token->terminated = 1;
@@ -165,7 +164,7 @@ static void token_comment(Lexer *lexer, Token *token)
           bump(lexer);
         }
       }
-      build_token(lexer, token, TOKEN_KIND_C_COMMENT);
+      build_token(lexer, token, LEXER_TOKEN_KIND_C_COMMENT);
     } else {
       token_error(lexer, token);
     }
@@ -174,50 +173,50 @@ static void token_comment(Lexer *lexer, Token *token)
   }
 }
 
-static void token_symbol(Lexer *lexer, Token *token)
+static void token_symbol(Lexer *lexer, LexerToken *token)
 {
   if (eat(lexer, '+')) {
-    build_token(lexer, token, TOKEN_KIND_PLUS);
+    build_token(lexer, token, LEXER_TOKEN_KIND_PLUS);
   } else if (eat(lexer, '-')) {
-    build_token(lexer, token, TOKEN_KIND_MINUS);
+    build_token(lexer, token, LEXER_TOKEN_KIND_MINUS);
   } else if (eat(lexer, '*')) {
-    build_token(lexer, token, TOKEN_KIND_STAR);
+    build_token(lexer, token, LEXER_TOKEN_KIND_STAR);
   } else if (eat(lexer, '=')) {
-    build_token(lexer, token, TOKEN_KIND_EQUAL);
+    build_token(lexer, token, LEXER_TOKEN_KIND_EQUAL);
   } else if (eat(lexer, '<')) {
     if (eat(lexer, '>')) {
-      build_token(lexer, token, TOKEN_KIND_NOT_EQUAL);
+      build_token(lexer, token, LEXER_TOKEN_KIND_NOT_EQUAL);
     } else if (eat(lexer, '=')) {
-      build_token(lexer, token, TOKEN_KIND_LESS_THAN_EQUAL);
+      build_token(lexer, token, LEXER_TOKEN_KIND_LESS_THAN_EQUAL);
     } else {
-      build_token(lexer, token, TOKEN_KIND_LESS_THAN);
+      build_token(lexer, token, LEXER_TOKEN_KIND_LESS_THAN);
     }
   } else if (eat(lexer, '>')) {
     if (eat(lexer, '=')) {
-      build_token(lexer, token, TOKEN_KIND_GREATER_THAN_EQUAL);
+      build_token(lexer, token, LEXER_TOKEN_KIND_GREATER_THAN_EQUAL);
     } else {
-      build_token(lexer, token, TOKEN_KIND_GREATER_THAN);
+      build_token(lexer, token, LEXER_TOKEN_KIND_GREATER_THAN);
     }
   } else if (eat(lexer, '(')) {
-    build_token(lexer, token, TOKEN_KIND_LEFT_PARENTHESIS);
+    build_token(lexer, token, LEXER_TOKEN_KIND_LEFT_PARENTHESIS);
   } else if (eat(lexer, ')')) {
-    build_token(lexer, token, TOKEN_KIND_RIGHT_PARENTHESIS);
+    build_token(lexer, token, LEXER_TOKEN_KIND_RIGHT_PARENTHESIS);
   } else if (eat(lexer, '[')) {
-    build_token(lexer, token, TOKEN_KIND_LEFT_BRACKET);
+    build_token(lexer, token, LEXER_TOKEN_KIND_LEFT_BRACKET);
   } else if (eat(lexer, ']')) {
-    build_token(lexer, token, TOKEN_KIND_RIGHT_BRACKET);
+    build_token(lexer, token, LEXER_TOKEN_KIND_RIGHT_BRACKET);
   } else if (eat(lexer, ':')) {
     if (eat(lexer, '=')) {
-      build_token(lexer, token, TOKEN_KIND_ASSIGN);
+      build_token(lexer, token, LEXER_TOKEN_KIND_ASSIGN);
     } else {
-      build_token(lexer, token, TOKEN_KIND_EQUAL);
+      build_token(lexer, token, LEXER_TOKEN_KIND_EQUAL);
     }
   } else if (eat(lexer, '.')) {
-    build_token(lexer, token, TOKEN_KIND_DOT);
+    build_token(lexer, token, LEXER_TOKEN_KIND_DOT);
   } else if (eat(lexer, ',')) {
-    build_token(lexer, token, TOKEN_KIND_COMMA);
+    build_token(lexer, token, LEXER_TOKEN_KIND_COMMA);
   } else if (eat(lexer, ';')) {
-    build_token(lexer, token, TOKEN_KIND_SEMICOLON);
+    build_token(lexer, token, LEXER_TOKEN_KIND_SEMICOLON);
   } else {
     token_error(lexer, token);
   }
@@ -225,12 +224,12 @@ static void token_symbol(Lexer *lexer, Token *token)
 
 void lexer_init(Lexer *lexer, const char *source, long length)
 {
-  lexer->source = source;
-  lexer->length = length;
-  lexer->index  = 0;
+  lexer->_source = source;
+  lexer->_length = length;
+  lexer->_index  = 0;
 }
 
-void lexer_next_token(Lexer *lexer, Token *token)
+void lexer_next_token(Lexer *lexer, LexerToken *token)
 {
   if (is_alphabet(first(lexer))) {
     token_identifier(lexer, token);
@@ -243,7 +242,7 @@ void lexer_next_token(Lexer *lexer, Token *token)
   } else if (first(lexer) == '{' || first(lexer) == '/') {
     token_comment(lexer, token);
   } else if (first(lexer) == EOS) {
-    build_token(lexer, token, TOKEN_KIND_EOF);
+    build_token(lexer, token, LEXER_TOKEN_KIND_EOF);
   } else {
     token_symbol(lexer, token);
   }
