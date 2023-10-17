@@ -151,7 +151,7 @@ void list_sort(List *list, ListComparator *comparator)
       }
 
       while (left && right) {
-        if (comparator(left->data, right->data)) {
+        if (comparator(left->data, right->data) < 0) {
           tail->next = left;
           left       = left->next;
         } else {
