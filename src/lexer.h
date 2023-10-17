@@ -39,17 +39,17 @@ typedef struct Lexer      Lexer;
 
 struct LexerToken {
   LexerTokenKind kind;
-  long           length;
+  long           size;
   int            terminated;
 };
 
 struct Lexer {
   const char *_source;
-  long        _length;
+  long        _size;
   long        _index;
 };
 
-void lexer_init(Lexer *lexer, const char *source, long length);
+void lexer_init(Lexer *lexer, const char *source, long size);
 void lexer_next_token(Lexer *lexer, LexerToken *token);
 
 #endif

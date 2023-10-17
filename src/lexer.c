@@ -6,14 +6,14 @@
 
 static void bump(Lexer *lexer)
 {
-  if (lexer->_index < lexer->_length) {
+  if (lexer->_index < lexer->_size) {
     ++lexer->_index;
   }
 }
 
 static int first(Lexer *lexer)
 {
-  return lexer->_index < lexer->_length ? lexer->_source[lexer->_index] : EOS;
+  return lexer->_index < lexer->_size ? lexer->_source[lexer->_index] : EOS;
 }
 
 static int eat(Lexer *lexer, int c)
@@ -61,11 +61,11 @@ static int is_graphic(int c)
 
 static void build_token(Lexer *lexer, LexerToken *token, LexerTokenKind kind)
 {
-  token->kind   = kind;
-  token->length = lexer->_index;
+  token->kind = kind;
+  token->size = lexer->_index;
 
   lexer->_source += lexer->_index;
-  lexer->_length -= lexer->_index;
+  lexer->_size -= lexer->_index;
   lexer->_index = 0;
 }
 
@@ -222,10 +222,10 @@ static void token_symbol(Lexer *lexer, LexerToken *token)
   }
 }
 
-void lexer_init(Lexer *lexer, const char *source, long length)
+void lexer_init(Lexer *lexer, const char *source, long size)
 {
   lexer->_source = source;
-  lexer->_length = length;
+  lexer->_size   = size;
   lexer->_index  = 0;
 }
 
