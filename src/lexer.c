@@ -18,16 +18,6 @@ int lexer_token_trivial(LexerToken *token)
   }
 }
 
-int lexer_token_eof(LexerToken *token)
-{
-  switch (token->kind) {
-  case LEXER_TOKEN_KIND_EOF:
-    return 1;
-  default:
-    return 0;
-  }
-}
-
 static void bump(Lexer *lexer)
 {
   if (lexer->_index < lexer->_size) {
@@ -270,4 +260,9 @@ void lexer_next_token(Lexer *lexer, LexerToken *token)
   } else {
     token_symbol(lexer, token);
   }
+}
+
+int lexer_eof(Lexer *lexer)
+{
+  return lexer->_index >= lexer->_size;
 }

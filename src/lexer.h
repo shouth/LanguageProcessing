@@ -39,7 +39,7 @@ typedef struct Lexer      Lexer;
 
 struct LexerToken {
   LexerTokenKind kind;
-  long           size;
+  unsigned long  size;
   int            terminated;
 };
 
@@ -50,9 +50,9 @@ struct Lexer {
 };
 
 int lexer_token_trivial(LexerToken *token);
-int lexer_token_eof(LexerToken *token);
 
 void lexer_init(Lexer *lexer, const char *source, long size);
 void lexer_next_token(Lexer *lexer, LexerToken *token);
+int  lexer_eof(Lexer *lexer);
 
 #endif
