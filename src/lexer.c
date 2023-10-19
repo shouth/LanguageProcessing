@@ -39,9 +39,9 @@ static int eat(Lexer *lexer, int c)
   return result;
 }
 
-static int eat_if(Lexer *lexer, int (*f)(int))
+static int eat_if(Lexer *lexer, int (*predicate)(int))
 {
-  int result = f(first(lexer));
+  int result = predicate(first(lexer));
   if (result) {
     bump(lexer);
   }
