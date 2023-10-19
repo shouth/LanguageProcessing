@@ -30,6 +30,7 @@
           "editor.formatOnSave": true,
           "editor.formatOnType": true
         },
+        "clangd.path": "clangd-18",
         "cmake.buildTask": true,
         "cmake.configureOnOpen": true,
         "C_Cpp.intelliSenseEngine": "disabled",
