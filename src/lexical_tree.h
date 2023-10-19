@@ -92,7 +92,7 @@ typedef struct LexicalTree     LexicalTree;
 
 struct LexicalTreeNode {
   SyntaxKind       kind;
-  long             length;
+  long             size;
   LexicalTreeNode *children;
   const char      *string;
 };
