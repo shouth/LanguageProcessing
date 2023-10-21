@@ -58,11 +58,3 @@ unsigned long module_source_size(Module *module)
 {
   return module_source(module) ? module->_source_size : -1ul;
 }
-
-int module_lexer(Module *module, Lexer *lexer)
-{
-  if (module_source(module)) {
-    lexer_init(lexer, module_source(module), module_source_size(module));
-  }
-  return !!module_source(module);
-}
