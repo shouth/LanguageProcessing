@@ -36,6 +36,11 @@ void **vector_data(const Vector *vector)
   return vector->_data;
 }
 
+void *vector_back(Vector *vector)
+{
+  return vector->_data[vector->_size - 1];
+}
+
 void vector_reserve(Vector *vector, unsigned long capacity)
 {
   void **new = realloc(vector->_data, sizeof(void *) * capacity);
@@ -47,7 +52,7 @@ void vector_reserve(Vector *vector, unsigned long capacity)
   vector->_capacity = capacity;
 }
 
-void vector_push(Vector *vector, void *value)
+void vector_push_back(Vector *vector, void *value)
 {
   if (vector->_size == vector->_capacity) {
     vector_reserve(vector, vector->_capacity * 2);
@@ -56,7 +61,7 @@ void vector_push(Vector *vector, void *value)
   ++vector->_size;
 }
 
-void vector_pop(Vector *vector)
+void vector_pop_back(Vector *vector)
 {
   --vector->_size;
 }
