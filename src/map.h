@@ -44,13 +44,13 @@ void *map_iterator_key(MapIterator *iterator);
 void *map_iterator_value(MapIterator *iterator);
 void  map_iterator_update(MapIterator *iterator, void *value);
 
+int   map_entry(Map *map, void *key, MapEntry *entry);
 void *map_entry_key(MapEntry *entry);
 void *map_entry_value(MapEntry *entry);
 void  map_entry_update(MapEntry *entry, void *value);
 void  map_entry_erase(MapEntry *entry);
 
 unsigned long map_size(Map *map);
-int           map_find(Map *map, void *key, MapEntry *entry);
 void         *map_value(Map *map, void *key);
 void          map_update(Map *map, void *key, void *value);
 void          map_erase(Map *map, void *key);

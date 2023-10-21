@@ -94,6 +94,22 @@ static void map_entry_init(MapEntry *entry, Map *map, void *key)
   entry->slot   = NULL;
 }
 
+int map_entry(Map *map, void *key, MapEntry *entry)
+{
+  map_entry_init(entry, map, key);
+  {
+    MapBucket *candidate = entry->bucket;
+    MapBucket *sentinel  = entry->bucket + NEIGHBORHOOD - 1;
+    for (; candidate < sentinel; ++candidate) {
+      if (entry->bucket->hop & (1ul << (candidate - entry->bucket)) && map->comparator(entry->key, candidate->key)) {
+        entry->slot = candidate;
+        break;
+      }
+    }
+  }
+  return !!entry->slot;
+}
+
 void *map_entry_key(MapEntry *entry)
 {
   return entry->key;
@@ -192,39 +208,23 @@ unsigned long map_size(Map *map)
   return map->size;
 }
 
-int map_find(Map *map, void *key, MapEntry *entry)
-{
-  map_entry_init(entry, map, key);
-  {
-    MapBucket *candidate = entry->bucket;
-    MapBucket *sentinel  = entry->bucket + NEIGHBORHOOD - 1;
-    for (; candidate < sentinel; ++candidate) {
-      if (entry->bucket->hop & (1ul << (candidate - entry->bucket)) && map->comparator(entry->key, candidate->key)) {
-        entry->slot = candidate;
-        break;
-      }
-    }
-  }
-  return !!entry->slot;
-}
-
 void *map_value(Map *map, void *key)
 {
   MapEntry entry;
-  map_find(map, key, &entry);
+  map_entry(map, key, &entry);
   return map_entry_value(&entry);
 }
 
 void map_update(Map *map, void *key, void *value)
 {
   MapEntry entry;
-  map_find(map, key, &entry);
+  map_entry(map, key, &entry);
   map_entry_update(&entry, value);
 }
 
 void map_erase(Map *map, void *key)
 {
   MapEntry index;
-  map_find(map, key, &index);
+  map_entry(map, key, &index);
   map_entry_erase(&index);
 }
