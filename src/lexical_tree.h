@@ -84,7 +84,9 @@ typedef enum {
   SYNTAX_KIND_SPACE,
   SYNTAX_KIND_NEWLINE,
   SYNTAX_KIND_BRACES_COMMENT,
-  SYNTAX_KIND_C_COMMENT
+  SYNTAX_KIND_C_COMMENT,
+
+  SYNTAX_KIND_ERROR
 } SyntaxKind;
 
 typedef struct LexicalTreeNode LexicalTreeNode;
