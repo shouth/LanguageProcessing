@@ -103,7 +103,7 @@ static SymbolContext *symbol_context(void)
       Symbol symbol;
       for (symbol = 0; symbol < SYMBOL_SENTINEL; ++symbol) {
         map_update(&context->_cache, (void *) (STATIC_SYMBOLS + symbol), (void *) symbol);
-        vector_push(&context->_data, (void *) (STATIC_SYMBOLS + symbol));
+        vector_push_back(&context->_data, (void *) (STATIC_SYMBOLS + symbol));
       }
     }
   }
@@ -132,7 +132,7 @@ Symbol symbol_take_from(char *string, unsigned long size)
   } else {
     Symbol symbol = vector_size(&context->_data);
     map_entry_update(&entry, (void *) symbol);
-    vector_push(&context->_data, data);
+    vector_push_back(&context->_data, data);
   }
   return (Symbol) map_entry_value(&entry);
 }
@@ -151,4 +151,9 @@ const char *symbol_string(Symbol symbol)
 unsigned long symbol_size(Symbol symbol)
 {
   return symbol_data(symbol)->size;
+}
+
+int symbol_is_keyword(Symbol symbol)
+{
+  return symbol >= SYMBOL_RANGE_KEYWORD_BEGIN && symbol < SYMBOL_RANGE_KEYWORD_END;
 }

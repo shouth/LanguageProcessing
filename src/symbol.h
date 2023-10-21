@@ -33,7 +33,7 @@ typedef enum {
   SYMBOL_KEYWORD_WRITELN,
   SYMBOL_RANGE_KEYWORD_END,
 
-  SYMBOL_RANGE_OPERATOR_BEGIN = SYMBOL_RANGE_KEYWORD_BEGIN,
+  SYMBOL_RANGE_OPERATOR_BEGIN = SYMBOL_RANGE_KEYWORD_END,
   SYMBOL_OPERATOR_PLUS        = SYMBOL_RANGE_OPERATOR_BEGIN,
   SYMBOL_OPERATOR_MINUS,
   SYMBOL_OPERATOR_STAR,
@@ -63,5 +63,6 @@ Symbol        symbol_from(const char *string, unsigned long size);
 Symbol        symbol_take_from(char *string, unsigned long size);
 const char   *symbol_string(Symbol symbol);
 unsigned long symbol_size(Symbol symbol);
+int           symbol_is_keyword(Symbol symbol);
 
 #endif
