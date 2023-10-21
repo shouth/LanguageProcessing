@@ -103,6 +103,7 @@ static SymbolContext *symbol_context(void)
       Symbol symbol;
       for (symbol = 0; symbol < SYMBOL_SENTINEL; ++symbol) {
         map_update(&context->_cache, (void *) (STATIC_SYMBOLS + symbol), (void *) symbol);
+        vector_push(&context->_data, (void *) (STATIC_SYMBOLS + symbol));
       }
     }
   }
@@ -121,17 +122,17 @@ Symbol symbol_take_from(char *string, unsigned long size)
 {
   MapEntry       entry;
   SymbolContext *context = symbol_context();
-  SymbolData *new        = xmalloc(sizeof(SymbolData));
-  new->string            = string;
-  new->size              = size;
+  SymbolData    *data    = xmalloc(sizeof(SymbolData));
+  data->string           = string;
+  data->size             = size;
 
-  if (map_find(&context->_cache, new, &entry)) {
-    free((void *) new->string);
-    free(new);
+  if (map_entry(&context->_cache, data, &entry)) {
+    free((void *) data->string);
+    free(data);
   } else {
     Symbol symbol = vector_size(&context->_data);
-    map_update(&context->_cache, new, (void *) symbol);
-    vector_push(&context->_data, new);
+    map_entry_update(&entry, (void *) symbol);
+    vector_push(&context->_data, data);
   }
   return (Symbol) map_entry_value(&entry);
 }
@@ -139,7 +140,7 @@ Symbol symbol_take_from(char *string, unsigned long size)
 static const SymbolData *symbol_data(Symbol symbol)
 {
   const SymbolContext *context = symbol_context();
-  return symbol < SYMBOL_SENTINEL ? STATIC_SYMBOLS + symbol : vector_data(&context->_data)[symbol - SYMBOL_SENTINEL];
+  return vector_data(&context->_data)[symbol];
 }
 
 const char *symbol_string(Symbol symbol)
