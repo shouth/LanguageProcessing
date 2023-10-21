@@ -225,12 +225,11 @@ static void get_display_width(Vector *list, int *name_width, int *count_width)
   *name_width  = 0;
   *count_width = 0;
   for (i = 0; i < vector_size(list); ++i) {
-    TokenCountEntry *entry          = vector_data(list)[i];
-    int              new_name_width = symbol_size(entry->symbol);
-    int              new_count_width;
+    TokenCountEntry *entry           = vector_data(list)[i];
+    int              new_name_width  = symbol_size(entry->symbol);
+    int              new_count_width = 1;
     {
       unsigned long count = entry->count;
-      new_count_width     = 1;
       while (count > 9) {
         ++new_count_width;
         count /= 10;
