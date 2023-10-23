@@ -3,6 +3,7 @@
 
 #include "lexer.h"
 #include "lexical_tree.h"
+#include "symbol.h"
 #include "vector.h"
 
 typedef struct Parser Parser;
@@ -12,7 +13,9 @@ struct Parser {
   unsigned long _size;
   unsigned long _offset;
   Lexer         _lexer;
-  LexerToken    _token;
+
+  LexerToken _token;
+  Symbol     _symbol;
 
   LexicalTree *_tree;
   Vector      *_errors;
