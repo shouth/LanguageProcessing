@@ -98,11 +98,201 @@ static void node_finish(Parser *parser)
 {
 }
 
-static void parse_variable(Parser *parser)
+static int check_standard_type(Parser *parser)
 {
+  return check_keyword(parser, SYMBOL_KEYWORD_INTEGER)
+    || check_keyword(parser, SYMBOL_KEYWORD_BOOLEAN)
+    || check_keyword(parser, SYMBOL_KEYWORD_CHAR);
 }
 
+static int eat_standard_type(Parser *parser)
+{
+  int result = check_standard_type(parser);
+  if (result) {
+    bump(parser);
+  }
+  return result;
+}
+
+static void parse_standard_type(Parser *parser)
+{
+  if (!eat_standard_type(parser)) {
+    /* TODO: make error */
+  }
+}
+
+static void parse_array_type(Parser *parser)
+{
+  node_start(parser, SYNTAX_KIND_ARRAY_TYPE);
+  expect_keyword(parser, SYMBOL_KEYWORD_ARRAY);
+  expect(parser, LEXER_TOKEN_KIND_LEFT_BRACKET);
+  expect(parser, LEXER_TOKEN_KIND_INTEGER);
+  expect(parser, LEXER_TOKEN_KIND_RIGHT_BRACKET);
+  expect_keyword(parser, SYMBOL_KEYWORD_OF);
+  parse_standard_type(parser);
+  node_finish(parser);
+}
+
+static void parse_type(Parser *parser)
+{
+  if (check_standard_type(parser)) {
+    parse_standard_type(parser);
+  } else if (check_keyword(parser, SYMBOL_KEYWORD_ARRAY)) {
+    parse_array_type(parser);
+  } else {
+    /* TODO: make error */
+  }
+}
+
+static void parse_factor(Parser *parser);
 static void parse_expression(Parser *parser);
+
+static void parse_variable(Parser *parser)
+{
+  node_start(parser, SYNTAX_KIND_VARIABLE);
+  expect_identifier(parser);
+  if (eat(parser, LEXER_TOKEN_KIND_LEFT_BRACKET)) {
+    parse_expression(parser);
+    expect(parser, LEXER_TOKEN_KIND_RIGHT_BRACKET);
+  }
+  node_finish(parser);
+}
+
+static void parse_parenthesized_expression(Parser *parser)
+{
+  node_start(parser, SYNTAX_KIND_PARENTHESIZED_EXPRESSION);
+  expect(parser, LEXER_TOKEN_KIND_LEFT_PARENTHESIS);
+  parse_expression(parser);
+  expect(parser, LEXER_TOKEN_KIND_RIGHT_PARENTHESIS);
+  node_finish(parser);
+}
+
+static void parse_not_expression(Parser *parser)
+{
+  node_start(parser, SYNTAX_KIND_NOT_EXPRESSION);
+  expect_keyword(parser, SYMBOL_KEYWORD_NOT);
+  parse_factor(parser);
+  node_finish(parser);
+}
+
+static void parse_cast_expression(Parser *parser)
+{
+  node_start(parser, SYNTAX_KIND_CAST_EXPRESSION);
+  parse_standard_type(parser);
+  expect(parser, LEXER_TOKEN_KIND_LEFT_PARENTHESIS);
+  parse_expression(parser);
+  expect(parser, LEXER_TOKEN_KIND_RIGHT_PARENTHESIS);
+  node_finish(parser);
+}
+
+static void parse_empty_expression(Parser *parser)
+{
+  node_start(parser, SYNTAX_KIND_EMPTY_EXPRESSION);
+  node_finish(parser);
+}
+
+static void parse_factor(Parser *parser)
+{
+  if (check_identifier(parser)) {
+    parse_variable(parser);
+  } else if (check(parser, LEXER_TOKEN_KIND_LEFT_PARENTHESIS)) {
+    parse_parenthesized_expression(parser);
+  } else if (check_keyword(parser, SYMBOL_KEYWORD_NOT)) {
+    parse_not_expression(parser);
+  } else if (check_standard_type(parser)) {
+    parse_cast_expression(parser);
+  } else if (!(eat(parser, LEXER_TOKEN_KIND_INTEGER) || eat_keyword(parser, SYMBOL_KEYWORD_TRUE) || eat_keyword(parser, SYMBOL_KEYWORD_FALSE) || eat(parser, LEXER_TOKEN_KIND_STRING))) {
+    /* make error */
+  }
+}
+
+static int check_multicative_operator(Parser *parser)
+{
+  return check(parser, LEXER_TOKEN_KIND_STAR)
+    || check_keyword(parser, SYMBOL_KEYWORD_DIV)
+    || check_keyword(parser, SYMBOL_KEYWORD_AND);
+}
+
+static int eat_multicative_operator(Parser *parser)
+{
+  int result = check_multicative_operator(parser);
+  if (result) {
+    bump(parser);
+  }
+  return result;
+}
+
+static void parse_term(Parser *parser)
+{
+  unsigned long checkpoint = node_checkpoint(parser);
+  parse_factor(parser);
+  while (eat_multicative_operator(parser)) {
+    node_start_at(parser, SYNTAX_KIND_BINARY_EXPRESSION, checkpoint);
+    parse_factor(parser);
+    node_finish(parser);
+  }
+}
+
+static int check_additive_operator(Parser *parser)
+{
+  return check(parser, LEXER_TOKEN_KIND_PLUS)
+    || check(parser, LEXER_TOKEN_KIND_MINUS)
+    || check_keyword(parser, SYMBOL_KEYWORD_OR);
+}
+
+static int eat_additive_operator(Parser *parser)
+{
+  int result = check_additive_operator(parser);
+  if (result) {
+    bump(parser);
+  }
+  return result;
+}
+
+static void parse_simple_expression(Parser *parser)
+{
+  unsigned long checkpoint = node_checkpoint(parser);
+  if (check_additive_operator(parser)) {
+    parse_empty_expression(parser);
+  } else {
+    parse_term(parser);
+  }
+  while (eat_additive_operator(parser)) {
+    node_start_at(parser, SYNTAX_KIND_BINARY_EXPRESSION, checkpoint);
+    parse_term(parser);
+    node_finish(parser);
+  }
+}
+
+static int check_relational_operator(Parser *parser)
+{
+  return check(parser, LEXER_TOKEN_KIND_EQUAL)
+    || check(parser, LEXER_TOKEN_KIND_NOT_EQUAL)
+    || check(parser, LEXER_TOKEN_KIND_LESS_THAN)
+    || check(parser, LEXER_TOKEN_KIND_LESS_THAN_EQUAL)
+    || check(parser, LEXER_TOKEN_KIND_GREATER_THAN)
+    || check(parser, LEXER_TOKEN_KIND_GREATER_THAN_EQUAL);
+}
+
+static int eat_relational_operator(Parser *parser)
+{
+  int result = check_relational_operator(parser);
+  if (result) {
+    bump(parser);
+  }
+  return result;
+}
+
+static void parse_expression(Parser *parser)
+{
+  unsigned long checkpoint = node_checkpoint(parser);
+  parse_simple_expression(parser);
+  while (eat_relational_operator(parser)) {
+    node_start_at(parser, SYNTAX_KIND_BINARY_EXPRESSION, checkpoint);
+    parse_simple_expression(parser);
+    node_finish(parser);
+  }
+}
 
 static void parse_statement(Parser *parser);
 
@@ -196,13 +386,9 @@ static void parse_input_statement(Parser *parser)
 static void parse_output_value(Parser *parser)
 {
   node_start(parser, SYNTAX_KIND_OUTPUT_VALUE);
-  if (check(parser, LEXER_TOKEN_KIND_STRING) /* && check if length of string is 1 */) {
-    eat(parser, LEXER_TOKEN_KIND_STRING);
-  } else {
-    parse_expression(parser);
-    if (eat(parser, LEXER_TOKEN_KIND_COLON)) {
-      expect(parser, LEXER_TOKEN_KIND_INTEGER);
-    }
+  parse_expression(parser);
+  if (eat(parser, LEXER_TOKEN_KIND_COLON)) {
+    expect(parser, LEXER_TOKEN_KIND_INTEGER);
   }
   node_finish(parser);
 }
@@ -247,7 +433,6 @@ static void parse_empty_statement(Parser *parser)
 
 static void parse_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_STATEMENT);
   if (check_identifier(parser)) {
     parse_assignment_statement(parser);
   } else if (check_keyword(parser, SYMBOL_KEYWORD_IF)) {
@@ -269,46 +454,6 @@ static void parse_statement(Parser *parser)
   } else {
     parse_empty_statement(parser);
   }
-  node_finish(parser);
-}
-
-static int check_standard_type(Parser *parser)
-{
-  return check_keyword(parser, SYMBOL_KEYWORD_INTEGER) || check_keyword(parser, SYMBOL_KEYWORD_BOOLEAN) || check_keyword(parser, SYMBOL_KEYWORD_CHAR);
-}
-
-static void parse_standard_type(Parser *parser)
-{
-  node_start(parser, SYNTAX_KIND_STANDARD_TYPE);
-  if (!(eat_keyword(parser, SYMBOL_KEYWORD_INTEGER) || eat_keyword(parser, SYMBOL_KEYWORD_BOOLEAN) || eat_keyword(parser, SYMBOL_KEYWORD_CHAR))) {
-    /* TODO: make error */
-  }
-  node_finish(parser);
-}
-
-static void parse_array_type(Parser *parser)
-{
-  node_start(parser, SYNTAX_KIND_ARRAY_TYPE);
-  expect_keyword(parser, SYMBOL_KEYWORD_ARRAY);
-  expect(parser, LEXER_TOKEN_KIND_LEFT_BRACKET);
-  expect(parser, LEXER_TOKEN_KIND_INTEGER);
-  expect(parser, LEXER_TOKEN_KIND_RIGHT_BRACKET);
-  expect_keyword(parser, SYMBOL_KEYWORD_OF);
-  parse_standard_type(parser);
-  node_finish(parser);
-}
-
-static void parse_type(Parser *parser)
-{
-  node_start(parser, SYNTAX_KIND_TYPE);
-  if (check_standard_type(parser)) {
-    parse_standard_type(parser);
-  } else if (check_keyword(parser, SYMBOL_KEYWORD_ARRAY)) {
-    parse_array_type(parser);
-  } else {
-    /* TODO: make error */
-  }
-  node_finish(parser);
 }
 
 static void parse_variable_declaration(Parser *parser)
