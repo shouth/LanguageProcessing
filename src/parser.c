@@ -1,9 +1,8 @@
-#include <string.h>
-
 #include "lexer.h"
 #include "lexical_tree.h"
 #include "parser.h"
 #include "symbol.h"
+#include "vector.h"
 
 static void bump(Parser *parser)
 {
@@ -19,8 +18,7 @@ static int check(Parser *parser, LexerTokenKind kind)
 
 static int check_keyword(Parser *parser, Symbol keyword)
 {
-  return check(parser, LEXER_TOKEN_KIND_IDENTIFIER)
-    && !strncmp(parser->_source + parser->_offset - parser->_token.size, symbol_string(keyword), parser->_token.size);
+  return check(parser, LEXER_TOKEN_KIND_IDENTIFIER) && keyword == parser->_symbol;
 }
 
 static int check_identifier(Parser *parser)
@@ -84,6 +82,7 @@ static int expect_identifier(Parser *parser)
 
 static unsigned long node_checkpoint(Parser *parser)
 {
+
 }
 
 static void node_start(Parser *parser, SyntaxKind kind)
