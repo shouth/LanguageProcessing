@@ -1,6 +1,6 @@
 {
   "name": "KIT LPP",
-  "image": "omzn/kit-lpp:multiple",
+  "image": "omzn/kit-lpp:v2",
   "onCreateCommand": "bash .devcontainer/setup.bash",
   "features": {
     "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {},
