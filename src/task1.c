@@ -31,10 +31,10 @@ struct TokenCounts {
   } symbol;
 };
 
-static SyntaxKind convert_kind(LexerTokenKind kind, Symbol token)
+static SyntaxKind convert_kind(TokenKind kind, Symbol token)
 {
   switch (kind) {
-  case LEXER_TOKEN_KIND_IDENTIFIER: {
+  case TOKEN_KIND_IDENTIFIER: {
     switch (token) {
     case SYMBOL_KEYWORD_AND:
       return SYNTAX_KIND_KEYWORD_AND;
@@ -99,53 +99,53 @@ static SyntaxKind convert_kind(LexerTokenKind kind, Symbol token)
     }
   }
 
-  case LEXER_TOKEN_KIND_INTEGER:
+  case TOKEN_KIND_INTEGER:
     return SYNTAX_KIND_INTEGER;
-  case LEXER_TOKEN_KIND_STRING:
+  case TOKEN_KIND_STRING:
     return SYNTAX_KIND_STRING;
-  case LEXER_TOKEN_KIND_PLUS:
+  case TOKEN_KIND_PLUS:
     return SYNTAX_KIND_PLUS;
-  case LEXER_TOKEN_KIND_MINUS:
+  case TOKEN_KIND_MINUS:
     return SYNTAX_KIND_MINUS;
-  case LEXER_TOKEN_KIND_STAR:
+  case TOKEN_KIND_STAR:
     return SYNTAX_KIND_STAR;
-  case LEXER_TOKEN_KIND_EQUAL:
+  case TOKEN_KIND_EQUAL:
     return SYNTAX_KIND_EQUAL;
-  case LEXER_TOKEN_KIND_NOT_EQUAL:
+  case TOKEN_KIND_NOT_EQUAL:
     return SYNTAX_KIND_NOT_EQUAL;
-  case LEXER_TOKEN_KIND_LESS_THAN:
+  case TOKEN_KIND_LESS_THAN:
     return SYNTAX_KIND_LESS_THAN;
-  case LEXER_TOKEN_KIND_LESS_THAN_EQUAL:
+  case TOKEN_KIND_LESS_THAN_EQUAL:
     return SYNTAX_KIND_LESS_THAN_EQUAL;
-  case LEXER_TOKEN_KIND_GREATER_THAN:
+  case TOKEN_KIND_GREATER_THAN:
     return SYNTAX_KIND_GREATER_THAN;
-  case LEXER_TOKEN_KIND_GREATER_THAN_EQUAL:
+  case TOKEN_KIND_GREATER_THAN_EQUAL:
     return SYNTAX_KIND_GREATER_THAN_EQUAL;
-  case LEXER_TOKEN_KIND_LEFT_PARENTHESIS:
+  case TOKEN_KIND_LEFT_PARENTHESIS:
     return SYNTAX_KIND_LEFT_PARENTHESIS;
-  case LEXER_TOKEN_KIND_RIGHT_PARENTHESIS:
+  case TOKEN_KIND_RIGHT_PARENTHESIS:
     return SYNTAX_KIND_RIGHT_PARENTHESIS;
-  case LEXER_TOKEN_KIND_LEFT_BRACKET:
+  case TOKEN_KIND_LEFT_BRACKET:
     return SYNTAX_KIND_LEFT_BRACKET;
-  case LEXER_TOKEN_KIND_RIGHT_BRACKET:
+  case TOKEN_KIND_RIGHT_BRACKET:
     return SYNTAX_KIND_RIGHT_BRACKET;
-  case LEXER_TOKEN_KIND_ASSIGN:
+  case TOKEN_KIND_ASSIGN:
     return SYNTAX_KIND_ASSIGN;
-  case LEXER_TOKEN_KIND_DOT:
+  case TOKEN_KIND_DOT:
     return SYNTAX_KIND_DOT;
-  case LEXER_TOKEN_KIND_COMMA:
+  case TOKEN_KIND_COMMA:
     return SYNTAX_KIND_COMMA;
-  case LEXER_TOKEN_KIND_COLON:
+  case TOKEN_KIND_COLON:
     return SYNTAX_KIND_COLON;
-  case LEXER_TOKEN_KIND_SEMICOLON:
+  case TOKEN_KIND_SEMICOLON:
     return SYNTAX_KIND_SEMICOLON;
-  case LEXER_TOKEN_KIND_SPACE:
+  case TOKEN_KIND_SPACE:
     return SYNTAX_KIND_SPACE;
-  case LEXER_TOKEN_KIND_NEWLINE:
+  case TOKEN_KIND_NEWLINE:
     return SYNTAX_KIND_NEWLINE;
-  case LEXER_TOKEN_KIND_BRACES_COMMENT:
+  case TOKEN_KIND_BRACES_COMMENT:
     return SYNTAX_KIND_BRACES_COMMENT;
-  case LEXER_TOKEN_KIND_C_COMMENT:
+  case TOKEN_KIND_C_COMMENT:
     return SYNTAX_KIND_C_COMMENT;
 
   default:
@@ -160,9 +160,9 @@ static void count_token(TokenCounts *counts, const char *source, unsigned long s
 
   lexer_init(&lexer, source, size);
   while (!lexer_eof(&lexer)) {
-    LexerToken token;
+    Token token;
     lexer_next_token(&lexer, &token);
-    if (!lexer_token_trivial(&token)) {
+    if (!TOKEN_trivial(&token)) {
       Symbol     symbol = symbol_from(source + offset, token.size);
       SyntaxKind kind   = convert_kind(token.kind, symbol);
 

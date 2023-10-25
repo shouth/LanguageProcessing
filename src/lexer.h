@@ -2,45 +2,45 @@
 #define LEXER_H
 
 typedef enum {
-  LEXER_TOKEN_KIND_IDENTIFIER,
-  LEXER_TOKEN_KIND_INTEGER,
-  LEXER_TOKEN_KIND_STRING,
+  TOKEN_KIND_IDENTIFIER,
+  TOKEN_KIND_INTEGER,
+  TOKEN_KIND_STRING,
 
-  LEXER_TOKEN_KIND_PLUS,
-  LEXER_TOKEN_KIND_MINUS,
-  LEXER_TOKEN_KIND_STAR,
-  LEXER_TOKEN_KIND_EQUAL,
-  LEXER_TOKEN_KIND_NOT_EQUAL,
-  LEXER_TOKEN_KIND_LESS_THAN,
-  LEXER_TOKEN_KIND_LESS_THAN_EQUAL,
-  LEXER_TOKEN_KIND_GREATER_THAN,
-  LEXER_TOKEN_KIND_GREATER_THAN_EQUAL,
-  LEXER_TOKEN_KIND_LEFT_PARENTHESIS,
-  LEXER_TOKEN_KIND_RIGHT_PARENTHESIS,
-  LEXER_TOKEN_KIND_LEFT_BRACKET,
-  LEXER_TOKEN_KIND_RIGHT_BRACKET,
-  LEXER_TOKEN_KIND_ASSIGN,
-  LEXER_TOKEN_KIND_DOT,
-  LEXER_TOKEN_KIND_COMMA,
-  LEXER_TOKEN_KIND_COLON,
-  LEXER_TOKEN_KIND_SEMICOLON,
+  TOKEN_KIND_PLUS,
+  TOKEN_KIND_MINUS,
+  TOKEN_KIND_STAR,
+  TOKEN_KIND_EQUAL,
+  TOKEN_KIND_NOT_EQUAL,
+  TOKEN_KIND_LESS_THAN,
+  TOKEN_KIND_LESS_THAN_EQUAL,
+  TOKEN_KIND_GREATER_THAN,
+  TOKEN_KIND_GREATER_THAN_EQUAL,
+  TOKEN_KIND_LEFT_PARENTHESIS,
+  TOKEN_KIND_RIGHT_PARENTHESIS,
+  TOKEN_KIND_LEFT_BRACKET,
+  TOKEN_KIND_RIGHT_BRACKET,
+  TOKEN_KIND_ASSIGN,
+  TOKEN_KIND_DOT,
+  TOKEN_KIND_COMMA,
+  TOKEN_KIND_COLON,
+  TOKEN_KIND_SEMICOLON,
 
-  LEXER_TOKEN_KIND_SPACE,
-  LEXER_TOKEN_KIND_NEWLINE,
-  LEXER_TOKEN_KIND_BRACES_COMMENT,
-  LEXER_TOKEN_KIND_C_COMMENT,
+  TOKEN_KIND_SPACE,
+  TOKEN_KIND_NEWLINE,
+  TOKEN_KIND_BRACES_COMMENT,
+  TOKEN_KIND_C_COMMENT,
 
-  LEXER_TOKEN_KIND_EOF,
-  LEXER_TOKEN_KIND_ERROR
-} LexerTokenKind;
+  TOKEN_KIND_EOF,
+  TOKEN_KIND_ERROR
+} TokenKind;
 
-typedef struct LexerToken LexerToken;
-typedef struct Lexer      Lexer;
+typedef struct Token Token;
+typedef struct Lexer Lexer;
 
-struct LexerToken {
-  LexerTokenKind kind;
-  unsigned long  size;
-  int            terminated;
+struct Token {
+  TokenKind     kind;
+  unsigned long size;
+  int           terminated;
 };
 
 struct Lexer {
@@ -49,10 +49,10 @@ struct Lexer {
   long        _index;
 };
 
-int lexer_token_trivial(LexerToken *token);
+int TOKEN_trivial(Token *token);
 
 void lexer_init(Lexer *lexer, const char *source, long size);
-void lexer_next_token(Lexer *lexer, LexerToken *token);
+void lexer_next_token(Lexer *lexer, Token *token);
 int  lexer_eof(Lexer *lexer);
 
 #endif

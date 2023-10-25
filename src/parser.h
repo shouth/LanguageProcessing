@@ -14,8 +14,8 @@ struct Parser {
   unsigned long _offset;
   Lexer         _lexer;
 
-  LexerToken _token;
-  Symbol     _symbol;
+  Token  _token;
+  Symbol _symbol;
 
   LexicalTree *_tree;
   Vector      *_errors;
