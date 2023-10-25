@@ -162,7 +162,7 @@ static void count_token(TokenCounts *counts, const char *source, unsigned long s
   while (!lexer_eof(&lexer)) {
     Token token;
     lexer_next_token(&lexer, &token);
-    if (!TOKEN_trivial(&token)) {
+    if (!token_trivial(&token)) {
       Symbol     symbol = symbol_from(source + offset, token.size);
       SyntaxKind kind   = convert_kind(token.kind, symbol);
 

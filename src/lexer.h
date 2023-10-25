@@ -49,7 +49,7 @@ struct Lexer {
   long        _index;
 };
 
-int TOKEN_trivial(Token *token);
+int token_trivial(Token *token);
 
 void lexer_init(Lexer *lexer, const char *source, long size);
 void lexer_next_token(Lexer *lexer, Token *token);

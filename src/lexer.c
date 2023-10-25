@@ -4,7 +4,7 @@
 
 #define EOS -1
 
-int TOKEN_trivial(Token *token)
+int token_trivial(Token *token)
 {
   switch (token->kind) {
   case TOKEN_KIND_NEWLINE:
