@@ -1,5 +1,4 @@
 #include "parser.h"
-#include "symbol.h"
 #include "syntax_kind.h"
 #include "token_cursor.h"
 #include "vector.h"
@@ -7,7 +6,6 @@
 static void bump(Parser *parser)
 {
   token_cursor_next(&parser->_cursor, &parser->_token);
-  parser->_offset += symbol_size(parser->_token.symbol);
 }
 
 static int check(Parser *parser, SyntaxKind kind)
@@ -480,9 +478,6 @@ static void parse_program(Parser *parser)
 
 void parser_init(Parser *parser, const char *source, unsigned long size)
 {
-  parser->_source = source;
-  parser->_size   = size;
-  parser->_offset = 0;
   token_cursor_init(&parser->_cursor, source, size);
   bump(parser);
 }

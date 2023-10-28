@@ -9,10 +9,6 @@
 typedef struct Parser Parser;
 
 struct Parser {
-  const char   *_source;
-  unsigned long _size;
-  unsigned long _offset;
-
   TokenCursor _cursor;
   Token       _token;
 
