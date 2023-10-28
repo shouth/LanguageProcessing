@@ -2,6 +2,7 @@
 #define MODULE_H
 
 #include "lexer.h"
+#include "token_cursor.h"
 
 typedef struct Module Module;
 
@@ -16,6 +17,6 @@ void          module_init(Module *module, const char *filename);
 void          module_deinit(Module *module);
 const char   *module_source(Module *module);
 unsigned long module_source_size(Module *module);
-int           module_lexer(Module *module, Lexer *lexer);
+int           module_token_cursor_init(Module *module, TokenCursor *cursor);
 
 #endif

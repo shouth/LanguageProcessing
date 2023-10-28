@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lexer.h"
 #include "module.h"
+#include "token_cursor.h"
 #include "utility.h"
 
 void module_init(Module *module, const char *filename)
@@ -57,4 +57,13 @@ const char *module_source(Module *module)
 unsigned long module_source_size(Module *module)
 {
   return module_source(module) ? module->_source_size : -1ul;
+}
+
+int module_token_cursor_init(Module *module, TokenCursor *cursor)
+{
+  int result = !!module_source(module);
+  if (result) {
+    token_cursor_init(cursor, module_source(module), module_source_size(module));
+  }
+  return result;
 }

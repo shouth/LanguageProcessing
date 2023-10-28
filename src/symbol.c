@@ -152,8 +152,3 @@ unsigned long symbol_size(Symbol symbol)
 {
   return symbol_data(symbol)->size;
 }
-
-int symbol_is_keyword(Symbol symbol)
-{
-  return symbol >= SYMBOL_RANGE_KEYWORD_BEGIN && symbol < SYMBOL_RANGE_KEYWORD_END;
-}

@@ -63,6 +63,5 @@ Symbol        symbol_from(const char *string, unsigned long size);
 Symbol        symbol_take_from(char *string, unsigned long size);
 const char   *symbol_string(Symbol symbol);
 unsigned long symbol_size(Symbol symbol);
-int           symbol_is_keyword(Symbol symbol);
 
 #endif

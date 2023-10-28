@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include "lexical_tree.h"
 #include "symbol.h"
+#include "token_cursor.h"
 #include "vector.h"
 
 typedef struct Parser Parser;
@@ -12,7 +13,7 @@ struct Parser {
   const char   *_source;
   unsigned long _size;
   unsigned long _offset;
-  Lexer         _lexer;
+  TokenCursor   _cursor;
 
   Token  _token;
   Symbol _symbol;
