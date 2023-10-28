@@ -4,9 +4,9 @@
 #include "syntax_kind.h"
 #include "vector.h"
 
-typedef struct LexicalTree LexicalTree;
+typedef struct TokenTree TokenTree;
 
-struct LexicalTree {
+struct TokenTree {
   SyntaxKind _kind;
   Vector     _children;
 };
