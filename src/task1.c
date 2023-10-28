@@ -8,6 +8,7 @@
 #include "symbol.h"
 #include "syntax_kind.h"
 #include "tasks.h"
+#include "token.h"
 #include "token_cursor.h"
 #include "utility.h"
 #include "vector.h"

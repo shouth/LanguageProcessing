@@ -1,9 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "lexer.h"
-#include "lexical_tree.h"
-#include "symbol.h"
+#include "token.h"
+#include "token_tree.h"
 #include "token_cursor.h"
 #include "vector.h"
 
@@ -13,16 +12,18 @@ struct Parser {
   const char   *_source;
   unsigned long _size;
   unsigned long _offset;
-  TokenCursor   _cursor;
 
-  Token  _token;
-  Symbol _symbol;
+  TokenCursor _cursor;
+  Token       _token;
 
-  LexicalTree *_tree;
-  Vector      *_errors;
+  Vector _parents;
+  Vector _children;
+
+  TokenTree *_tree;
+  Vector    *_errors;
 };
 
 void parser_init(Parser *parser, const char *source, unsigned long size);
-void parser_parse(Parser *parser, LexicalTree *tree, Vector *errors);
+void parser_parse(Parser *parser, TokenTree *tree, Vector *errors);
 
 #endif

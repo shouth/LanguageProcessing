@@ -3,6 +3,7 @@
 #include "lexer.h"
 #include "symbol.h"
 #include "syntax_kind.h"
+#include "token.h"
 
 #define EOS -1
 

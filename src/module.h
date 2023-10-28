@@ -1,7 +1,6 @@
 #ifndef MODULE_H
 #define MODULE_H
 
-#include "lexer.h"
 #include "token_cursor.h"
 
 typedef struct Module Module;

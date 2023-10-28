@@ -2,6 +2,7 @@
 #define TOKEN_CURSOR_H
 
 #include "lexer.h"
+#include "token.h"
 
 typedef struct TokenCursor TokenCursor;
 

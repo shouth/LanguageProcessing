@@ -1,16 +1,9 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "symbol.h"
-#include "syntax_kind.h"
+#include "token.h"
 
-typedef struct Token Token;
 typedef struct Lexer Lexer;
-
-struct Token {
-  SyntaxKind kind;
-  Symbol     symbol;
-};
 
 struct Lexer {
   const char *_source;

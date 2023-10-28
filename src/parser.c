@@ -1,8 +1,8 @@
 #include "parser.h"
-#include "lexer.h"
 #include "symbol.h"
 #include "syntax_kind.h"
 #include "token_cursor.h"
+#include "vector.h"
 
 static void bump(Parser *parser)
 {
@@ -35,6 +35,7 @@ static int expect(Parser *parser, SyntaxKind kind)
 
 static unsigned long node_checkpoint(Parser *parser)
 {
+  return vector_size(&parser->_children);
 }
 
 static void node_start_at(Parser *parser, SyntaxKind kind, unsigned long checkpoint)
