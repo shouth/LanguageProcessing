@@ -20,6 +20,5 @@ struct Lexer {
 
 void lexer_init(Lexer *lexer, const char *source, long size);
 int  lexer_next_token(Lexer *lexer, Token *token);
-int  lexer_eof(Lexer *lexer);
 
 #endif

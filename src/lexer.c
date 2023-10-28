@@ -226,7 +226,7 @@ void lexer_init(Lexer *lexer, const char *source, long size)
 
 int lexer_next_token(Lexer *lexer, Token *token)
 {
-  if (lexer_eof(lexer)) {
+  if (lexer->_index >= lexer->_size) {
     return 0;
   } else {
     if (is_alphabet(first(lexer))) {
@@ -244,9 +244,4 @@ int lexer_next_token(Lexer *lexer, Token *token)
     }
     return 1;
   }
-}
-
-int lexer_eof(Lexer *lexer)
-{
-  return lexer->_index >= lexer->_size;
 }
