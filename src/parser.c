@@ -1,16 +1,24 @@
 #include "parser.h"
 #include "syntax_kind.h"
+#include "token.h"
 #include "token_cursor.h"
 #include "vector.h"
 
+typedef struct Parser Parser;
+
+struct Parser {
+  TokenCursor  _cursor;
+  const Token *_token;
+};
+
 static void bump(Parser *parser)
 {
-  token_cursor_next(&parser->_cursor, &parser->_token);
+  parser->_token = token_cursor_next(&parser->_cursor);
 }
 
 static int check(Parser *parser, SyntaxKind kind)
 {
-  return parser->_token.kind == kind;
+  return parser->_token->node.kind == kind;
 }
 
 static int eat(Parser *parser, SyntaxKind kind)
@@ -33,7 +41,6 @@ static int expect(Parser *parser, SyntaxKind kind)
 
 static unsigned long node_checkpoint(Parser *parser)
 {
-  return vector_size(&parser->_children);
 }
 
 static void node_start_at(Parser *parser, SyntaxKind kind, unsigned long checkpoint)
@@ -476,8 +483,9 @@ static void parse_program(Parser *parser)
   node_finish(parser);
 }
 
-void parser_init(Parser *parser, const char *source, unsigned long size)
+const TokenTree *parser_parse(TokenContext *context, const char *source, unsigned long size, Vector *errors)
 {
-  token_cursor_init(&parser->_cursor, source, size);
-  bump(parser);
+  Parser parser;
+  token_cursor_init(&parser._cursor, context, source, size);
+  bump(&parser);
 }

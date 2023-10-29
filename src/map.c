@@ -102,6 +102,7 @@ int map_entry(Map *map, void *key, MapEntry *entry)
     MapBucket *sentinel  = entry->bucket + NEIGHBORHOOD - 1;
     for (; candidate < sentinel; ++candidate) {
       if (entry->bucket->hop & (1ul << (candidate - entry->bucket)) && map->comparator(entry->key, candidate->key)) {
+        entry->key  = candidate->key;
         entry->slot = candidate;
         break;
       }

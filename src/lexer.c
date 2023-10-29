@@ -1,24 +1,29 @@
 #include <string.h>
 
-#include "lexer.h"
-#include "symbol.h"
 #include "syntax_kind.h"
 #include "token.h"
+
+typedef struct Lexer Lexer;
+
+struct Lexer {
+  TokenContext *_context;
+  const char   *_source;
+  unsigned long _size;
+  unsigned long _index;
+};
 
 #define EOS -1
 
 static void bump(Lexer *lexer)
 {
-  if (lexer->_offset + lexer->_index < lexer->_size) {
+  if (lexer->_index < lexer->_size) {
     ++lexer->_index;
   }
 }
 
 static int first(Lexer *lexer)
 {
-  return lexer->_offset + lexer->_index < lexer->_size
-    ? lexer->_source[lexer->_offset + lexer->_index]
-    : EOS;
+  return lexer->_index < lexer->_size ? lexer->_source[lexer->_index] : EOS;
 }
 
 static int eat(Lexer *lexer, int c)
@@ -64,42 +69,40 @@ static int is_graphic(int c)
   return is_alphabet(c) || is_number(c) || is_space(c) || is_newline(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
 }
 
-static void tokenize(Lexer *lexer, Token *token, SyntaxKind kind)
+static const Token *tokenize(Lexer *lexer, SyntaxKind kind)
 {
-  token->symbol = symbol_from(lexer->_source + lexer->_offset, lexer->_index);
-  token->kind   = kind;
-
-  lexer->_offset += lexer->_index;
-  lexer->_index = 0;
+  return token_context_token(lexer->_context, kind, lexer->_source, lexer->_index);
 }
 
-static void token_error(Lexer *lexer, Token *token)
+static const Token *token_error(Lexer *lexer)
 {
   bump(lexer);
-  tokenize(lexer, token, SYNTAX_KIND_ERROR);
+  return tokenize(lexer, SYNTAX_KIND_ERROR);
 }
 
-static void token_identifier_like(Lexer *lexer, Token *token)
+static const Token *token_identifier_and_keyword(Lexer *lexer)
 {
   if (eat_if(lexer, &is_alphabet)) {
+    SyntaxKind kind;
     while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
-    tokenize(lexer, token, SYNTAX_KIND_IDENTIFIER);
+    kind = syntax_kind_from_keyword(lexer->_source, lexer->_index);
+    return tokenize(lexer, kind != SYNTAX_KIND_ERROR ? kind : SYNTAX_KIND_IDENTIFIER);
   } else {
-    token_error(lexer, token);
+    return token_error(lexer);
   }
 }
 
-static void token_integer(Lexer *lexer, Token *token)
+static const Token *token_integer(Lexer *lexer)
 {
   if (eat_if(lexer, &is_number)) {
     while (eat_if(lexer, &is_number)) { }
-    tokenize(lexer, token, SYNTAX_KIND_INTEGER);
+    return tokenize(lexer, SYNTAX_KIND_INTEGER);
   } else {
-    token_error(lexer, token);
+    return token_error(lexer);
   }
 }
 
-static void token_string(Lexer *lexer, Token *token)
+static const Token *token_string(Lexer *lexer)
 {
   if (eat(lexer, '\'')) {
     while (1) {
@@ -113,29 +116,29 @@ static void token_string(Lexer *lexer, Token *token)
         break;
       }
     }
-    tokenize(lexer, token, SYNTAX_KIND_STRING);
+    return tokenize(lexer, SYNTAX_KIND_STRING);
   } else {
-    token_error(lexer, token);
+    return token_error(lexer);
   }
 }
 
-static void token_whitespace(Lexer *lexer, Token *token)
+static const Token *token_whitespace(Lexer *lexer)
 {
   if (eat_if(lexer, &is_space)) {
     while (eat_if(lexer, &is_space)) { }
-    tokenize(lexer, token, SYNTAX_KIND_SPACE);
+    return tokenize(lexer, SYNTAX_KIND_SPACE);
   } else if (eat(lexer, '\r')) {
     eat(lexer, '\n');
-    tokenize(lexer, token, SYNTAX_KIND_NEWLINE);
+    return tokenize(lexer, SYNTAX_KIND_NEWLINE);
   } else if (eat(lexer, '\n')) {
     eat(lexer, '\r');
-    tokenize(lexer, token, SYNTAX_KIND_NEWLINE);
+    return tokenize(lexer, SYNTAX_KIND_NEWLINE);
   } else {
-    token_error(lexer, token);
+    return token_error(lexer);
   }
 }
 
-static void token_comment(Lexer *lexer, Token *token)
+static const Token *token_comment(Lexer *lexer)
 {
   if (eat(lexer, '{')) {
     while (1) {
@@ -147,7 +150,7 @@ static void token_comment(Lexer *lexer, Token *token)
         bump(lexer);
       }
     }
-    tokenize(lexer, token, SYNTAX_KIND_BRACES_COMMENT);
+    return tokenize(lexer, SYNTAX_KIND_BRACES_COMMENT);
   } else if (eat(lexer, '/')) {
     if (eat(lexer, '*')) {
       while (1) {
@@ -161,90 +164,85 @@ static void token_comment(Lexer *lexer, Token *token)
           bump(lexer);
         }
       }
-      tokenize(lexer, token, SYNTAX_KIND_C_COMMENT);
+      return tokenize(lexer, SYNTAX_KIND_C_COMMENT);
     } else {
-      token_error(lexer, token);
+      return token_error(lexer);
     }
   } else {
-    token_error(lexer, token);
+    return token_error(lexer);
   }
 }
 
-static void token_symbol(Lexer *lexer, Token *token)
+static const Token *token_symbol(Lexer *lexer)
 {
   if (eat(lexer, '+')) {
-    tokenize(lexer, token, SYNTAX_KIND_PLUS);
+    return tokenize(lexer, SYNTAX_KIND_PLUS);
   } else if (eat(lexer, '-')) {
-    tokenize(lexer, token, SYNTAX_KIND_MINUS);
+    return tokenize(lexer, SYNTAX_KIND_MINUS);
   } else if (eat(lexer, '*')) {
-    tokenize(lexer, token, SYNTAX_KIND_STAR);
+    return tokenize(lexer, SYNTAX_KIND_STAR);
   } else if (eat(lexer, '=')) {
-    tokenize(lexer, token, SYNTAX_KIND_EQUAL);
+    return tokenize(lexer, SYNTAX_KIND_EQUAL);
   } else if (eat(lexer, '<')) {
     if (eat(lexer, '>')) {
-      tokenize(lexer, token, SYNTAX_KIND_NOT_EQUAL);
+      return tokenize(lexer, SYNTAX_KIND_NOT_EQUAL);
     } else if (eat(lexer, '=')) {
-      tokenize(lexer, token, SYNTAX_KIND_LESS_THAN_EQUAL);
+      return tokenize(lexer, SYNTAX_KIND_LESS_THAN_EQUAL);
     } else {
-      tokenize(lexer, token, SYNTAX_KIND_LESS_THAN);
+      return tokenize(lexer, SYNTAX_KIND_LESS_THAN);
     }
   } else if (eat(lexer, '>')) {
     if (eat(lexer, '=')) {
-      tokenize(lexer, token, SYNTAX_KIND_GREATER_THAN_EQUAL);
+      return tokenize(lexer, SYNTAX_KIND_GREATER_THAN_EQUAL);
     } else {
-      tokenize(lexer, token, SYNTAX_KIND_GREATER_THAN);
+      return tokenize(lexer, SYNTAX_KIND_GREATER_THAN);
     }
   } else if (eat(lexer, '(')) {
-    tokenize(lexer, token, SYNTAX_KIND_LEFT_PARENTHESIS);
+    return tokenize(lexer, SYNTAX_KIND_LEFT_PARENTHESIS);
   } else if (eat(lexer, ')')) {
-    tokenize(lexer, token, SYNTAX_KIND_RIGHT_PARENTHESIS);
+    return tokenize(lexer, SYNTAX_KIND_RIGHT_PARENTHESIS);
   } else if (eat(lexer, '[')) {
-    tokenize(lexer, token, SYNTAX_KIND_LEFT_BRACKET);
+    return tokenize(lexer, SYNTAX_KIND_LEFT_BRACKET);
   } else if (eat(lexer, ']')) {
-    tokenize(lexer, token, SYNTAX_KIND_RIGHT_BRACKET);
+    return tokenize(lexer, SYNTAX_KIND_RIGHT_BRACKET);
   } else if (eat(lexer, ':')) {
     if (eat(lexer, '=')) {
-      tokenize(lexer, token, SYNTAX_KIND_ASSIGN);
+      return tokenize(lexer, SYNTAX_KIND_ASSIGN);
     } else {
-      tokenize(lexer, token, SYNTAX_KIND_EQUAL);
+      return tokenize(lexer, SYNTAX_KIND_EQUAL);
     }
   } else if (eat(lexer, '.')) {
-    tokenize(lexer, token, SYNTAX_KIND_DOT);
+    return tokenize(lexer, SYNTAX_KIND_DOT);
   } else if (eat(lexer, ',')) {
-    tokenize(lexer, token, SYNTAX_KIND_COMMA);
+    return tokenize(lexer, SYNTAX_KIND_COMMA);
   } else if (eat(lexer, ';')) {
-    tokenize(lexer, token, SYNTAX_KIND_SEMICOLON);
+    return tokenize(lexer, SYNTAX_KIND_SEMICOLON);
   } else {
-    token_error(lexer, token);
+    return token_error(lexer);
   }
 }
 
-void lexer_init(Lexer *lexer, const char *source, unsigned long size)
+const Token *lexer_lex(TokenContext *context, const char *source, unsigned long size)
 {
-  lexer->_source = source;
-  lexer->_size   = size;
-  lexer->_offset = 0;
-  lexer->_index  = 0;
-}
+  Lexer lexer;
+  lexer._context = context;
+  lexer._source  = source;
+  lexer._size    = size;
+  lexer._index   = 0;
 
-int lexer_next_token(Lexer *lexer, Token *token)
-{
-  if (lexer->_offset >= lexer->_size) {
-    return 0;
+  if (first(&lexer) == EOS) {
+    return NULL;
+  } else if (is_alphabet(first(&lexer))) {
+    return token_identifier_and_keyword(&lexer);
+  } else if (is_number(first(&lexer))) {
+    return token_integer(&lexer);
+  } else if (first(&lexer) == '\'') {
+    return token_string(&lexer);
+  } else if (is_space(first(&lexer)) || is_newline(first(&lexer))) {
+    return token_whitespace(&lexer);
+  } else if (first(&lexer) == '{' || first(&lexer) == '/') {
+    return token_comment(&lexer);
   } else {
-    if (is_alphabet(first(lexer))) {
-      token_identifier_like(lexer, token);
-    } else if (is_number(first(lexer))) {
-      token_integer(lexer, token);
-    } else if (first(lexer) == '\'') {
-      token_string(lexer, token);
-    } else if (is_space(first(lexer)) || is_newline(first(lexer))) {
-      token_whitespace(lexer, token);
-    } else if (first(lexer) == '{' || first(lexer) == '/') {
-      token_comment(lexer, token);
-    } else {
-      token_symbol(lexer, token);
-    }
-    return 1;
+    return token_symbol(&lexer);
   }
 }
