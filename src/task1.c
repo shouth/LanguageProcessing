@@ -12,23 +12,17 @@
 #include "vector.h"
 
 typedef struct TokenCountEntry TokenCountEntry;
-typedef struct TokenCounts     TokenCounts;
 
 struct TokenCountEntry {
   const Token  *token;
   unsigned long count;
 };
 
-struct TokenCounts {
-  Map token;
-  Map identifier;
-};
-
 static const Token TOKEN_NAME   = { { SYNTAX_KIND_IDENTIFIER }, "NAME", 4 };
 static const Token TOKEN_NUMBER = { { SYNTAX_KIND_INTEGER }, "NUMBER", 6 };
 static const Token TOKEN_STRING = { { SYNTAX_KIND_STRING }, "STRING", 6 };
 
-static void count_token(TokenCounts *counts, TokenCursor *cursor)
+static void count_token(TokenCursor *cursor, Map *token_counts, Map *identifier_counts)
 {
   const Token *token;
   while ((token = token_cursor_next(cursor))) {
@@ -38,7 +32,7 @@ static void count_token(TokenCounts *counts, TokenCursor *cursor)
     switch (token->node.kind) {
     case SYNTAX_KIND_IDENTIFIER: {
       count = 0;
-      if (map_entry(&counts->identifier, (void *) token, &entry)) {
+      if (map_entry(identifier_counts, (void *) token, &entry)) {
         count = (unsigned long) map_entry_value(&entry);
       }
       map_entry_update(&entry, (void *) (count + 1));
@@ -65,7 +59,7 @@ static void count_token(TokenCounts *counts, TokenCursor *cursor)
     }
 
     count = 0;
-    if (map_entry(&counts->token, (void *) token, &entry)) {
+    if (map_entry(token_counts, (void *) token, &entry)) {
       count = (unsigned long) map_entry_value(&entry);
     }
     map_entry_update(&entry, (void *) (count + 1));
@@ -139,43 +133,30 @@ static void token_counts_print_identifier(Map *counts)
   token_count_list_deinit(&identifier_count_list);
 }
 
-static void token_counts_print(TokenCounts *counts)
+static void token_counts_print(Map *token_counts, Map *identifier_counts)
 {
   unsigned long i;
   int           name_width, count_width;
   Vector        token_count_list;
 
-  token_count_list_init(&token_count_list, &counts->token);
+  token_count_list_init(&token_count_list, token_counts);
   get_display_width(&token_count_list, &name_width, &count_width);
   for (i = 0; i < vector_count(&token_count_list); ++i) {
     TokenCountEntry *entry       = vector_at(&token_count_list, i);
     int              space_width = name_width - (int) entry->token->size + 2;
     printf("\"%s\"%*c%*ld\n", entry->token->string, space_width, ' ', count_width, entry->count);
     if (entry->token->node.kind == SYNTAX_KIND_IDENTIFIER) {
-      token_counts_print_identifier(&counts->identifier);
+      token_counts_print_identifier(identifier_counts);
     }
   }
   token_count_list_deinit(&token_count_list);
-}
-
-static void token_counts_init(TokenCounts *counts, TokenCursor *cursor)
-{
-  map_init(&counts->token, NULL, NULL);
-  map_init(&counts->identifier, NULL, NULL);
-  count_token(counts, cursor);
-}
-
-static void token_counts_deinit(TokenCounts *counts)
-{
-  map_deinit(&counts->token);
-  map_deinit(&counts->identifier);
 }
 
 void task1(int argc, const char **argv)
 {
   Module      module;
   TokenCursor cursor;
-  TokenCounts counts;
+  Map         token_counts, identifier_counts;
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
@@ -184,8 +165,13 @@ void task1(int argc, const char **argv)
 
   module_init(&module, argv[1]);
   module_token_cursor(&module, &cursor);
-  token_counts_init(&counts, &cursor);
-  token_counts_print(&counts);
-  token_counts_deinit(&counts);
+
+  map_init(&token_counts, NULL, NULL);
+  map_init(&identifier_counts, NULL, NULL);
+  count_token(&cursor, &token_counts, &identifier_counts);
+  token_counts_print(&token_counts, &identifier_counts);
+  map_deinit(&token_counts);
+  map_deinit(&identifier_counts);
+
   module_deinit(&module);
 }
