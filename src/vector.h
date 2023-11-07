@@ -20,6 +20,7 @@ void         *vector_data(const Vector *vector);
 void         *vector_at(const Vector *vector, unsigned long index);
 void         *vector_back(Vector *vector);
 void          vector_reserve(Vector *vector, unsigned long capacity);
+void          vector_fit(Vector *vector);
 void          vector_push(Vector *vector, void *value);
 void          vector_pop(Vector *vector);
 void          vector_clear(Vector *vector);

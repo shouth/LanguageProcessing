@@ -62,6 +62,15 @@ void vector_reserve(Vector *vector, unsigned long capacity)
   }
 }
 
+void vector_fit(Vector *vector)
+{
+  void *new = realloc(vector->_data, vector->_size * vector->_count);
+  if (new) {
+    vector->_data     = new;
+    vector->_capacity = vector->_count;
+  }
+}
+
 void vector_push(Vector *vector, void *value)
 {
   if (vector->_count == vector->_capacity) {
