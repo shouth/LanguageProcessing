@@ -16,7 +16,7 @@ static unsigned long token_hash(unsigned long hash, const Token *token)
 
 static unsigned long token_tree_hash(unsigned long hash, const TokenTree *tree)
 {
-  return fnv1a(hash, vector_data(&tree->children), sizeof(void *) * vector_size(&tree->children));
+  return fnv1a(hash, vector_data(&tree->children), sizeof(void *) * vector_count(&tree->children));
 }
 
 static unsigned long token_node_hash(unsigned long hash, const TokenNode *node)
@@ -45,8 +45,8 @@ static int token_node_compare(const TokenNode *left, const TokenNode *right)
     } else {
       const TokenTree *l = (TokenTree *) left;
       const TokenTree *r = (TokenTree *) right;
-      if (vector_size(&l->children) == vector_size(&r->children)) {
-        return !memcmp(vector_data(&l->children), vector_data(&r->children), sizeof(void *) * vector_size(&l->children));
+      if (vector_count(&l->children) == vector_count(&r->children)) {
+        return !memcmp(vector_data(&l->children), vector_data(&r->children), sizeof(void *) * vector_count(&l->children));
       } else {
         return 0;
       }
@@ -64,7 +64,7 @@ static int token_node_comparator(const void *left, const void *right)
 static void token_tree_init(TokenTree *tree, SyntaxKind kind)
 {
   tree->node.kind = kind;
-  vector_init(&tree->children);
+  vector_init(&tree->children, sizeof(TokenNode *));
 }
 
 static void token_init(Token *token, SyntaxKind kind, const char *string, unsigned long size)

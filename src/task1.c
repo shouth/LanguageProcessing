@@ -9,7 +9,6 @@
 #include "tasks.h"
 #include "token.h"
 #include "token_cursor.h"
-#include "utility.h"
 #include "vector.h"
 
 typedef struct TokenCountEntry TokenCountEntry;
@@ -75,8 +74,8 @@ static void count_token(TokenCounts *counts, TokenCursor *cursor)
 
 static int token_count_entry_comparator(const void *left, const void *right)
 {
-  const TokenCountEntry *l = *(void **) left;
-  const TokenCountEntry *r = *(void **) right;
+  const TokenCountEntry *l = left;
+  const TokenCountEntry *r = right;
 
   if (l->count != r->count) {
     return r->count < l->count ? -1 : 1;
@@ -91,22 +90,18 @@ static void token_count_list_init(Vector *list, Map *counts)
 {
   MapIterator iterator;
   map_iterator(&iterator, counts);
-  vector_init_with_capacity(list, map_size(counts));
+  vector_init_with_capacity(list, sizeof(TokenCountEntry), map_size(counts));
   while (map_iterator_next(&iterator)) {
-    TokenCountEntry *entry = xmalloc(sizeof(TokenCountEntry));
-    entry->token           = map_iterator_key(&iterator);
-    entry->count           = (unsigned long) map_iterator_value(&iterator);
-    vector_push_back(list, entry);
+    TokenCountEntry entry;
+    entry.token = map_iterator_key(&iterator);
+    entry.count = (unsigned long) map_iterator_value(&iterator);
+    vector_push(list, &entry);
   }
-  qsort(vector_data(list), vector_size(list), sizeof(void *), &token_count_entry_comparator);
+  qsort(vector_data(list), vector_count(list), sizeof(TokenCountEntry), &token_count_entry_comparator);
 }
 
 static void token_count_list_deinit(Vector *list)
 {
-  while (vector_size(list) > 0) {
-    free(vector_back(list));
-    vector_pop_back(list);
-  }
   vector_deinit(list);
 }
 
@@ -115,8 +110,8 @@ static void get_display_width(Vector *list, int *name_width, int *count_width)
   unsigned long i;
   *name_width  = 0;
   *count_width = 0;
-  for (i = 0; i < vector_size(list); ++i) {
-    TokenCountEntry *entry           = vector_data(list)[i];
+  for (i = 0; i < vector_count(list); ++i) {
+    TokenCountEntry *entry           = vector_at(list, i);
     int              new_name_width  = entry->token->size;
     int              new_count_width = 1;
     unsigned long    count;
@@ -136,8 +131,8 @@ static void token_counts_print_identifier(Map *counts)
 
   token_count_list_init(&identifier_count_list, counts);
   get_display_width(&identifier_count_list, &name_width, &count_width);
-  for (i = 0; i < vector_size(&identifier_count_list); ++i) {
-    TokenCountEntry *entry       = vector_data(&identifier_count_list)[i];
+  for (i = 0; i < vector_count(&identifier_count_list); ++i) {
+    TokenCountEntry *entry       = vector_at(&identifier_count_list, i);
     int              space_width = name_width - (int) entry->token->size + 2;
     printf("    \"Identifier\" \"%s\"%*c%*ld\n", entry->token->string, space_width, ' ', count_width, entry->count);
   }
@@ -152,8 +147,8 @@ static void token_counts_print(TokenCounts *counts)
 
   token_count_list_init(&token_count_list, &counts->token);
   get_display_width(&token_count_list, &name_width, &count_width);
-  for (i = 0; i < vector_size(&token_count_list); ++i) {
-    TokenCountEntry *entry       = vector_data(&token_count_list)[i];
+  for (i = 0; i < vector_count(&token_count_list); ++i) {
+    TokenCountEntry *entry       = vector_at(&token_count_list, i);
     int              space_width = name_width - (int) entry->token->size + 2;
     printf("\"%s\"%*c%*ld\n", entry->token->string, space_width, ' ', count_width, entry->count);
     if (entry->token->node.kind == SYNTAX_KIND_IDENTIFIER) {
