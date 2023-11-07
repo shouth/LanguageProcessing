@@ -91,7 +91,7 @@ static void token_count_list_init(Vector *list, Map *counts)
     entry.count = (unsigned long) map_iterator_value(&iterator);
     vector_push(list, &entry);
   }
-  qsort(vector_data(list), vector_count(list), sizeof(TokenCountEntry), &token_count_entry_comparator);
+  qsort(vector_data(list), vector_length(list), sizeof(TokenCountEntry), &token_count_entry_comparator);
 }
 
 static void token_count_list_deinit(Vector *list)
@@ -104,7 +104,7 @@ static void get_display_width(Vector *list, int *name_width, int *count_width)
   unsigned long i;
   *name_width  = 0;
   *count_width = 0;
-  for (i = 0; i < vector_count(list); ++i) {
+  for (i = 0; i < vector_length(list); ++i) {
     TokenCountEntry *entry           = vector_at(list, i);
     int              new_name_width  = entry->token->size;
     int              new_count_width = 1;
@@ -125,7 +125,7 @@ static void token_counts_print_identifier(Map *counts)
 
   token_count_list_init(&identifier_count_list, counts);
   get_display_width(&identifier_count_list, &name_width, &count_width);
-  for (i = 0; i < vector_count(&identifier_count_list); ++i) {
+  for (i = 0; i < vector_length(&identifier_count_list); ++i) {
     TokenCountEntry *entry       = vector_at(&identifier_count_list, i);
     int              space_width = name_width - (int) entry->token->size + 2;
     printf("    \"Identifier\" \"%s\"%*c%*ld\n", entry->token->string, space_width, ' ', count_width, entry->count);
@@ -141,7 +141,7 @@ static void token_counts_print(Map *token_counts, Map *identifier_counts)
 
   token_count_list_init(&token_count_list, token_counts);
   get_display_width(&token_count_list, &name_width, &count_width);
-  for (i = 0; i < vector_count(&token_count_list); ++i) {
+  for (i = 0; i < vector_length(&token_count_list); ++i) {
     TokenCountEntry *entry       = vector_at(&token_count_list, i);
     int              space_width = name_width - (int) entry->token->size + 2;
     printf("\"%s\"%*c%*ld\n", entry->token->string, space_width, ' ', count_width, entry->count);
