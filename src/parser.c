@@ -4,21 +4,34 @@
 #include "token_cursor.h"
 #include "vector.h"
 
-typedef struct Parser Parser;
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Bookmark Bookmark;
+typedef struct Parser   Parser;
+
+struct Bookmark {
+  SyntaxKind    kind;
+  unsigned long checkpoint;
+};
 
 struct Parser {
-  TokenCursor _cursor;
-  Token       _token;
+  TokenCursor cursor;
+  TokenNode   token;
+  Vector      parents;
+  Vector      children;
 };
 
 static void bump(Parser *parser)
 {
-  token_cursor_next(&parser->_cursor, &parser->_token);
+  vector_push(&parser->children, &parser->token);
+  token_cursor_next(&parser->cursor, &parser->token.token);
 }
 
 static int check(Parser *parser, SyntaxKind kind)
 {
-  return parser->_token.info.kind == kind;
+  return parser->token.token.kind == kind;
 }
 
 static int eat(Parser *parser, SyntaxKind kind)
@@ -34,6 +47,8 @@ static int expect(Parser *parser, SyntaxKind kind)
 {
   int result = eat(parser, kind);
   if (!result) {
+    printf("expected: %d, actual: %d (%s)\n", kind, parser->token.token.kind, parser->token.token.text);
+    exit(EXIT_FAILURE);
     /* TODO: create an error object and push to parser */
   }
   return result;
@@ -41,18 +56,40 @@ static int expect(Parser *parser, SyntaxKind kind)
 
 static unsigned long node_checkpoint(Parser *parser)
 {
+  return vector_length(&parser->children);
 }
 
 static void node_start_at(Parser *parser, SyntaxKind kind, unsigned long checkpoint)
 {
+  Bookmark bookmark;
+  bookmark.kind       = kind;
+  bookmark.checkpoint = checkpoint;
+  vector_push(&parser->parents, &bookmark);
 }
 
 static void node_start(Parser *parser, SyntaxKind kind)
 {
+  unsigned long checkpoint = node_checkpoint(parser);
+  node_start_at(parser, kind, checkpoint);
 }
 
 static void node_finish(Parser *parser)
 {
+  TokenNode tree;
+  Bookmark  bookmark = *(Bookmark *) vector_back(&parser->parents);
+
+  assert(vector_length(&parser->children) >= bookmark.checkpoint);
+  vector_pop(&parser->parents);
+
+  token_tree_init(&tree.tree, bookmark.kind,
+    vector_at(&parser->children, bookmark.checkpoint),
+    vector_length(&parser->children) - bookmark.checkpoint);
+
+  while (vector_length(&parser->children) > bookmark.checkpoint) {
+    vector_pop(&parser->children);
+  }
+
+  vector_push(&parser->children, &tree.tree);
 }
 
 static int check_standard_type(Parser *parser)
@@ -412,12 +449,13 @@ static void parse_variable_declaration(Parser *parser)
   } while (eat(parser, SYNTAX_KIND_COMMA));
   expect(parser, SYNTAX_KIND_COLON);
   parse_type(parser);
+  expect(parser, SYNTAX_KIND_SEMICOLON);
   node_finish(parser);
 }
 
 static void parse_variable_declaration_part(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_VARIABLE_DECLARATION);
+  node_start(parser, SYNTAX_KIND_VARIABLE_DECLARATION_PART);
   expect(parser, SYNTAX_KIND_KEYWORD_VAR);
   do {
     parse_variable_declaration(parser);
@@ -480,12 +518,22 @@ static void parse_program(Parser *parser)
   }
   parse_compound_statement(parser);
   expect(parser, SYNTAX_KIND_DOT);
+  expect(parser, SYNTAX_KIND_EOF);
   node_finish(parser);
 }
 
-const TokenTree *parser_parse(const char *source, unsigned long size, Vector *errors)
+int parser_parse(const char *source, unsigned long size, TokenTree *tree)
 {
   Parser parser;
-  token_cursor_init(&parser._cursor, source, size);
-  bump(&parser);
+  vector_init(&parser.parents, sizeof(Bookmark));
+  vector_init(&parser.children, sizeof(TokenNode));
+  token_cursor_init(&parser.cursor, source, size);
+  token_cursor_next(&parser.cursor, &parser.token.token);
+
+  parse_program(&parser);
+  *tree = *(TokenTree *) vector_data(&parser.children);
+
+  vector_deinit(&parser.parents);
+  vector_deinit(&parser.children);
+  return 1;
 }
