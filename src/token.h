@@ -12,7 +12,7 @@ typedef union TokenNode      TokenNode;
 struct TokenInfo {
   SyntaxKind    kind;
   unsigned long text_length;
-  char         *token;
+  char         *text;
 };
 
 struct Token {

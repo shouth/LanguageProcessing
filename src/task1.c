@@ -50,7 +50,7 @@ static unsigned long token_info_hash(const void *key)
   const TokenInfo *info = key;
   unsigned long    hash = FNV1A_INIT;
   hash                  = fnv1a(hash, &info->kind, sizeof(SyntaxKind));
-  hash                  = fnv1a(hash, info->token, info->text_length);
+  hash                  = fnv1a(hash, info->text, info->text_length);
   return hash;
 }
 
@@ -64,7 +64,7 @@ static int token_info_compare(const void *left, const void *right)
   } else if (l->kind > r->kind) {
     return 1;
   } else {
-    return strcmp(l->token, r->token);
+    return strcmp(l->text, r->text);
   }
 }
 
@@ -211,14 +211,14 @@ static void token_count_print(TokenCount *count)
     TokenCountEntry *token_entry       = vector_at(&count->token_counts, i);
     unsigned long    token_space_width = (max_token_display_width - get_token_display_width(token_entry))
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
-    printf("\"%s\"%*c%lu\n", token_entry->token.token, (int) token_space_width, ' ', token_entry->count);
+    printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
     if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER) {
       for (j = 0; j < vector_length(&count->identifer_counts); ++j) {
         TokenCountEntry *identifier_entry       = vector_at(&count->identifer_counts, j);
         unsigned long    identifier_space_width = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
           + (max_count_display_width - get_count_display_width(identifier_entry)) + 2;
-        printf("%s\"%s\"%*c%lu\n", identifier_prefix, identifier_entry->token.token, (int) identifier_space_width, ' ', identifier_entry->count);
+        printf("%s\"%s\"%*c%lu\n", identifier_prefix, identifier_entry->token.text, (int) identifier_space_width, ' ', identifier_entry->count);
       }
     }
   }

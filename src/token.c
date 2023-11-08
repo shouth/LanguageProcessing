@@ -41,17 +41,17 @@ void token_info_init(TokenInfo *info, SyntaxKind kind, const char *token, unsign
   info->kind        = kind;
   info->text_length = text_length;
   if (info->text_length) {
-    info->token = xmalloc(sizeof(char) * (text_length + 1));
-    strncpy(info->token, token, text_length);
-    info->token[text_length] = '\0';
+    info->text = xmalloc(sizeof(char) * (text_length + 1));
+    strncpy(info->text, token, text_length);
+    info->text[text_length] = '\0';
   } else {
-    info->token = NULL;
+    info->text = NULL;
   }
 }
 
 void token_info_deinit(TokenInfo *info)
 {
-  free(info->token);
+  free(info->text);
 }
 
 void token_init(Token *token, const TokenInfo *info, const TokenInfo *trivia, unsigned long trivia_length)
