@@ -69,7 +69,7 @@ void token_init(Token *token, const TokenInfo *info, const TokenInfo *trivia, un
 void token_deinit(Token *token)
 {
   unsigned long i;
-  token_info_deinit((TokenInfo *) &token);
+  token_info_deinit((TokenInfo *) token);
   for (i = 0; i < token->trivia_length; ++i) {
     token_info_deinit(token->trivia + i);
   }
