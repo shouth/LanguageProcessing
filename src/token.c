@@ -16,8 +16,8 @@ void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode *children
   }
   tree->children_length = children_length;
   if (tree->children_length) {
-    tree->children = xmalloc(sizeof(TokenNode *) * children_length);
-    memcpy(tree->children, children, sizeof(TokenNode *) * children_length);
+    tree->children = xmalloc(sizeof(TokenNode) * children_length);
+    memcpy(tree->children, children, sizeof(TokenNode) * children_length);
   } else {
     tree->children = NULL;
   }
