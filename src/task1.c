@@ -50,7 +50,7 @@ static unsigned long token_info_hash(const void *key)
   const TokenInfo *info = key;
   unsigned long    hash = FNV1A_INIT;
   hash                  = fnv1a(hash, &info->kind, sizeof(SyntaxKind));
-  hash                  = fnv1a(hash, info->token, info->length);
+  hash                  = fnv1a(hash, info->token, info->text_length);
   return hash;
 }
 
@@ -97,7 +97,7 @@ static void token_count_init(TokenCount *count, const char *source, unsigned lon
   map_init(&token_counts, &token_info_hash, &token_info_equal);
   map_init(&identifier_counts, &token_info_hash, &token_info_equal);
   while (lexer_lex(source + offset, length - offset, &token) && token.kind != SYNTAX_KIND_EOF) {
-    offset += token.length;
+    offset += token.text_length;
     if (syntax_kind_is_trivia(token.kind)) {
       token_info_deinit(&token);
       continue;
@@ -144,7 +144,7 @@ static void token_count_deinit(TokenCount *count)
 
 unsigned long get_token_display_width(TokenCountEntry *entry)
 {
-  return entry->token.length;
+  return entry->token.text_length;
 }
 
 unsigned long get_max_token_display_width(TokenCountEntry *entries, unsigned long length)

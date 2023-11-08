@@ -23,7 +23,7 @@ int token_cursor_next(TokenCursor *cursor, Token *token)
   vector_init(&trivia, sizeof(TokenInfo));
   while (1) {
     lexer_lex(cursor->_source + cursor->_offset, cursor->_size - cursor->_offset, &info);
-    cursor->_offset += info.length;
+    cursor->_offset += info.text_length;
     if (!syntax_kind_is_trivia(info.kind)) {
       if (info.kind == SYNTAX_KIND_EOF) {
         cursor->_offset = -1ul;
