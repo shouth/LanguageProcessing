@@ -7,18 +7,18 @@
 typedef struct Parser Parser;
 
 struct Parser {
-  TokenCursor  _cursor;
-  const Token *_token;
+  TokenCursor _cursor;
+  Token       _token;
 };
 
 static void bump(Parser *parser)
 {
-  parser->_token = token_cursor_next(&parser->_cursor);
+  token_cursor_next(&parser->_cursor, &parser->_token);
 }
 
 static int check(Parser *parser, SyntaxKind kind)
 {
-  return parser->_token->node.kind == kind;
+  return parser->_token.info.kind == kind;
 }
 
 static int eat(Parser *parser, SyntaxKind kind)
@@ -483,9 +483,9 @@ static void parse_program(Parser *parser)
   node_finish(parser);
 }
 
-const TokenTree *parser_parse(TokenContext *context, const char *source, unsigned long size, Vector *errors)
+const TokenTree *parser_parse(const char *source, unsigned long size, Vector *errors)
 {
   Parser parser;
-  token_cursor_init(&parser._cursor, context, source, size);
+  token_cursor_init(&parser._cursor, source, size);
   bump(&parser);
 }

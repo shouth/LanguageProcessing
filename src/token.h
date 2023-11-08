@@ -1,51 +1,42 @@
 #ifndef LEXICAL_TREE_H
 #define LEXICAL_TREE_H
 
-#include "map.h"
 #include "syntax_kind.h"
-#include "vector.h"
 
-typedef struct TokenContext     TokenContext;
-typedef struct TokenNode        TokenNode;
-typedef struct TokenTreeBuilder TokenTreeBuilder;
-typedef struct TokenTree        TokenTree;
-typedef struct Token            Token;
-
-struct TokenContext {
-  Map _cache;
-};
+typedef struct TokenNode TokenNode;
+typedef struct TokenTree TokenTree;
+typedef struct TokenInfo TokenInfo;
+typedef struct Token     Token;
 
 struct TokenNode {
   SyntaxKind kind;
 };
 
-struct TokenTreeBuilder {
-  Vector _parents;
-  Vector _children;
-  Vector _errors;
+struct TokenTree {
+  SyntaxKind    kind;
+  unsigned long length;
+  TokenNode   **children;
 };
 
-struct TokenTree {
-  TokenNode node;
-  Vector    children;
+struct TokenInfo {
+  SyntaxKind    kind;
+  unsigned long length;
+  char         *token;
 };
 
 struct Token {
-  TokenNode     node;
-  char         *string;
-  unsigned long size;
+  TokenInfo     info;
+  unsigned long length;
+  TokenInfo    *trivia;
 };
 
-void             token_context_init(TokenContext *context);
-const Token     *token_context_token(TokenContext *context, SyntaxKind kind, const char *string, unsigned long size);
-void             token_context_deinit(TokenContext *context);
-void             token_context_tree_builder(TokenContext *context, TokenTreeBuilder *builder);
-const TokenTree *token_context_tree(TokenContext *context, TokenTreeBuilder *builder);
+void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode *children, unsigned long length);
+void token_tree_deinit(TokenTree *tree);
 
-void          token_tree_builder_token(TokenTreeBuilder *builder, const Token *token);
-unsigned long token_tree_builder_checkpoint(TokenTreeBuilder *builder);
-void          token_tree_builder_node_start(TokenTreeBuilder *builder, SyntaxKind kind);
-void          token_tree_builder_node_start_at(TokenTreeBuilder *builder, SyntaxKind kind, unsigned long checkpoint);
-void          token_tree_builder_node_end(TokenTreeBuilder *builder);
+void token_info_init(TokenInfo *info, SyntaxKind kind, const char *token, unsigned long length);
+void token_info_deinit(TokenInfo *info);
+
+void token_init(Token *token, const TokenInfo *info, const TokenInfo *trivia, unsigned long length);
+void token_deinit(Token *token);
 
 #endif

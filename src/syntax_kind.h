@@ -59,6 +59,8 @@ typedef enum {
   SYNTAX_KIND_BRACES_COMMENT,
   SYNTAX_KIND_C_COMMENT,
 
+  SYNTAX_KIND_EOF,
+
   SYNTAX_KIND_PROGRAM,
   SYNTAX_KIND_VARIABLE_DECLARATION_PART,
   SYNTAX_KIND_VARIABLE_DECLARATION,
@@ -86,11 +88,11 @@ typedef enum {
   SYNTAX_KIND_NOT_EXPRESSION,
   SYNTAX_KIND_CAST_EXPRESSION,
   SYNTAX_KIND_EMPTY_EXPRESSION,
-
   SYNTAX_KIND_ERROR
 } SyntaxKind;
 
 SyntaxKind syntax_kind_from_keyword(const char *string, unsigned long size);
 int        syntax_kind_is_token(SyntaxKind kind);
+int        syntax_kind_is_trivia(SyntaxKind kind);
 
 #endif

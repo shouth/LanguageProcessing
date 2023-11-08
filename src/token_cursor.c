@@ -1,20 +1,38 @@
 #include "token_cursor.h"
 #include "lexer.h"
+#include "syntax_kind.h"
 #include "token.h"
+#include "vector.h"
 
-void token_cursor_init(TokenCursor *cursor, TokenContext *context, const char *source, unsigned long size)
+void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long size)
 {
-  cursor->_context = context;
-  cursor->_source  = source;
-  cursor->_size    = size;
-  cursor->_offset  = 0;
+  cursor->_source = source;
+  cursor->_size   = size;
+  cursor->_offset = 0;
 }
 
-const Token *token_cursor_next(TokenCursor *cursor)
+int token_cursor_next(TokenCursor *cursor, Token *token)
 {
-  const Token *token = lexer_lex(cursor->_context, cursor->_source + cursor->_offset, cursor->_size - cursor->_offset);
-  if (token) {
-    cursor->_offset += token->size;
+  TokenInfo info;
+  Vector    trivia;
+
+  if (cursor->_offset == -1ul) {
+    return 0;
   }
-  return token;
+
+  vector_init(&trivia, sizeof(TokenInfo));
+  while (1) {
+    lexer_lex(cursor->_source + cursor->_offset, cursor->_size - cursor->_offset, &info);
+    cursor->_offset += info.length;
+    if (!syntax_kind_is_trivia(info.kind)) {
+      if (info.kind == SYNTAX_KIND_EOF) {
+        cursor->_offset = -1ul;
+      }
+      vector_fit(&trivia);
+      token_init(token, &info, vector_data(&trivia), vector_length(&trivia));
+      vector_deinit(&trivia);
+      return 1;
+    }
+    vector_push(&trivia, &info);
+  }
 }

@@ -52,5 +52,10 @@ SyntaxKind syntax_kind_from_keyword(const char *string, unsigned long size)
 
 int syntax_kind_is_token(SyntaxKind kind)
 {
-  return kind <= SYNTAX_KIND_C_COMMENT;
+  return kind <= SYNTAX_KIND_EOF;
+}
+
+int syntax_kind_is_trivia(SyntaxKind kind)
+{
+  return kind >= SYNTAX_KIND_SPACE && kind <= SYNTAX_KIND_C_COMMENT;
 }

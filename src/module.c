@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "module.h"
-#include "token.h"
 #include "token_cursor.h"
 #include "utility.h"
 
@@ -16,13 +15,10 @@ void module_init(Module *module, const char *filename)
 
   module->_source      = NULL;
   module->_source_size = -1ul;
-
-  token_context_init(&module->_context);
 }
 
 void module_deinit(Module *module)
 {
-  token_context_deinit(&module->_context);
   free(module->_filename);
   free(module->_source);
 }
@@ -67,7 +63,7 @@ int module_token_cursor(Module *module, TokenCursor *cursor)
 {
   int result = !!module_source(module);
   if (result) {
-    token_cursor_init(cursor, &module->_context, module_source(module), module_source_size(module));
+    token_cursor_init(cursor, module_source(module), module_source_size(module));
   }
   return result;
 }

@@ -3,6 +3,6 @@
 
 #include "token.h"
 
-const Token *lexer_lex(TokenContext *context, const char *source, unsigned long size);
+int lexer_lex(const char *source, unsigned long size, TokenInfo *info);
 
 #endif

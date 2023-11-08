@@ -4,6 +4,6 @@
 #include "token.h"
 #include "vector.h"
 
-const TokenTree *parser_parse(TokenContext *context, const char *source, unsigned long size, Vector *errors);
+const TokenTree *parser_parse(const char *source, unsigned long size, Vector *errors);
 
 #endif

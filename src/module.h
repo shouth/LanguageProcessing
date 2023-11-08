@@ -1,7 +1,6 @@
 #ifndef MODULE_H
 #define MODULE_H
 
-#include "token.h"
 #include "token_cursor.h"
 
 typedef struct Module Module;
@@ -11,7 +10,6 @@ struct Module {
   unsigned long _filename_size;
   char         *_source;
   unsigned long _source_size;
-  TokenContext  _context;
 };
 
 void          module_init(Module *module, const char *filename);
