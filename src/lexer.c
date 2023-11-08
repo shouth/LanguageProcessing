@@ -211,7 +211,7 @@ static int token_symbol(Lexer *lexer, TokenInfo *info)
     if (eat(lexer, '=')) {
       return tokenize(lexer, SYNTAX_KIND_ASSIGN, info);
     } else {
-      return tokenize(lexer, SYNTAX_KIND_EQUAL, info);
+      return tokenize(lexer, SYNTAX_KIND_COLON, info);
     }
   } else if (eat(lexer, '.')) {
     return tokenize(lexer, SYNTAX_KIND_DOT, info);
