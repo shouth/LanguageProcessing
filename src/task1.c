@@ -3,231 +3,231 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "lexer.h"
 #include "map.h"
 #include "module.h"
 #include "syntax_kind.h"
 #include "tasks.h"
 #include "token.h"
-#include "token_cursor.h"
 #include "utility.h"
 #include "vector.h"
-
-#define TOKEN_COUNT_ENTRY_LENGTH (SYNTAX_KIND_KEYWORD_BREAK + 1)
 
 typedef struct TokenCountEntry TokenCountEntry;
 typedef struct TokenCount      TokenCount;
 
 struct TokenCountEntry {
-  Token        *tokens;
+  TokenInfo     token;
   unsigned long count;
 };
 
 struct TokenCount {
-  TokenCountEntry  entries[TOKEN_COUNT_ENTRY_LENGTH];
-  TokenCountEntry *identifiers;
-  unsigned long    identifiers_length;
+  Vector token_counts;
+  Vector identifer_counts;
 };
 
-static unsigned long token_hasher(const void *token)
+static void increment_token(Map *counts, TokenInfo *info)
 {
-  return fnv1a(FNV1A_INIT, token, strlen(token));
+  TokenCountEntry *counter;
+  MapEntry         entry;
+
+  counter        = xmalloc(sizeof(TokenCountEntry));
+  counter->token = *info;
+  counter->count = 0;
+
+  if (map_entry(counts, &counter->token, &entry)) {
+    token_info_deinit(&counter->token);
+    free(counter);
+    counter = map_entry_value(&entry);
+  } else {
+    map_entry_update(&entry, counter);
+  }
+
+  ++counter->count;
 }
 
-static int token_comparator(const void *left, const void *right)
+static unsigned long token_info_hash(const void *key)
 {
-  return !strcmp(left, right);
+  const TokenInfo *info = key;
+  unsigned long    hash = FNV1A_INIT;
+  hash                  = fnv1a(hash, &info->kind, sizeof(SyntaxKind));
+  hash                  = fnv1a(hash, info->token, info->length);
+  return hash;
 }
 
-static int identifier_comparator(const void *left, const void *right)
+static int token_info_compare(const void *left, const void *right)
 {
-  const TokenCountEntry *l = left;
-  const TokenCountEntry *r = right;
-  return strcmp(l->tokens->info.token, r->tokens->info.token);
+  const TokenInfo *l = left;
+  const TokenInfo *r = right;
+
+  if (l->kind < r->kind) {
+    return -1;
+  } else if (l->kind > r->kind) {
+    return 1;
+  } else {
+    return strcmp(l->token, r->token);
+  }
 }
 
-static void token_count_init(TokenCount *token_count, TokenCursor *cursor)
+static int token_info_equal(const void *left, const void *right)
+{
+  return !token_info_compare(left, right);
+}
+
+static void list_token(Map *counts, Vector *list)
+{
+  MapIterator iterator;
+  map_iterator(&iterator, counts);
+  vector_init_with_capacity(list, sizeof(TokenCountEntry), map_size(counts));
+  while (map_iterator_next(&iterator)) {
+    vector_push(list, map_iterator_value(&iterator));
+    free(map_iterator_value(&iterator));
+  }
+  map_deinit(counts);
+  qsort(vector_data(list), vector_length(list), sizeof(TokenCountEntry), &token_info_compare);
+}
+
+static void token_count_init(TokenCount *count, const char *source, unsigned long length)
+{
+  TokenInfo token;
+  Map       token_counts;
+  Map       identifier_counts;
+
+  unsigned long offset = 0;
+
+  map_init(&token_counts, &token_info_hash, &token_info_equal);
+  map_init(&identifier_counts, &token_info_hash, &token_info_equal);
+  while (lexer_lex(source + offset, length - offset, &token) && token.kind != SYNTAX_KIND_EOF) {
+    offset += token.length;
+    if (syntax_kind_is_trivia(token.kind)) {
+      token_info_deinit(&token);
+      continue;
+    }
+
+    switch (token.kind) {
+    case SYNTAX_KIND_IDENTIFIER:
+      increment_token(&identifier_counts, &token);
+      token_info_init(&token, SYNTAX_KIND_IDENTIFIER, "NAME", 4);
+      break;
+    case SYNTAX_KIND_INTEGER:
+      token_info_deinit(&token);
+      token_info_init(&token, SYNTAX_KIND_INTEGER, "NUMBER", 6);
+      break;
+    case SYNTAX_KIND_STRING:
+      token_info_deinit(&token);
+      token_info_init(&token, SYNTAX_KIND_STRING, "STRING", 6);
+      break;
+    default:
+      /* do nothing */
+      break;
+    }
+    increment_token(&token_counts, &token);
+  }
+  token_info_deinit(&token);
+  list_token(&token_counts, &count->token_counts);
+  list_token(&identifier_counts, &count->identifer_counts);
+}
+
+static void token_count_deinit(TokenCount *count)
 {
   unsigned long i;
-  {
-    Vector entries[TOKEN_COUNT_ENTRY_LENGTH];
 
-    for (i = 0; i < TOKEN_COUNT_ENTRY_LENGTH; ++i) {
-      vector_init(entries + i, sizeof(Token));
-    }
-
-    {
-      Token token;
-      while (token_cursor_next(cursor, &token)) {
-        if (token.info.kind < TOKEN_COUNT_ENTRY_LENGTH) {
-          vector_push(entries + token.info.kind, &token);
-        } else {
-          token_deinit(&token);
-        }
-      }
-    }
-
-    for (i = 0; i < TOKEN_COUNT_ENTRY_LENGTH; ++i) {
-      TokenCountEntry *entry = token_count->entries + i;
-      vector_fit(entries + i);
-      entry->count  = vector_length(entries + i);
-      entry->tokens = vector_steal(entries + i);
-    }
+  for (i = 0; i < vector_length(&count->token_counts); ++i) {
+    token_info_deinit(vector_at(&count->token_counts, i));
   }
+  vector_deinit(&count->token_counts);
 
-  {
-    TokenCountEntry *identifier = token_count->entries + SYNTAX_KIND_IDENTIFIER;
-    Map              identifiers;
-    map_init(&identifiers, &token_hasher, &token_comparator);
-    for (i = 0; i < identifier->count; ++i) {
-      Token  *token = identifier->tokens + i;
-      Vector *vector;
-      {
-        MapEntry entry;
-        if (map_entry(&identifiers, token->info.token, &entry)) {
-          vector = map_entry_value(&entry);
-        } else {
-          vector = xmalloc(sizeof(Vector));
-          vector_init(vector, sizeof(Token));
-          map_entry_update(&entry, vector);
-        }
-      }
-      vector_push(vector, token);
-    }
-
-    token_count->identifiers_length = map_size(&identifiers);
-    token_count->identifiers        = xmalloc(sizeof(TokenCountEntry) * token_count->identifiers_length);
-    {
-      MapIterator iterator;
-      map_iterator(&iterator, &identifiers);
-      for (i = 0; map_iterator_next(&iterator); ++i) {
-        TokenCountEntry *entry = token_count->identifiers + i;
-        vector_fit(map_iterator_value(&iterator));
-        entry->count  = vector_length(map_iterator_value(&iterator));
-        entry->tokens = vector_steal(map_iterator_value(&iterator));
-        free(map_iterator_value(&iterator));
-      }
-    }
-    qsort(token_count->identifiers, token_count->identifiers_length, sizeof(TokenCountEntry), &identifier_comparator);
-    map_deinit(&identifiers);
+  for (i = 0; i < vector_length(&count->identifer_counts); ++i) {
+    token_info_deinit(vector_at(&count->identifer_counts, i));
   }
+  vector_deinit(&count->identifer_counts);
 }
 
-static const char *token_kind_string(Token *token)
+unsigned long get_token_display_width(TokenCountEntry *entry)
 {
-  switch (token->info.kind) {
-  case SYNTAX_KIND_IDENTIFIER:
-    return "NAME";
-  case SYNTAX_KIND_INTEGER:
-    return "NUMBER";
-  case SYNTAX_KIND_STRING:
-    return "STRING";
-  default:
-    return token->info.token;
-  }
+  return entry->token.length;
 }
 
-static unsigned long get_name_display_width(TokenCountEntry *entries, unsigned long length, int direct)
+unsigned long get_max_token_display_width(TokenCountEntry *entries, unsigned long length)
 {
-  unsigned long i;
   unsigned long result = 0;
-
+  unsigned long i;
   for (i = 0; i < length; ++i) {
-    TokenCountEntry *entry = entries + i;
-    if (entry->count > 0) {
-      unsigned long width = direct ? entry->tokens->info.length : strlen(token_kind_string(entry->tokens));
-      if (result < width) {
-        result = width;
-      }
+    unsigned long width = get_token_display_width(entries + i);
+    if (result < width) {
+      result = width;
     }
   }
   return result;
 }
 
-static unsigned long get_count_display_width(TokenCountEntry *entries, unsigned long length)
+unsigned long get_count_display_width(TokenCountEntry *entry)
 {
-  unsigned long i;
-  unsigned long result = 0;
+  unsigned long result = 1;
+  unsigned long count  = entry->count;
+  while (count > 9) {
+    ++result;
+    count /= 10;
+  }
+  return result;
+}
 
+unsigned long get_max_count_display_width(TokenCountEntry *entries, unsigned long length)
+{
+  unsigned long result = 0;
+  unsigned long i;
   for (i = 0; i < length; ++i) {
-    TokenCountEntry *entry = entries + i;
-    if (entry->count > 0) {
-      char          buffer[32];
-      unsigned long width = sprintf(buffer, "%ld", entry->count);
-      if (result < width) {
-        result = width;
-      }
+    unsigned long width = get_count_display_width(entries + i);
+    if (result < width) {
+      result = width;
     }
   }
   return result;
 }
 
-static void token_count_print(TokenCount *token_count)
+static void token_count_print(TokenCount *count)
 {
-  SyntaxKind    kind;
-  unsigned long name_display_width;
-  unsigned long count_display_width;
-  unsigned long identifier_padding = sizeof("    \"Identifier\" ") - 1;
+  unsigned long i, j;
+  const char   *identifier_prefix       = "    \"Identifier\" ";
+  unsigned long identifier_prefix_width = strlen(identifier_prefix);
+
+  unsigned long max_token_display_width;
+  unsigned long max_count_display_width;
 
   {
-    unsigned long token_display_width      = get_name_display_width(token_count->entries, TOKEN_COUNT_ENTRY_LENGTH, 0);
-    unsigned long identifier_display_width = identifier_padding + get_name_display_width(token_count->identifiers, token_count->identifiers_length, 1);
+    unsigned long max_token_width      = get_max_token_display_width(vector_data(&count->token_counts), vector_length(&count->token_counts));
+    unsigned long max_identifier_width = identifier_prefix_width + get_max_token_display_width(vector_data(&count->identifer_counts), vector_length(&count->identifer_counts));
 
-    name_display_width = token_display_width > identifier_display_width ? token_display_width : identifier_display_width;
+    max_token_display_width = max_token_width > max_identifier_width ? max_token_width : max_identifier_width;
   }
 
   {
-    unsigned long token_count_display_width      = get_count_display_width(token_count->entries, TOKEN_COUNT_ENTRY_LENGTH);
-    unsigned long identifier_count_display_width = get_count_display_width(token_count->identifiers, token_count->identifiers_length);
+    unsigned long max_token_count_width      = get_max_count_display_width(vector_data(&count->token_counts), vector_length(&count->token_counts));
+    unsigned long max_identifier_count_width = get_max_count_display_width(vector_data(&count->identifer_counts), vector_length(&count->identifer_counts));
 
-    count_display_width = token_count_display_width > identifier_count_display_width ? token_count_display_width : identifier_count_display_width;
+    max_count_display_width = max_token_count_width > max_identifier_count_width ? max_token_count_width : max_identifier_count_width;
   }
 
-  for (kind = 0; kind < TOKEN_COUNT_ENTRY_LENGTH; ++kind) {
-    TokenCountEntry *entry = token_count->entries + kind;
-    if (entry->count > 0) {
-      char buffer[32];
+  for (i = 0; i < vector_length(&count->token_counts); ++i) {
+    TokenCountEntry *token_entry       = vector_at(&count->token_counts, i);
+    unsigned long    token_space_width = (max_token_display_width - get_token_display_width(token_entry))
+      + (max_count_display_width - get_count_display_width(token_entry)) + 2;
+    printf("\"%s\"%*c%lu\n", token_entry->token.token, (int) token_space_width, ' ', token_entry->count);
 
-      unsigned long space_width = 2 + (name_display_width - strlen(token_kind_string(entry->tokens)))
-        + (count_display_width - sprintf(buffer, "%ld", entry->count));
-      printf("\"%s\"%*c%lu\n", token_kind_string(entry->tokens), (int) space_width, ' ', entry->count);
-
-      if (entry->tokens->info.kind == SYNTAX_KIND_IDENTIFIER) {
-        unsigned long i;
-        for (i = 0; i < token_count->identifiers_length; ++i) {
-          TokenCountEntry *identifier = token_count->identifiers + i;
-          space_width                 = 2 + (name_display_width - identifier_padding - identifier->tokens->info.length)
-            + (count_display_width - sprintf(buffer, "%ld", identifier->count));
-          printf("    \"Identifier\" \"%s\"%*c%lu\n", identifier->tokens->info.token, (int) space_width, ' ', identifier->count);
-        }
+    if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER) {
+      for (j = 0; j < vector_length(&count->identifer_counts); ++j) {
+        TokenCountEntry *identifier_entry       = vector_at(&count->identifer_counts, j);
+        unsigned long    identifier_space_width = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
+          + (max_count_display_width - get_count_display_width(identifier_entry)) + 2;
+        printf("%s\"%s\"%*c%lu\n", identifier_prefix, identifier_entry->token.token, (int) identifier_space_width, ' ', identifier_entry->count);
       }
     }
   }
-}
-
-static void token_count_deinit(TokenCount *token_count)
-{
-  unsigned long i;
-  for (i = 0; i < TOKEN_COUNT_ENTRY_LENGTH; ++i) {
-    TokenCountEntry *entry = token_count->entries + i;
-    unsigned long    i;
-    for (i = 0; i < entry->count; ++i) {
-      token_deinit(entry->tokens + i);
-    }
-    free(entry->tokens);
-  }
-
-  for (i = 0; i < token_count->identifiers_length; ++i) {
-    TokenCountEntry *entry = token_count->identifiers + i;
-    free(entry->tokens);
-  }
-  free(token_count->identifiers);
 }
 
 void task1(int argc, const char **argv)
 {
-  Module      module;
-  TokenCursor cursor;
-  TokenCount  token_count;
+  Module     module;
+  TokenCount counter;
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
@@ -235,11 +235,8 @@ void task1(int argc, const char **argv)
   }
 
   module_init(&module, argv[1]);
-  module_token_cursor(&module, &cursor);
-
-  token_count_init(&token_count, &cursor);
-  token_count_print(&token_count);
-  token_count_deinit(&token_count);
-
+  token_count_init(&counter, module_source(&module), module_source_size(&module));
+  token_count_print(&counter);
+  token_count_deinit(&counter);
   module_deinit(&module);
 }
