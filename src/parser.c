@@ -1,13 +1,13 @@
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "parser.h"
 #include "syntax_kind.h"
 #include "token.h"
 #include "token_cursor.h"
 #include "utility.h"
 #include "vector.h"
-
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 typedef struct Parser Parser;
 
@@ -72,14 +72,17 @@ static void node_finish(Parser *parser, SyntaxKind kind)
   unsigned long checkpoint = *(unsigned long *) vector_back(&parser->parents);
 
   vector_pop(&parser->parents);
-
   token_tree_init(tree, kind, vector_at(&parser->children, checkpoint), vector_length(&parser->children) - checkpoint);
-
   while (vector_length(&parser->children) > checkpoint) {
     vector_pop(&parser->children);
   }
-
   vector_push(&parser->children, &tree);
+}
+
+static void node_null(Parser *parser)
+{
+  TokenNode *node = NULL;
+  vector_push(&parser->children, &node);
 }
 
 static int check_standard_type(Parser *parser)
@@ -129,6 +132,9 @@ static void parse_variable(Parser *parser)
   if (eat(parser, SYNTAX_KIND_LEFT_BRACKET)) {
     parse_expression(parser);
     expect(parser, SYNTAX_KIND_RIGHT_BRACKET);
+  } else {
+    node_null(parser);
+    node_null(parser);
   }
   node_finish(parser, SYNTAX_KIND_VARIABLE);
 }
@@ -289,6 +295,9 @@ static void parse_if_statement(Parser *parser)
   parse_statement(parser);
   if (eat(parser, SYNTAX_KIND_KEYWORD_ELSE)) {
     parse_statement(parser);
+  } else {
+    node_null(parser);
+    node_null(parser);
   }
   node_finish(parser, SYNTAX_KIND_IF_STATEMENT);
 }
@@ -328,6 +337,8 @@ static void parse_call_statement(Parser *parser)
   expect(parser, SYNTAX_KIND_IDENTIFIER);
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
     parse_actual_parameter_list(parser);
+  } else {
+    node_null(parser);
   }
   node_finish(parser, SYNTAX_KIND_CALL_STATEMENT);
 }
@@ -358,6 +369,8 @@ static void parse_input_statement(Parser *parser)
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
     parse_input_list(parser);
+  } else {
+    node_null(parser);
   }
   node_finish(parser, SYNTAX_KIND_INPUT_STATEMENT);
 }
@@ -368,6 +381,9 @@ static void parse_output_value(Parser *parser)
   parse_expression(parser);
   if (eat(parser, SYNTAX_KIND_COLON)) {
     expect(parser, SYNTAX_KIND_INTEGER);
+  } else {
+    node_null(parser);
+    node_null(parser);
   }
   node_finish(parser, SYNTAX_KIND_OUTPUT_VALUE);
 }
@@ -391,6 +407,8 @@ static void parse_output_statement(Parser *parser)
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
     parse_output_list(parser);
+  } else {
+    node_null(parser);
   }
   node_finish(parser, SYNTAX_KIND_OUTPUT_STATEMENT);
 }
@@ -488,10 +506,14 @@ static void parse_procedure_declaration(Parser *parser)
   expect(parser, SYNTAX_KIND_IDENTIFIER);
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
     parse_formal_parameter_list(parser);
+  } else {
+    node_null(parser);
   }
   expect(parser, SYNTAX_KIND_SEMICOLON);
   if (check(parser, SYNTAX_KIND_KEYWORD_VAR)) {
     parse_variable_declaration_part(parser);
+  } else {
+    node_null(parser);
   }
   parse_compound_statement(parser);
   expect(parser, SYNTAX_KIND_SEMICOLON);
