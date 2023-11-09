@@ -1,6 +1,7 @@
 #ifndef MODULE_H
 #define MODULE_H
 
+#include "token.h"
 #include "token_cursor.h"
 
 typedef struct Module Module;
@@ -17,5 +18,6 @@ void          module_deinit(Module *module);
 const char   *module_source(Module *module);
 unsigned long module_source_size(Module *module);
 int           module_token_cursor(Module *module, TokenCursor *cursor);
+int           module_token_tree(Module *module, TokenTree *tree);
 
 #endif

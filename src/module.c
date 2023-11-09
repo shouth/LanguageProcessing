@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "module.h"
+#include "parser.h"
 #include "token_cursor.h"
 #include "utility.h"
 
@@ -64,6 +65,15 @@ int module_token_cursor(Module *module, TokenCursor *cursor)
   int result = !!module_source(module);
   if (result) {
     token_cursor_init(cursor, module_source(module), module_source_size(module));
+  }
+  return result;
+}
+
+int module_token_tree(Module *module, TokenTree *tree)
+{
+  int result = !!module_source(module);
+  if (result) {
+    parser_parse(module_source(module), module_source_size(module), tree);
   }
   return result;
 }
