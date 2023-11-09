@@ -3,11 +3,10 @@
 
 #include "syntax_kind.h"
 
-typedef struct TokenInfo     TokenInfo;
-typedef struct Token         Token;
-typedef struct TokenTree     TokenTree;
-typedef struct TokenNodeBase TokenNodeBase;
-typedef union TokenNode      TokenNode;
+typedef struct TokenInfo TokenInfo;
+typedef struct Token     Token;
+typedef struct TokenTree TokenTree;
+typedef struct TokenNode TokenNode;
 
 struct TokenInfo {
   SyntaxKind    kind;
@@ -27,21 +26,15 @@ struct TokenTree {
   SyntaxKind    kind;
   unsigned long text_length;
   unsigned long children_length;
-  TokenNode    *children;
+  TokenNode   **children;
 };
 
-struct TokenNodeBase {
+struct TokenNode {
   SyntaxKind    kind;
   unsigned long text_length;
 };
 
-union TokenNode {
-  TokenNodeBase common;
-  Token         token;
-  TokenTree     tree;
-};
-
-void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode *children, unsigned long children_length);
+void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode **children, unsigned long children_length);
 void token_tree_deinit(TokenTree *tree);
 
 void token_info_init(TokenInfo *info, SyntaxKind kind, const char *token, unsigned long text_length);

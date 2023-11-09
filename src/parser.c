@@ -2,6 +2,7 @@
 #include "syntax_kind.h"
 #include "token.h"
 #include "token_cursor.h"
+#include "utility.h"
 #include "vector.h"
 
 #include <assert.h>
@@ -18,20 +19,22 @@ struct Bookmark {
 
 struct Parser {
   TokenCursor cursor;
-  TokenNode   token;
+  Token       token;
   Vector      parents;
   Vector      children;
 };
 
 static void bump(Parser *parser)
 {
-  vector_push(&parser->children, &parser->token);
-  token_cursor_next(&parser->cursor, &parser->token.token);
+  Token *token = xmalloc(sizeof(Token));
+  *token       = parser->token;
+  vector_push(&parser->children, &token);
+  token_cursor_next(&parser->cursor, &parser->token);
 }
 
 static int check(Parser *parser, SyntaxKind kind)
 {
-  return parser->token.token.kind == kind;
+  return parser->token.kind == kind;
 }
 
 static int eat(Parser *parser, SyntaxKind kind)
@@ -47,7 +50,7 @@ static int expect(Parser *parser, SyntaxKind kind)
 {
   int result = eat(parser, kind);
   if (!result) {
-    printf("expected: %d, actual: %d (%s)\n", kind, parser->token.token.kind, parser->token.token.text);
+    printf("expected: %d, actual: %d (%s)\n", kind, parser->token.kind, parser->token.text);
     exit(EXIT_FAILURE);
     /* TODO: create an error object and push to parser */
   }
@@ -75,13 +78,13 @@ static void node_start(Parser *parser, SyntaxKind kind)
 
 static void node_finish(Parser *parser)
 {
-  TokenNode tree;
-  Bookmark  bookmark = *(Bookmark *) vector_back(&parser->parents);
+  TokenTree *tree     = xmalloc(sizeof(TokenTree));
+  Bookmark   bookmark = *(Bookmark *) vector_back(&parser->parents);
 
   assert(vector_length(&parser->children) >= bookmark.checkpoint);
   vector_pop(&parser->parents);
 
-  token_tree_init(&tree.tree, bookmark.kind,
+  token_tree_init(tree, bookmark.kind,
     vector_at(&parser->children, bookmark.checkpoint),
     vector_length(&parser->children) - bookmark.checkpoint);
 
@@ -89,7 +92,7 @@ static void node_finish(Parser *parser)
     vector_pop(&parser->children);
   }
 
-  vector_push(&parser->children, &tree.tree);
+  vector_push(&parser->children, &tree);
 }
 
 static int check_standard_type(Parser *parser)
@@ -533,12 +536,13 @@ int parser_parse(const char *source, unsigned long size, TokenTree *tree)
 {
   Parser parser;
   vector_init(&parser.parents, sizeof(Bookmark));
-  vector_init(&parser.children, sizeof(TokenNode));
+  vector_init(&parser.children, sizeof(TokenNode *));
   token_cursor_init(&parser.cursor, source, size);
-  token_cursor_next(&parser.cursor, &parser.token.token);
+  token_cursor_next(&parser.cursor, &parser.token);
 
   parse_program(&parser);
-  *tree = *(TokenTree *) vector_data(&parser.children);
+  *tree = **(TokenTree **) vector_data(&parser.children);
+  free(*(TokenNode **) vector_data(&parser.children));
 
   vector_deinit(&parser.parents);
   vector_deinit(&parser.children);

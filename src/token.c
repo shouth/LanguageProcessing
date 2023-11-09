@@ -7,24 +7,25 @@
 #include "token.h"
 #include "utility.h"
 
-void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode *children, unsigned long children_length)
+void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode **children, unsigned long children_length)
 {
   unsigned long i;
   tree->kind        = kind;
   tree->text_length = 0;
   for (i = 0; i < children_length; ++i) {
-    if (syntax_kind_is_token(children[i].common.kind)) {
+    if (syntax_kind_is_token(children[i]->kind)) {
       unsigned long j;
-      for (j = 0; j < children[i].token.trivia_length; ++j) {
-        tree->text_length += children[i].token.trivia[j].text_length;
+      Token *token = (Token *) children[i];
+      for (j = 0; j < token->trivia_length; ++j) {
+        tree->text_length += token->trivia[j].text_length;
       }
     }
-    tree->text_length += children[i].common.text_length;
+    tree->text_length += children[i]->text_length;
   }
   tree->children_length = children_length;
   if (tree->children_length) {
-    tree->children = xmalloc(sizeof(TokenNode) * children_length);
-    memcpy(tree->children, children, sizeof(TokenNode) * children_length);
+    tree->children = xmalloc(sizeof(TokenNode *) * children_length);
+    memcpy(tree->children, children, sizeof(TokenNode *) * children_length);
   } else {
     tree->children = NULL;
   }
@@ -34,11 +35,12 @@ void token_tree_deinit(TokenTree *tree)
 {
   unsigned long i;
   for (i = 0; i < tree->children_length; ++i) {
-    if (syntax_kind_is_token(tree->children[i].common.kind)) {
-      token_deinit((Token *) &tree->children[i].token);
+    if (syntax_kind_is_token(tree->children[i]->kind)) {
+      token_deinit((Token *) tree->children[i]);
     } else {
-      token_tree_deinit((TokenTree *) &tree->children[i].tree);
+      token_tree_deinit((TokenTree *) tree->children[i]);
     }
+    free(tree->children[i]);
   }
   free(tree->children);
 }
@@ -85,23 +87,25 @@ void token_deinit(Token *token)
 
 static void token_node_print_impl(TokenNode *node, unsigned long depth, unsigned long offset)
 {
-  if (syntax_kind_is_token(node->common.kind)) {
+  if (syntax_kind_is_token(node->kind)) {
+    Token *token = (Token *) node;
     printf("%*.s%s @ %lu..%lu \"%s\"\n", (int) depth * 2, "",
-      syntax_kind_to_string(node->token.kind), offset, offset + node->token.text_length,
-      node->token.text);
+      syntax_kind_to_string(token->kind), offset, offset + token->text_length, token->text);
   } else {
     unsigned long i;
+    TokenTree *tree = (TokenTree *) node;
     printf("%*.s%s @ %lu..%lu\n", (int) depth * 2, "",
-      syntax_kind_to_string(node->tree.kind), offset, offset + node->tree.text_length);
-    for (i = 0; i < node->tree.children_length; ++i) {
-      if (syntax_kind_is_token(node->tree.children[i].common.kind)) {
+      syntax_kind_to_string(tree->kind), offset, offset + tree->text_length);
+    for (i = 0; i < tree->children_length; ++i) {
+      if (syntax_kind_is_token(tree->children[i]->kind)) {
         unsigned long j;
-        for (j = 0; j < node->tree.children[i].token.trivia_length; ++j) {
-          offset += node->tree.children[i].token.trivia[j].text_length;
+        Token *token = (Token *) tree->children[i];
+        for (j = 0; j < token->trivia_length; ++j) {
+          offset += token->trivia[j].text_length;
         }
       }
-      token_node_print_impl(node->tree.children + i, depth + 1, offset);
-      offset += node->tree.children[i].common.text_length;
+      token_node_print_impl(tree->children[i], depth + 1, offset);
+      offset += tree->children[i]->text_length;
     }
   }
 }
