@@ -50,4 +50,6 @@ void token_info_deinit(TokenInfo *info);
 void token_init(Token *token, const TokenInfo *info, const TokenInfo *trivia, unsigned long trivia_length);
 void token_deinit(Token *token);
 
+void token_node_print(TokenNode *node);
+
 #endif

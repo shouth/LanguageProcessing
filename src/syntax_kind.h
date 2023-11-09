@@ -5,7 +5,6 @@ typedef enum {
   SYNTAX_KIND_IDENTIFIER,
   SYNTAX_KIND_INTEGER,
   SYNTAX_KIND_STRING,
-
   SYNTAX_KIND_PLUS,
   SYNTAX_KIND_MINUS,
   SYNTAX_KIND_STAR,
@@ -24,7 +23,6 @@ typedef enum {
   SYNTAX_KIND_COMMA,
   SYNTAX_KIND_COLON,
   SYNTAX_KIND_SEMICOLON,
-
   SYNTAX_KIND_KEYWORD_PROGRAM,
   SYNTAX_KIND_KEYWORD_VAR,
   SYNTAX_KIND_KEYWORD_ARRAY,
@@ -53,14 +51,11 @@ typedef enum {
   SYNTAX_KIND_KEYWORD_TRUE,
   SYNTAX_KIND_KEYWORD_FALSE,
   SYNTAX_KIND_KEYWORD_BREAK,
-
   SYNTAX_KIND_SPACE,
   SYNTAX_KIND_NEWLINE,
   SYNTAX_KIND_BRACES_COMMENT,
   SYNTAX_KIND_C_COMMENT,
-
   SYNTAX_KIND_EOF,
-
   SYNTAX_KIND_PROGRAM,
   SYNTAX_KIND_VARIABLE_DECLARATION_PART,
   SYNTAX_KIND_VARIABLE_DECLARATION,
@@ -91,8 +86,9 @@ typedef enum {
   SYNTAX_KIND_ERROR
 } SyntaxKind;
 
-SyntaxKind syntax_kind_from_keyword(const char *string, unsigned long size);
-int        syntax_kind_is_token(SyntaxKind kind);
-int        syntax_kind_is_trivia(SyntaxKind kind);
+SyntaxKind  syntax_kind_from_keyword(const char *string, unsigned long size);
+int         syntax_kind_is_token(SyntaxKind kind);
+int         syntax_kind_is_trivia(SyntaxKind kind);
+const char *syntax_kind_to_string(SyntaxKind kind);
 
 #endif
