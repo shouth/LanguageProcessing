@@ -9,6 +9,7 @@ struct TokenCursor {
   const char   *_source;
   unsigned long _size;
   unsigned long _offset;
+  TokenInfo     _info;
 };
 
 void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long size);
