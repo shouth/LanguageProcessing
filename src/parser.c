@@ -9,13 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct Bookmark Bookmark;
-typedef struct Parser   Parser;
-
-struct Bookmark {
-  SyntaxKind    kind;
-  unsigned long checkpoint;
-};
+typedef struct Parser Parser;
 
 struct Parser {
   TokenCursor cursor;
@@ -62,33 +56,26 @@ static unsigned long node_checkpoint(Parser *parser)
   return vector_length(&parser->children);
 }
 
-static void node_start_at(Parser *parser, SyntaxKind kind, unsigned long checkpoint)
+static void node_start_at(Parser *parser, unsigned long checkpoint)
 {
-  Bookmark bookmark;
-  bookmark.kind       = kind;
-  bookmark.checkpoint = checkpoint;
-  vector_push(&parser->parents, &bookmark);
+  vector_push(&parser->parents, &checkpoint);
 }
 
-static void node_start(Parser *parser, SyntaxKind kind)
+static void node_start(Parser *parser)
 {
-  unsigned long checkpoint = node_checkpoint(parser);
-  node_start_at(parser, kind, checkpoint);
+  node_start_at(parser, node_checkpoint(parser));
 }
 
-static void node_finish(Parser *parser)
+static void node_finish(Parser *parser, SyntaxKind kind)
 {
-  TokenTree *tree     = xmalloc(sizeof(TokenTree));
-  Bookmark   bookmark = *(Bookmark *) vector_back(&parser->parents);
+  TokenTree    *tree       = xmalloc(sizeof(TokenTree));
+  unsigned long checkpoint = *(unsigned long *) vector_back(&parser->parents);
 
-  assert(vector_length(&parser->children) >= bookmark.checkpoint);
   vector_pop(&parser->parents);
 
-  token_tree_init(tree, bookmark.kind,
-    vector_at(&parser->children, bookmark.checkpoint),
-    vector_length(&parser->children) - bookmark.checkpoint);
+  token_tree_init(tree, kind, vector_at(&parser->children, checkpoint), vector_length(&parser->children) - checkpoint);
 
-  while (vector_length(&parser->children) > bookmark.checkpoint) {
+  while (vector_length(&parser->children) > checkpoint) {
     vector_pop(&parser->children);
   }
 
@@ -111,14 +98,14 @@ static void parse_standard_type(Parser *parser)
 
 static void parse_array_type(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_ARRAY_TYPE);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_ARRAY);
   expect(parser, SYNTAX_KIND_LEFT_BRACKET);
   expect(parser, SYNTAX_KIND_INTEGER);
   expect(parser, SYNTAX_KIND_RIGHT_BRACKET);
   expect(parser, SYNTAX_KIND_KEYWORD_OF);
   parse_standard_type(parser);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_ARRAY_TYPE);
 }
 
 static void parse_type(Parser *parser)
@@ -137,46 +124,46 @@ static void parse_expression(Parser *parser);
 
 static void parse_variable(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_VARIABLE);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_IDENTIFIER);
   if (eat(parser, SYNTAX_KIND_LEFT_BRACKET)) {
     parse_expression(parser);
     expect(parser, SYNTAX_KIND_RIGHT_BRACKET);
   }
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_VARIABLE);
 }
 
 static void parse_parenthesized_expression(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_PARENTHESIZED_EXPRESSION);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
   parse_expression(parser);
   expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_PARENTHESIZED_EXPRESSION);
 }
 
 static void parse_not_expression(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_NOT_EXPRESSION);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_NOT);
   parse_factor(parser);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_NOT_EXPRESSION);
 }
 
 static void parse_cast_expression(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_CAST_EXPRESSION);
+  node_start(parser);
   parse_standard_type(parser);
   expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
   parse_expression(parser);
   expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_CAST_EXPRESSION);
 }
 
 static void parse_empty_expression(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_EMPTY_EXPRESSION);
-  node_finish(parser);
+  node_start(parser);
+  node_finish(parser, SYNTAX_KIND_EMPTY_EXPRESSION);
 }
 
 static void parse_factor(Parser *parser)
@@ -215,9 +202,9 @@ static void parse_term(Parser *parser)
   unsigned long checkpoint = node_checkpoint(parser);
   parse_factor(parser);
   while (eat_multicative_operator(parser)) {
-    node_start_at(parser, SYNTAX_KIND_BINARY_EXPRESSION, checkpoint);
+    node_start_at(parser, checkpoint);
     parse_factor(parser);
-    node_finish(parser);
+    node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
   }
 }
 
@@ -246,9 +233,9 @@ static void parse_simple_expression(Parser *parser)
     parse_term(parser);
   }
   while (eat_additive_operator(parser)) {
-    node_start_at(parser, SYNTAX_KIND_BINARY_EXPRESSION, checkpoint);
+    node_start_at(parser, checkpoint);
     parse_term(parser);
-    node_finish(parser);
+    node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
   }
 }
 
@@ -276,9 +263,9 @@ static void parse_expression(Parser *parser)
   unsigned long checkpoint = node_checkpoint(parser);
   parse_simple_expression(parser);
   while (eat_relational_operator(parser)) {
-    node_start_at(parser, SYNTAX_KIND_BINARY_EXPRESSION, checkpoint);
+    node_start_at(parser, checkpoint);
     parse_simple_expression(parser);
-    node_finish(parser);
+    node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
   }
 }
 
@@ -286,16 +273,16 @@ static void parse_statement(Parser *parser);
 
 static void parse_assignment_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_ASSIGNMENT_STATEMENT);
+  node_start(parser);
   parse_variable(parser);
   expect(parser, SYNTAX_KIND_ASSIGN);
   parse_expression(parser);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_ASSIGNMENT_STATEMENT);
 }
 
 static void parse_if_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_IF_STATEMENT);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_IF);
   parse_expression(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_THEN);
@@ -303,126 +290,126 @@ static void parse_if_statement(Parser *parser)
   if (eat(parser, SYNTAX_KIND_KEYWORD_ELSE)) {
     parse_statement(parser);
   }
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_IF_STATEMENT);
 }
 
 static void parse_while_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_WHILE_STATEMENT);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_WHILE);
   parse_expression(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_DO);
   parse_statement(parser);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_WHILE_STATEMENT);
 }
 
 static void parse_break_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_RETURN_STATEMENT);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_BREAK);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_RETURN_STATEMENT);
 }
 
 static void parse_actual_parameter_list(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_ACTUAL_PARAMETER_LIST);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
   do {
     parse_expression(parser);
   } while (eat(parser, SYNTAX_KIND_COMMA));
   expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_ACTUAL_PARAMETER_LIST);
 }
 
 static void parse_call_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_CALL_STATEMENT);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_CALL);
   expect(parser, SYNTAX_KIND_IDENTIFIER);
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
     parse_actual_parameter_list(parser);
   }
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_CALL_STATEMENT);
 }
 
 static void parse_return_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_RETURN_STATEMENT);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_RETURN);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_RETURN_STATEMENT);
 }
 
 static void parse_input_list(Parser *parser)
 {
-  node_start(parser, SYTANX_KIND_INPUT_LIST);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
   do {
     parse_variable(parser);
   } while (eat(parser, SYNTAX_KIND_COMMA));
   expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
-  node_finish(parser);
+  node_finish(parser, SYTANX_KIND_INPUT_LIST);
 }
 
 static void parse_input_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_INPUT_STATEMENT);
+  node_start(parser);
   if (!(eat(parser, SYNTAX_KIND_KEYWORD_READ) || eat(parser, SYNTAX_KIND_KEYWORD_READLN))) {
     /* TODO: make error */
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
     parse_input_list(parser);
   }
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_INPUT_STATEMENT);
 }
 
 static void parse_output_value(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_OUTPUT_VALUE);
+  node_start(parser);
   parse_expression(parser);
   if (eat(parser, SYNTAX_KIND_COLON)) {
     expect(parser, SYNTAX_KIND_INTEGER);
   }
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_OUTPUT_VALUE);
 }
 
 static void parse_output_list(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_OUTPUT_LIST);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
   do {
     parse_output_value(parser);
   } while (eat(parser, SYNTAX_KIND_COMMA));
   expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_OUTPUT_LIST);
 }
 
 static void parse_output_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_OUTPUT_STATEMENT);
+  node_start(parser);
   if (!(eat(parser, SYNTAX_KIND_KEYWORD_WRITE) || eat(parser, SYNTAX_KIND_KEYWORD_WRITELN))) {
     /* TODO: make error */
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
     parse_output_list(parser);
   }
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_OUTPUT_STATEMENT);
 }
 
 static void parse_compound_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_COMPOUND_STATEMENT);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_BEGIN);
   do {
     parse_statement(parser);
   } while (eat(parser, SYNTAX_KIND_SEMICOLON));
   expect(parser, SYNTAX_KIND_KEYWORD_END);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_COMPOUND_STATEMENT);
 }
 
 static void parse_empty_statement(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_EMPTY_STATEMENT);
-  node_finish(parser);
+  node_start(parser);
+  node_finish(parser, SYNTAX_KIND_EMPTY_STATEMENT);
 }
 
 static void parse_statement(Parser *parser)
@@ -452,51 +439,51 @@ static void parse_statement(Parser *parser)
 
 static void parse_variable_declaration(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_VARIABLE_DECLARATION);
+  node_start(parser);
   do {
     expect(parser, SYNTAX_KIND_IDENTIFIER);
   } while (eat(parser, SYNTAX_KIND_COMMA));
   expect(parser, SYNTAX_KIND_COLON);
   parse_type(parser);
   expect(parser, SYNTAX_KIND_SEMICOLON);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_VARIABLE_DECLARATION);
 }
 
 static void parse_variable_declaration_part(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_VARIABLE_DECLARATION_PART);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_VAR);
   do {
     parse_variable_declaration(parser);
   } while (check(parser, SYNTAX_KIND_IDENTIFIER));
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_VARIABLE_DECLARATION_PART);
 }
 
 static void parse_formal_parameter_section(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_FORMAL_PARAMETER_SECTION);
+  node_start(parser);
   do {
     expect(parser, SYNTAX_KIND_IDENTIFIER);
   } while (eat(parser, SYNTAX_KIND_COMMA));
   expect(parser, SYNTAX_KIND_COLON);
   parse_type(parser);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_FORMAL_PARAMETER_SECTION);
 }
 
 static void parse_formal_parameter_list(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_FORMAL_PARAMETER_LIST);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
   do {
     parse_formal_parameter_section(parser);
   } while (eat(parser, SYNTAX_KIND_SEMICOLON));
   expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_FORMAL_PARAMETER_LIST);
 }
 
 static void parse_procedure_declaration(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_PROCEDURE_DECLARATION);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_PROCEDURE);
   expect(parser, SYNTAX_KIND_IDENTIFIER);
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
@@ -508,12 +495,12 @@ static void parse_procedure_declaration(Parser *parser)
   }
   parse_compound_statement(parser);
   expect(parser, SYNTAX_KIND_SEMICOLON);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_PROCEDURE_DECLARATION);
 }
 
 static void parse_program(Parser *parser)
 {
-  node_start(parser, SYNTAX_KIND_PROGRAM);
+  node_start(parser);
   expect(parser, SYNTAX_KIND_KEYWORD_PROGRAM);
   expect(parser, SYNTAX_KIND_IDENTIFIER);
   expect(parser, SYNTAX_KIND_SEMICOLON);
@@ -529,13 +516,13 @@ static void parse_program(Parser *parser)
   parse_compound_statement(parser);
   expect(parser, SYNTAX_KIND_DOT);
   expect(parser, SYNTAX_KIND_EOF);
-  node_finish(parser);
+  node_finish(parser, SYNTAX_KIND_PROGRAM);
 }
 
 int parser_parse(const char *source, unsigned long size, TokenTree *tree)
 {
   Parser parser;
-  vector_init(&parser.parents, sizeof(Bookmark));
+  vector_init(&parser.parents, sizeof(unsigned long));
   vector_init(&parser.children, sizeof(TokenNode *));
   token_cursor_init(&parser.cursor, source, size);
   token_cursor_next(&parser.cursor, &parser.token);
