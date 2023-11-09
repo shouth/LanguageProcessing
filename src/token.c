@@ -46,12 +46,14 @@ void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode **childre
 
   tree->text_length = 0;
   for (i = 0; i < children_count; ++i) {
-    if (i > 0) {
-      tree->text_length += token_node_leading_trivia_length(children[i]);
-    }
-    tree->text_length += children[i]->text_length;
-    if (i + 1 < children_count) {
-      tree->text_length += token_node_trailing_trivia_length(children[i]);
+    if (children[i]) {
+      if (i > 0) {
+        tree->text_length += token_node_leading_trivia_length(children[i]);
+      }
+      tree->text_length += children[i]->text_length;
+      if (i + 1 < children_count) {
+        tree->text_length += token_node_trailing_trivia_length(children[i]);
+      }
     }
   }
 
@@ -133,7 +135,9 @@ void token_deinit(Token *token)
 static void token_node_print_impl(TokenNode *node, unsigned long depth, unsigned long offset)
 {
   printf("%*.s", (int) depth * 2, "");
-  if (syntax_kind_is_token(node->kind)) {
+  if (node) {
+    printf("(NULL)\n");
+  } else if (syntax_kind_is_token(node->kind)) {
     Token *token = (Token *) node;
     printf("%s @ %lu..%lu \"%s\"\n", syntax_kind_to_string(token->kind), offset, offset + token->text_length, token->text);
   } else {
