@@ -132,11 +132,10 @@ static void parse_variable(Parser *parser)
   if (eat(parser, SYNTAX_KIND_LEFT_BRACKET)) {
     parse_expression(parser);
     expect(parser, SYNTAX_KIND_RIGHT_BRACKET);
+    node_finish(parser, SYNTAX_KIND_INDEXED_VARIABLE);
   } else {
-    node_null(parser);
-    node_null(parser);
+    node_finish(parser, SYNTAX_KIND_ENTIRE_VARIABLE);
   }
-  node_finish(parser, SYNTAX_KIND_VARIABLE);
 }
 
 static void parse_parenthesized_expression(Parser *parser)
