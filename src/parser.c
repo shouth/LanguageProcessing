@@ -323,9 +323,11 @@ static void parse_break_statement(Parser *parser)
 static void parse_actual_parameter_list(Parser *parser)
 {
   node_start(parser, SYNTAX_KIND_ACTUAL_PARAMETER_LIST);
+  expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
   do {
     parse_expression(parser);
   } while (eat(parser, SYNTAX_KIND_COMMA));
+  expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
   node_finish(parser);
 }
 
@@ -334,9 +336,9 @@ static void parse_call_statement(Parser *parser)
   node_start(parser, SYNTAX_KIND_CALL_STATEMENT);
   expect(parser, SYNTAX_KIND_KEYWORD_CALL);
   expect(parser, SYNTAX_KIND_IDENTIFIER);
-  expect(parser, SYNTAX_KIND_LEFT_PARENTHESIS);
-  parse_actual_parameter_list(parser);
-  expect(parser, SYNTAX_KIND_RIGHT_PARENTHESIS);
+  if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
+    parse_actual_parameter_list(parser);
+  }
   node_finish(parser);
 }
 
@@ -364,7 +366,9 @@ static void parse_input_statement(Parser *parser)
   if (!(eat(parser, SYNTAX_KIND_KEYWORD_READ) || eat(parser, SYNTAX_KIND_KEYWORD_READLN))) {
     /* TODO: make error */
   }
-  parse_input_list(parser);
+  if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
+    parse_input_list(parser);
+  }
   node_finish(parser);
 }
 
@@ -395,7 +399,9 @@ static void parse_output_statement(Parser *parser)
   if (!(eat(parser, SYNTAX_KIND_KEYWORD_WRITE) || eat(parser, SYNTAX_KIND_KEYWORD_WRITELN))) {
     /* TODO: make error */
   }
-  parse_output_list(parser);
+  if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
+    parse_output_list(parser);
+  }
   node_finish(parser);
 }
 
@@ -498,6 +504,7 @@ static void parse_procedure_declaration(Parser *parser)
     parse_variable_declaration_part(parser);
   }
   parse_compound_statement(parser);
+  expect(parser, SYNTAX_KIND_SEMICOLON);
   node_finish(parser);
 }
 
