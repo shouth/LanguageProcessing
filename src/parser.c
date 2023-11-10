@@ -165,12 +165,6 @@ static void parse_cast_expression(Parser *parser)
   node_finish(parser, SYNTAX_KIND_CAST_EXPRESSION);
 }
 
-static void parse_empty_expression(Parser *parser)
-{
-  node_start(parser);
-  node_finish(parser, SYNTAX_KIND_EMPTY_EXPRESSION);
-}
-
 static void parse_factor(Parser *parser)
 {
   if (check(parser, SYNTAX_KIND_IDENTIFIER)) {
@@ -233,7 +227,7 @@ static void parse_simple_expression(Parser *parser)
 {
   unsigned long checkpoint = node_checkpoint(parser);
   if (check_additive_operator(parser)) {
-    parse_empty_expression(parser);
+    node_null(parser);
   } else {
     parse_term(parser);
   }
@@ -423,12 +417,6 @@ static void parse_compound_statement(Parser *parser)
   node_finish(parser, SYNTAX_KIND_COMPOUND_STATEMENT);
 }
 
-static void parse_empty_statement(Parser *parser)
-{
-  node_start(parser);
-  node_finish(parser, SYNTAX_KIND_EMPTY_STATEMENT);
-}
-
 static void parse_statement(Parser *parser)
 {
   if (check(parser, SYNTAX_KIND_IDENTIFIER)) {
@@ -450,7 +438,7 @@ static void parse_statement(Parser *parser)
   } else if (check(parser, SYNTAX_KIND_KEYWORD_BEGIN)) {
     parse_compound_statement(parser);
   } else {
-    parse_empty_statement(parser);
+    node_null(parser);
   }
 }
 
