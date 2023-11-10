@@ -93,13 +93,9 @@ void token_info_init(TokenInfo *info, SyntaxKind kind, const char *token, unsign
 {
   info->kind        = kind;
   info->text_length = text_length;
-  if (info->text_length) {
-    info->text = xmalloc(sizeof(char) * (text_length + 1));
-    strncpy(info->text, token, text_length);
-    info->text[text_length] = '\0';
-  } else {
-    info->text = NULL;
-  }
+  info->text        = xmalloc(sizeof(char) * (text_length + 1));
+  strncpy(info->text, token, text_length);
+  info->text[text_length] = '\0';
 }
 
 void token_info_deinit(TokenInfo *info)
