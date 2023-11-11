@@ -167,7 +167,6 @@ static void print_assignment_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_variable(printer, tree->children[index++]);
   print_space();
   print_token(printer, tree->children[index++]);
@@ -180,7 +179,6 @@ static void print_if_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   print_space();
   print_expression(printer, tree->children[index++]);
@@ -188,8 +186,24 @@ static void print_if_statement(Printer *printer, const TokenNode *node)
   print_token(printer, tree->children[index++]);
   print_newline();
   ++printer->indent;
+  print_indent(printer);
   print_statement(printer, tree->children[index++]);
   --printer->indent;
+  if (tree->children[index]) {
+    print_newline();
+    print_indent(printer);
+    print_token(printer, tree->children[index++]);
+    if (tree->children[index]->kind == SYNTAX_KIND_IF_STATEMENT) {
+      print_space();
+      print_statement(printer, tree->children[index++]);
+    } else {
+      print_newline();
+      ++printer->indent;
+      print_indent(printer);
+      print_statement(printer, tree->children[index++]);
+      --printer->indent;
+    }
+  }
 }
 
 static void print_while_statement(Printer *printer, const TokenNode *node)
@@ -197,7 +211,6 @@ static void print_while_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   print_space();
   print_expression(printer, tree->children[index++]);
@@ -205,6 +218,7 @@ static void print_while_statement(Printer *printer, const TokenNode *node)
   print_token(printer, tree->children[index++]);
   print_newline();
   ++printer->indent;
+  print_indent(printer);
   print_statement(printer, tree->children[index++]);
   --printer->indent;
 }
@@ -220,7 +234,8 @@ static void print_actual_parameter_list(Printer *printer, const TokenNode *node)
     if (tree->children[index]->kind != SYNTAX_KIND_COMMA) {
       break;
     }
-    print_expression(printer, tree->children[index++]);
+    print_token(printer, tree->children[index++]);
+    print_space();
   }
   print_token(printer, tree->children[index++]);
 }
@@ -230,7 +245,6 @@ static void print_break_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
 }
 
@@ -239,7 +253,6 @@ static void print_call_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   print_space();
   print_token(printer, tree->children[index++]);
@@ -255,7 +268,6 @@ static void print_return_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
 }
 
@@ -281,7 +293,6 @@ static void print_input_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   if (tree->children[index]) {
     print_input_list(printer, tree->children[index++]);
@@ -326,7 +337,6 @@ static void print_output_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   if (tree->children[index]) {
     print_output_list(printer, tree->children[index++]);
@@ -340,11 +350,11 @@ static void print_compound_statement(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   print_newline();
   ++printer->indent;
   while (1) {
+    print_indent(printer);
     print_statement(printer, tree->children[index++]);
     if (tree->children[index]->kind != SYNTAX_KIND_SEMICOLON) {
       break;
@@ -420,7 +430,6 @@ static void print_variable_declaration_part(Printer *printer, const TokenNode *n
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   print_newline();
   ++printer->indent;
@@ -467,7 +476,6 @@ static void print_procedure_declaration(Printer *printer, const TokenNode *node)
   const TokenTree *tree  = (TokenTree *) node;
   unsigned long    index = 0;
 
-  print_indent(printer);
   print_token(printer, tree->children[index++]);
   print_space();
   print_token(printer, tree->children[index++]);
@@ -483,6 +491,7 @@ static void print_procedure_declaration(Printer *printer, const TokenNode *node)
   } else {
     index++;
   }
+  print_indent(printer);
   print_compound_statement(printer, tree->children[index++]);
   print_token(printer, tree->children[index++]);
   print_newline();
@@ -501,14 +510,17 @@ static void print_program(Printer *printer, const TokenNode *node)
   ++printer->indent;
   while (1) {
     if (tree->children[index]->kind == SYNTAX_KIND_VARIABLE_DECLARATION_PART) {
+      print_indent(printer);
       print_variable_declaration_part(printer, tree->children[index++]);
     } else if (tree->children[index]->kind == SYNTAX_KIND_PROCEDURE_DECLARATION) {
+      print_indent(printer);
       print_procedure_declaration(printer, tree->children[index++]);
     } else {
       break;
     }
   }
   --printer->indent;
+  print_indent(printer);
   print_compound_statement(printer, tree->children[index++]);
   print_token(printer, tree->children[index++]);
   print_newline();
