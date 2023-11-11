@@ -12,39 +12,21 @@ static unsigned long token_node_text_length(const TokenNode *node)
   return node ? node->text_length : 0;
 }
 
-static unsigned long trivia_length(TokenInfo *trivia, unsigned long count)
-{
-  unsigned long i;
-  unsigned long result = 0;
-  for (i = 0; i < count; ++i) {
-    result += trivia[i].text_length;
-  }
-  return result;
-}
-
-static unsigned long token_node_leading_trivia_length(const TokenNode *node)
+static unsigned long token_node_trivia_length(const TokenNode *node)
 {
   if (!node) {
     return 0;
   } else if (syntax_kind_is_token(node->kind)) {
-    Token *token = (Token *) node;
-    return trivia_length(token->leading_trivia, token->leading_trivia_count);
+    Token        *token = (Token *) node;
+    unsigned long i;
+    unsigned long result = 0;
+    for (i = 0; i < token->trivia_count; ++i) {
+      result += token->trivia[i].text_length;
+    }
+    return result;
   } else {
     TokenTree *tree = (TokenTree *) node;
-    return tree->children_count ? token_node_leading_trivia_length(tree->children[0]) : 0;
-  }
-}
-
-static unsigned long token_node_trailing_trivia_length(const TokenNode *node)
-{
-  if (!node) {
-    return 0;
-  } else if (syntax_kind_is_token(node->kind)) {
-    Token *token = (Token *) node;
-    return trivia_length(token->trailing_trivia, token->trailing_trivia_count);
-  } else {
-    TokenTree *tree = (TokenTree *) node;
-    return tree->children_count ? token_node_trailing_trivia_length(tree->children[tree->children_count - 1]) : 0;
+    return tree->children_count ? token_node_trivia_length(tree->children[0]) : 0;
   }
 }
 
@@ -56,12 +38,9 @@ void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode **childre
   tree->text_length = 0;
   for (i = 0; i < children_count; ++i) {
     if (i > 0) {
-      tree->text_length += token_node_leading_trivia_length(children[i]);
+      tree->text_length += token_node_trivia_length(children[i]);
     }
     tree->text_length += token_node_text_length(children[i]);
-    if (i + 1 < children_count) {
-      tree->text_length += token_node_trailing_trivia_length(children[i]);
-    }
   }
 
   tree->children_count = children_count;
@@ -103,23 +82,14 @@ void token_info_deinit(TokenInfo *info)
   free(info->text);
 }
 
-void token_init(Token *token, const TokenInfo *info,
-  const TokenInfo *leading_trivia, unsigned long leading_trivia_count,
-  const TokenInfo *trailing_trivia, unsigned long trailing_trivia_count)
+void token_init(Token *token, const TokenInfo *info, const TokenInfo *trivia, unsigned long trivia_count)
 {
   memcpy(token, info, sizeof(TokenInfo));
-  if ((token->leading_trivia_count = leading_trivia_count)) {
-    token->leading_trivia = xmalloc(sizeof(TokenInfo) * leading_trivia_count);
-    memcpy(token->leading_trivia, leading_trivia, sizeof(TokenInfo) * leading_trivia_count);
+  if ((token->trivia_count = trivia_count)) {
+    token->trivia = xmalloc(sizeof(TokenInfo) * trivia_count);
+    memcpy(token->trivia, trivia, sizeof(TokenInfo) * trivia_count);
   } else {
-    token->leading_trivia = NULL;
-  }
-
-  if ((token->trailing_trivia_count = trailing_trivia_count)) {
-    token->trailing_trivia = xmalloc(sizeof(TokenInfo) * trailing_trivia_count);
-    memcpy(token->trailing_trivia, trailing_trivia, sizeof(TokenInfo) * trailing_trivia_count);
-  } else {
-    token->trailing_trivia = NULL;
+    token->trivia = NULL;
   }
 }
 
@@ -127,14 +97,10 @@ void token_deinit(Token *token)
 {
   unsigned long i;
   token_info_deinit((TokenInfo *) token);
-  for (i = 0; i < token->leading_trivia_count; ++i) {
-    token_info_deinit(token->leading_trivia + i);
+  for (i = 0; i < token->trivia_count; ++i) {
+    token_info_deinit(token->trivia + i);
   }
-  free(token->leading_trivia);
-  for (i = 0; i < token->trailing_trivia_count; ++i) {
-    token_info_deinit(token->trailing_trivia + i);
-  }
-  free(token->trailing_trivia);
+  free(token->trivia);
 }
 
 static void token_node_print_impl(TokenNode *node, unsigned long depth, unsigned long offset)
@@ -144,16 +110,17 @@ static void token_node_print_impl(TokenNode *node, unsigned long depth, unsigned
     printf("(NULL)\n");
   } else if (syntax_kind_is_token(node->kind)) {
     Token *token = (Token *) node;
+    offset += token_node_trivia_length(node);
     printf("%s @ %lu..%lu \"%s\"\n", syntax_kind_to_string(token->kind), offset, offset + token->text_length, token->text);
   } else {
     unsigned long i;
-    TokenTree    *tree = (TokenTree *) node;
-    printf("%s @ %lu..%lu\n", syntax_kind_to_string(tree->kind), offset, offset + tree->text_length);
+    TokenTree    *tree        = (TokenTree *) node;
+    unsigned long tree_offset = offset + token_node_trivia_length(node);
+    printf("%s @ %lu..%lu\n", syntax_kind_to_string(tree->kind), tree_offset, tree_offset + tree->text_length);
     for (i = 0; i < tree->children_count; ++i) {
-      offset += token_node_leading_trivia_length(tree->children[i]);
       token_node_print_impl(tree->children[i], depth + 1, offset);
+      offset += token_node_trivia_length(tree->children[i]);
       offset += token_node_text_length(tree->children[i]);
-      offset += token_node_trailing_trivia_length(tree->children[i]);
     }
   }
 }

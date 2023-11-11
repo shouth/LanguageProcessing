@@ -6,10 +6,14 @@
 #include "token_cursor.h"
 #include "vector.h"
 
-static void token_cursor_lex(TokenCursor *cursor)
+static SyntaxKind token_cursor_lex(TokenCursor *cursor)
 {
   lexer_lex(cursor->_source + cursor->_offset, cursor->_size - cursor->_offset, &cursor->_info);
   cursor->_offset += cursor->_info.text_length;
+  if (cursor->_info.kind == SYNTAX_KIND_EOF) {
+    cursor->_offset = -1ul;
+  }
+  return cursor->_info.kind;
 }
 
 void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long size)
@@ -17,44 +21,20 @@ void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long si
   cursor->_source = source;
   cursor->_size   = size;
   cursor->_offset = 0;
-  token_cursor_lex(cursor);
 }
 
 int token_cursor_next(TokenCursor *cursor, Token *token)
 {
-  TokenInfo info;
-  Vector    leading_trivia;
-  Vector    trailing_trivia;
-
+  Vector trivia;
   if (cursor->_offset == -1ul) {
     return 0;
-  } else if (cursor->_info.kind == SYNTAX_KIND_EOF) {
-    token_init(token, &cursor->_info, NULL, 0, NULL, 0);
-    cursor->_offset = -1ul;
-    return 1;
   } else {
-    vector_init(&leading_trivia, sizeof(TokenInfo));
-    vector_init(&trailing_trivia, sizeof(TokenInfo));
-
-    while (syntax_kind_is_trivia(cursor->_info.kind)) {
-      vector_push(&leading_trivia, &cursor->_info);
-      token_cursor_lex(cursor);
+    vector_init(&trivia, sizeof(TokenInfo));
+    while (syntax_kind_is_trivia(token_cursor_lex(cursor))) {
+      vector_push(&trivia, &cursor->_info);
     }
-
-    info = cursor->_info;
-    token_cursor_lex(cursor);
-
-    while (syntax_kind_is_trivia(cursor->_info.kind)) {
-      vector_push(&trailing_trivia, &cursor->_info);
-      token_cursor_lex(cursor);
-    }
-
-    token_init(token, &info,
-      vector_data(&leading_trivia), vector_length(&leading_trivia),
-      vector_data(&trailing_trivia), vector_length(&trailing_trivia));
-
-    vector_deinit(&leading_trivia);
-    vector_deinit(&trailing_trivia);
+    token_init(token, &cursor->_info, vector_data(&trivia), vector_length(&trivia));
+    vector_deinit(&trivia);
     return 1;
   }
 }
