@@ -73,7 +73,7 @@ int module_token_tree(Module *module, TokenTree *tree)
 {
   int result = !!module_source(module);
   if (result) {
-    parser_parse(module_source(module), module_source_size(module), tree);
+    mppl_parse(module_source(module), module_source_size(module), tree);
   }
   return result;
 }

@@ -224,7 +224,7 @@ static int token_symbol(Lexer *lexer, TokenInfo *info)
   }
 }
 
-int lexer_lex(const char *source, unsigned long size, TokenInfo *info)
+int mppl_lex(const char *source, unsigned long size, TokenInfo *info)
 {
   Lexer lexer;
   lexer.source = source;

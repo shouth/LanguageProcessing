@@ -96,7 +96,7 @@ static void token_count_init(TokenCount *count, const char *source, unsigned lon
 
   map_init(&token_counts, &token_info_hash, &token_info_equal);
   map_init(&identifier_counts, &token_info_hash, &token_info_equal);
-  while (lexer_lex(source + offset, length - offset, &token) && token.kind != SYNTAX_KIND_EOF) {
+  while (mppl_lex(source + offset, length - offset, &token) && token.kind != SYNTAX_KIND_EOF) {
     offset += token.text_length;
     if (syntax_kind_is_trivia(token.kind)) {
       token_info_deinit(&token);

@@ -528,7 +528,7 @@ static void parse_program(Parser *parser)
   node_finish(parser, SYNTAX_KIND_PROGRAM);
 }
 
-int parser_parse(const char *source, unsigned long size, TokenTree *tree)
+int mppl_parse(const char *source, unsigned long size, TokenTree *tree)
 {
   Parser parser;
   vector_init(&parser.parents, sizeof(unsigned long));

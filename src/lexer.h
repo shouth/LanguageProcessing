@@ -3,6 +3,6 @@
 
 #include "token.h"
 
-int lexer_lex(const char *source, unsigned long size, TokenInfo *info);
+int mppl_lex(const char *source, unsigned long size, TokenInfo *info);
 
 #endif
