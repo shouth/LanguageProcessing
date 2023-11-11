@@ -487,6 +487,7 @@ static void print_procedure_declaration(Printer *printer, const TokenNode *node)
   print_token(printer, tree->children[index++]);
   print_newline();
   if (tree->children[index]) {
+    print_indent(printer);
     print_variable_declaration_part(printer, tree->children[index++]);
   } else {
     index++;
