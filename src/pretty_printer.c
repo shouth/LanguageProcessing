@@ -426,7 +426,7 @@ static void print_variable_declaration(Printer *printer, const TokenNode *node)
   print_token(printer, tree->children[index++], printer->option.color.foreground);
   print_space();
   print_type(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
+  print_token(printer, tree->children[index++], printer->option.color.foreground);
 }
 
 static void print_variable_declaration_part(Printer *printer, const TokenNode *node)
