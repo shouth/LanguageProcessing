@@ -94,7 +94,7 @@ static int check_standard_type(Parser *parser)
 
 static void parse_standard_type(Parser *parser)
 {
-  if (!(eat(parser, SYNTAX_KIND_KEYWORD_INTEGER) || eat(parser, SYNTAX_KIND_KEYWORD_BOOLEAN) || eat(parser, SYNTAX_KIND_KEYWORD_CHAR))) {
+  if (!eat(parser, SYNTAX_KIND_KEYWORD_INTEGER) && !eat(parser, SYNTAX_KIND_KEYWORD_BOOLEAN) && !eat(parser, SYNTAX_KIND_KEYWORD_CHAR)) {
     /* TODO: make error */
   }
 }
@@ -175,7 +175,7 @@ static void parse_factor(Parser *parser)
     parse_not_expression(parser);
   } else if (check_standard_type(parser)) {
     parse_cast_expression(parser);
-  } else if (!(eat(parser, SYNTAX_KIND_INTEGER) || eat(parser, SYNTAX_KIND_KEYWORD_TRUE) || eat(parser, SYNTAX_KIND_KEYWORD_FALSE) || eat(parser, SYNTAX_KIND_STRING))) {
+  } else if (!eat(parser, SYNTAX_KIND_INTEGER) && !eat(parser, SYNTAX_KIND_KEYWORD_TRUE) && !eat(parser, SYNTAX_KIND_KEYWORD_FALSE) && !eat(parser, SYNTAX_KIND_STRING)) {
     /* make error */
   }
 }
@@ -357,7 +357,7 @@ static void parse_input_list(Parser *parser)
 static void parse_input_statement(Parser *parser)
 {
   node_start(parser);
-  if (!(eat(parser, SYNTAX_KIND_KEYWORD_READ) || eat(parser, SYNTAX_KIND_KEYWORD_READLN))) {
+  if (!eat(parser, SYNTAX_KIND_KEYWORD_READ) && !eat(parser, SYNTAX_KIND_KEYWORD_READLN)) {
     /* TODO: make error */
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
@@ -395,7 +395,7 @@ static void parse_output_list(Parser *parser)
 static void parse_output_statement(Parser *parser)
 {
   node_start(parser);
-  if (!(eat(parser, SYNTAX_KIND_KEYWORD_WRITE) || eat(parser, SYNTAX_KIND_KEYWORD_WRITELN))) {
+  if (!eat(parser, SYNTAX_KIND_KEYWORD_WRITE) && !eat(parser, SYNTAX_KIND_KEYWORD_WRITELN)) {
     /* TODO: make error */
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS)) {
