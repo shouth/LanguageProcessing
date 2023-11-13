@@ -108,10 +108,8 @@ static int token_string(Lexer *lexer, TokenInfo *info)
 {
   if (eat(lexer, '\'')) {
     while (1) {
-      if (eat(lexer, '\'')) {
-        if (!eat(lexer, '\'')) {
-          break;
-        }
+      if (eat(lexer, '\'') && !eat(lexer, '\'')) {
+        break;
       } else if (is_newline(first(lexer)) || first(lexer) == EOF) {
         break;
       } else if (!eat_if(lexer, &is_graphic)) {
@@ -156,10 +154,8 @@ static int token_comment(Lexer *lexer, TokenInfo *info)
   } else if (eat(lexer, '/')) {
     if (eat(lexer, '*')) {
       while (1) {
-        if (eat(lexer, '*')) {
-          if (eat(lexer, '/')) {
-            break;
-          }
+        if (eat(lexer, '*') && eat(lexer, '/')) {
+          break;
         } else if (first(lexer) == EOF) {
           break;
         } else {
