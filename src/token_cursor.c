@@ -1,19 +1,17 @@
-#include "stddef.h"
-
+#include "token_cursor.h"
 #include "lexer.h"
 #include "syntax_kind.h"
 #include "token.h"
-#include "token_cursor.h"
 #include "vector.h"
 
-static SyntaxKind token_cursor_lex(TokenCursor *cursor)
+static SyntaxKind token_cursor_lex(TokenCursor *cursor, TokenInfo *info)
 {
-  mppl_lex(cursor->_source + cursor->_offset, cursor->_size - cursor->_offset, &cursor->_info);
-  cursor->_offset += cursor->_info.text_length;
-  if (cursor->_info.kind == SYNTAX_KIND_EOF) {
+  mppl_lex(cursor->_source + cursor->_offset, cursor->_size - cursor->_offset, info);
+  cursor->_offset += info->text_length;
+  if (info->kind == SYNTAX_KIND_EOF) {
     cursor->_offset = -1ul;
   }
-  return cursor->_info.kind;
+  return info->kind;
 }
 
 void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long size)
@@ -25,15 +23,16 @@ void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long si
 
 int token_cursor_next(TokenCursor *cursor, Token *token)
 {
-  Vector trivia;
   if (cursor->_offset == -1ul) {
     return 0;
   } else {
+    Vector trivia;
+    TokenInfo info;
     vector_init(&trivia, sizeof(TokenInfo));
-    while (syntax_kind_is_trivia(token_cursor_lex(cursor))) {
-      vector_push(&trivia, &cursor->_info);
+    while (syntax_kind_is_trivia(token_cursor_lex(cursor, &info))) {
+      vector_push(&trivia, &info);
     }
-    token_init(token, &cursor->_info, vector_data(&trivia), vector_length(&trivia));
+    token_init(token, &info, vector_data(&trivia), vector_length(&trivia));
     vector_deinit(&trivia);
     return 1;
   }
