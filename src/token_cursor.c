@@ -26,7 +26,7 @@ int token_cursor_next(TokenCursor *cursor, Token *token)
   if (cursor->_offset == -1ul) {
     return 0;
   } else {
-    Vector trivia;
+    Vector    trivia;
     TokenInfo info;
     vector_init(&trivia, sizeof(TokenInfo));
     while (syntax_kind_is_trivia(token_cursor_lex(cursor, &info))) {
