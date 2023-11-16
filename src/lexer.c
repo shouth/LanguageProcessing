@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "report.h"
 #include "syntax_kind.h"
 #include "token.h"
 
@@ -8,20 +9,21 @@ typedef struct Lexer Lexer;
 
 struct Lexer {
   const char   *source;
-  unsigned long size;
+  unsigned long offset;
+  unsigned long length;
   unsigned long index;
 };
 
 static void bump(Lexer *lexer)
 {
-  if (lexer->index < lexer->size) {
+  if (lexer->offset + lexer->index < lexer->length) {
     ++lexer->index;
   }
 }
 
 static int first(Lexer *lexer)
 {
-  return lexer->index < lexer->size ? lexer->source[lexer->index] : EOF;
+  return lexer->offset + lexer->index < lexer->length ? lexer->source[lexer->offset + lexer->index] : EOF;
 }
 
 static int eat(Lexer *lexer, int c)
@@ -69,60 +71,75 @@ static int is_graphic(int c)
 
 static int tokenize(Lexer *lexer, SyntaxKind kind, TokenInfo *info)
 {
-  token_info_init(info, kind, lexer->source, lexer->index);
-  lexer->source += lexer->index;
-  lexer->size -= lexer->index;
+  token_info_init(info, kind, lexer->source + lexer->offset, lexer->index);
+  lexer->offset += lexer->index;
   lexer->index = 0;
   return 1;
 }
 
-static int token_error(Lexer *lexer, TokenInfo *info)
+static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char *format, ...)
 {
-  bump(lexer);
+  va_list args;
+  va_start(args, format);
+  report_init_with_args(report, REPORT_KIND_ERROR, lexer->offset, lexer->offset + lexer->index, format, args);
+  va_end(args);
   return tokenize(lexer, SYNTAX_KIND_ERROR, info);
 }
 
-static int token_identifier_and_keyword(Lexer *lexer, TokenInfo *info)
+static int token_unexpected(Lexer *lexer, TokenInfo *info, Report *report)
+{
+  bump(lexer);
+  if (is_graphic(lexer->source[lexer->offset])) {
+    return token_error(lexer, info, report, "Stray character '%c'", lexer->source[lexer->offset]);
+  } else {
+    return token_error(lexer, info, report, "Stray character '\\%o'", (int) lexer->source[lexer->offset]);
+  }
+}
+
+static int token_identifier_and_keyword(Lexer *lexer, TokenInfo *info, Report *report)
 {
   if (eat_if(lexer, &is_alphabet)) {
     SyntaxKind kind;
     while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
-    kind = syntax_kind_from_keyword(lexer->source, lexer->index);
+    kind = syntax_kind_from_keyword(lexer->source + lexer->offset, lexer->index);
     return tokenize(lexer, kind != SYNTAX_KIND_ERROR ? kind : SYNTAX_KIND_IDENTIFIER, info);
   } else {
-    return token_error(lexer, info);
+    return token_unexpected(lexer, info, report);
   }
 }
 
-static int token_integer(Lexer *lexer, TokenInfo *info)
+static int token_integer(Lexer *lexer, TokenInfo *info, Report *report)
 {
   if (eat_if(lexer, &is_number)) {
     while (eat_if(lexer, &is_number)) { }
     return tokenize(lexer, SYNTAX_KIND_INTEGER, info);
   } else {
-    return token_error(lexer, info);
+    return token_unexpected(lexer, info, report);
   }
 }
 
-static int token_string(Lexer *lexer, TokenInfo *info)
+static int token_string(Lexer *lexer, TokenInfo *info, Report *report)
 {
   if (eat(lexer, '\'')) {
+    int contain_non_graphic = 0;
     while (1) {
       if (eat(lexer, '\'') && !eat(lexer, '\'')) {
-        break;
+        if (contain_non_graphic) {
+          return token_error(lexer, info, report, "String contains non-graphic character");
+        } else {
+          return tokenize(lexer, SYNTAX_KIND_STRING, info);
+        }
       } else if (is_newline(first(lexer)) || first(lexer) == EOF) {
-        break;
-      } else if (!eat_if(lexer, &is_graphic)) {
-        break;
+        return token_error(lexer, info, report, "String is unterminated");
       }
+      contain_non_graphic |= !eat_if(lexer, &is_graphic);
     }
-    return tokenize(lexer, SYNTAX_KIND_STRING, info);
   } else {
-    return token_error(lexer, info);
+    return token_unexpected(lexer, info, report);
   }
 }
 
-static int token_whitespace(Lexer *lexer, TokenInfo *info)
+static int token_whitespace(Lexer *lexer, TokenInfo *info, Report *report)
 {
   if (eat_if(lexer, &is_space)) {
     while (eat_if(lexer, &is_space)) { }
@@ -134,44 +151,40 @@ static int token_whitespace(Lexer *lexer, TokenInfo *info)
     eat(lexer, '\r');
     return tokenize(lexer, SYNTAX_KIND_NEWLINE, info);
   } else {
-    return token_error(lexer, info);
+    return token_unexpected(lexer, info, report);
   }
 }
 
-static int token_comment(Lexer *lexer, TokenInfo *info)
+static int token_comment(Lexer *lexer, TokenInfo *info, Report *report)
 {
   if (eat(lexer, '{')) {
     while (1) {
       if (eat(lexer, '}')) {
-        break;
+        return tokenize(lexer, SYNTAX_KIND_BRACES_COMMENT, info);
       } else if (first(lexer) == EOF) {
-        break;
-      } else {
-        bump(lexer);
+        return token_error(lexer, info, report, "Comment is unterminated");
       }
+      bump(lexer);
     }
-    return tokenize(lexer, SYNTAX_KIND_BRACES_COMMENT, info);
   } else if (eat(lexer, '/')) {
     if (eat(lexer, '*')) {
       while (1) {
         if (eat(lexer, '*') && eat(lexer, '/')) {
-          break;
+          return tokenize(lexer, SYNTAX_KIND_C_COMMENT, info);
         } else if (first(lexer) == EOF) {
-          break;
-        } else {
-          bump(lexer);
+          return token_error(lexer, info, report, "Comment is unterminated");
         }
+        bump(lexer);
       }
-      return tokenize(lexer, SYNTAX_KIND_C_COMMENT, info);
     } else {
-      return token_error(lexer, info);
+      return token_unexpected(lexer, info, report);
     }
   } else {
-    return token_error(lexer, info);
+    return token_unexpected(lexer, info, report);
   }
 }
 
-static int token_symbol(Lexer *lexer, TokenInfo *info)
+static int token_symbol(Lexer *lexer, TokenInfo *info, Report *report)
 {
   if (eat(lexer, '+')) {
     return tokenize(lexer, SYNTAX_KIND_PLUS, info);
@@ -216,30 +229,31 @@ static int token_symbol(Lexer *lexer, TokenInfo *info)
   } else if (eat(lexer, ';')) {
     return tokenize(lexer, SYNTAX_KIND_SEMICOLON, info);
   } else {
-    return token_error(lexer, info);
+    return token_unexpected(lexer, info, report);
   }
 }
 
-int mppl_lex(const char *source, unsigned long size, TokenInfo *info)
+int mppl_lex(const char *source, unsigned long offset, unsigned long length, TokenInfo *info, Report *report)
 {
   Lexer lexer;
   lexer.source = source;
-  lexer.size   = size;
+  lexer.offset = offset;
+  lexer.length = length;
   lexer.index  = 0;
 
   if (first(&lexer) == EOF) {
     return tokenize(&lexer, SYNTAX_KIND_EOF, info);
   } else if (is_alphabet(first(&lexer))) {
-    return token_identifier_and_keyword(&lexer, info);
+    return token_identifier_and_keyword(&lexer, info, report);
   } else if (is_number(first(&lexer))) {
-    return token_integer(&lexer, info);
+    return token_integer(&lexer, info, report);
   } else if (first(&lexer) == '\'') {
-    return token_string(&lexer, info);
+    return token_string(&lexer, info, report);
   } else if (is_space(first(&lexer)) || is_newline(first(&lexer))) {
-    return token_whitespace(&lexer, info);
+    return token_whitespace(&lexer, info, report);
   } else if (first(&lexer) == '{' || first(&lexer) == '/') {
-    return token_comment(&lexer, info);
+    return token_comment(&lexer, info, report);
   } else {
-    return token_symbol(&lexer, info);
+    return token_symbol(&lexer, info, report);
   }
 }
