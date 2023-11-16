@@ -5,6 +5,7 @@
 
 #include "module.h"
 #include "parser.h"
+#include "token.h"
 #include "token_cursor.h"
 #include "utility.h"
 
@@ -71,9 +72,5 @@ int module_token_cursor(Module *module, TokenCursor *cursor)
 
 int module_token_tree(Module *module, TokenTree *tree)
 {
-  int result = !!module_source(module);
-  if (result) {
-    mppl_parse(module_source(module), module_source_size(module), tree);
-  }
-  return result;
+  return module_source(module) && mppl_parse(module_source(module), module_source_size(module), tree);
 }

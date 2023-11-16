@@ -22,20 +22,25 @@ void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long si
   cursor->_offset = 0;
 }
 
-int token_cursor_next(TokenCursor *cursor, Token *token)
+int token_cursor_next(TokenCursor *cursor, Token *token, Report *report)
 {
   if (cursor->_offset == -1ul) {
     return 0;
   } else {
     Vector    trivia;
     TokenInfo info;
-    Report    report;
+
     vector_init(&trivia, sizeof(TokenInfo));
-    while (syntax_kind_is_trivia(token_cursor_lex(cursor, &info, &report))) {
+    while (syntax_kind_is_trivia(token_cursor_lex(cursor, &info, report))) {
       vector_push(&trivia, &info);
     }
     token_init(token, &info, vector_data(&trivia), vector_length(&trivia));
     vector_deinit(&trivia);
     return 1;
   }
+}
+
+unsigned long token_cursor_offset(TokenCursor *cursor)
+{
+  return cursor->_offset;
 }

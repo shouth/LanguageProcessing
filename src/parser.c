@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "parser.h"
+#include "report.h"
 #include "syntax_kind.h"
 #include "token.h"
 #include "token_cursor.h"
@@ -16,25 +17,37 @@ struct Parser {
   Token       token;
   Vector      parents;
   Vector      children;
+  Vector      errors;
+  int         alive;
 };
+
+static void next(Parser *parser)
+{
+  Report report;
+  token_cursor_next(&parser->cursor, &parser->token, &report);
+
+  if (parser->token.kind == SYNTAX_KIND_ERROR) {
+    vector_push(&parser->errors, &report);
+  }
+}
 
 static void bump(Parser *parser)
 {
   Token *token = xmalloc(sizeof(Token));
   *token       = parser->token;
   vector_push(&parser->children, &token);
-  token_cursor_next(&parser->cursor, &parser->token);
+  next(parser);
 }
 
 static int check(Parser *parser, SyntaxKind kind)
 {
-  return parser->token.kind == kind;
+  return parser->alive && parser->token.kind == kind;
 }
 
 static int eat(Parser *parser, SyntaxKind kind)
 {
   int result = check(parser, kind);
-  if (result) {
+  if (parser->alive && result) {
     bump(parser);
   }
   return result;
@@ -43,10 +56,13 @@ static int eat(Parser *parser, SyntaxKind kind)
 static int expect(Parser *parser, SyntaxKind kind)
 {
   int result = eat(parser, kind);
-  if (!result) {
-    printf("expected: %d, actual: %d (%s)\n", kind, parser->token.kind, parser->token.text);
-    exit(EXIT_FAILURE);
-    /* TODO: create an error object and push to parser */
+  if (parser->alive && !result) {
+    Report        report;
+    unsigned long offset = token_cursor_offset(&parser->cursor);
+    report_init(&report, REPORT_KIND_ERROR, offset, offset + parser->token.text_length,
+      "Expected `%s`, actual `%s`", syntax_kind_to_string(kind), parser->token.text);
+    vector_push(&parser->errors, &report);
+    parser->alive = 0;
   }
   return result;
 }
@@ -531,16 +547,30 @@ static void parse_program(Parser *parser)
 int mppl_parse(const char *source, unsigned long size, TokenTree *tree)
 {
   Parser parser;
+  int    result;
   vector_init(&parser.parents, sizeof(unsigned long));
   vector_init(&parser.children, sizeof(TokenNode *));
+  vector_init(&parser.errors, sizeof(Report));
   token_cursor_init(&parser.cursor, source, size);
-  token_cursor_next(&parser.cursor, &parser.token);
+  parser.alive = 1;
+  next(&parser);
 
   parse_program(&parser);
   *tree = **(TokenTree **) vector_data(&parser.children);
   free(*(TokenNode **) vector_data(&parser.children));
 
+  {
+    unsigned long i;
+    for (i = 0; i < vector_length(&parser.errors); ++i) {
+      Report *report = vector_at(&parser.errors, i);
+      printf("%s\n", report->_message);
+    }
+    fflush(stdout);
+  }
+  result = !vector_length(&parser.errors);
+
   vector_deinit(&parser.parents);
   vector_deinit(&parser.children);
-  return 1;
+  vector_deinit(&parser.errors);
+  return result;
 }
