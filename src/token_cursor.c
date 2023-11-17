@@ -34,7 +34,7 @@ int token_cursor_next(TokenCursor *cursor, Token *token, Report *report)
     while (syntax_kind_is_trivia(token_cursor_lex(cursor, &info, report))) {
       vector_push(&trivia, &info);
     }
-    token_init(token, &info, vector_data(&trivia), vector_length(&trivia));
+    token_init(token, &info, vector_data(&trivia), vector_count(&trivia));
     vector_deinit(&trivia);
     return 1;
   }

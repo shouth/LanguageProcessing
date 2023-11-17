@@ -14,7 +14,7 @@ void vector_init_with_capacity(Vector *vector, unsigned long size, unsigned long
 {
   vector->_data     = NULL;
   vector->_size     = size;
-  vector->_length   = 0;
+  vector->_count    = 0;
   vector->_capacity = 0;
   vector_reserve(vector, capacity);
 }
@@ -24,9 +24,9 @@ void vector_deinit(Vector *vector)
   free(vector->_data);
 }
 
-unsigned long vector_length(const Vector *vector)
+unsigned long vector_count(const Vector *vector)
 {
-  return vector->_length;
+  return vector->_count;
 }
 
 unsigned long vector_capacity(const Vector *vector)
@@ -46,7 +46,7 @@ void *vector_at(const Vector *vector, unsigned long index)
 
 void *vector_back(Vector *vector)
 {
-  return vector_at(vector, vector->_length - 1);
+  return vector_at(vector, vector->_count - 1);
 }
 
 void vector_reserve(Vector *vector, unsigned long capacity)
@@ -64,30 +64,30 @@ void vector_reserve(Vector *vector, unsigned long capacity)
 
 void vector_fit(Vector *vector)
 {
-  void *new = realloc(vector->_data, vector->_size * vector->_length);
+  void *new = realloc(vector->_data, vector->_size * vector->_count);
   if (new) {
     vector->_data     = new;
-    vector->_capacity = vector->_length;
+    vector->_capacity = vector->_count;
   }
 }
 
 void vector_push(Vector *vector, void *value)
 {
-  if (vector->_length == vector->_capacity) {
+  if (vector->_count == vector->_capacity) {
     vector_reserve(vector, vector->_capacity ? vector->_capacity * 2 : 1);
   }
-  ++vector->_length;
+  ++vector->_count;
   memcpy(vector_back(vector), value, vector->_size);
 }
 
 void vector_pop(Vector *vector)
 {
-  --vector->_length;
+  --vector->_count;
 }
 
 void vector_clear(Vector *vector)
 {
-  vector->_length = 0;
+  vector->_count = 0;
 }
 
 void *vector_steal(Vector *vector)
@@ -95,6 +95,6 @@ void *vector_steal(Vector *vector)
   void *result      = vector->_data;
   vector->_data     = NULL;
   vector->_capacity = 0;
-  vector->_length   = 0;
+  vector->_count    = 0;
   return result;
 }

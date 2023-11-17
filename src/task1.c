@@ -84,7 +84,7 @@ static void list_token(Map *counts, Vector *list)
     free(map_iterator_value(&iterator));
   }
   map_deinit(counts);
-  qsort(vector_data(list), vector_length(list), sizeof(TokenCountEntry), &token_info_compare);
+  qsort(vector_data(list), vector_count(list), sizeof(TokenCountEntry), &token_info_compare);
 }
 
 static void token_count_init(TokenCount *count, const char *source, unsigned long length)
@@ -133,12 +133,12 @@ static void token_count_deinit(TokenCount *count)
 {
   unsigned long i;
 
-  for (i = 0; i < vector_length(&count->token_counts); ++i) {
+  for (i = 0; i < vector_count(&count->token_counts); ++i) {
     token_info_deinit(vector_at(&count->token_counts, i));
   }
   vector_deinit(&count->token_counts);
 
-  for (i = 0; i < vector_length(&count->identifer_counts); ++i) {
+  for (i = 0; i < vector_count(&count->identifer_counts); ++i) {
     token_info_deinit(vector_at(&count->identifer_counts, i));
   }
   vector_deinit(&count->identifer_counts);
@@ -196,27 +196,27 @@ static void token_count_print(TokenCount *count)
   unsigned long max_count_display_width;
 
   {
-    unsigned long max_token_width      = get_max_token_display_width(vector_data(&count->token_counts), vector_length(&count->token_counts));
-    unsigned long max_identifier_width = identifier_prefix_width + get_max_token_display_width(vector_data(&count->identifer_counts), vector_length(&count->identifer_counts));
+    unsigned long max_token_width      = get_max_token_display_width(vector_data(&count->token_counts), vector_count(&count->token_counts));
+    unsigned long max_identifier_width = identifier_prefix_width + get_max_token_display_width(vector_data(&count->identifer_counts), vector_count(&count->identifer_counts));
 
     max_token_display_width = max_token_width > max_identifier_width ? max_token_width : max_identifier_width;
   }
 
   {
-    unsigned long max_token_count_width      = get_max_count_display_width(vector_data(&count->token_counts), vector_length(&count->token_counts));
-    unsigned long max_identifier_count_width = get_max_count_display_width(vector_data(&count->identifer_counts), vector_length(&count->identifer_counts));
+    unsigned long max_token_count_width      = get_max_count_display_width(vector_data(&count->token_counts), vector_count(&count->token_counts));
+    unsigned long max_identifier_count_width = get_max_count_display_width(vector_data(&count->identifer_counts), vector_count(&count->identifer_counts));
 
     max_count_display_width = max_token_count_width > max_identifier_count_width ? max_token_count_width : max_identifier_count_width;
   }
 
-  for (i = 0; i < vector_length(&count->token_counts); ++i) {
+  for (i = 0; i < vector_count(&count->token_counts); ++i) {
     TokenCountEntry *token_entry       = vector_at(&count->token_counts, i);
     unsigned long    token_space_width = (max_token_display_width - get_token_display_width(token_entry))
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
     printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
     if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER) {
-      for (j = 0; j < vector_length(&count->identifer_counts); ++j) {
+      for (j = 0; j < vector_count(&count->identifer_counts); ++j) {
         TokenCountEntry *identifier_entry       = vector_at(&count->identifer_counts, j);
         unsigned long    identifier_space_width = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
           + (max_count_display_width - get_count_display_width(identifier_entry)) + 2;

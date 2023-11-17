@@ -6,7 +6,7 @@ typedef struct Vector Vector;
 struct Vector {
   void         *_data;
   unsigned long _size;
-  unsigned long _length;
+  unsigned long _count;
   unsigned long _capacity;
 };
 
@@ -14,7 +14,7 @@ void vector_init(Vector *vector, unsigned long size);
 void vector_init_with_capacity(Vector *vector, unsigned long size, unsigned long capacity);
 void vector_deinit(Vector *vector);
 
-unsigned long vector_length(const Vector *vector);
+unsigned long vector_count(const Vector *vector);
 unsigned long vector_capacity(const Vector *vector);
 void         *vector_data(const Vector *vector);
 void         *vector_at(const Vector *vector, unsigned long index);

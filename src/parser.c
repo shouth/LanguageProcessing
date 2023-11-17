@@ -69,7 +69,7 @@ static int expect(Parser *parser, SyntaxKind kind)
 
 static unsigned long node_checkpoint(Parser *parser)
 {
-  return vector_length(&parser->children);
+  return vector_count(&parser->children);
 }
 
 static void node_start_at(Parser *parser, unsigned long checkpoint)
@@ -88,8 +88,8 @@ static void node_finish(Parser *parser, SyntaxKind kind)
   unsigned long checkpoint = *(unsigned long *) vector_back(&parser->parents);
 
   vector_pop(&parser->parents);
-  token_tree_init(tree, kind, vector_at(&parser->children, checkpoint), vector_length(&parser->children) - checkpoint);
-  while (vector_length(&parser->children) > checkpoint) {
+  token_tree_init(tree, kind, vector_at(&parser->children, checkpoint), vector_count(&parser->children) - checkpoint);
+  while (vector_count(&parser->children) > checkpoint) {
     vector_pop(&parser->children);
   }
   vector_push(&parser->children, &tree);
@@ -561,13 +561,13 @@ int mppl_parse(const char *source, unsigned long size, TokenTree *tree)
 
   {
     unsigned long i;
-    for (i = 0; i < vector_length(&parser.errors); ++i) {
+    for (i = 0; i < vector_count(&parser.errors); ++i) {
       Report *report = vector_at(&parser.errors, i);
       printf("%s\n", report->_message);
     }
     fflush(stdout);
   }
-  result = !vector_length(&parser.errors);
+  result = !vector_count(&parser.errors);
 
   vector_deinit(&parser.parents);
   vector_deinit(&parser.children);
