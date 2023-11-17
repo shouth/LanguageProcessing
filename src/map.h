@@ -27,7 +27,7 @@ struct MapEntry {
 };
 
 struct Map {
-  unsigned long  size;
+  unsigned long  count;
   unsigned long  mask;
   MapBucket     *buckets;
   MapHasher     *hasher;
@@ -50,7 +50,7 @@ void *map_entry_value(MapEntry *entry);
 void  map_entry_update(MapEntry *entry, void *value);
 void  map_entry_erase(MapEntry *entry);
 
-unsigned long map_size(Map *map);
+unsigned long map_count(Map *map);
 void         *map_value(Map *map, void *key);
 void          map_update(Map *map, void *key, void *value);
 void          map_erase(Map *map, void *key);

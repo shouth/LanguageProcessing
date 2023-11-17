@@ -30,7 +30,7 @@ void map_init_with_capacity(Map *map, unsigned long capacity, MapHasher *hasher,
     }
   }
 
-  map->size       = 0;
+  map->count      = 0;
   map->mask       = capacity;
   map->buckets    = xmalloc(sizeof(MapBucket) * (map->mask + NEIGHBORHOOD));
   map->hasher     = hasher ? hasher : &map_default_hasher;
@@ -176,7 +176,7 @@ void map_entry_update(MapEntry *entry, void *value)
     empty->value = value;
     entry->bucket->hop |= 1ul << (empty - entry->bucket);
     entry->slot = empty;
-    ++entry->parent->size;
+    ++entry->parent->count;
   } else {
     Map         old = *entry->parent;
     MapIterator iterator;
@@ -200,13 +200,13 @@ void map_entry_erase(MapEntry *entry)
     entry->bucket->hop &= ~(1ul << (entry->slot - entry->bucket));
     entry->slot->hop &= ~(1ul << (NEIGHBORHOOD - 1));
     entry->slot = NULL;
-    --entry->parent->size;
+    --entry->parent->count;
   }
 }
 
-unsigned long map_size(Map *map)
+unsigned long map_count(Map *map)
 {
-  return map->size;
+  return map->count;
 }
 
 void *map_value(Map *map, void *key)

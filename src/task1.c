@@ -78,7 +78,7 @@ static void list_token(Map *counts, Vector *list)
 {
   MapIterator iterator;
   map_iterator(&iterator, counts);
-  vector_init_with_capacity(list, sizeof(TokenCountEntry), map_size(counts));
+  vector_init_with_capacity(list, sizeof(TokenCountEntry), map_count(counts));
   while (map_iterator_next(&iterator)) {
     vector_push(list, map_iterator_value(&iterator));
     free(map_iterator_value(&iterator));
