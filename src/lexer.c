@@ -83,7 +83,7 @@ static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char
   va_start(args, format);
   report_init_with_args(report, REPORT_KIND_ERROR, lexer->offset, lexer->offset + lexer->index, format, args);
   va_end(args);
-  return tokenize(lexer, SYNTAX_KIND_ERROR, info);
+  return tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
 }
 
 static int token_unexpected(Lexer *lexer, TokenInfo *info, Report *report)
@@ -102,7 +102,7 @@ static int token_identifier_and_keyword(Lexer *lexer, TokenInfo *info, Report *r
     SyntaxKind kind;
     while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
     kind = syntax_kind_from_keyword(lexer->source + lexer->offset, lexer->index);
-    return tokenize(lexer, kind != SYNTAX_KIND_ERROR ? kind : SYNTAX_KIND_IDENTIFIER_TOKEN, info);
+    return tokenize(lexer, kind != SYNTAX_KIND_BAD_TOKEN ? kind : SYNTAX_KIND_IDENTIFIER_TOKEN, info);
   } else {
     return token_unexpected(lexer, info, report);
   }

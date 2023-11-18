@@ -63,7 +63,7 @@ static Token *token(Parser *parser)
   if (parser->token) {
     return parser->token;
   } else if (token_cursor_next(&parser->cursor, &token, &report)) {
-    if (token.kind == SYNTAX_KIND_ERROR) {
+    if (token.kind == SYNTAX_KIND_BAD_TOKEN) {
       vector_push(&parser->errors, &report);
     }
     parser->token  = xmalloc(sizeof(Token));

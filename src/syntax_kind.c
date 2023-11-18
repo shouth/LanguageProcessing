@@ -1,5 +1,6 @@
-#include "syntax_kind.h"
 #include <string.h>
+
+#include "syntax_kind.h"
 
 typedef struct Keyword Keyword;
 
@@ -47,7 +48,7 @@ SyntaxKind syntax_kind_from_keyword(const char *string, unsigned long size)
       return KEYWORDS[i].kind;
     }
   }
-  return SYNTAX_KIND_ERROR;
+  return SYNTAX_KIND_BAD_TOKEN;
 }
 
 int syntax_kind_is_token(SyntaxKind kind)
@@ -61,6 +62,7 @@ int syntax_kind_is_trivia(SyntaxKind kind)
 }
 
 static const char *SYNTAX_KIND_TO_STRING[] = {
+  "ERROR_TOKEN",
   "IDENTIFIER_TOKEN",
   "INTEGER_LITERAL",
   "STRING_LITERAL",
@@ -141,7 +143,6 @@ static const char *SYNTAX_KIND_TO_STRING[] = {
   "PARENTHESIZED_EXPRESSION",
   "NOT_EXPRESSION",
   "CAST_EXPRESSION",
-  "ERROR",
 };
 
 const char *syntax_kind_to_string(SyntaxKind kind)
