@@ -98,7 +98,7 @@ static void token_count_init(TokenCount *count, const char *source, unsigned lon
 
   map_init(&token_counts, &token_info_hash, &token_info_equal);
   map_init(&identifier_counts, &token_info_hash, &token_info_equal);
-  while (mppl_lex(source, offset, length, &token, &report) && token.kind != SYNTAX_KIND_EOF) {
+  while (mppl_lex(source, offset, length, &token, &report) && token.kind != SYNTAX_KIND_EOF_TOKEN) {
     offset += token.text_length;
     if (syntax_kind_is_trivia(token.kind)) {
       token_info_deinit(&token);
@@ -106,17 +106,17 @@ static void token_count_init(TokenCount *count, const char *source, unsigned lon
     }
 
     switch (token.kind) {
-    case SYNTAX_KIND_IDENTIFIER:
+    case SYNTAX_KIND_IDENTIFIER_TOKEN:
       increment_token(&identifier_counts, &token);
-      token_info_init(&token, SYNTAX_KIND_IDENTIFIER, "NAME", 4);
+      token_info_init(&token, SYNTAX_KIND_IDENTIFIER_TOKEN, "NAME", 4);
       break;
-    case SYNTAX_KIND_INTEGER:
+    case SYNTAX_KIND_INTEGER_LITERAL:
       token_info_deinit(&token);
-      token_info_init(&token, SYNTAX_KIND_INTEGER, "NUMBER", 6);
+      token_info_init(&token, SYNTAX_KIND_INTEGER_LITERAL, "NUMBER", 6);
       break;
-    case SYNTAX_KIND_STRING:
+    case SYNTAX_KIND_STRING_LITERAL:
       token_info_deinit(&token);
-      token_info_init(&token, SYNTAX_KIND_STRING, "STRING", 6);
+      token_info_init(&token, SYNTAX_KIND_STRING_LITERAL, "STRING", 6);
       break;
     default:
       /* do nothing */
@@ -215,7 +215,7 @@ static void token_count_print(TokenCount *count)
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
     printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
-    if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER) {
+    if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER_TOKEN) {
       for (j = 0; j < vector_count(&count->identifer_counts); ++j) {
         TokenCountEntry *identifier_entry       = vector_at(&count->identifer_counts, j);
         unsigned long    identifier_space_width = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))

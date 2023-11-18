@@ -9,34 +9,34 @@ struct Keyword {
 };
 
 static Keyword KEYWORDS[] = {
-  { "and", SYNTAX_KIND_KEYWORD_AND },
-  { "array", SYNTAX_KIND_KEYWORD_ARRAY },
-  { "begin", SYNTAX_KIND_KEYWORD_BEGIN },
-  { "boolean", SYNTAX_KIND_KEYWORD_BOOLEAN },
-  { "break", SYNTAX_KIND_KEYWORD_BREAK },
-  { "call", SYNTAX_KIND_KEYWORD_CALL },
-  { "char", SYNTAX_KIND_KEYWORD_CHAR },
-  { "div", SYNTAX_KIND_KEYWORD_DIV },
-  { "do", SYNTAX_KIND_KEYWORD_DO },
-  { "else", SYNTAX_KIND_KEYWORD_ELSE },
-  { "end", SYNTAX_KIND_KEYWORD_END },
-  { "false", SYNTAX_KIND_KEYWORD_FALSE },
-  { "if", SYNTAX_KIND_KEYWORD_IF },
-  { "integer", SYNTAX_KIND_KEYWORD_INTEGER },
-  { "not", SYNTAX_KIND_KEYWORD_NOT },
-  { "of", SYNTAX_KIND_KEYWORD_OF },
-  { "or", SYNTAX_KIND_KEYWORD_OR },
-  { "procedure", SYNTAX_KIND_KEYWORD_PROCEDURE },
-  { "program", SYNTAX_KIND_KEYWORD_PROGRAM },
-  { "read", SYNTAX_KIND_KEYWORD_READ },
-  { "readln", SYNTAX_KIND_KEYWORD_READLN },
-  { "return", SYNTAX_KIND_KEYWORD_RETURN },
-  { "then", SYNTAX_KIND_KEYWORD_THEN },
-  { "true", SYNTAX_KIND_KEYWORD_TRUE },
-  { "var", SYNTAX_KIND_KEYWORD_VAR },
-  { "while", SYNTAX_KIND_KEYWORD_WHILE },
-  { "write", SYNTAX_KIND_KEYWORD_WRITE },
-  { "writeln", SYNTAX_KIND_KEYWORD_WRITELN },
+  { "and", SYNTAX_KIND_AND_KEYWORD },
+  { "array", SYNTAX_KIND_ARRAY_KEYWORD },
+  { "begin", SYNTAX_KIND_BEGIN_KEYWORD },
+  { "boolean", SYNTAX_KIND_BOOLEAN_KEYWORD },
+  { "break", SYNTAX_KIND_BREAK_KEYWORD },
+  { "call", SYNTAX_KIND_CALL_KEYWORD },
+  { "char", SYNTAX_KIND_CHAR_KEYWORD },
+  { "div", SYNTAX_KIND_DIV_KEYWORD },
+  { "do", SYNTAX_KIND_DO_KEYWORD },
+  { "else", SYNTAX_KIND_ELSE_KEYWORD },
+  { "end", SYNTAX_KIND_END_KEYWORD },
+  { "false", SYNTAX_KIND_FALSE_KEYWORD },
+  { "if", SYNTAX_KIND_IF_KEYWORD },
+  { "integer", SYNTAX_KIND_INTEGER_KEYWORD },
+  { "not", SYNTAX_KIND_NOT_KEYWORD },
+  { "of", SYNTAX_KIND_OF_KEYWORD },
+  { "or", SYNTAX_KIND_OR_KEYWORD },
+  { "procedure", SYNTAX_KIND_PROCEDURE_KEYWORD },
+  { "program", SYNTAX_KIND_PROGRAM_KEYWORD },
+  { "read", SYNTAX_KIND_READ_KEYWORD },
+  { "readln", SYNTAX_KIND_READLN_KEYWORD },
+  { "return", SYNTAX_KIND_RETURN_KEYWORD },
+  { "then", SYNTAX_KIND_THEN_KEYWORD },
+  { "true", SYNTAX_KIND_TRUE_KEYWORD },
+  { "var", SYNTAX_KIND_VAR_KEYWORD },
+  { "while", SYNTAX_KIND_WHILE_KEYWORD },
+  { "write", SYNTAX_KIND_WRITE_KEYWORD },
+  { "writeln", SYNTAX_KIND_WRITELN_KEYWORD },
 };
 
 SyntaxKind syntax_kind_from_keyword(const char *string, unsigned long size)
@@ -52,12 +52,12 @@ SyntaxKind syntax_kind_from_keyword(const char *string, unsigned long size)
 
 int syntax_kind_is_token(SyntaxKind kind)
 {
-  return kind <= SYNTAX_KIND_EOF;
+  return kind <= SYNTAX_KIND_EOF_TOKEN;
 }
 
 int syntax_kind_is_trivia(SyntaxKind kind)
 {
-  return kind >= SYNTAX_KIND_SPACE && kind <= SYNTAX_KIND_C_COMMENT;
+  return kind >= SYNTAX_KIND_SPACE_TRIVIA && kind <= SYNTAX_KIND_C_COMMENT_TRIVIA;
 }
 
 static const char *SYNTAX_KIND_TO_STRING[] = {

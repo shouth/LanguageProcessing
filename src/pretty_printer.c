@@ -151,12 +151,12 @@ static void print_expression(Printer *printer, const TokenNode *node)
   case SYNTAX_KIND_CAST_EXPRESSION:
     print_cast_expression(printer, node);
     break;
-  case SYNTAX_KIND_STRING:
+  case SYNTAX_KIND_STRING_LITERAL:
     print_token(printer, node, printer->option.color.string);
     break;
-  case SYNTAX_KIND_INTEGER:
-  case SYNTAX_KIND_KEYWORD_TRUE:
-  case SYNTAX_KIND_KEYWORD_FALSE:
+  case SYNTAX_KIND_INTEGER_LITERAL:
+  case SYNTAX_KIND_TRUE_KEYWORD:
+  case SYNTAX_KIND_FALSE_KEYWORD:
     print_token(printer, node, printer->option.color.literal);
     break;
   default:
@@ -236,7 +236,7 @@ static void print_actual_parameter_list(Printer *printer, const TokenNode *node)
   print_token(printer, tree->children[index++], printer->option.color.foreground);
   while (1) {
     print_expression(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA) {
+    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
     print_token(printer, tree->children[index++], printer->option.color.foreground);
@@ -284,7 +284,7 @@ static void print_input_list(Printer *printer, const TokenNode *node)
   print_token(printer, tree->children[index++], printer->option.color.foreground);
   while (1) {
     print_variable(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA) {
+    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
     print_token(printer, tree->children[index++], printer->option.color.foreground);
@@ -328,7 +328,7 @@ static void print_output_list(Printer *printer, const TokenNode *node)
   print_token(printer, tree->children[index++], printer->option.color.foreground);
   while (1) {
     print_output_value(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA) {
+    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
     print_token(printer, tree->children[index++], printer->option.color.foreground);
@@ -361,7 +361,7 @@ static void print_compound_statement(Printer *printer, const TokenNode *node)
   while (1) {
     print_indent(printer);
     print_statement(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_SEMICOLON) {
+    if (tree->children[index]->kind != SYNTAX_KIND_SEMICOLON_TOKEN) {
       break;
     }
     print_token(printer, tree->children[index++], printer->option.color.foreground);
@@ -416,7 +416,7 @@ static void print_variable_declaration(Printer *printer, const TokenNode *node)
 
   while (1) {
     print_token(printer, tree->children[index++], printer->option.color.foreground);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA) {
+    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
     print_token(printer, tree->children[index++], printer->option.color.foreground);
@@ -452,7 +452,7 @@ static void print_formal_parameter_section(Printer *printer, const TokenNode *no
 
   while (1) {
     print_token(printer, tree->children[index++], printer->option.color.parameter);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA) {
+    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
     print_token(printer, tree->children[index++], printer->option.color.foreground);

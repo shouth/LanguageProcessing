@@ -9,7 +9,7 @@ static SyntaxKind token_cursor_lex(TokenCursor *cursor, TokenInfo *info, Report 
 {
   mppl_lex(cursor->_source, cursor->_offset, cursor->_size, info, report);
   cursor->_offset += info->text_length;
-  if (info->kind == SYNTAX_KIND_EOF) {
+  if (info->kind == SYNTAX_KIND_EOF_TOKEN) {
     cursor->_offset = -1ul;
   }
   return info->kind;
