@@ -110,7 +110,7 @@ static int expect(Parser *parser, SyntaxKind kind)
     Report        report;
     unsigned long offset = token_cursor_offset(&parser->cursor);
     report_init(&report, REPORT_KIND_ERROR, offset, offset + token(parser)->text_length,
-      "Expected `%s`, actual `%s`", syntax_kind_to_string(kind), token(parser)->text);
+      "expected `%s`, actual `%s`", syntax_kind_to_string(kind), token(parser)->text);
     vector_push(&parser->errors, &report);
     parser->alive = 0;
     bump(parser);
