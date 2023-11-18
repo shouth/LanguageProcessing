@@ -88,7 +88,6 @@ static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char
 
 static int token_unexpected(Lexer *lexer, TokenInfo *info, Report *report)
 {
-  bump(lexer);
   if (is_graphic(lexer->source[lexer->offset])) {
     return token_error(lexer, info, report, "Stray character '%c'", lexer->source[lexer->offset]);
   } else {
