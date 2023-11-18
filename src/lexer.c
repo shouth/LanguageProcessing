@@ -89,9 +89,9 @@ static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char
 static int token_unexpected(Lexer *lexer, TokenInfo *info, Report *report)
 {
   if (is_graphic(lexer->source[lexer->offset])) {
-    return token_error(lexer, info, report, "Stray character '%c'", lexer->source[lexer->offset]);
+    return token_error(lexer, info, report, "stray '%c' in program", lexer->source[lexer->offset]);
   } else {
-    return token_error(lexer, info, report, "Stray character '\\%o'", (int) lexer->source[lexer->offset]);
+    return token_error(lexer, info, report, "stray '\\%o' in program", (int) lexer->source[lexer->offset]);
   }
 }
 
@@ -124,14 +124,15 @@ static int token_string(Lexer *lexer, TokenInfo *info, Report *report)
     while (1) {
       if (eat(lexer, '\'') && !eat(lexer, '\'')) {
         if (contain_non_graphic) {
-          return token_error(lexer, info, report, "String contains non-graphic character");
+          return token_error(lexer, info, report, "string contains non-graphic character");
         } else {
           return tokenize(lexer, SYNTAX_KIND_STRING_LITERAL, info);
         }
       } else if (is_newline(first(lexer)) || first(lexer) == EOF) {
-        return token_error(lexer, info, report, "String is unterminated");
+        return token_error(lexer, info, report, "string is unterminated");
+      } else {
+        contain_non_graphic |= !eat_if(lexer, &is_graphic);
       }
-      contain_non_graphic |= !eat_if(lexer, &is_graphic);
     }
   } else {
     return token_unexpected(lexer, info, report);
@@ -161,9 +162,10 @@ static int token_comment(Lexer *lexer, TokenInfo *info, Report *report)
       if (eat(lexer, '}')) {
         return tokenize(lexer, SYNTAX_KIND_BRACES_COMMENT_TRIVIA, info);
       } else if (first(lexer) == EOF) {
-        return token_error(lexer, info, report, "Comment is unterminated");
+        return token_error(lexer, info, report, "comment is unterminated");
+      } else {
+        bump(lexer);
       }
-      bump(lexer);
     }
   } else if (eat(lexer, '/')) {
     if (eat(lexer, '*')) {
@@ -171,9 +173,10 @@ static int token_comment(Lexer *lexer, TokenInfo *info, Report *report)
         if (eat(lexer, '*') && eat(lexer, '/')) {
           return tokenize(lexer, SYNTAX_KIND_C_COMMENT_TRIVIA, info);
         } else if (first(lexer) == EOF) {
-          return token_error(lexer, info, report, "Comment is unterminated");
+          return token_error(lexer, info, report, "comment is unterminated");
+        } else {
+          bump(lexer);
         }
-        bump(lexer);
       }
     } else {
       return token_unexpected(lexer, info, report);
