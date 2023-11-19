@@ -85,28 +85,44 @@ static void bump(Parser *parser)
   }
 }
 
-static int check(Parser *parser, SyntaxKind kind)
+static int check_any(Parser *parser, SyntaxKind *kinds, unsigned long count)
 {
   if (!parser->alive) {
     return 0;
-  } else if (token(parser)->kind == kind) {
+  } else {
+    unsigned long i;
+    for (i = 0; i < count; ++i) {
+      bit_set_set(parser->expected, kinds[i], 1);
+    }
+    for (i = 0; i < count; ++i) {
+      if (token(parser)->kind == kinds[i]) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+}
+
+static int check(Parser *parser, SyntaxKind kind)
+{
+  return check_any(parser, &kind, 1);
+}
+
+static int eat_any(Parser *parser, SyntaxKind *kinds, unsigned long count)
+{
+  if (!parser->alive) {
+    return 0;
+  } else if (check_any(parser, kinds, count)) {
+    bump(parser);
     return 1;
   } else {
-    bit_set_set(parser->expected, kind, 1);
     return 0;
   }
 }
 
 static int eat(Parser *parser, SyntaxKind kind)
 {
-  if (!parser->alive) {
-    return 0;
-  } else if (check(parser, kind)) {
-    bump(parser);
-    return 1;
-  } else {
-    return 0;
-  }
+  return eat_any(parser, &kind, 1);
 }
 
 static const char *SYNTAX_KIND_DISPLAY_STRING[] = {
@@ -194,17 +210,22 @@ static void error_unexpected(Parser *parser)
   bump(parser);
 }
 
-static int expect(Parser *parser, SyntaxKind kind)
+static int expect_any(Parser *parser, SyntaxKind *kinds, unsigned long count)
 {
   if (!parser->alive) {
     node_null(parser);
     return 0;
-  } else if (eat(parser, kind)) {
+  } else if (eat_any(parser, kinds, count)) {
     return 1;
   } else {
     error_unexpected(parser);
     return 0;
   }
+}
+
+static int expect(Parser *parser, SyntaxKind kind)
+{
+  return expect_any(parser, &kind, 1);
 }
 
 static int check_standard_type(Parser *parser)
@@ -216,9 +237,8 @@ static int check_standard_type(Parser *parser)
 
 static void parse_standard_type(Parser *parser)
 {
-  if (!eat(parser, SYNTAX_KIND_INTEGER_KEYWORD) && !eat(parser, SYNTAX_KIND_BOOLEAN_KEYWORD) && !eat(parser, SYNTAX_KIND_CHAR_KEYWORD)) {
-    error_unexpected(parser);
-  }
+  SyntaxKind kinds[] = { SYNTAX_KIND_INTEGER_KEYWORD, SYNTAX_KIND_BOOLEAN_KEYWORD, SYNTAX_KIND_CHAR_KEYWORD };
+  expect_any(parser, kinds, 3);
 }
 
 static void parse_array_type(Parser *parser)
@@ -237,10 +257,8 @@ static void parse_type(Parser *parser)
 {
   if (check_standard_type(parser)) {
     parse_standard_type(parser);
-  } else if (check(parser, SYNTAX_KIND_ARRAY_KEYWORD)) {
-    parse_array_type(parser);
   } else {
-    error_unexpected(parser);
+    parse_array_type(parser);
   }
 }
 
@@ -297,93 +315,66 @@ static void parse_factor(Parser *parser)
     parse_not_expression(parser);
   } else if (check_standard_type(parser)) {
     parse_cast_expression(parser);
-  } else if (!eat(parser, SYNTAX_KIND_INTEGER_LITERAL) && !eat(parser, SYNTAX_KIND_TRUE_KEYWORD) && !eat(parser, SYNTAX_KIND_FALSE_KEYWORD) && !eat(parser, SYNTAX_KIND_STRING_LITERAL)) {
-    error_unexpected(parser);
+  } else {
+    SyntaxKind kinds[] = {
+      SYNTAX_KIND_INTEGER_LITERAL,
+      SYNTAX_KIND_TRUE_KEYWORD,
+      SYNTAX_KIND_FALSE_KEYWORD,
+      SYNTAX_KIND_STRING_LITERAL
+    };
+    expect_any(parser, kinds, 4);
   }
-}
-
-static int check_multicative_operator(Parser *parser)
-{
-  return check(parser, SYNTAX_KIND_STAR_TOKEN)
-    || check(parser, SYNTAX_KIND_DIV_KEYWORD)
-    || check(parser, SYNTAX_KIND_AND_KEYWORD);
-}
-
-static int eat_multicative_operator(Parser *parser)
-{
-  int result = check_multicative_operator(parser);
-  if (result) {
-    bump(parser);
-  }
-  return result;
 }
 
 static void parse_term(Parser *parser)
 {
+  SyntaxKind operators[] = {
+    SYNTAX_KIND_STAR_TOKEN,
+    SYNTAX_KIND_DIV_KEYWORD,
+    SYNTAX_KIND_AND_KEYWORD,
+  };
   unsigned long checkpoint = node_checkpoint(parser);
   parse_factor(parser);
-  while (eat_multicative_operator(parser)) {
+  while (eat_any(parser, operators, 3)) {
     node_start_at(parser, checkpoint);
     parse_factor(parser);
     node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
   }
 }
 
-static int check_additive_operator(Parser *parser)
-{
-  return check(parser, SYNTAX_KIND_PLUS_TOKEN)
-    || check(parser, SYNTAX_KIND_MINUS_TOKEN)
-    || check(parser, SYNTAX_KIND_OR_KEYWORD);
-}
-
-static int eat_additive_operator(Parser *parser)
-{
-  int result = check_additive_operator(parser);
-  if (result) {
-    bump(parser);
-  }
-  return result;
-}
-
 static void parse_simple_expression(Parser *parser)
 {
+  SyntaxKind operators[] = {
+    SYNTAX_KIND_PLUS_TOKEN,
+    SYNTAX_KIND_MINUS_TOKEN,
+    SYNTAX_KIND_OR_KEYWORD,
+  };
   unsigned long checkpoint = node_checkpoint(parser);
-  if (check_additive_operator(parser)) {
+  if (check_any(parser, operators, 3)) {
     node_null(parser);
   } else {
     parse_term(parser);
   }
-  while (eat_additive_operator(parser)) {
+  while (eat_any(parser, operators, 3)) {
     node_start_at(parser, checkpoint);
     parse_term(parser);
     node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
   }
 }
 
-static int check_relational_operator(Parser *parser)
-{
-  return check(parser, SYNTAX_KIND_EQUAL_TOKEN)
-    || check(parser, SYNTAX_KIND_NOT_EQUAL_TOKEN)
-    || check(parser, SYNTAX_KIND_LESS_THAN_TOKEN)
-    || check(parser, SYNTAX_KIND_LESS_THAN_EQUAL_TOKEN)
-    || check(parser, SYNTAX_KIND_GREATER_THAN_TOKEN)
-    || check(parser, SYNTAX_KIND_GREATER_THAN_EQUAL_TOKEN);
-}
-
-static int eat_relational_operator(Parser *parser)
-{
-  int result = check_relational_operator(parser);
-  if (result) {
-    bump(parser);
-  }
-  return result;
-}
-
 static void parse_expression(Parser *parser)
 {
+  SyntaxKind operators[] = {
+    SYNTAX_KIND_EQUAL_TOKEN,
+    SYNTAX_KIND_NOT_EQUAL_TOKEN,
+    SYNTAX_KIND_LESS_THAN_TOKEN,
+    SYNTAX_KIND_LESS_THAN_EQUAL_TOKEN,
+    SYNTAX_KIND_GREATER_THAN_TOKEN,
+    SYNTAX_KIND_GREATER_THAN_EQUAL_TOKEN,
+  };
   unsigned long checkpoint = node_checkpoint(parser);
   parse_simple_expression(parser);
-  while (eat_relational_operator(parser)) {
+  while (eat_any(parser, operators, 6)) {
     node_start_at(parser, checkpoint);
     parse_simple_expression(parser);
     node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
@@ -478,10 +469,12 @@ static void parse_input_list(Parser *parser)
 
 static void parse_input_statement(Parser *parser)
 {
+  SyntaxKind kinds[] = {
+    SYNTAX_KIND_READ_KEYWORD,
+    SYNTAX_KIND_READLN_KEYWORD,
+  };
   node_start(parser);
-  if (!eat(parser, SYNTAX_KIND_READ_KEYWORD) && !eat(parser, SYNTAX_KIND_READLN_KEYWORD)) {
-    error_unexpected(parser);
-  }
+  expect_any(parser, kinds, 2);
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN)) {
     parse_input_list(parser);
   } else {
@@ -516,10 +509,12 @@ static void parse_output_list(Parser *parser)
 
 static void parse_output_statement(Parser *parser)
 {
+  SyntaxKind kinds[] = {
+    SYNTAX_KIND_WRITE_KEYWORD,
+    SYNTAX_KIND_WRITELN_KEYWORD,
+  };
   node_start(parser);
-  if (!eat(parser, SYNTAX_KIND_WRITE_KEYWORD) && !eat(parser, SYNTAX_KIND_WRITELN_KEYWORD)) {
-    error_unexpected(parser);
-  }
+  expect_any(parser, kinds, 2);
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN)) {
     parse_output_list(parser);
   } else {
