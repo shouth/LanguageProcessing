@@ -112,17 +112,17 @@ unsigned long source_location(const Source *source, unsigned long offset, Source
   } else {
     unsigned long left  = 0;
     unsigned long right = source->_line_count;
-    while (right - left > 0) {
+    while (right - left > 1) {
       unsigned long middle = (right - left) / 2 + left;
-      if (source->_line_offsets[middle] <= offset) {
-        left = middle;
-      } else {
+      if (offset < source->_line_offsets[middle]) {
         right = middle;
+      } else {
+        left = middle;
       }
     }
     if (location) {
       location->line   = left + 1;
-      location->column = offset - source->_line_offsets[left];
+      location->column = offset - source->_line_offsets[left] + 1;
       location->length = source->_line_lengths[left];
     }
     return left + 1;
