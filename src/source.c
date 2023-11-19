@@ -104,7 +104,7 @@ unsigned long source_file_name_length(const Source *source)
   return source->_file_name_length;
 }
 
-unsigned long source_location(const Source *source, unsigned long offset, SourceLocation *line)
+unsigned long source_location(const Source *source, unsigned long offset, SourceLocation *location)
 {
   if (offset >= source->_text_length) {
     return 0;
@@ -119,10 +119,10 @@ unsigned long source_location(const Source *source, unsigned long offset, Source
         right = middle;
       }
     }
-    if (line) {
-      line->line   = left + 1;
-      line->column = offset - source->_line_offsets[left];
-      line->length = source->_line_lengths[left];
+    if (location) {
+      location->line   = left + 1;
+      location->column = offset - source->_line_offsets[left];
+      location->length = source->_line_lengths[left];
     }
     return left + 1;
   }
