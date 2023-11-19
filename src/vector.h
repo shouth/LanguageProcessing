@@ -22,7 +22,9 @@ void         *vector_back(Vector *vector);
 void          vector_reserve(Vector *vector, unsigned long capacity);
 void          vector_fit(Vector *vector);
 void          vector_push(Vector *vector, void *value);
+void          vector_push_n(Vector *vector, void *value, unsigned long count);
 void          vector_pop(Vector *vector);
+void          vector_pop_n(Vector *vector, unsigned long count);
 void          vector_clear(Vector *vector);
 void         *vector_steal(Vector *vector);
 

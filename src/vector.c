@@ -73,16 +73,34 @@ void vector_fit(Vector *vector)
 
 void vector_push(Vector *vector, void *value)
 {
-  if (vector->_count == vector->_capacity) {
-    vector_reserve(vector, vector->_capacity ? vector->_capacity * 2 : 1);
+  vector_push_n(vector, value, 1);
+}
+
+void vector_push_n(Vector *vector, void *value, unsigned long count)
+{
+  if (vector_count(vector) + count > vector_capacity(vector)) {
+    unsigned long capacity = vector_capacity(vector) ? vector_capacity(vector) : 1;
+    while (vector_count(vector) + count > capacity) {
+      capacity *= 2;
+    }
+    vector_reserve(vector, capacity);
   }
-  ++vector->_count;
-  memcpy(vector_back(vector), value, vector->_size);
+  memcpy(vector_at(vector, vector_count(vector)), value, vector->_size * count);
+  vector->_count += count;
 }
 
 void vector_pop(Vector *vector)
 {
-  --vector->_count;
+  vector_pop_n(vector, 1);
+}
+
+void vector_pop_n(Vector *vector, unsigned long count)
+{
+  if (vector->_count > count) {
+    vector->_count -= count;
+  } else {
+    vector->_count = 0;
+  }
 }
 
 void vector_clear(Vector *vector)
