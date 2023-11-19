@@ -23,7 +23,7 @@ int bit_set_get(BitSet *bit_set, unsigned long index)
 
 unsigned long bit_set_count(BitSet *bit_set, unsigned long bits)
 {
-  unsigned long result  = 0;
+  unsigned long result = 0;
   unsigned long i;
   bits = BIT_SET_SIZE * bit_set_bits_to_buckets(bits);
   for (i = 0; i < bits; ++i) {
