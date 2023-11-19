@@ -527,7 +527,7 @@ static const SyntaxKind FIRST_OUTPUT_STATEMENT[] = {
   SYNTAX_KIND_WRITELN_KEYWORD,
 };
 
-static unsigned long FIRST_OUTPUT_STATEMENT_COUNT = sizeof(FIRST_OUTPUT_STATEMENT) / sizeof(SyntaxKind);
+static const unsigned long FIRST_OUTPUT_STATEMENT_COUNT = sizeof(FIRST_OUTPUT_STATEMENT) / sizeof(SyntaxKind);
 
 static void parse_output_statement(Parser *parser)
 {
