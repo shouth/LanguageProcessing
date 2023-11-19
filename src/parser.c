@@ -15,13 +15,14 @@
 typedef struct Parser Parser;
 
 struct Parser {
-  TokenCursor cursor;
-  Token      *token;
-  Vector      parents;
-  Vector      children;
-  BitSet      expected[bit_set_bits_to_buckets(SYNTAX_KIND_EOF_TOKEN + 1)];
-  Vector      errors;
-  int         alive;
+  TokenCursor   cursor;
+  unsigned long offset;
+  Token        *token;
+  Vector        parents;
+  Vector        children;
+  BitSet        expected[bit_set_bits_to_buckets(SYNTAX_KIND_EOF_TOKEN + 1)];
+  Vector        errors;
+  int           alive;
 };
 
 static unsigned long node_checkpoint(Parser *parser)
@@ -65,8 +66,10 @@ static Token *token(Parser *parser)
 
   if (parser->token) {
     return parser->token;
-  } else if (token_cursor_next(&parser->cursor, &token, &report)) {
-    bit_set_zero(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1);
+  }
+
+  parser->offset = token_cursor_offset(&parser->cursor);
+  if (token_cursor_next(&parser->cursor, &token, &report)) {
     if (token.kind == SYNTAX_KIND_BAD_TOKEN) {
       vector_push(&parser->errors, &report);
     }
@@ -81,6 +84,7 @@ static Token *token(Parser *parser)
 static void bump(Parser *parser)
 {
   if (token(parser)) {
+    bit_set_zero(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1);
     vector_push(&parser->children, &parser->token);
     parser->token = NULL;
   }
@@ -184,7 +188,6 @@ static void error_unexpected(Parser *parser)
 {
   if (token(parser)->kind != SYNTAX_KIND_BAD_TOKEN) {
     Report        report;
-    unsigned long offset = token_cursor_offset(&parser->cursor);
     char          expected[1024];
     unsigned long cursor = 0;
     SyntaxKind    kind;
@@ -202,7 +205,7 @@ static void error_unexpected(Parser *parser)
         bit_set_set(parser->expected, kind, 0);
       }
     }
-    report_init(&report, REPORT_KIND_ERROR, offset, offset + token(parser)->text_length,
+    report_init(&report, REPORT_KIND_ERROR, parser->offset, parser->offset + token(parser)->text_length,
       "expected %s, actual `%s`", expected, token(parser)->text);
     vector_push(&parser->errors, &report);
   }
