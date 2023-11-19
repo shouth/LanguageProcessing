@@ -19,16 +19,17 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
   {
     FILE *file = fopen(source->_file_name, "rb");
     if (file) {
-      Vector text;
-      char   buffer[4096];
+      Vector        text;
+      char          buffer[4096];
+      unsigned long length;
       vector_init(&text, sizeof(char));
-      while (fread(buffer, sizeof(char), sizeof(buffer), file) > 0) {
-        vector_push_n(&text, buffer, 4096);
+      while ((length = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
+        vector_push_n(&text, buffer, length);
       }
       buffer[0] = '\0';
       vector_push(&text, buffer);
       vector_fit(&text);
-      source->_text_length = vector_count(&text);
+      source->_text_length = vector_count(&text) - 1;
       source->_text        = vector_steal(&text);
     } else {
       source->_text_length = -1ul;
