@@ -5,8 +5,8 @@
 
 #include "lexer.h"
 #include "map.h"
-#include "module.h"
 #include "report.h"
+#include "source.h"
 #include "syntax_kind.h"
 #include "tasks.h"
 #include "token.h"
@@ -87,7 +87,7 @@ static void list_token(Map *counts, Vector *list)
   qsort(vector_data(list), vector_count(list), sizeof(TokenCountEntry), &token_info_compare);
 }
 
-static void token_count_init(TokenCount *count, const char *source, unsigned long length)
+static void token_count_init(TokenCount *count, const Source *source)
 {
   TokenInfo token;
   Report    report;
@@ -98,7 +98,7 @@ static void token_count_init(TokenCount *count, const char *source, unsigned lon
 
   map_init(&token_counts, &token_info_hash, &token_info_equal);
   map_init(&identifier_counts, &token_info_hash, &token_info_equal);
-  while (mppl_lex(source, offset, length, &token, &report) && token.kind != SYNTAX_KIND_EOF_TOKEN) {
+  while (mppl_lex(source, offset, &token, &report) && token.kind != SYNTAX_KIND_EOF_TOKEN) {
     offset += token.text_length;
     if (syntax_kind_is_trivia(token.kind)) {
       token_info_deinit(&token);
@@ -228,7 +228,7 @@ static void token_count_print(TokenCount *count)
 
 void task1(int argc, const char **argv)
 {
-  Module     module;
+  Source     source;
   TokenCount counter;
 
   if (argc < 2) {
@@ -236,9 +236,9 @@ void task1(int argc, const char **argv)
     exit(EXIT_FAILURE);
   }
 
-  module_init(&module, argv[1]);
-  token_count_init(&counter, module_source(&module), module_source_size(&module));
+  source_init(&source, argv[1], strlen(argv[1]));
+  token_count_init(&counter, &source);
   token_count_print(&counter);
   token_count_deinit(&counter);
-  module_deinit(&module);
+  source_deinit(&source);
 }

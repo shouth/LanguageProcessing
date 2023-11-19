@@ -1,20 +1,28 @@
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "module.h"
+#include "parser.h"
 #include "pretty_printer.h"
-#include "tasks.h"
+#include "source.h"
 #include "token.h"
 
 int main(int argc, const char **argv)
 {
-  Module    module;
+  Source    source;
   TokenTree tree;
-  module_init(&module, argv[1]);
-  if (module_token_tree(&module, &tree)) {
-    mppl_pretty_print((TokenNode *) &tree, NULL);
+
+  if (argc < 2) {
+    fprintf(stderr, "[Usage] %s <filename>\n", argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  source_init(&source, argv[1], strlen(argv[1]));
+  if (mppl_parse(&source, &tree)) {
+    mppl_pretty_print((const TokenNode *) &tree, NULL);
   }
   token_tree_deinit(&tree);
-  module_deinit(&module);
+  source_deinit(&source);
   return EXIT_SUCCESS;
 }

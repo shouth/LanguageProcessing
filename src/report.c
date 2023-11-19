@@ -41,6 +41,13 @@ void report_init(Report *report, ReportKind kind, unsigned long start, unsigned 
   va_end(args);
 }
 
+void report_deinit(Report *report)
+{
+  free(report->_message);
+  vector_deinit(&report->_notes);
+  vector_deinit(&report->_labels);
+}
+
 void report_init_with_args(Report *report, ReportKind kind, unsigned long start, unsigned long end, const char *format, va_list args)
 {
   report->_kind    = kind;
@@ -85,9 +92,8 @@ void report_note_with_args(Report *report, unsigned long start, unsigned long en
   vector_push(&report->_notes, &note);
 }
 
-void report_deinit(Report *report)
+void report_emit(Report *report, const Source *source)
 {
-  free(report->_message);
-  vector_deinit(&report->_notes);
-  vector_deinit(&report->_labels);
+  fprintf(stderr, "%s\n", report->_message);
+  report_deinit(report);
 }

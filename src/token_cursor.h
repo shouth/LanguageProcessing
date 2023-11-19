@@ -2,17 +2,17 @@
 #define TOKEN_CURSOR_H
 
 #include "report.h"
+#include "source.h"
 #include "token.h"
 
 typedef struct TokenCursor TokenCursor;
 
 struct TokenCursor {
-  const char   *_source;
-  unsigned long _size;
+  const Source *_source;
   unsigned long _offset;
 };
 
-void          token_cursor_init(TokenCursor *cursor, const char *source, unsigned long size);
+void          token_cursor_init(TokenCursor *cursor, const Source *source);
 int           token_cursor_next(TokenCursor *cursor, Token *token, Report *report);
 unsigned long token_cursor_offset(TokenCursor *cursor);
 

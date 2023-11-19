@@ -2,28 +2,30 @@
 #include <string.h>
 
 #include "report.h"
+#include "source.h"
 #include "syntax_kind.h"
 #include "token.h"
 
 typedef struct Lexer Lexer;
 
 struct Lexer {
-  const char   *source;
+  const Source *source;
   unsigned long offset;
-  unsigned long length;
   unsigned long index;
 };
 
 static void bump(Lexer *lexer)
 {
-  if (lexer->offset + lexer->index < lexer->length) {
+  if (lexer->offset + lexer->index < source_length(lexer->source)) {
     ++lexer->index;
   }
 }
 
 static int first(Lexer *lexer)
 {
-  return lexer->offset + lexer->index < lexer->length ? lexer->source[lexer->offset + lexer->index] : EOF;
+  return lexer->offset + lexer->index < source_length(lexer->source)
+    ? source_text(lexer->source)[lexer->offset + lexer->index]
+    : EOF;
 }
 
 static int eat(Lexer *lexer, int c)
@@ -71,7 +73,7 @@ static int is_graphic(int c)
 
 static int tokenize(Lexer *lexer, SyntaxKind kind, TokenInfo *info)
 {
-  token_info_init(info, kind, lexer->source + lexer->offset, lexer->index);
+  token_info_init(info, kind, source_text(lexer->source) + lexer->offset, lexer->index);
   lexer->offset += lexer->index;
   lexer->index = 0;
   return 1;
@@ -88,10 +90,10 @@ static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char
 
 static int token_unexpected(Lexer *lexer, TokenInfo *info, Report *report)
 {
-  if (is_graphic(lexer->source[lexer->offset])) {
-    return token_error(lexer, info, report, "stray '%c' in program", lexer->source[lexer->offset]);
+  if (is_graphic(source_text(lexer->source)[lexer->offset])) {
+    return token_error(lexer, info, report, "stray '%c' in program", source_text(lexer->source)[lexer->offset]);
   } else {
-    return token_error(lexer, info, report, "stray '\\%o' in program", (int) lexer->source[lexer->offset]);
+    return token_error(lexer, info, report, "stray '\\%o' in program", (int) source_text(lexer->source)[lexer->offset]);
   }
 }
 
@@ -100,7 +102,7 @@ static int token_identifier_and_keyword(Lexer *lexer, TokenInfo *info, Report *r
   if (eat_if(lexer, &is_alphabet)) {
     SyntaxKind kind;
     while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
-    kind = syntax_kind_from_keyword(lexer->source + lexer->offset, lexer->index);
+    kind = syntax_kind_from_keyword(source_text(lexer->source) + lexer->offset, lexer->index);
     return tokenize(lexer, kind != SYNTAX_KIND_BAD_TOKEN ? kind : SYNTAX_KIND_IDENTIFIER_TOKEN, info);
   } else {
     return token_unexpected(lexer, info, report);
@@ -235,12 +237,11 @@ static int token_symbol(Lexer *lexer, TokenInfo *info, Report *report)
   }
 }
 
-int mppl_lex(const char *source, unsigned long offset, unsigned long length, TokenInfo *info, Report *report)
+int mppl_lex(const Source *source, unsigned long offset, TokenInfo *info, Report *report)
 {
   Lexer lexer;
   lexer.source = source;
   lexer.offset = offset;
-  lexer.length = length;
   lexer.index  = 0;
 
   if (first(&lexer) == EOF) {

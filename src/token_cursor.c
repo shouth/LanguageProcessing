@@ -1,13 +1,14 @@
 #include "token_cursor.h"
 #include "lexer.h"
 #include "report.h"
+#include "source.h"
 #include "syntax_kind.h"
 #include "token.h"
 #include "vector.h"
 
 static SyntaxKind token_cursor_lex(TokenCursor *cursor, TokenInfo *info, Report *report)
 {
-  mppl_lex(cursor->_source, cursor->_offset, cursor->_size, info, report);
+  mppl_lex(cursor->_source, cursor->_offset, info, report);
   cursor->_offset += info->text_length;
   if (info->kind == SYNTAX_KIND_EOF_TOKEN) {
     cursor->_offset = -1ul;
@@ -15,10 +16,9 @@ static SyntaxKind token_cursor_lex(TokenCursor *cursor, TokenInfo *info, Report 
   return info->kind;
 }
 
-void token_cursor_init(TokenCursor *cursor, const char *source, unsigned long size)
+void token_cursor_init(TokenCursor *cursor, const Source *source)
 {
   cursor->_source = source;
-  cursor->_size   = size;
   cursor->_offset = 0;
 }
 

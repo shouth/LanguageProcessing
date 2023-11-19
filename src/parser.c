@@ -5,6 +5,7 @@
 #include "bit_set.h"
 #include "parser.h"
 #include "report.h"
+#include "source.h"
 #include "syntax_kind.h"
 #include "token.h"
 #include "token_cursor.h"
@@ -663,7 +664,7 @@ static void parse_program(Parser *parser)
   node_finish(parser, SYNTAX_KIND_PROGRAM);
 }
 
-int mppl_parse(const char *source, unsigned long size, TokenTree *tree)
+int mppl_parse(const Source *source, TokenTree *tree)
 {
   Parser parser;
   int    result;
@@ -671,7 +672,7 @@ int mppl_parse(const char *source, unsigned long size, TokenTree *tree)
   vector_init(&parser.children, sizeof(TokenNode *));
   vector_init(&parser.errors, sizeof(Report));
   bit_set_zero(parser.expected, SYNTAX_KIND_EOF_TOKEN + 1);
-  token_cursor_init(&parser.cursor, source, size);
+  token_cursor_init(&parser.cursor, source);
   parser.token = NULL;
   parser.alive = 1;
 
@@ -683,8 +684,7 @@ int mppl_parse(const char *source, unsigned long size, TokenTree *tree)
     unsigned long i;
     for (i = 0; i < vector_count(&parser.errors); ++i) {
       Report *report = vector_at(&parser.errors, i);
-      printf("%s\n", report->_message);
-      report_deinit(report);
+      report_emit(report, source);
     }
     fflush(stdout);
   }
