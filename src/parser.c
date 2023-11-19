@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bit_set.h"
 #include "parser.h"
 #include "report.h"
 #include "syntax_kind.h"
@@ -17,6 +18,7 @@ struct Parser {
   Token      *token;
   Vector      parents;
   Vector      children;
+  BitSet      expected[bit_set_bits_to_buckets(SYNTAX_KIND_EOF_TOKEN + 1)];
   Vector      errors;
   int         alive;
 };
@@ -63,6 +65,7 @@ static Token *token(Parser *parser)
   if (parser->token) {
     return parser->token;
   } else if (token_cursor_next(&parser->cursor, &token, &report)) {
+    bit_set_zero(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1);
     if (token.kind == SYNTAX_KIND_BAD_TOKEN) {
       vector_push(&parser->errors, &report);
     }
@@ -84,7 +87,14 @@ static void bump(Parser *parser)
 
 static int check(Parser *parser, SyntaxKind kind)
 {
-  return parser->alive && token(parser)->kind == kind;
+  if (!parser->alive) {
+    return 0;
+  } else if (token(parser)->kind == kind) {
+    return 1;
+  } else {
+    bit_set_set(parser->expected, kind, 1);
+    return 0;
+  }
 }
 
 static int eat(Parser *parser, SyntaxKind kind)
@@ -99,6 +109,91 @@ static int eat(Parser *parser, SyntaxKind kind)
   }
 }
 
+static const char *SYNTAX_KIND_DISPLAY_STRING[] = {
+  "",
+  "identifier",
+  "integer",
+  "string",
+  "`+`",
+  "`-`",
+  "`*`",
+  "`=`",
+  "`<>`",
+  "`<`",
+  "`<=`",
+  "`>`",
+  "`>=`",
+  "`(`",
+  "`)`",
+  "`[`",
+  "`]`",
+  "`:=`",
+  "`.`",
+  "`,`",
+  "`:`",
+  "`;`",
+  "`program`",
+  "`var`",
+  "`array`",
+  "`of`",
+  "`begin`",
+  "`end`",
+  "`if`",
+  "`then`",
+  "`else`",
+  "`procedure`",
+  "`return`",
+  "`call`",
+  "`while`",
+  "`do`",
+  "`not`",
+  "`or`",
+  "`div`",
+  "`and`",
+  "`char`",
+  "`integer`",
+  "`boolean`",
+  "`read`",
+  "`write`",
+  "`readln`",
+  "`writeln`",
+  "`true`",
+  "`false`",
+  "`break`",
+  "EOF",
+};
+
+static void error_unexpected(Parser *parser)
+{
+  if (token(parser)->kind != SYNTAX_KIND_BAD_TOKEN) {
+    Report        report;
+    unsigned long offset = token_cursor_offset(&parser->cursor);
+    char          expected[1024];
+    unsigned long cursor = 0;
+    SyntaxKind    kind;
+
+    for (kind = 0; kind <= SYNTAX_KIND_EOF_TOKEN; ++kind) {
+      if (bit_set_get(parser->expected, kind)) {
+        if (cursor > 0) {
+          if (bit_set_count(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1) > 1) {
+            cursor += sprintf(expected + cursor, ", ");
+          } else {
+            cursor += sprintf(expected + cursor, " and ");
+          }
+        }
+        cursor += sprintf(expected + cursor, "%s", SYNTAX_KIND_DISPLAY_STRING[kind]);
+        bit_set_set(parser->expected, kind, 0);
+      }
+    }
+    report_init(&report, REPORT_KIND_ERROR, offset, offset + token(parser)->text_length,
+      "expected %s, actual `%s`", expected, token(parser)->text);
+    vector_push(&parser->errors, &report);
+  }
+
+  parser->alive = 0;
+  bump(parser);
+}
+
 static int expect(Parser *parser, SyntaxKind kind)
 {
   if (!parser->alive) {
@@ -107,13 +202,7 @@ static int expect(Parser *parser, SyntaxKind kind)
   } else if (eat(parser, kind)) {
     return 1;
   } else {
-    Report        report;
-    unsigned long offset = token_cursor_offset(&parser->cursor);
-    report_init(&report, REPORT_KIND_ERROR, offset, offset + token(parser)->text_length,
-      "expected `%s`, actual `%s`", syntax_kind_to_string(kind), token(parser)->text);
-    vector_push(&parser->errors, &report);
-    parser->alive = 0;
-    bump(parser);
+    error_unexpected(parser);
     return 0;
   }
 }
@@ -128,7 +217,7 @@ static int check_standard_type(Parser *parser)
 static void parse_standard_type(Parser *parser)
 {
   if (!eat(parser, SYNTAX_KIND_INTEGER_KEYWORD) && !eat(parser, SYNTAX_KIND_BOOLEAN_KEYWORD) && !eat(parser, SYNTAX_KIND_CHAR_KEYWORD)) {
-    /* TODO: make error */
+    error_unexpected(parser);
   }
 }
 
@@ -151,7 +240,7 @@ static void parse_type(Parser *parser)
   } else if (check(parser, SYNTAX_KIND_ARRAY_KEYWORD)) {
     parse_array_type(parser);
   } else {
-    /* TODO: make error */
+    error_unexpected(parser);
   }
 }
 
@@ -209,7 +298,7 @@ static void parse_factor(Parser *parser)
   } else if (check_standard_type(parser)) {
     parse_cast_expression(parser);
   } else if (!eat(parser, SYNTAX_KIND_INTEGER_LITERAL) && !eat(parser, SYNTAX_KIND_TRUE_KEYWORD) && !eat(parser, SYNTAX_KIND_FALSE_KEYWORD) && !eat(parser, SYNTAX_KIND_STRING_LITERAL)) {
-    /* make error */
+    error_unexpected(parser);
   }
 }
 
@@ -391,7 +480,7 @@ static void parse_input_statement(Parser *parser)
 {
   node_start(parser);
   if (!eat(parser, SYNTAX_KIND_READ_KEYWORD) && !eat(parser, SYNTAX_KIND_READLN_KEYWORD)) {
-    /* TODO: make error */
+    error_unexpected(parser);
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN)) {
     parse_input_list(parser);
@@ -429,7 +518,7 @@ static void parse_output_statement(Parser *parser)
 {
   node_start(parser);
   if (!eat(parser, SYNTAX_KIND_WRITE_KEYWORD) && !eat(parser, SYNTAX_KIND_WRITELN_KEYWORD)) {
-    /* TODO: make error */
+    error_unexpected(parser);
   }
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN)) {
     parse_output_list(parser);
@@ -568,6 +657,7 @@ int mppl_parse(const char *source, unsigned long size, TokenTree *tree)
   vector_init(&parser.parents, sizeof(unsigned long));
   vector_init(&parser.children, sizeof(TokenNode *));
   vector_init(&parser.errors, sizeof(Report));
+  bit_set_zero(parser.expected, SYNTAX_KIND_EOF_TOKEN + 1);
   token_cursor_init(&parser.cursor, source, size);
   parser.token = NULL;
   parser.alive = 1;
