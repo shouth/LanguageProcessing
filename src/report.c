@@ -190,6 +190,27 @@ static int is_line_skippable(const Report *report, const Source *source, unsigne
   return 1;
 }
 
+static unsigned long get_arrow_margin(const Report *report, const Source *source, unsigned long line_number)
+{
+  unsigned long result = 0;
+  SourceLine    line;
+  unsigned long i;
+
+  source_line(source, line_number, &line);
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Label         *label = vector_at(&report->_labels, i);
+    SourceLocation location;
+    source_location(source, label->end, &location);
+    if (location.line == line_number) {
+      unsigned long offset = label->end - line.offset;
+      if (offset > result) {
+        result = offset;
+      }
+    }
+  }
+  return result + 2;
+}
+
 static void print_header_line(const Report *report)
 {
   switch (report->_kind) {
@@ -210,40 +231,58 @@ static void print_location_line(const Report *report, const Source *source, unsi
 {
   SourceLocation location;
   source_location(source, report->_offset, &location);
-  printf("%*.s ╭─[%s:%lu:%lu]\n", (int) margin, "", source->_file_name, location.line, location.column);
+  fprintf(stderr, "%*.s ╭─[%s:%lu:%lu]\n", (int) margin, "", source->_file_name, location.line, location.column);
 }
 
 static void print_empty_body_line(unsigned long margin)
 {
-  printf("%*.s │\n", (int) margin, "");
+  fprintf(stderr, "%*.s │\n", (int) margin, "");
 }
 
 static void print_skipped_body_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
 {
-  printf("%*.s ┆\n", (int) margin, "");
+  fprintf(stderr, "%*.s ┆\n", (int) margin, "");
 }
 
 static void print_label_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
 {
+  unsigned long i;
+  unsigned long arrow_margin = get_arrow_margin(report, source, line_number);
+
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Label         *label = vector_at(&report->_labels, i);
+    SourceLocation location;
+    source_location(source, label->end, &location);
+    if (location.line == line_number) {
+      fprintf(stderr, "%*.s │ %*.s%s\n", (int) margin, "", (int) arrow_margin, "", label->message);
+    }
+  }
 }
 
 static void print_body_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
 {
-  SourceLine line;
+  SourceLine    line;
+  unsigned long i;
   source_line(source, line_number, &line);
-  printf("%*.s%lu │ ", (int) (margin - get_number_of_digits(line_number)), "", line_number);
-  printf("%.*s", (int) line.length, source_text(source) + line.offset);
+  fprintf(stderr, "%*.s%lu │ ", (int) (margin - get_number_of_digits(line_number)), "", line_number);
+  for (i = line.offset; i < line.offset + line.length; ++i) {
+    if (source_text(source)[i] == '\t') {
+      fprintf(stderr, "    ");
+    } else {
+      fprintf(stderr, "%c", source_text(source)[i]);
+    }
+  }
+  fprintf(stderr, "\n");
   print_label_line(report, source, margin, line_number);
-  printf("\n");
 }
 
 static void print_tail_line(unsigned long margin)
 {
   unsigned long i;
   for (i = 0; i <= margin; ++i) {
-    printf("─");
+    fprintf(stderr, "─");
   }
-  printf("╯\n");
+  fprintf(stderr, "╯\n");
 }
 
 void report_emit(Report *report, const Source *source)
