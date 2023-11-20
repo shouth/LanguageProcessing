@@ -243,7 +243,10 @@ static void print_skipped_body_line(const Report *report, const Source *source, 
 
 static void print_body_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
 {
+  SourceLine line;
+  source_line(source, line_number, &line);
   printf("%*.s%lu │ ", (int) (margin - get_number_of_digits(line_number)), "", line_number);
+  printf("%.*s", (int) line.length, source_text(source) + line.offset);
   printf("\n");
 }
 
