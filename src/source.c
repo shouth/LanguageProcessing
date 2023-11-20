@@ -95,17 +95,13 @@ unsigned long source_length(const Source *source)
 {
   return source->_text_length;
 }
+
 const char *source_file_name(const Source *source)
 {
   return source->_file_name;
 }
 
-unsigned long source_file_name_length(const Source *source)
-{
-  return source->_file_name_length;
-}
-
-unsigned long source_location(const Source *source, unsigned long offset, SourceLocation *location)
+int source_location(const Source *source, unsigned long offset, SourceLocation *location)
 {
   if (offset >= source->_text_length) {
     return 0;
@@ -123,8 +119,18 @@ unsigned long source_location(const Source *source, unsigned long offset, Source
     if (location) {
       location->line   = left + 1;
       location->column = offset - source->_line_offsets[left] + 1;
-      location->length = source->_line_lengths[left];
     }
-    return left + 1;
+    return 1;
+  }
+}
+
+int source_line(const Source *source, unsigned long number, SourceLine *line)
+{
+  if (number > source->_line_count) {
+    return 0;
+  } else {
+    line->offset = source->_line_offsets[number - 1];
+    line->length = source->_line_lengths[number - 1];
+    return 1;
   }
 }

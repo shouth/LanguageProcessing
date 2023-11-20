@@ -2,11 +2,16 @@
 #define SOURCE_H
 
 typedef struct SourceLocation SourceLocation;
+typedef struct SourceLine     SourceLine;
 typedef struct Source         Source;
 
 struct SourceLocation {
   unsigned long line;
   unsigned long column;
+};
+
+struct SourceLine {
+  unsigned long offset;
   unsigned long length;
 };
 
@@ -25,7 +30,7 @@ void          source_deinit(Source *source);
 const char   *source_text(const Source *source);
 unsigned long source_length(const Source *source);
 const char   *source_file_name(const Source *source);
-unsigned long source_file_name_length(const Source *source);
-unsigned long source_location(const Source *source, unsigned long offset, SourceLocation *location);
+int           source_location(const Source *source, unsigned long offset, SourceLocation *location);
+int           source_line(const Source *source, unsigned long number, SourceLine *line);
 
 #endif
