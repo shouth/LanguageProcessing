@@ -186,27 +186,31 @@ static const char *SYNTAX_KIND_DISPLAY_STRING[] = {
 
 static void error_unexpected(Parser *parser)
 {
-  if (token(parser)->kind != SYNTAX_KIND_BAD_TOKEN) {
-    Report        report;
-    char          expected[1024];
-    unsigned long cursor = 0;
-    SyntaxKind    kind;
+  char          expected[1024];
+  unsigned long cursor = 0;
+  SyntaxKind    kind;
 
-    for (kind = 0; kind <= SYNTAX_KIND_EOF_TOKEN; ++kind) {
-      if (bit_set_get(parser->expected, kind)) {
-        if (cursor > 0) {
-          if (bit_set_count(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1) > 1) {
-            cursor += sprintf(expected + cursor, ", ");
-          } else {
-            cursor += sprintf(expected + cursor, " and ");
-          }
+  for (kind = 0; kind <= SYNTAX_KIND_EOF_TOKEN; ++kind) {
+    if (bit_set_get(parser->expected, kind)) {
+      if (cursor > 0) {
+        if (bit_set_count(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1) > 1) {
+          cursor += sprintf(expected + cursor, ", ");
+        } else {
+          cursor += sprintf(expected + cursor, " and ");
         }
-        cursor += sprintf(expected + cursor, "%s", SYNTAX_KIND_DISPLAY_STRING[kind]);
-        bit_set_set(parser->expected, kind, 0);
       }
+      cursor += sprintf(expected + cursor, "%s", SYNTAX_KIND_DISPLAY_STRING[kind]);
+      bit_set_set(parser->expected, kind, 0);
     }
+  }
+
+  if (token(parser)->kind != SYNTAX_KIND_BAD_TOKEN) {
+    Report report;
     report_init(&report, REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
+    report_label(&report, parser->offset, parser->offset + token(parser)->text_length, "expected %s");
     vector_push(&parser->errors, &report);
+  } else {
+    report_label(vector_back(&parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s");
   }
 
   parser->alive = 0;
