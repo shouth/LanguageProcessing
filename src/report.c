@@ -45,8 +45,19 @@ void report_init(Report *report, ReportKind kind, unsigned long offset, const ch
 
 void report_deinit(Report *report)
 {
+  unsigned long i;
   free(report->_message);
+
+  for (i = 0; i < vector_count(&report->_notes); ++i) {
+    Note *note = vector_at(&report->_notes, i);
+    free(note->message);
+  }
   vector_deinit(&report->_notes);
+
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Label *label = vector_at(&report->_labels, i);
+    free(label->message);
+  }
   vector_deinit(&report->_labels);
 }
 
