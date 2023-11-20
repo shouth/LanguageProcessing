@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "report.h"
+#include "source.h"
 #include "utility.h"
 #include "vector.h"
 
@@ -92,8 +93,110 @@ void report_note_with_args(Report *report, unsigned long start, unsigned long en
   vector_push(&report->_notes, &note);
 }
 
+typedef enum {
+  EVENT_KIND_START,
+  EVENT_KIND_END,
+  EVENT_KIND_INLINE
+} EventKind;
+
+typedef struct Event Event;
+
+struct Event {
+  EventKind      kind;
+  SourceLocation location[2];
+  const Label   *label;
+};
+
+static int compare_events(const void *left, const void *right)
+{
+  const Event *l = left;
+  const Event *r = right;
+
+  if (l->location->line != r->location->line) {
+    return l->location->line < r->location->line ? -1 : 1;
+  } else if (l->location->column != r->location->column) {
+    return l->location->column < r->location->column ? -1 : 1;
+  } else {
+    return 0;
+  }
+}
+
+static void label_events(const Report *report, const Source *source, Vector *events)
+{
+  unsigned long i;
+  vector_init(events, sizeof(Event));
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Event          event;
+    SourceLocation start, end;
+    event.label = vector_at(&report->_labels, i);
+    source_location(source, event.label->start, &start);
+    source_location(source, event.label->end, &end);
+
+    if (start.line != end.line) {
+      event.kind        = EVENT_KIND_START;
+      event.location[0] = start;
+      vector_push(events, &event);
+
+      event.kind        = EVENT_KIND_END;
+      event.location[0] = end;
+      vector_push(events, &event);
+    } else {
+      event.kind        = EVENT_KIND_INLINE;
+      event.location[0] = start;
+      event.location[1] = end;
+      vector_push(events, &event);
+    }
+  }
+  qsort(vector_data(events), vector_count(events), sizeof(Event), &compare_events);
+}
+
+static void print_header(const Report *report)
+{
+  switch (report->_kind) {
+  case REPORT_KIND_NOTE:
+    fprintf(stderr, "[NOTE] ");
+    break;
+  case REPORT_KIND_WARN:
+    fprintf(stderr, "[WARN] ");
+    break;
+  case REPORT_KIND_ERROR:
+    fprintf(stderr, "[ERROR] ");
+    break;
+  }
+  fprintf(stderr, "%s\n", report->_message);
+}
+
+static unsigned long line_number_margin(Vector *events)
+{
+  Event        *back   = vector_back(events);
+  unsigned long line   = back->location->line;
+  unsigned long result = 1;
+  while (line > 9) {
+    line /= 10;
+    ++result;
+  }
+  return result;
+}
+
+static unsigned long arrow_margin(Vector *events)
+{
+  unsigned long i;
+  unsigned long result;
+  for (i = 0; i < vector_count(events); ++i) {
+    Event        *event = vector_at(events, i);
+    unsigned long line  = event->location->line;
+    while (1) {
+      
+    }
+  }
+  return result * 2 + 1;
+}
+
 void report_emit(Report *report, const Source *source)
 {
-  fprintf(stderr, "%s\n", report->_message);
+  Vector events;
+  label_events(report, source, &events);
+
+  vector_deinit(&events);
   report_deinit(report);
 }
