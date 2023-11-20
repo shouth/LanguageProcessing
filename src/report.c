@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,110 +94,192 @@ void report_note_with_args(Report *report, unsigned long start, unsigned long en
   vector_push(&report->_notes, &note);
 }
 
-typedef enum {
-  EVENT_KIND_START,
-  EVENT_KIND_END,
-  EVENT_KIND_INLINE
-} EventKind;
-
-typedef struct Event Event;
-
-struct Event {
-  EventKind      kind;
-  SourceLocation location[2];
-  const Label   *label;
-};
-
-static int compare_events(const void *left, const void *right)
+static unsigned long get_number_of_digits(unsigned long number)
 {
-  const Event *l = left;
-  const Event *r = right;
-
-  if (l->location->line != r->location->line) {
-    return l->location->line < r->location->line ? -1 : 1;
-  } else if (l->location->column != r->location->column) {
-    return l->location->column < r->location->column ? -1 : 1;
-  } else {
-    return 0;
-  }
-}
-
-static void label_events(const Report *report, const Source *source, Vector *events)
-{
-  unsigned long i;
-  vector_init(events, sizeof(Event));
-  for (i = 0; i < vector_count(&report->_labels); ++i) {
-    Event          event;
-    SourceLocation start, end;
-    event.label = vector_at(&report->_labels, i);
-    source_location(source, event.label->start, &start);
-    source_location(source, event.label->end, &end);
-
-    if (start.line != end.line) {
-      event.kind        = EVENT_KIND_START;
-      event.location[0] = start;
-      vector_push(events, &event);
-
-      event.kind        = EVENT_KIND_END;
-      event.location[0] = end;
-      vector_push(events, &event);
-    } else {
-      event.kind        = EVENT_KIND_INLINE;
-      event.location[0] = start;
-      event.location[1] = end;
-      vector_push(events, &event);
-    }
-  }
-  qsort(vector_data(events), vector_count(events), sizeof(Event), &compare_events);
-}
-
-static void print_header(const Report *report)
-{
-  switch (report->_kind) {
-  case REPORT_KIND_NOTE:
-    fprintf(stderr, "[NOTE] ");
-    break;
-  case REPORT_KIND_WARN:
-    fprintf(stderr, "[WARN] ");
-    break;
-  case REPORT_KIND_ERROR:
-    fprintf(stderr, "[ERROR] ");
-    break;
-  }
-  fprintf(stderr, "%s\n", report->_message);
-}
-
-static unsigned long line_number_margin(Vector *events)
-{
-  Event        *back   = vector_back(events);
-  unsigned long line   = back->location->line;
   unsigned long result = 1;
-  while (line > 9) {
-    line /= 10;
+  while (number > 9) {
+    number /= 10;
     ++result;
   }
   return result;
 }
 
-static unsigned long arrow_margin(Vector *events)
+static unsigned long get_line_number_margin(const Report *report, const Source *source)
 {
-  unsigned long i;
-  unsigned long result;
-  for (i = 0; i < vector_count(events); ++i) {
-    Event        *event = vector_at(events, i);
-    unsigned long line  = event->location->line;
-    while (1) {
-      
+  unsigned long  i;
+  unsigned long  line = 0;
+  SourceLocation location;
+
+  source_location(source, report->_start, &location);
+  if (line < location.line) {
+    line = location.line;
+  }
+  source_location(source, report->_end, &location);
+  if (line < location.line) {
+    line = location.line;
+  }
+
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Label *label = vector_at(&report->_labels, i);
+
+    source_location(source, label->start, &location);
+    if (line < location.line) {
+      line = location.line;
+    }
+    source_location(source, label->end, &location);
+    if (line < location.line) {
+      line = location.line;
     }
   }
-  return result * 2 + 1;
+
+  return get_number_of_digits(line);
+}
+
+static unsigned long get_start_line_number(const Report *report, const Source *source)
+{
+  unsigned long  result = ULONG_MAX;
+  SourceLocation location;
+  unsigned long  i;
+
+  source_location(source, report->_start, &location);
+  if (result > location.line) {
+    result = location.line;
+  }
+
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Label *label = vector_at(&report->_labels, i);
+    source_location(source, label->start, &location);
+    if (result > location.line) {
+      result = location.line;
+    }
+  }
+
+  return result;
+}
+
+static unsigned long get_end_line_number(const Report *report, const Source *source)
+{
+  unsigned long  result = 0;
+  SourceLocation location;
+  unsigned long  i;
+
+  source_location(source, report->_end, &location);
+  if (result < location.line) {
+    result = location.line;
+  }
+
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Label *label = vector_at(&report->_labels, i);
+    source_location(source, label->end, &location);
+    if (result < location.line) {
+      result = location.line;
+    }
+  }
+
+  return result;
+}
+
+static int is_line_skippable(const Report *report, const Source *source, unsigned long line)
+{
+  SourceLocation location;
+  unsigned long  i;
+
+  source_location(source, report->_start, &location);
+  if (location.line == line) {
+    return 0;
+  }
+  source_location(source, report->_end, &location);
+  if (location.line == line) {
+    return 0;
+  }
+
+  for (i = 0; i < vector_count(&report->_labels); ++i) {
+    Label *label = vector_at(&report->_labels, i);
+    source_location(source, label->start, &location);
+    if (location.line == line) {
+      return 0;
+    }
+    source_location(source, label->end, &location);
+    if (location.line == line) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static void print_header_line(const Report *report)
+{
+  switch (report->_kind) {
+  case REPORT_KIND_ERROR:
+    fprintf(stderr, "[ERROR] ");
+    break;
+  case REPORT_KIND_WARN:
+    fprintf(stderr, "[WARN] ");
+    break;
+  case REPORT_KIND_NOTE:
+    fprintf(stderr, "[NOTE] ");
+    break;
+  }
+  fprintf(stderr, "%s\n", report->_message);
+}
+
+static void print_location_line(const Report *report, const Source *source, unsigned long margin)
+{
+  SourceLocation location;
+  source_location(source, report->_start, &location);
+  printf("%*.s ╭─[%s:%lu:%lu]\n", (int) margin, "", source->_file_name, location.line, location.column);
+}
+
+static void print_empty_body_line(unsigned long margin)
+{
+  printf("%*.s │\n", (int) margin, "");
+}
+
+static void print_skipped_body_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
+{
+  printf("%*.s ┆\n", (int) margin, "");
+}
+
+static void print_body_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
+{
+  printf("%*.s%lu │ ", (int) (margin - get_number_of_digits(line_number)), "", line_number);
+  printf("\n");
+}
+
+static void print_tail_line(unsigned long margin)
+{
+  unsigned long i;
+  for (i = 0; i <= margin; ++i) {
+    printf("─");
+  }
+  printf("╯\n");
 }
 
 void report_emit(Report *report, const Source *source)
 {
-  Vector events;
-  label_events(report, source, &events);
+  unsigned long line_number_margin     = get_line_number_margin(report, source);
+  unsigned long start_line_number      = get_start_line_number(report, source);
+  unsigned long end_line_number        = get_end_line_number(report, source);
+  unsigned long last_print_line_number = start_line_number;
+  unsigned long i;
 
-  vector_deinit(&events);
+  print_header_line(report);
+  print_location_line(report, source, line_number_margin);
+  print_empty_body_line(line_number_margin);
+
+  for (i = start_line_number; i <= end_line_number; ++i) {
+    if (is_line_skippable(report, source, i)) {
+      if (last_print_line_number + 1 == i) {
+        print_skipped_body_line(report, source, line_number_margin, i);
+      }
+    } else {
+      print_body_line(report, source, line_number_margin, i);
+      last_print_line_number = i;
+    }
+  }
+
+  print_empty_body_line(line_number_margin);
+  print_tail_line(line_number_margin);
   report_deinit(report);
 }
