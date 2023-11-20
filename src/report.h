@@ -16,15 +16,14 @@ typedef struct Report Report;
 
 struct Report {
   ReportKind    _kind;
-  unsigned long _start;
-  unsigned long _end;
+  unsigned long _offset;
   char         *_message;
   Vector        _labels;
   Vector        _notes;
 };
 
-void report_init(Report *report, ReportKind kind, unsigned long start, unsigned long end, const char *format, ...);
-void report_init_with_args(Report *report, ReportKind kind, unsigned long start, unsigned long end, const char *format, va_list args);
+void report_init(Report *report, ReportKind kind, unsigned long offset, const char *format, ...);
+void report_init_with_args(Report *report, ReportKind kind, unsigned long offset, const char *format, va_list args);
 void report_deinit(Report *report);
 void report_label(Report *report, unsigned long start, unsigned long end, const char *format, ...);
 void report_label_with_args(Report *report, unsigned long start, unsigned long end, const char *format, va_list args);

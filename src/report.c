@@ -35,11 +35,11 @@ char *vformat(const char *format, va_list args)
   return text;
 }
 
-void report_init(Report *report, ReportKind kind, unsigned long start, unsigned long end, const char *format, ...)
+void report_init(Report *report, ReportKind kind, unsigned long offset, const char *format, ...)
 {
   va_list args;
   va_start(args, format);
-  report_init_with_args(report, kind, start, end, format, args);
+  report_init_with_args(report, kind, offset, format, args);
   va_end(args);
 }
 
@@ -50,11 +50,10 @@ void report_deinit(Report *report)
   vector_deinit(&report->_labels);
 }
 
-void report_init_with_args(Report *report, ReportKind kind, unsigned long start, unsigned long end, const char *format, va_list args)
+void report_init_with_args(Report *report, ReportKind kind, unsigned long offset, const char *format, va_list args)
 {
   report->_kind    = kind;
-  report->_start   = start;
-  report->_end     = end;
+  report->_offset  = offset;
   report->_message = vformat(format, args);
   vector_init(&report->_notes, sizeof(Note));
   vector_init(&report->_labels, sizeof(Label));
@@ -110,15 +109,6 @@ static unsigned long get_line_number_margin(const Report *report, const Source *
   unsigned long  line = 0;
   SourceLocation location;
 
-  source_location(source, report->_start, &location);
-  if (line < location.line) {
-    line = location.line;
-  }
-  source_location(source, report->_end, &location);
-  if (line < location.line) {
-    line = location.line;
-  }
-
   for (i = 0; i < vector_count(&report->_labels); ++i) {
     Label *label = vector_at(&report->_labels, i);
 
@@ -141,11 +131,6 @@ static unsigned long get_start_line_number(const Report *report, const Source *s
   SourceLocation location;
   unsigned long  i;
 
-  source_location(source, report->_start, &location);
-  if (result > location.line) {
-    result = location.line;
-  }
-
   for (i = 0; i < vector_count(&report->_labels); ++i) {
     Label *label = vector_at(&report->_labels, i);
     source_location(source, label->start, &location);
@@ -163,11 +148,6 @@ static unsigned long get_end_line_number(const Report *report, const Source *sou
   SourceLocation location;
   unsigned long  i;
 
-  source_location(source, report->_end, &location);
-  if (result < location.line) {
-    result = location.line;
-  }
-
   for (i = 0; i < vector_count(&report->_labels); ++i) {
     Label *label = vector_at(&report->_labels, i);
     source_location(source, label->end, &location);
@@ -183,15 +163,6 @@ static int is_line_skippable(const Report *report, const Source *source, unsigne
 {
   SourceLocation location;
   unsigned long  i;
-
-  source_location(source, report->_start, &location);
-  if (location.line == line) {
-    return 0;
-  }
-  source_location(source, report->_end, &location);
-  if (location.line == line) {
-    return 0;
-  }
 
   for (i = 0; i < vector_count(&report->_labels); ++i) {
     Label *label = vector_at(&report->_labels, i);
@@ -227,7 +198,7 @@ static void print_header_line(const Report *report)
 static void print_location_line(const Report *report, const Source *source, unsigned long margin)
 {
   SourceLocation location;
-  source_location(source, report->_start, &location);
+  source_location(source, report->_offset, &location);
   printf("%*.s ╭─[%s:%lu:%lu]\n", (int) margin, "", source->_file_name, location.line, location.column);
 }
 
@@ -241,12 +212,17 @@ static void print_skipped_body_line(const Report *report, const Source *source, 
   printf("%*.s ┆\n", (int) margin, "");
 }
 
+static void print_label_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
+{
+}
+
 static void print_body_line(const Report *report, const Source *source, unsigned long margin, unsigned long line_number)
 {
   SourceLine line;
   source_line(source, line_number, &line);
   printf("%*.s%lu │ ", (int) (margin - get_number_of_digits(line_number)), "", line_number);
   printf("%.*s", (int) line.length, source_text(source) + line.offset);
+  print_label_line(report, source, margin, line_number);
   printf("\n");
 }
 
@@ -261,28 +237,30 @@ static void print_tail_line(unsigned long margin)
 
 void report_emit(Report *report, const Source *source)
 {
-  unsigned long line_number_margin     = get_line_number_margin(report, source);
-  unsigned long start_line_number      = get_start_line_number(report, source);
-  unsigned long end_line_number        = get_end_line_number(report, source);
-  unsigned long last_print_line_number = start_line_number;
-  unsigned long i;
-
   print_header_line(report);
-  print_location_line(report, source, line_number_margin);
-  print_empty_body_line(line_number_margin);
+  if (vector_count(&report->_labels)) {
+    unsigned long line_number_margin     = get_line_number_margin(report, source);
+    unsigned long start_line_number      = get_start_line_number(report, source);
+    unsigned long end_line_number        = get_end_line_number(report, source);
+    unsigned long last_print_line_number = start_line_number;
+    unsigned long i;
 
-  for (i = start_line_number; i <= end_line_number; ++i) {
-    if (is_line_skippable(report, source, i)) {
-      if (last_print_line_number + 1 == i) {
-        print_skipped_body_line(report, source, line_number_margin, i);
+    print_location_line(report, source, line_number_margin);
+    print_empty_body_line(line_number_margin);
+
+    for (i = start_line_number; i <= end_line_number; ++i) {
+      if (is_line_skippable(report, source, i)) {
+        if (last_print_line_number + 1 == i) {
+          print_skipped_body_line(report, source, line_number_margin, i);
+        }
+      } else {
+        print_body_line(report, source, line_number_margin, i);
+        last_print_line_number = i;
       }
-    } else {
-      print_body_line(report, source, line_number_margin, i);
-      last_print_line_number = i;
     }
-  }
 
-  print_empty_body_line(line_number_margin);
-  print_tail_line(line_number_margin);
+    print_empty_body_line(line_number_margin);
+    print_tail_line(line_number_margin);
+  }
   report_deinit(report);
 }

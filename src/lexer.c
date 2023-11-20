@@ -83,7 +83,7 @@ static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char
 {
   va_list args;
   va_start(args, format);
-  report_init_with_args(report, REPORT_KIND_ERROR, lexer->offset, lexer->offset + lexer->index, format, args);
+  report_init_with_args(report, REPORT_KIND_ERROR, lexer->offset, format, args);
   va_end(args);
   return tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
 }

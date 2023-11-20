@@ -205,8 +205,7 @@ static void error_unexpected(Parser *parser)
         bit_set_set(parser->expected, kind, 0);
       }
     }
-    report_init(&report, REPORT_KIND_ERROR, parser->offset, parser->offset + token(parser)->text_length,
-      "expected %s, actual `%s`", expected, token(parser)->text);
+    report_init(&report, REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
     vector_push(&parser->errors, &report);
   }
 
