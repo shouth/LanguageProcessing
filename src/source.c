@@ -117,8 +117,8 @@ int source_location(const Source *source, unsigned long offset, SourceLocation *
       }
     }
     if (location) {
-      location->line   = left + 1;
-      location->column = offset - source->_line_offsets[left] + 1;
+      location->line   = left;
+      location->column = offset - source->_line_offsets[left];
     }
     return 1;
   }
@@ -126,11 +126,11 @@ int source_location(const Source *source, unsigned long offset, SourceLocation *
 
 int source_line(const Source *source, unsigned long number, SourceLine *line)
 {
-  if (number > source->_line_count) {
+  if (number >= source->_line_count) {
     return 0;
   } else {
-    line->offset = source->_line_offsets[number - 1];
-    line->length = source->_line_lengths[number - 1];
+    line->offset = source->_line_offsets[number];
+    line->length = source->_line_lengths[number];
     return 1;
   }
 }
