@@ -68,8 +68,12 @@ static Token *token(Parser *parser)
     return parser->token;
   }
 
-  parser->offset = token_cursor_offset(&parser->cursor);
   if (token_cursor_next(&parser->cursor, &token, &report)) {
+    unsigned long i;
+    for (i = 0; i < token.trivia_count; ++i) {
+      parser->offset += token.trivia[i].text_length;
+    }
+
     if (token.kind == SYNTAX_KIND_BAD_TOKEN) {
       vector_push(&parser->errors, &report);
     }
@@ -86,6 +90,7 @@ static void bump(Parser *parser)
   if (token(parser)) {
     bit_set_zero(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1);
     vector_push(&parser->children, &parser->token);
+    parser->offset += parser->token->text_length;
     parser->token = NULL;
   }
 }
@@ -679,8 +684,9 @@ int mppl_parse(const Source *source, TokenTree *tree)
   vector_init(&parser.errors, sizeof(Report));
   bit_set_zero(parser.expected, SYNTAX_KIND_EOF_TOKEN + 1);
   token_cursor_init(&parser.cursor, source);
-  parser.token = NULL;
-  parser.alive = 1;
+  parser.token  = NULL;
+  parser.alive  = 1;
+  parser.offset = 0;
 
   parse_program(&parser);
   *tree = **(TokenTree **) vector_data(&parser.children);

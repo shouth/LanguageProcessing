@@ -12,8 +12,7 @@ struct TokenCursor {
   unsigned long _offset;
 };
 
-void          token_cursor_init(TokenCursor *cursor, const Source *source);
-int           token_cursor_next(TokenCursor *cursor, Token *token, Report *report);
-unsigned long token_cursor_offset(TokenCursor *cursor);
+void token_cursor_init(TokenCursor *cursor, const Source *source);
+int  token_cursor_next(TokenCursor *cursor, Token *token, Report *report);
 
 #endif

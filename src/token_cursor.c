@@ -39,8 +39,3 @@ int token_cursor_next(TokenCursor *cursor, Token *token, Report *report)
     return 1;
   }
 }
-
-unsigned long token_cursor_offset(TokenCursor *cursor)
-{
-  return cursor->_offset;
-}
