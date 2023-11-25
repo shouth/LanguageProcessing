@@ -44,7 +44,12 @@ void *vector_at(const Vector *vector, unsigned long index)
   return (char *) vector->_data + vector->_size * index;
 }
 
-void *vector_back(Vector *vector)
+void *vector_front(const Vector *vector)
+{
+  return vector_at(vector, 0);
+}
+
+void *vector_back(const Vector *vector)
 {
   return vector_at(vector, vector->_count - 1);
 }
