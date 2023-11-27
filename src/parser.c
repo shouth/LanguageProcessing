@@ -212,10 +212,10 @@ static void error_unexpected(Parser *parser)
   if (token(parser)->kind != SYNTAX_KIND_BAD_TOKEN) {
     Report report;
     report_init(&report, REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
-    report_label(&report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+    report_annotation(&report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
     vector_push(&parser->errors, &report);
   } else {
-    report_label(vector_back(&parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+    report_annotation(vector_back(&parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
   }
 
   parser->alive = 0;
