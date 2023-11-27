@@ -11,13 +11,13 @@
 int source_init(Source *source, const char *file_name, unsigned long file_name_length)
 {
   {
-    source->_file_name = xmalloc(file_name_length + 1);
-    strncpy(source->_file_name, file_name, file_name_length);
-    source->_file_name[file_name_length] = '\0';
+    source->file_name = xmalloc(file_name_length + 1);
+    strncpy(source->file_name, file_name, file_name_length);
+    source->file_name[file_name_length] = '\0';
   }
 
   {
-    FILE *file = fopen(source->_file_name, "rb");
+    FILE *file = fopen(source->file_name, "rb");
     if (file) {
       Vector        text;
       char          buffer[4096];
@@ -29,29 +29,29 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
       buffer[0] = '\0';
       vector_push(&text, buffer);
       vector_fit(&text);
-      source->_text_length = vector_count(&text) - 1;
-      source->_text        = vector_steal(&text);
+      source->text_length = vector_count(&text) - 1;
+      source->text        = vector_steal(&text);
     } else {
-      source->_text_length = -1ul;
-      source->_text        = NULL;
+      source->text_length = -1ul;
+      source->text        = NULL;
     }
     fclose(file);
   }
 
-  if (source->_text) {
+  if (source->text) {
     Vector        line_offsets;
     Vector        line_lengths;
     unsigned long offset = 0;
     vector_init(&line_offsets, sizeof(unsigned long));
     vector_init(&line_lengths, sizeof(unsigned long));
     vector_push(&line_offsets, &offset);
-    while (offset < source->_text_length) {
-      unsigned long length = strcspn(source->_text + offset, "\r\n");
+    while (offset < source->text_length) {
+      unsigned long length = strcspn(source->text + offset, "\r\n");
       vector_push(&line_lengths, &length);
       offset += length;
 
-      if (offset < source->_text_length) {
-        if (!strncmp(source->_text + offset, "\r\n", 2) || !strncmp(source->_text + offset, "\n\r", 2)) {
+      if (offset < source->text_length) {
+        if (!strncmp(source->text + offset, "\r\n", 2) || !strncmp(source->text + offset, "\n\r", 2)) {
           offset += 2;
         } else {
           offset += 1;
@@ -61,16 +61,16 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
     }
     vector_fit(&line_offsets);
     vector_fit(&line_lengths);
-    source->_line_count   = vector_count(&line_offsets);
-    source->_line_offsets = vector_steal(&line_offsets);
-    source->_line_lengths = vector_steal(&line_lengths);
+    source->line_count   = vector_count(&line_offsets);
+    source->line_offsets = vector_steal(&line_offsets);
+    source->line_lengths = vector_steal(&line_lengths);
   } else {
-    source->_line_count   = -1ul;
-    source->_line_offsets = NULL;
-    source->_line_lengths = NULL;
+    source->line_count   = -1ul;
+    source->line_offsets = NULL;
+    source->line_lengths = NULL;
   }
 
-  if (source->_file_name && source->_text && source->_line_offsets) {
+  if (source->file_name && source->text && source->line_offsets) {
     return 1;
   } else {
     source_deinit(source);
@@ -80,37 +80,37 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
 
 void source_deinit(Source *source)
 {
-  free(source->_file_name);
-  free(source->_text);
-  free(source->_line_offsets);
-  free(source->_line_lengths);
+  free(source->file_name);
+  free(source->text);
+  free(source->line_offsets);
+  free(source->line_lengths);
 }
 
 const char *source_text(const Source *source)
 {
-  return source->_text;
+  return source->text;
 }
 
 unsigned long source_length(const Source *source)
 {
-  return source->_text_length;
+  return source->text_length;
 }
 
 const char *source_file_name(const Source *source)
 {
-  return source->_file_name;
+  return source->file_name;
 }
 
 int source_location(const Source *source, unsigned long offset, SourceLocation *location)
 {
-  if (offset >= source->_text_length) {
+  if (offset >= source->text_length) {
     return 0;
   } else {
     unsigned long left  = 0;
-    unsigned long right = source->_line_count;
+    unsigned long right = source->line_count;
     while (right - left > 1) {
       unsigned long middle = (right - left) / 2 + left;
-      if (offset < source->_line_offsets[middle]) {
+      if (offset < source->line_offsets[middle]) {
         right = middle;
       } else {
         left = middle;
@@ -118,19 +118,8 @@ int source_location(const Source *source, unsigned long offset, SourceLocation *
     }
     if (location) {
       location->line   = left;
-      location->column = offset - source->_line_offsets[left];
+      location->column = offset - source->line_offsets[left];
     }
-    return 1;
-  }
-}
-
-int source_line(const Source *source, unsigned long number, SourceLine *line)
-{
-  if (number >= source->_line_count) {
-    return 0;
-  } else {
-    line->offset = source->_line_offsets[number];
-    line->length = source->_line_lengths[number];
     return 1;
   }
 }

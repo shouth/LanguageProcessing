@@ -16,15 +16,15 @@ struct Lexer {
 
 static void bump(Lexer *lexer)
 {
-  if (lexer->offset + lexer->index < source_length(lexer->source)) {
+  if (lexer->offset + lexer->index < lexer->source->text_length) {
     ++lexer->index;
   }
 }
 
 static int first(Lexer *lexer)
 {
-  return lexer->offset + lexer->index < source_length(lexer->source)
-    ? source_text(lexer->source)[lexer->offset + lexer->index]
+  return lexer->offset + lexer->index < lexer->source->text_length
+    ? lexer->source->text[lexer->offset + lexer->index]
     : EOF;
 }
 
@@ -73,7 +73,7 @@ static int is_graphic(int c)
 
 static int tokenize(Lexer *lexer, SyntaxKind kind, TokenInfo *info)
 {
-  token_info_init(info, kind, source_text(lexer->source) + lexer->offset, lexer->index);
+  token_info_init(info, kind, lexer->source->text + lexer->offset, lexer->index);
   lexer->offset += lexer->index;
   lexer->index = 0;
   return 1;
@@ -90,10 +90,10 @@ static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char
 
 static int token_unexpected(Lexer *lexer, TokenInfo *info, Report *report)
 {
-  if (is_graphic(source_text(lexer->source)[lexer->offset])) {
-    return token_error(lexer, info, report, "stray '%c' in program", source_text(lexer->source)[lexer->offset]);
+  if (is_graphic(lexer->source->text[lexer->offset])) {
+    return token_error(lexer, info, report, "stray '%c' in program", lexer->source->text[lexer->offset]);
   } else {
-    return token_error(lexer, info, report, "stray '\\%o' in program", (int) source_text(lexer->source)[lexer->offset]);
+    return token_error(lexer, info, report, "stray '\\%o' in program", (int) lexer->source->text[lexer->offset]);
   }
 }
 
@@ -102,7 +102,7 @@ static int token_identifier_and_keyword(Lexer *lexer, TokenInfo *info, Report *r
   if (eat_if(lexer, &is_alphabet)) {
     SyntaxKind kind;
     while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
-    kind = syntax_kind_from_keyword(source_text(lexer->source) + lexer->offset, lexer->index);
+    kind = syntax_kind_from_keyword(lexer->source->text + lexer->offset, lexer->index);
     return tokenize(lexer, kind != SYNTAX_KIND_BAD_TOKEN ? kind : SYNTAX_KIND_IDENTIFIER_TOKEN, info);
   } else {
     return token_unexpected(lexer, info, report);
