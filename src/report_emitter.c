@@ -8,54 +8,38 @@
 #include "vector.h"
 
 typedef enum {
-  DISPLAY_LABEL_KIND_END,
-  DISPLAY_LABEL_KIND_START,
-  DISPLAY_LABEL_KIND_INPLACE
-} DisplayLabelKind;
+  DISPLAY_LINE_EVENT_KIND_END,
+  DISPLAY_LINE_EVENT_KIND_START,
+  DISPLAY_LINE_EVENT_KIND_INPLACE
+} DisplayLineEventKind;
 
-typedef struct SourceSegment  SourceSegment;
-typedef struct PointerSegment PointerSegment;
-typedef struct DisplayLabel   DisplayLabel;
+typedef struct DisplaySegment DisplaySegment;
 typedef struct DisplayLine    DisplayLine;
 typedef struct ReportEmitter  ReportEmitter;
 
-struct SourceSegment {
-  unsigned long       display_column;
-  unsigned long       display_length;
-  const DisplayLabel *display_label;
-};
-
-struct PointerSegment {
-  unsigned long       display_column;
-  unsigned long       display_length;
-  const DisplayLabel *display_label;
-};
-
-struct DisplayLabel {
-  DisplayLabelKind   kind;
-  unsigned long      display_column;
-  unsigned long      display_length;
-  const ReportLabel *report_label;
+struct DisplaySegment {
+  DisplayLineEventKind    kind;
+  unsigned long           display_column;
+  unsigned long           display_length;
+  const ReportAnnotation *text_annotation;
+  const ReportAnnotation *pointer_annotation;
 };
 
 struct DisplayLine {
   unsigned long number;
   char         *display_text;
   unsigned long display_text_length;
-  unsigned long indent_width;
-  Vector        source_segments;
-  Vector        pointer_segments;
-  Vector        display_labels;
+  Vector        segments;
 };
 
 struct ReportEmitter {
   const Report *report;
   const Source *source;
-  unsigned long line;
+  unsigned long line_number;
   unsigned long column;
-  Vector        display_lines;
   unsigned long number_margin;
   unsigned long indent_width;
+  Vector        lines;
 };
 
 static int compare_display_line(const void *left, const void *right)
@@ -75,126 +59,148 @@ static unsigned long digits(unsigned long number)
   return result;
 }
 
-static void display_line_init(DisplayLine *line, unsigned long number, const Source *source, unsigned long indent_width)
-{
-  unsigned long column;
-  unsigned long display_column;
-  SourceLine    line_data;
-  source_line(source, number, &line_data);
-
-  line->number       = number;
-  line->indent_width = indent_width;
-  vector_init(&line->source_segments, sizeof(SourceSegment));
-  vector_init(&line->pointer_segments, sizeof(PointerSegment));
-  vector_init(&line->display_labels, sizeof(DisplayLabel));
-
-  line->display_text_length = 0;
-  for (column = 0; column < line_data.length; ++column) {
-    if (source_text(source)[line_data.offset + column] == '\t') {
-      line->display_text_length += indent_width - line->display_text_length % indent_width;
-    } else {
-      line->display_text_length += 1;
-    }
-  }
-
-  line->display_text = xmalloc(sizeof(char) * (line->display_text_length + 1));
-  display_column     = 0;
-  for (column = 0; column < line_data.length; ++column) {
-    if (source_text(source)[line_data.offset + column] == '\t') {
-      unsigned long i;
-      unsigned long width = indent_width - display_column % indent_width;
-      for (i = 0; i < width; ++i) {
-        line->display_text[display_column++] = ' ';
-      }
-    } else {
-      line->display_text[display_column++] = source_text(source)[line_data.offset + column];
-    }
-  }
-  line->display_text[line->display_text_length] = '\0';
-}
-
 static void display_line_deinit(DisplayLine *line)
 {
   free(line->display_text);
-  vector_deinit(&line->source_segments);
-  vector_deinit(&line->pointer_segments);
-  vector_deinit(&line->display_labels);
+  vector_deinit(&line->segments);
 }
 
-static unsigned long report_emitter_line_index(ReportEmitter *emitter, unsigned long number)
+static void report_emitter_create_line(ReportEmitter *emitter, unsigned long number)
 {
+  unsigned long line_length = emitter->source->line_lengths[number];
+  unsigned long line_offset = emitter->source->line_offsets[number];
+
+  unsigned long column;
+  unsigned long display_column;
+  DisplayLine   line;
   unsigned long i;
 
-  for (i = 0; i < vector_count(&emitter->display_lines); ++i) {
-    DisplayLine *line = vector_at(&emitter->display_lines, i);
-    if (number == line->number) {
-      return i;
+  for (i = 0; i < vector_count(&emitter->lines); ++i) {
+    const DisplayLine *line = vector_at(&emitter->lines, i);
+    if (line->number == number) {
+      return;
     }
   }
 
-  {
-    DisplayLine new_line;
-    display_line_init(&new_line, number, emitter->source, emitter->indent_width);
-    vector_push(&emitter->display_lines, &new_line);
-    return vector_count(&emitter->display_lines) - 1;
+  line.number = number;
+  vector_init(&line.segments, sizeof(DisplaySegment));
+
+  line.display_text_length = 0;
+  for (column = 0; column < line_length; ++column) {
+    if (emitter->source->text[line_offset + column] == '\t') {
+      line.display_text_length += emitter->indent_width - line.display_text_length % emitter->indent_width;
+    } else {
+      line.display_text_length += 1;
+    }
+  }
+
+  line.display_text = xmalloc(sizeof(char) * (line.display_text_length + 1));
+  display_column    = 0;
+  for (column = 0; column < line_length; ++column) {
+    if (emitter->source->text[line_offset + column] == '\t') {
+      unsigned long i;
+      unsigned long width = emitter->indent_width - display_column % emitter->indent_width;
+      for (i = 0; i < width; ++i) {
+        line.display_text[display_column++] = ' ';
+      }
+    } else {
+      line.display_text[display_column++] = emitter->source->text[line_offset + column];
+    }
+  }
+  line.display_text[line.display_text_length] = '\0';
+  vector_push(&emitter->lines, &line);
+}
+
+static void report_emitter_collect_segments(ReportEmitter *emitter, DisplayLine *line)
+{
+  typedef struct LineEvent LineEvent;
+
+  struct LineEvent {
+    enum {
+      LINE_EVENT_KIND_START,
+      LINE_EVENT_KIND_END
+    } kind;
+    unsigned long           column;
+    const ReportAnnotation *annotation;
+  };
+
+  unsigned long i;
+  Vector        events;
+  vector_init(&events, sizeof(LineEvent));
+
+  for (i = 0; i < vector_count(&emitter->report->_annotations); ++i) {
+    const ReportAnnotation *annotation = vector_at(&emitter->report->_annotations, i);
+    SourceLocation          start, end;
+
+    source_location(emitter->source, annotation->_start, &start);
+    source_location(emitter->source, annotation->_end, &end);
+
+    if (start.line == end.line && start.line == line->number) {
+      LineEvent event;
+      event.kind       = LINE_EVENT_KIND_START;
+      event.column     = start.column;
+      event.annotation = annotation;
+      vector_push(&events, &event);
+      event.kind       = LINE_EVENT_KIND_END;
+      event.column     = end.column;
+      event.annotation = annotation;
+      vector_push(&events, &event);
+    } else if (start.line == line->number) {
+      LineEvent event;
+      event.kind       = LINE_EVENT_KIND_START;
+      event.column     = start.column;
+      event.annotation = annotation;
+      vector_push(&events, &event);
+      event.kind       = LINE_EVENT_KIND_END;
+      event.column     = ;
+      event.annotation = annotation;
+      vector_push(&events, &event);
+    } else if (end.line == line->number) {
+    }
   }
 }
 
 static void report_emitter_init(ReportEmitter *emitter, Report *report, const Source *source)
 {
-  unsigned long i;
+  SourceLocation location;
+  unsigned long  i;
 
-  emitter->report       = report;
-  emitter->source       = source;
+  emitter->report = report;
+  emitter->source = source;
+
+  source_location(source, report->_offset, &location);
+  emitter->line_number = location.line;
+  emitter->column      = location.column;
+
   emitter->indent_width = 4;
-  vector_init(&emitter->display_lines, sizeof(DisplayLine));
 
-  for (i = 0; i < vector_count(&report->_labels); ++i) {
-    const ReportLabel *label = vector_at(&report->_labels, i);
-    unsigned long      start_line_index;
-    unsigned long      end_line_index;
-    SourceLocation     start;
-    SourceLocation     end;
-
-    source_location(source, label->_start, &start);
-    source_location(source, label->_end, &end);
-
-    start_line_index = report_emitter_line_index(emitter, start.line);
-    end_line_index   = report_emitter_line_index(emitter, end.line);
-
-    if (start_line_index == end_line_index) {
-      DisplayLine *line = vector_at(&emitter->display_lines, start_line_index);
-      display_line_label(line, source, start.column, DISPLAY_LABEL_KIND_INPLACE, label);
-    } else {
-      DisplayLine *start_line = vector_at(&emitter->display_lines, start_line_index);
-      DisplayLine *end_line   = vector_at(&emitter->display_lines, end_line_index);
-      display_line_label(start_line, source, start.column, DISPLAY_LABEL_KIND_START, label);
-      display_line_label(end_line, source, end.column, DISPLAY_LABEL_KIND_END, label);
-    }
+  vector_init(&emitter->lines, sizeof(DisplayLine));
+  for (i = 0; i < vector_count(&report->_annotations); ++i) {
+    const ReportAnnotation *annotation = vector_at(&report->_annotations, i);
+    source_location(source, annotation->_start, &location);
+    report_emitter_create_line(emitter, location.line);
+    source_location(source, annotation->_end, &location);
+    report_emitter_create_line(emitter, location.line);
   }
 
-  qsort(vector_data(&emitter->display_lines), vector_count(&emitter->display_lines), sizeof(DisplayLine), &compare_display_line);
-
-  {
-    DisplayLine *line      = vector_back(&emitter->display_lines);
-    emitter->number_margin = digits(line->number);
+  for (i = 0; i < vector_count(&emitter->lines); ++i) {
+    report_emitter_collect_segments(emitter, vector_at(&emitter->lines, i));
   }
+  qsort(vector_data(&emitter->lines), vector_count(&emitter->lines), sizeof(DisplayLine), &compare_display_line);
 
   {
-    SourceLocation location;
-    source_location(source, report->_offset, &location);
-    emitter->line   = location.line;
-    emitter->column = location.column;
+    const DisplayLine *back = vector_back(&emitter->lines);
+    emitter->number_margin  = digits(back->number);
   }
 }
 
 static void report_emitter_deinit(ReportEmitter *emitter)
 {
   unsigned long i;
-  for (i = 0; i < vector_count(&emitter->display_lines); ++i) {
-    display_line_deinit(vector_at(&emitter->display_lines, i));
+  for (i = 0; i < vector_count(&emitter->lines); ++i) {
+    display_line_deinit(vector_at(&emitter->lines, i));
   }
-  vector_deinit(&emitter->display_lines);
+  vector_deinit(&emitter->lines);
 }
 
 static void emit_head_line(const ReportEmitter *emitter)
@@ -217,8 +223,8 @@ static void emit_location_line(const ReportEmitter *emitter)
 {
   fprintf(stderr, "%*.s ╭─[%s:%lu:%lu]\n",
     (int) emitter->number_margin, "",
-    emitter->source->_file_name,
-    emitter->line + 1, emitter->column + 1);
+    emitter->source->file_name,
+    emitter->line_number + 1, emitter->column + 1);
 }
 
 static void emit_source_line(const ReportEmitter *emitter, const DisplayLine *line)
@@ -235,28 +241,8 @@ static void emit_source_line(const ReportEmitter *emitter, const DisplayLine *li
 
 static void emit_pointer_line(const ReportEmitter *emitter, const DisplayLine *line)
 {
-  unsigned long i;
   fprintf(stderr, "%*.s │ ", (int) emitter->number_margin, "");
-  for (i = 0; i < vector_count(&line->pointer_segments); ++i) {
-    const PointerSegment *segment = vector_at(&line->pointer_segments, i);
-    if (i > 0) {
-      const PointerSegment *previous     = vector_at(&line->pointer_segments, i - 1);
-      unsigned long         margin_width = segment->display_column - (previous->display_column + previous->display_length);
-      fprintf(stderr, "%*.s", (int) margin_width, "");
-    }
-    if (segment->display_label->kind == DISPLAY_LABEL_KIND_INPLACE) {
-      unsigned long j = 0;
-      if (segment->display_column == segment->display_label->display_column) {
-        fprintf(stderr, "┬");
-        ++j;
-      }
-      for (; j < segment->display_length; ++j) {
-        fprintf(stderr, "─");
-      }
-    } else {
-      fprintf(stderr, "▲");
-    }
-  }
+
   fprintf(stderr, "\n");
 }
 
@@ -273,10 +259,10 @@ static void emit_interest_lines(const ReportEmitter *emitter)
 
   fprintf(stderr, "%*.s │ \n", (int) emitter->number_margin, "");
 
-  for (i = 0; i < vector_count(&emitter->display_lines); ++i) {
-    DisplayLine *line = vector_at(&emitter->display_lines, i);
+  for (i = 0; i < vector_count(&emitter->lines); ++i) {
+    DisplayLine *line = vector_at(&emitter->lines, i);
     if (i > 0) {
-      DisplayLine *previous_line = vector_at(&emitter->display_lines, i - 1);
+      DisplayLine *previous_line = vector_at(&emitter->lines, i - 1);
       if (previous_line->number + 1 != line->number) {
         fprintf(stderr, "%*.s ┆ \n", (int) emitter->number_margin, "");
       }
