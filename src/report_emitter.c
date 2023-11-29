@@ -165,6 +165,7 @@ static void report_emitter_init(ReportEmitter *emitter, Report *report, const So
   emitter->indent_width = 4;
   source_location(source, report->_offset, &emitter->location);
 
+  vector_init(&annotations, sizeof(DisplayAnnotation));
   for (i = 0; i < vector_count(&report->_annotations); ++i) {
     DisplayAnnotation annotation;
     annotation.report_annotaion = vector_at(&report->_annotations, i);
@@ -187,13 +188,13 @@ static void report_emitter_init(ReportEmitter *emitter, Report *report, const So
   vector_init(&lines, sizeof(DisplayLine));
   for (i = start_line; i <= end_line; ++i) {
     for (j = 0; j < emitter->annotation_count; ++j) {
-      DisplayLine             line;
-      if (i == emitter->annotaions[i].start.line) {
+      DisplayLine line;
+      if (i == emitter->annotaions[j].start.line) {
         display_line_init(&line, i, emitter);
         vector_push(&lines, &line);
         break;
       }
-      if (i == emitter->annotaions[i].end.line) {
+      if (i == emitter->annotaions[j].end.line) {
         display_line_init(&line, i, emitter);
         vector_push(&lines, &line);
         break;
@@ -213,6 +214,7 @@ static void report_emitter_deinit(ReportEmitter *emitter)
     display_line_deinit(emitter->lines + i);
   }
   free(emitter->lines);
+  free(emitter->annotaions);
 }
 
 static void emit_head_line(const ReportEmitter *emitter)
