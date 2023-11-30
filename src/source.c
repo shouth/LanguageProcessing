@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "array.h"
 #include "source.h"
 #include "utility.h"
-#include "vector.h"
 
 int source_init(Source *source, const char *file_name, unsigned long file_name_length)
 {
@@ -19,18 +19,18 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
   {
     FILE *file = fopen(source->file_name, "rb");
     if (file) {
-      Vector        text;
+      Array         text;
       char          buffer[4096];
       unsigned long length;
-      vector_init(&text, sizeof(char));
+      array_init(&text, sizeof(char));
       while ((length = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
-        vector_push_n(&text, buffer, length);
+        array_push_n(&text, buffer, length);
       }
       buffer[0] = '\0';
-      vector_push(&text, buffer);
-      vector_fit(&text);
-      source->text_length = vector_count(&text) - 1;
-      source->text        = vector_steal(&text);
+      array_push(&text, buffer);
+      array_fit(&text);
+      source->text_length = array_count(&text) - 1;
+      source->text        = array_steal(&text);
     } else {
       source->text_length = -1ul;
       source->text        = NULL;
@@ -39,15 +39,15 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
   }
 
   if (source->text) {
-    Vector        line_offsets;
-    Vector        line_lengths;
+    Array         line_offsets;
+    Array         line_lengths;
     unsigned long offset = 0;
-    vector_init(&line_offsets, sizeof(unsigned long));
-    vector_init(&line_lengths, sizeof(unsigned long));
-    vector_push(&line_offsets, &offset);
+    array_init(&line_offsets, sizeof(unsigned long));
+    array_init(&line_lengths, sizeof(unsigned long));
+    array_push(&line_offsets, &offset);
     while (offset < source->text_length) {
       unsigned long length = strcspn(source->text + offset, "\r\n");
-      vector_push(&line_lengths, &length);
+      array_push(&line_lengths, &length);
       offset += length;
 
       if (offset < source->text_length) {
@@ -56,14 +56,14 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
         } else {
           offset += 1;
         }
-        vector_push(&line_offsets, &offset);
+        array_push(&line_offsets, &offset);
       }
     }
-    vector_fit(&line_offsets);
-    vector_fit(&line_lengths);
-    source->line_count   = vector_count(&line_offsets);
-    source->line_offsets = vector_steal(&line_offsets);
-    source->line_lengths = vector_steal(&line_lengths);
+    array_fit(&line_offsets);
+    array_fit(&line_lengths);
+    source->line_count   = array_count(&line_offsets);
+    source->line_offsets = array_steal(&line_offsets);
+    source->line_lengths = array_steal(&line_lengths);
   } else {
     source->line_count   = -1ul;
     source->line_offsets = NULL;

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "array.h"
 #include "bit_set.h"
 #include "parser.h"
 #include "report.h"
@@ -10,7 +11,6 @@
 #include "token.h"
 #include "token_cursor.h"
 #include "utility.h"
-#include "vector.h"
 
 typedef struct Parser Parser;
 
@@ -18,21 +18,21 @@ struct Parser {
   TokenCursor   cursor;
   unsigned long offset;
   Token        *token;
-  Vector        parents;
-  Vector        children;
+  Array         parents;
+  Array         children;
   BitSet        expected[bit_set_bits_to_buckets(SYNTAX_KIND_EOF_TOKEN + 1)];
-  Vector        errors;
+  Array         errors;
   int           alive;
 };
 
 static unsigned long node_checkpoint(Parser *parser)
 {
-  return vector_count(&parser->children);
+  return array_count(&parser->children);
 }
 
 static void node_start_at(Parser *parser, unsigned long checkpoint)
 {
-  vector_push(&parser->parents, &checkpoint);
+  array_push(&parser->parents, &checkpoint);
 }
 
 static void node_start(Parser *parser)
@@ -43,20 +43,20 @@ static void node_start(Parser *parser)
 static void node_finish(Parser *parser, SyntaxKind kind)
 {
   TokenTree    *tree       = xmalloc(sizeof(TokenTree));
-  unsigned long checkpoint = *(unsigned long *) vector_back(&parser->parents);
+  unsigned long checkpoint = *(unsigned long *) array_back(&parser->parents);
 
-  vector_pop(&parser->parents);
-  token_tree_init(tree, kind, vector_at(&parser->children, checkpoint), vector_count(&parser->children) - checkpoint);
-  while (vector_count(&parser->children) > checkpoint) {
-    vector_pop(&parser->children);
+  array_pop(&parser->parents);
+  token_tree_init(tree, kind, array_at(&parser->children, checkpoint), array_count(&parser->children) - checkpoint);
+  while (array_count(&parser->children) > checkpoint) {
+    array_pop(&parser->children);
   }
-  vector_push(&parser->children, &tree);
+  array_push(&parser->children, &tree);
 }
 
 static void node_null(Parser *parser)
 {
   TokenNode *node = NULL;
-  vector_push(&parser->children, &node);
+  array_push(&parser->children, &node);
 }
 
 static Token *token(Parser *parser)
@@ -75,7 +75,7 @@ static Token *token(Parser *parser)
     }
 
     if (token.kind == SYNTAX_KIND_BAD_TOKEN) {
-      vector_push(&parser->errors, &report);
+      array_push(&parser->errors, &report);
     }
     parser->token  = xmalloc(sizeof(Token));
     *parser->token = token;
@@ -89,7 +89,7 @@ static void bump(Parser *parser)
 {
   if (token(parser)) {
     bit_set_zero(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1);
-    vector_push(&parser->children, &parser->token);
+    array_push(&parser->children, &parser->token);
     parser->offset += parser->token->text_length;
     parser->token = NULL;
   }
@@ -213,9 +213,9 @@ static void error_unexpected(Parser *parser)
     Report report;
     report_init(&report, REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
     report_annotation(&report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
-    vector_push(&parser->errors, &report);
+    array_push(&parser->errors, &report);
   } else {
-    report_annotation(vector_back(&parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+    report_annotation(array_back(&parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
   }
 
   parser->alive = 0;
@@ -679,9 +679,9 @@ int mppl_parse(const Source *source, TokenTree *tree)
 {
   Parser parser;
   int    result;
-  vector_init(&parser.parents, sizeof(unsigned long));
-  vector_init(&parser.children, sizeof(TokenNode *));
-  vector_init(&parser.errors, sizeof(Report));
+  array_init(&parser.parents, sizeof(unsigned long));
+  array_init(&parser.children, sizeof(TokenNode *));
+  array_init(&parser.errors, sizeof(Report));
   bit_set_zero(parser.expected, SYNTAX_KIND_EOF_TOKEN + 1);
   token_cursor_init(&parser.cursor, source);
   parser.token  = NULL;
@@ -689,21 +689,21 @@ int mppl_parse(const Source *source, TokenTree *tree)
   parser.offset = 0;
 
   parse_program(&parser);
-  *tree = **(TokenTree **) vector_data(&parser.children);
-  free(*(TokenNode **) vector_data(&parser.children));
+  *tree = **(TokenTree **) array_data(&parser.children);
+  free(*(TokenNode **) array_data(&parser.children));
 
   {
     unsigned long i;
-    for (i = 0; i < vector_count(&parser.errors); ++i) {
-      Report *report = vector_at(&parser.errors, i);
+    for (i = 0; i < array_count(&parser.errors); ++i) {
+      Report *report = array_at(&parser.errors, i);
       report_emit(report, source);
     }
     fflush(stdout);
   }
-  result = !vector_count(&parser.errors);
+  result = !array_count(&parser.errors);
 
-  vector_deinit(&parser.parents);
-  vector_deinit(&parser.children);
-  vector_deinit(&parser.errors);
+  array_deinit(&parser.parents);
+  array_deinit(&parser.children);
+  array_deinit(&parser.errors);
   return result;
 }

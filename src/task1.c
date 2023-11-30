@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "array.h"
 #include "lexer.h"
 #include "map.h"
 #include "report.h"
@@ -11,7 +12,6 @@
 #include "tasks.h"
 #include "token.h"
 #include "utility.h"
-#include "vector.h"
 
 typedef struct TokenCountEntry TokenCountEntry;
 typedef struct TokenCount      TokenCount;
@@ -22,8 +22,8 @@ struct TokenCountEntry {
 };
 
 struct TokenCount {
-  Vector token_counts;
-  Vector identifer_counts;
+  Array token_counts;
+  Array identifer_counts;
 };
 
 static void increment_token(Map *counts, TokenInfo *info)
@@ -74,17 +74,17 @@ static int token_info_equal(const void *left, const void *right)
   return !token_info_compare(left, right);
 }
 
-static void list_token(Map *counts, Vector *list)
+static void list_token(Map *counts, Array *list)
 {
   MapIterator iterator;
   map_iterator(&iterator, counts);
-  vector_init_with_capacity(list, sizeof(TokenCountEntry), map_count(counts));
+  array_init_with_capacity(list, sizeof(TokenCountEntry), map_count(counts));
   while (map_iterator_next(&iterator)) {
-    vector_push(list, map_iterator_value(&iterator));
+    array_push(list, map_iterator_value(&iterator));
     free(map_iterator_value(&iterator));
   }
   map_deinit(counts);
-  qsort(vector_data(list), vector_count(list), sizeof(TokenCountEntry), &token_info_compare);
+  qsort(array_data(list), array_count(list), sizeof(TokenCountEntry), &token_info_compare);
 }
 
 static void token_count_init(TokenCount *count, const Source *source)
@@ -133,15 +133,15 @@ static void token_count_deinit(TokenCount *count)
 {
   unsigned long i;
 
-  for (i = 0; i < vector_count(&count->token_counts); ++i) {
-    token_info_deinit(vector_at(&count->token_counts, i));
+  for (i = 0; i < array_count(&count->token_counts); ++i) {
+    token_info_deinit(array_at(&count->token_counts, i));
   }
-  vector_deinit(&count->token_counts);
+  array_deinit(&count->token_counts);
 
-  for (i = 0; i < vector_count(&count->identifer_counts); ++i) {
-    token_info_deinit(vector_at(&count->identifer_counts, i));
+  for (i = 0; i < array_count(&count->identifer_counts); ++i) {
+    token_info_deinit(array_at(&count->identifer_counts, i));
   }
-  vector_deinit(&count->identifer_counts);
+  array_deinit(&count->identifer_counts);
 }
 
 unsigned long get_token_display_width(TokenCountEntry *entry)
@@ -196,28 +196,28 @@ static void token_count_print(TokenCount *count)
   unsigned long max_count_display_width;
 
   {
-    unsigned long max_token_width      = get_max_token_display_width(vector_data(&count->token_counts), vector_count(&count->token_counts));
-    unsigned long max_identifier_width = identifier_prefix_width + get_max_token_display_width(vector_data(&count->identifer_counts), vector_count(&count->identifer_counts));
+    unsigned long max_token_width      = get_max_token_display_width(array_data(&count->token_counts), array_count(&count->token_counts));
+    unsigned long max_identifier_width = identifier_prefix_width + get_max_token_display_width(array_data(&count->identifer_counts), array_count(&count->identifer_counts));
 
     max_token_display_width = max_token_width > max_identifier_width ? max_token_width : max_identifier_width;
   }
 
   {
-    unsigned long max_token_count_width      = get_max_count_display_width(vector_data(&count->token_counts), vector_count(&count->token_counts));
-    unsigned long max_identifier_count_width = get_max_count_display_width(vector_data(&count->identifer_counts), vector_count(&count->identifer_counts));
+    unsigned long max_token_count_width      = get_max_count_display_width(array_data(&count->token_counts), array_count(&count->token_counts));
+    unsigned long max_identifier_count_width = get_max_count_display_width(array_data(&count->identifer_counts), array_count(&count->identifer_counts));
 
     max_count_display_width = max_token_count_width > max_identifier_count_width ? max_token_count_width : max_identifier_count_width;
   }
 
-  for (i = 0; i < vector_count(&count->token_counts); ++i) {
-    TokenCountEntry *token_entry       = vector_at(&count->token_counts, i);
+  for (i = 0; i < array_count(&count->token_counts); ++i) {
+    TokenCountEntry *token_entry       = array_at(&count->token_counts, i);
     unsigned long    token_space_width = (max_token_display_width - get_token_display_width(token_entry))
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
     printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
     if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER_TOKEN) {
-      for (j = 0; j < vector_count(&count->identifer_counts); ++j) {
-        TokenCountEntry *identifier_entry       = vector_at(&count->identifer_counts, j);
+      for (j = 0; j < array_count(&count->identifer_counts); ++j) {
+        TokenCountEntry *identifier_entry       = array_at(&count->identifer_counts, j);
         unsigned long    identifier_space_width = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
           + (max_count_display_width - get_count_display_width(identifier_entry)) + 2;
         printf("%s\"%s\"%*c%lu\n", identifier_prefix, identifier_entry->token.text, (int) identifier_space_width, ' ', identifier_entry->count);

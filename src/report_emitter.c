@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "array.h"
 #include "report.h"
 #include "source.h"
 #include "utility.h"
-#include "vector.h"
 
 typedef enum {
   DISPLAY_SEGMENT_KIND_EMPTY,
@@ -70,13 +70,13 @@ static void display_line_init(DisplayLine *line, unsigned long number, const Rep
 
   const DisplayAnnotation *designator = NULL;
 
-  Vector        segments;
+  Array         segments;
   unsigned long column;
   unsigned long display_column;
   unsigned long i;
 
   line->number = number;
-  vector_init(&segments, sizeof(DisplaySegment));
+  array_init(&segments, sizeof(DisplaySegment));
 
   line->display_text_length = 0;
   for (column = 0; column < line_length; ++column) {
@@ -105,8 +105,8 @@ static void display_line_init(DisplayLine *line, unsigned long number, const Rep
 
     DisplaySegment segment;
     segment.display_column = column;
-        /* TODO: implement search for next color */
-    segment.designator     = designator;
+    /* TODO: implement search for next color */
+    segment.designator = designator;
 
     do {
       unsigned long region_start = designator ? column + 1 : column;
@@ -135,15 +135,15 @@ static void display_line_init(DisplayLine *line, unsigned long number, const Rep
     } while (0);
 
     if (segment.display_length > 0) {
-      vector_push(&segments, &segment);
+      array_push(&segments, &segment);
     }
 
     column += segment.display_length;
     designator = next_designator;
   }
 
-  line->segment_count = vector_count(&segments);
-  line->segments      = vector_steal(&segments);
+  line->segment_count = array_count(&segments);
+  line->segments      = array_steal(&segments);
 }
 
 static void display_line_deinit(DisplayLine *line)
@@ -155,8 +155,8 @@ static void display_line_deinit(DisplayLine *line)
 static void report_emitter_init(ReportEmitter *emitter, Report *report, const Source *source)
 {
   unsigned long i, j;
-  Vector        annotations;
-  Vector        lines;
+  Array         annotations;
+  Array         lines;
   unsigned long start_line = -1ul;
   unsigned long end_line   = -1ul;
 
@@ -165,16 +165,16 @@ static void report_emitter_init(ReportEmitter *emitter, Report *report, const So
   emitter->indent_width = 4;
   source_location(source, report->_offset, &emitter->location);
 
-  vector_init(&annotations, sizeof(DisplayAnnotation));
-  for (i = 0; i < vector_count(&report->_annotations); ++i) {
+  array_init(&annotations, sizeof(DisplayAnnotation));
+  for (i = 0; i < array_count(&report->_annotations); ++i) {
     DisplayAnnotation annotation;
-    annotation.report_annotaion = vector_at(&report->_annotations, i);
+    annotation.report_annotaion = array_at(&report->_annotations, i);
     source_location(source, annotation.report_annotaion->_start, &annotation.start);
     source_location(source, annotation.report_annotaion->_end, &annotation.end);
-    vector_push(&annotations, &annotation);
+    array_push(&annotations, &annotation);
   }
-  emitter->annotation_count = vector_count(&annotations);
-  emitter->annotaions       = vector_steal(&annotations);
+  emitter->annotation_count = array_count(&annotations);
+  emitter->annotaions       = array_steal(&annotations);
 
   for (i = 0; i < emitter->annotation_count; ++i) {
     if (start_line == -1ul || start_line > emitter->annotaions[i].start.line) {
@@ -185,25 +185,25 @@ static void report_emitter_init(ReportEmitter *emitter, Report *report, const So
     }
   }
 
-  vector_init(&lines, sizeof(DisplayLine));
+  array_init(&lines, sizeof(DisplayLine));
   for (i = start_line; i <= end_line; ++i) {
     for (j = 0; j < emitter->annotation_count; ++j) {
       DisplayLine line;
       if (i == emitter->annotaions[j].start.line) {
         display_line_init(&line, i, emitter);
-        vector_push(&lines, &line);
+        array_push(&lines, &line);
         break;
       }
       if (i == emitter->annotaions[j].end.line) {
         display_line_init(&line, i, emitter);
-        vector_push(&lines, &line);
+        array_push(&lines, &line);
         break;
       }
     }
   }
 
-  emitter->line_count    = vector_count(&lines);
-  emitter->lines         = vector_steal(&lines);
+  emitter->line_count    = array_count(&lines);
+  emitter->lines         = array_steal(&lines);
   emitter->number_margin = digits(emitter->lines[emitter->line_count - 1].number);
 }
 

@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "array.h"
 #include "report.h"
 #include "utility.h"
-#include "vector.h"
 
 char *vformat(const char *format, va_list args)
 {
@@ -32,17 +32,17 @@ void report_deinit(Report *report)
   unsigned long i;
   free(report->_message);
 
-  for (i = 0; i < vector_count(&report->_notes); ++i) {
-    char **note = vector_at(&report->_notes, i);
+  for (i = 0; i < array_count(&report->_notes); ++i) {
+    char **note = array_at(&report->_notes, i);
     free(*note);
   }
-  vector_deinit(&report->_notes);
+  array_deinit(&report->_notes);
 
-  for (i = 0; i < vector_count(&report->_annotations); ++i) {
-    ReportAnnotation *label = vector_at(&report->_annotations, i);
+  for (i = 0; i < array_count(&report->_annotations); ++i) {
+    ReportAnnotation *label = array_at(&report->_annotations, i);
     free(label->_message);
   }
-  vector_deinit(&report->_annotations);
+  array_deinit(&report->_annotations);
 }
 
 void report_init_with_args(Report *report, ReportKind kind, unsigned long offset, const char *format, va_list args)
@@ -50,8 +50,8 @@ void report_init_with_args(Report *report, ReportKind kind, unsigned long offset
   report->_kind    = kind;
   report->_offset  = offset;
   report->_message = vformat(format, args);
-  vector_init(&report->_notes, sizeof(char *));
-  vector_init(&report->_annotations, sizeof(ReportAnnotation));
+  array_init(&report->_notes, sizeof(char *));
+  array_init(&report->_annotations, sizeof(ReportAnnotation));
 }
 
 void report_annotation(Report *report, unsigned long start, unsigned long end, const char *format, ...)
@@ -68,7 +68,7 @@ void report_annotation_with_args(Report *report, unsigned long start, unsigned l
   label._start   = start;
   label._end     = end;
   label._message = vformat(format, args);
-  vector_push(&report->_annotations, &label);
+  array_push(&report->_annotations, &label);
 }
 
 void report_note(Report *report, const char *format, ...)
@@ -82,5 +82,5 @@ void report_note(Report *report, const char *format, ...)
 void report_note_with_args(Report *report, const char *format, va_list args)
 {
   char *note = vformat(format, args);
-  vector_push(&report->_notes, &note);
+  array_push(&report->_notes, &note);
 }
