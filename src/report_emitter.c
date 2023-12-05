@@ -7,38 +7,30 @@
 #include "source.h"
 #include "utility.h"
 
-typedef enum {
-  DISPLAY_SEGMENT_KIND_EMPTY,
-  DISPLAY_SEGMENT_KIND_POINTER,
-  DISPLAY_SEGMENT_KIND_JOINT,
-  DISPLAY_SEGMENT_KIND_UNDERLINE
-} DisplaySegmentKind;
-
 typedef struct DisplaySegment    DisplaySegment;
 typedef struct DisplayLine       DisplayLine;
 typedef struct DisplayAnnotation DisplayAnnotation;
 typedef struct ReportEmitter     ReportEmitter;
 
 struct DisplaySegment {
-  DisplaySegmentKind       kind;
-  unsigned long            display_column;
-  unsigned long            display_length;
-  const DisplayAnnotation *color;
-  const DisplayAnnotation *designator;
+  unsigned long            start;
+  unsigned long            end;
+  const DisplayAnnotation *annotaion;
+  DisplaySegment          *next;
 };
 
 struct DisplayLine {
   unsigned long   number;
   char           *display_text;
   unsigned long   display_text_length;
-  DisplaySegment *segments;
-  unsigned long   segment_count;
+  DisplaySegment *color_segments;
+  DisplaySegment *designator_segments;
 };
 
 struct DisplayAnnotation {
   SourceLocation          start;
   SourceLocation          end;
-  const ReportAnnotation *report_annotaion;
+  const ReportAnnotation *annotaion;
 };
 
 struct ReportEmitter {
@@ -63,12 +55,54 @@ static unsigned long digits(unsigned long number)
   return result;
 }
 
+static int display_segment_compare(const void *left, const void *right)
+{
+  const DisplaySegment *l = left;
+  const DisplaySegment *r = right;
+
+  if (l->start != r->start) {
+    return l->start < r->start ? -1 : 1;
+  } else if (l->end != r->end) {
+    return l->end < r->end ? -1 : 1;
+  } else if (l->annotaion->annotaion->_start != r->annotaion->annotaion->_start) {
+    return l->annotaion->annotaion->_start < r->annotaion->annotaion->_start ? -1 : 1;
+  } else if (l->annotaion->annotaion->_end != r->annotaion->annotaion->_end) {
+    return l->annotaion->annotaion->_end < r->annotaion->annotaion->_end ? -1 : 1;
+  } else {
+    return l->annotaion->annotaion < r->annotaion->annotaion ? -1 : 1;
+  }
+}
+
+static void display_segment_serialize(DisplaySegment *segments, unsigned long count)
+{
+  unsigned long   i;
+  DisplaySegment *list = NULL;
+
+  qsort(segments, count, sizeof(DisplaySegment), &display_segment_compare);
+  for (i = 0; i < count; ++i) {
+    DisplaySegment  *segment = segments + i;
+    DisplaySegment **tail    = &list;
+
+    while (*tail && segment->start < (*tail)->start) {
+      tail = &(*tail)->next;
+    }
+
+    *tail = segment;
+    while (*tail && segment->end < (*tail)->start) {
+      tail = &(*tail)->next;
+    }
+
+    if (*tail) {
+      (*tail)->start = segment->end;
+    }
+    segment->next = *tail;
+  }
+}
+
 static void display_line_init(DisplayLine *line, unsigned long number, const ReportEmitter *emitter)
 {
   unsigned long line_length = emitter->source->line_lengths[number];
   unsigned long line_offset = emitter->source->line_offsets[number];
-
-  const DisplayAnnotation *designator = NULL;
 
   Array         segments;
   unsigned long column;
@@ -100,56 +134,80 @@ static void display_line_init(DisplayLine *line, unsigned long number, const Rep
   }
   line->display_text[line->display_text_length] = '\0';
 
-  for (column = 0; column < line_length;) {
-    const DisplayAnnotation *next_designator = NULL;
+  {
+    Array color_segments;
+    array_init(&color_segments, sizeof(DisplaySegment));
+    for (i = 0; i < emitter->annotation_count; ++i) {
+      int is_start = emitter->annotaions[i].start.line == number;
+      int is_end   = emitter->annotaions[i].end.line == number;
 
-    DisplaySegment segment;
-    segment.display_column = column;
-    /* TODO: implement search for next color */
-    segment.designator = designator;
-
-    do {
-      unsigned long region_start = designator ? column + 1 : column;
-      unsigned long region_end   = designator ? designator->end.column : line_length;
-      unsigned long i;
-      unsigned long min_delta = region_end - region_start;
-
-      if (designator) {
-        if (designator->start.line == number && designator->end.line == number && designator->start.column == column) {
-          segment.kind           = DISPLAY_SEGMENT_KIND_JOINT;
-          segment.display_length = 1;
-          break;
-        } else if (designator->start.line != designator->end.line && (designator->start.column == column || designator->end.column == column)) {
-          segment.kind           = DISPLAY_SEGMENT_KIND_POINTER;
-          segment.display_length = 1;
-          break;
-        }
+      if (is_start && is_end) {
+        DisplaySegment segment;
+        segment.start     = emitter->annotaions[i].start.column;
+        segment.end       = emitter->annotaions[i].end.column;
+        segment.annotaion = emitter->annotaions + i;
+        segment.next      = NULL;
+        array_push(&color_segments, &segment);
+      } else if (is_start) {
+        DisplaySegment segment;
+        segment.start     = emitter->annotaions[i].start.column;
+        segment.end       = segment.start + 1;
+        segment.annotaion = emitter->annotaions + i;
+        segment.next      = NULL;
+        array_push(&color_segments, &segment);
+      } else if (is_end) {
+        DisplaySegment segment;
+        segment.start     = emitter->annotaions[i].end.column;
+        segment.end       = segment.start + 1;
+        segment.annotaion = emitter->annotaions + i;
+        segment.next      = NULL;
+        array_push(&color_segments, &segment);
       }
-
-      for (i = 0; i < emitter->annotation_count; ++i) {
-        /* TODO: implement search for next designator */
-      }
-
-      segment.kind           = designator ? DISPLAY_SEGMENT_KIND_UNDERLINE : DISPLAY_SEGMENT_KIND_EMPTY;
-      segment.display_length = min_delta;
-    } while (0);
-
-    if (segment.display_length > 0) {
-      array_push(&segments, &segment);
     }
-
-    column += segment.display_length;
-    designator = next_designator;
+    display_segment_serialize(array_data(&color_segments), array_count(&color_segments));
+    line->color_segments = array_steal(&color_segments);
   }
 
-  line->segment_count = array_count(&segments);
-  line->segments      = array_steal(&segments);
+  {
+    Array designator_segments;
+    array_init(&designator_segments, sizeof(DisplaySegment));
+    for (i = 0; i < emitter->annotation_count; ++i) {
+      int is_start = emitter->annotaions[i].start.line == number;
+      int is_end   = emitter->annotaions[i].end.line == number;
+
+      if (is_start && is_end) {
+        DisplaySegment segment;
+        segment.start     = emitter->annotaions[i].start.column;
+        segment.end       = emitter->annotaions[i].end.column + 1;
+        segment.annotaion = emitter->annotaions + i;
+        segment.next      = NULL;
+        array_push(&designator_segments, &segment);
+      } else if (is_start) {
+        DisplaySegment segment;
+        segment.start     = 0;
+        segment.end       = emitter->annotaions[i].end.column + 1;
+        segment.annotaion = emitter->annotaions + i;
+        segment.next      = NULL;
+        array_push(&designator_segments, &segment);
+      } else if (is_end) {
+        DisplaySegment segment;
+        segment.start     = emitter->annotaions[i].start.column;
+        segment.end       = line_length;
+        segment.annotaion = emitter->annotaions + i;
+        segment.next      = NULL;
+        array_push(&designator_segments, &segment);
+      }
+    }
+    display_segment_serialize(array_data(&designator_segments), array_count(&designator_segments));
+    line->designator_segments = array_steal(&designator_segments);
+  }
 }
 
 static void display_line_deinit(DisplayLine *line)
 {
   free(line->display_text);
-  free(line->segments);
+  free(line->color_segments);
+  free(line->designator_segments);
 }
 
 static void report_emitter_init(ReportEmitter *emitter, Report *report, const Source *source)
@@ -168,9 +226,9 @@ static void report_emitter_init(ReportEmitter *emitter, Report *report, const So
   array_init(&annotations, sizeof(DisplayAnnotation));
   for (i = 0; i < array_count(&report->_annotations); ++i) {
     DisplayAnnotation annotation;
-    annotation.report_annotaion = array_at(&report->_annotations, i);
-    source_location(source, annotation.report_annotaion->_start, &annotation.start);
-    source_location(source, annotation.report_annotaion->_end, &annotation.end);
+    annotation.annotaion = array_at(&report->_annotations, i);
+    source_location(source, annotation.annotaion->_start, &annotation.start);
+    source_location(source, annotation.annotaion->_end - 1, &annotation.end);
     array_push(&annotations, &annotation);
   }
   emitter->annotation_count = array_count(&annotations);
