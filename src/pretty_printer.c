@@ -6,7 +6,7 @@
 #include "syntax_kind.h"
 #include "token.h"
 
-typedef struct Printer     Printer;
+typedef struct Printer Printer;
 
 struct Printer {
   unsigned long indent;
@@ -69,21 +69,61 @@ static void consume_token(Printer *printer, unsigned long color)
   node_next(printer);
 }
 
+static void consume_token_foreground(Printer *printer)
+{
+  consume_token(printer, printer->option.color.foreground);
+}
+
+static void consume_token_program(Printer *printer)
+{
+  consume_token(printer, printer->option.color.program);
+}
+
+static void consume_token_keyword(Printer *printer)
+{
+  consume_token(printer, printer->option.color.keyword);
+}
+
+static void consume_token_operator(Printer *printer)
+{
+  consume_token(printer, printer->option.color.operator);
+}
+
+static void consume_token_procedure(Printer *printer)
+{
+  consume_token(printer, printer->option.color.procedure);
+}
+
+static void consume_token_parameter(Printer *printer)
+{
+  consume_token(printer, printer->option.color.parameter);
+}
+
+static void consume_token_string(Printer *printer)
+{
+  consume_token(printer, printer->option.color.string);
+}
+
+static void consume_token_literal(Printer *printer)
+{
+  consume_token(printer, printer->option.color.literal);
+}
+
 static void consume_type(Printer *printer)
 {
   if (node(printer)->kind == SYNTAX_KIND_ARRAY_TYPE) {
     tree_start(printer);
-    consume_token(printer, printer->option.color.keyword);
-    consume_token(printer, printer->option.color.foreground);
-    consume_token(printer, printer->option.color.literal);
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_keyword(printer);
+    consume_token_foreground(printer);
+    consume_token_literal(printer);
+    consume_token_foreground(printer);
     space();
-    consume_token(printer, printer->option.color.keyword);
+    consume_token_keyword(printer);
     space();
-    consume_token(printer, printer->option.color.keyword);
+    consume_token_keyword(printer);
     tree_end(printer);
   } else {
-    consume_token(printer, printer->option.color.keyword);
+    consume_token_keyword(printer);
   }
 }
 
@@ -92,17 +132,17 @@ static void consume_expression(Printer *printer);
 static void consume_entire_variable(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
 static void consume_indexed_variable(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_keyword(printer);
+  consume_token_foreground(printer);
   consume_expression(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
@@ -121,12 +161,12 @@ static void consume_binary_expression(Printer *printer)
   if (node(printer)) {
     consume_expression(printer);
     space();
-    consume_token(printer, printer->option.color.operator);
+    consume_token_operator(printer);
     space();
     consume_expression(printer);
   } else {
     node_next(printer);
-    consume_token(printer, printer->option.color.operator);
+    consume_token_operator(printer);
     consume_expression(printer);
   }
   tree_end(printer);
@@ -135,16 +175,16 @@ static void consume_binary_expression(Printer *printer)
 static void consume_parenthesized_expression(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   consume_expression(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
 static void consume_not_expression(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   space();
   consume_expression(printer);
   tree_end(printer);
@@ -154,9 +194,9 @@ static void consume_cast_expression(Printer *printer)
 {
   tree_start(printer);
   consume_type(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   consume_expression(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
@@ -180,12 +220,12 @@ static void consume_expression(Printer *printer)
     consume_cast_expression(printer);
     break;
   case SYNTAX_KIND_STRING_LITERAL:
-    consume_token(printer, printer->option.color.string);
+    consume_token_string(printer);
     break;
   case SYNTAX_KIND_INTEGER_LITERAL:
   case SYNTAX_KIND_TRUE_KEYWORD:
   case SYNTAX_KIND_FALSE_KEYWORD:
-    consume_token(printer, printer->option.color.literal);
+    consume_token_literal(printer);
     break;
   default:
     /* do nothing */
@@ -200,7 +240,7 @@ static void consume_assignment_statement(Printer *printer)
   tree_start(printer);
   consume_variable(printer);
   space();
-  consume_token(printer, printer->option.color.operator);
+  consume_token_operator(printer);
   space();
   consume_expression(printer);
   tree_end(printer);
@@ -209,11 +249,11 @@ static void consume_assignment_statement(Printer *printer)
 static void consume_if_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   space();
   consume_expression(printer);
   space();
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   newline();
   ++printer->indent;
   indent(printer);
@@ -222,7 +262,7 @@ static void consume_if_statement(Printer *printer)
   if (node(printer)) {
     newline();
     indent(printer);
-    consume_token(printer, printer->option.color.keyword);
+    consume_token_keyword(printer);
     if (node(printer)->kind == SYNTAX_KIND_IF_STATEMENT) {
       space();
       consume_statement(printer);
@@ -240,11 +280,11 @@ static void consume_if_statement(Printer *printer)
 static void consume_while_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   space();
   consume_expression(printer);
   space();
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   newline();
   ++printer->indent;
   indent(printer);
@@ -256,32 +296,32 @@ static void consume_while_statement(Printer *printer)
 static void consume_actual_parameter_list(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   while (1) {
     consume_expression(printer);
     if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     space();
   }
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
 static void consume_break_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   tree_end(printer);
 }
 
 static void consume_call_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   space();
-  consume_token(printer, printer->option.color.procedure);
+  consume_token_procedure(printer);
   if (node(printer)) {
     consume_actual_parameter_list(printer);
   } else {
@@ -293,30 +333,30 @@ static void consume_call_statement(Printer *printer)
 static void consume_return_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   tree_end(printer);
 }
 
 static void consume_input_list(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   while (1) {
     consume_variable(printer);
     if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     space();
   }
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
 static void consume_input_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   if (node(printer)) {
     consume_input_list(printer);
   } else {
@@ -331,9 +371,9 @@ static void consume_output_value(Printer *printer)
   consume_expression(printer);
   if (node(printer)) {
     space();
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     space();
-    consume_token(printer, printer->option.color.literal);
+    consume_token_literal(printer);
   }
   tree_end(printer);
 }
@@ -341,23 +381,23 @@ static void consume_output_value(Printer *printer)
 static void consume_output_list(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   while (1) {
     consume_output_value(printer);
     if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     space();
   }
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
 static void consume_output_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   if (node(printer)) {
     consume_output_list(printer);
   } else {
@@ -369,7 +409,7 @@ static void consume_output_statement(Printer *printer)
 static void consume_compound_statement(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   newline();
   ++printer->indent;
   while (1) {
@@ -378,13 +418,13 @@ static void consume_compound_statement(Printer *printer)
     if (node(printer)->kind != SYNTAX_KIND_SEMICOLON_TOKEN) {
       break;
     }
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     newline();
   }
   --printer->indent;
   newline();
   indent(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   tree_end(printer);
 }
 
@@ -428,18 +468,18 @@ static void consume_variable_declaration(Printer *printer)
 {
   tree_start(printer);
   while (1) {
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     space();
   }
   space();
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   space();
   consume_type(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
@@ -448,7 +488,7 @@ static void consume_variable_declaration_part(Printer *printer)
   unsigned long count = tree(printer)->children_count;
   unsigned long index;
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   newline();
   ++printer->indent;
   for (index = 1; index < count; ++index) {
@@ -464,15 +504,15 @@ static void consume_formal_parameter_section(Printer *printer)
 {
   tree_start(printer);
   while (1) {
-    consume_token(printer, printer->option.color.parameter);
+    consume_token_parameter(printer);
     if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    consume_token(printer, printer->option.color.foreground);
+    consume_token_foreground(printer);
     space();
   }
   space();
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   space();
   consume_type(printer);
   tree_end(printer);
@@ -481,26 +521,26 @@ static void consume_formal_parameter_section(Printer *printer)
 static void consume_formal_parameter_list(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   while (node(printer)->kind == SYNTAX_KIND_FORMAL_PARAMETER_SECTION) {
     consume_formal_parameter_section(printer);
   }
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   tree_end(printer);
 }
 
 static void consume_procedure_declaration(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   space();
-  consume_token(printer, printer->option.color.procedure);
+  consume_token_procedure(printer);
   if (node(printer)) {
     consume_formal_parameter_list(printer);
   } else {
     node_next(printer);
   }
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   newline();
   if (node(printer)) {
     indent(printer);
@@ -510,7 +550,7 @@ static void consume_procedure_declaration(Printer *printer)
   }
   indent(printer);
   consume_compound_statement(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   newline();
   tree_end(printer);
 }
@@ -518,10 +558,10 @@ static void consume_procedure_declaration(Printer *printer)
 static void consume_program(Printer *printer)
 {
   tree_start(printer);
-  consume_token(printer, printer->option.color.keyword);
+  consume_token_keyword(printer);
   space();
-  consume_token(printer, printer->option.color.program);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_program(printer);
+  consume_token_foreground(printer);
   newline();
   ++printer->indent;
   while (1) {
@@ -538,7 +578,7 @@ static void consume_program(Printer *printer)
   --printer->indent;
   indent(printer);
   consume_compound_statement(printer);
-  consume_token(printer, printer->option.color.foreground);
+  consume_token_foreground(printer);
   newline();
   tree_end(printer);
 }
@@ -546,7 +586,7 @@ static void consume_program(Printer *printer)
 void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
 {
   TokenNode **root = (TokenNode **) &node;
-  Printer printer;
+  Printer     printer;
   printer.indent = 0;
   array_init(&printer.stack, sizeof(TokenNode **));
   array_push(&printer.stack, &root);
