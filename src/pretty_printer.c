@@ -39,16 +39,6 @@ static unsigned long node_index(Printer *printer)
   return cursor->index;
 }
 
-static const TokenTree *tree(Printer *printer)
-{
-  return (TokenTree *) node(printer);
-}
-
-static const Token *token(Printer *printer)
-{
-  return (Token *) node(printer);
-}
-
 static void push_stack(Printer *printer, TokenNode **node, unsigned long count)
 {
   PrinterCursor cursor;
@@ -60,8 +50,8 @@ static void push_stack(Printer *printer, TokenNode **node, unsigned long count)
 
 static void tree_start(Printer *printer)
 {
-  TokenNode **children = tree(printer)->children;
-  push_stack(printer, children, tree(printer)->children_count);
+  const TokenTree *tree = (TokenTree *) node(printer);
+  push_stack(printer, tree->children, tree->children_count);
 }
 
 static void node_next(Printer *printer)
@@ -93,8 +83,9 @@ static void indent(Printer *printer)
 
 static void consume_token(Printer *printer, unsigned long color)
 {
+  const Token *token = (Token *) node(printer);
   printf("\033[38;2;%u;%u;%um", (unsigned) (color >> 16) & 0xFF, (unsigned) (color >> 8) & 0xFF, (unsigned) color & 0xFF);
-  printf("%s", token(printer)->text);
+  printf("%s", token->text);
   printf("\033[0m");
   node_next(printer);
 }
