@@ -6,7 +6,14 @@
 #include "syntax_kind.h"
 #include "token.h"
 
-typedef struct Printer Printer;
+typedef struct PrinterCursor PrinterCursor;
+typedef struct Printer       Printer;
+
+struct PrinterCursor {
+  TokenNode   **node;
+  unsigned long count;
+  unsigned long index;
+};
 
 struct Printer {
   unsigned long indent;
@@ -14,30 +21,53 @@ struct Printer {
   Array         stack;
 };
 
-static TokenNode *node(Printer *printer)
+static const TokenNode *node(Printer *printer)
 {
-  return **((TokenNode ***) array_back(&printer->stack));
+  PrinterCursor *cursor = array_back(&printer->stack);
+  return cursor->node[cursor->index];
 }
 
-static TokenTree *tree(Printer *printer)
+static unsigned long node_count(Printer *printer)
+{
+  PrinterCursor *cursor = array_back(&printer->stack);
+  return cursor->count;
+}
+
+static unsigned long node_index(Printer *printer)
+{
+  PrinterCursor *cursor = array_back(&printer->stack);
+  return cursor->index;
+}
+
+static const TokenTree *tree(Printer *printer)
 {
   return (TokenTree *) node(printer);
 }
 
-static Token *token(Printer *printer)
+static const Token *token(Printer *printer)
 {
   return (Token *) node(printer);
 }
 
+static void push_stack(Printer *printer, TokenNode **node, unsigned long count)
+{
+  PrinterCursor cursor;
+  cursor.node  = node;
+  cursor.count = count;
+  cursor.index = 0;
+  array_push(&printer->stack, &cursor);
+}
+
 static void tree_start(Printer *printer)
 {
-  array_push(&printer->stack, &tree(printer)->children);
+  TokenNode **children = tree(printer)->children;
+  push_stack(printer, children, tree(printer)->children_count);
 }
 
 static void node_next(Printer *printer)
 {
-  TokenNode ***node = array_back(&printer->stack);
-  ++(*node);
+  PrinterCursor *cursor = array_back(&printer->stack);
+  ++cursor->index;
 }
 
 static void tree_end(Printer *printer)
@@ -485,13 +515,11 @@ static void consume_variable_declaration(Printer *printer)
 
 static void consume_variable_declaration_part(Printer *printer)
 {
-  unsigned long count = tree(printer)->children_count;
-  unsigned long index;
   tree_start(printer);
   consume_token_keyword(printer);
   newline();
   ++printer->indent;
-  for (index = 1; index < count; ++index) {
+  while (node_index(printer) < node_count(printer)) {
     indent(printer);
     consume_variable_declaration(printer);
     newline();
@@ -585,11 +613,10 @@ static void consume_program(Printer *printer)
 
 void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
 {
-  TokenNode **root = (TokenNode **) &node;
-  Printer     printer;
+  Printer printer;
   printer.indent = 0;
-  array_init(&printer.stack, sizeof(TokenNode **));
-  array_push(&printer.stack, &root);
+  array_init(&printer.stack, sizeof(PrinterCursor));
+  push_stack(&printer, (TokenNode **) &node, 1);
   if (option) {
     printer.option = *option;
   } else {
