@@ -1,163 +1,191 @@
+#include <stddef.h>
 #include <stdio.h>
 
+#include "array.h"
 #include "pretty_printer.h"
 #include "syntax_kind.h"
 #include "token.h"
 
-typedef struct Printer Printer;
+typedef struct Printer     Printer;
 
 struct Printer {
   unsigned long indent;
   PrinterOption option;
+  Array         stack;
 };
 
-static void print_space(void)
+static TokenNode *node(Printer *printer)
+{
+  return **((TokenNode ***) array_back(&printer->stack));
+}
+
+static TokenTree *tree(Printer *printer)
+{
+  return (TokenTree *) node(printer);
+}
+
+static Token *token(Printer *printer)
+{
+  return (Token *) node(printer);
+}
+
+static void tree_start(Printer *printer)
+{
+  array_push(&printer->stack, &tree(printer)->children);
+}
+
+static void node_next(Printer *printer)
+{
+  TokenNode ***node = array_back(&printer->stack);
+  ++(*node);
+}
+
+static void tree_end(Printer *printer)
+{
+  array_pop(&printer->stack);
+  node_next(printer);
+}
+
+static void space(void)
 {
   printf(" ");
 }
 
-static void print_newline(void)
+static void newline(void)
 {
   printf("\n");
 }
 
-static void print_indent(Printer *printer)
+static void indent(Printer *printer)
 {
   printf("%*.s", (int) printer->indent * 4, "");
 }
 
-static void print_token(Printer *printer, const TokenNode *node, unsigned long color)
+static void consume_token(Printer *printer, unsigned long color)
 {
-  const Token *token = (Token *) node;
   printf("\033[38;2;%u;%u;%um", (unsigned) (color >> 16) & 0xFF, (unsigned) (color >> 8) & 0xFF, (unsigned) color & 0xFF);
-  printf("%s", token->text);
+  printf("%s", token(printer)->text);
   printf("\033[0m");
+  node_next(printer);
 }
 
-static void print_type(Printer *printer, const TokenNode *node)
+static void consume_type(Printer *printer)
 {
-  if (node->kind == SYNTAX_KIND_ARRAY_TYPE) {
-    const TokenTree *tree  = (TokenTree *) node;
-    unsigned long    index = 0;
-
-    print_token(printer, tree->children[index++], printer->option.color.keyword);
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_token(printer, tree->children[index++], printer->option.color.literal);
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_space();
-    print_token(printer, tree->children[index++], printer->option.color.keyword);
-    print_space();
-    print_token(printer, tree->children[index++], printer->option.color.keyword);
+  if (node(printer)->kind == SYNTAX_KIND_ARRAY_TYPE) {
+    tree_start(printer);
+    consume_token(printer, printer->option.color.keyword);
+    consume_token(printer, printer->option.color.foreground);
+    consume_token(printer, printer->option.color.literal);
+    consume_token(printer, printer->option.color.foreground);
+    space();
+    consume_token(printer, printer->option.color.keyword);
+    space();
+    consume_token(printer, printer->option.color.keyword);
+    tree_end(printer);
   } else {
-    print_token(printer, node, printer->option.color.keyword);
+    consume_token(printer, printer->option.color.keyword);
   }
 }
 
-static void print_expression(Printer *printer, const TokenNode *node);
+static void consume_expression(Printer *printer);
 
-static void print_entire_variable(Printer *printer, const TokenNode *node)
+static void consume_entire_variable(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_indexed_variable(Printer *printer, const TokenNode *node)
+static void consume_indexed_variable(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_expression(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  consume_token(printer, printer->option.color.foreground);
+  consume_expression(printer);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_variable(Printer *printer, const TokenNode *node)
+static void consume_variable(Printer *printer)
 {
-  if (node->kind == SYNTAX_KIND_ENTIRE_VARIABLE) {
-    print_entire_variable(printer, node);
+  if (node(printer)->kind == SYNTAX_KIND_ENTIRE_VARIABLE) {
+    consume_entire_variable(printer);
   } else {
-    print_indexed_variable(printer, node);
+    consume_indexed_variable(printer);
   }
 }
 
-static void print_binary_expression(Printer *printer, const TokenNode *node)
+static void consume_binary_expression(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  if (tree->children[index]) {
-    print_expression(printer, tree->children[index++]);
-    print_space();
-    print_token(printer, tree->children[index++], printer->option.color.operator);
-    print_space();
-    print_expression(printer, tree->children[index++]);
+  tree_start(printer);
+  if (node(printer)) {
+    consume_expression(printer);
+    space();
+    consume_token(printer, printer->option.color.operator);
+    space();
+    consume_expression(printer);
   } else {
-    index++;
-    print_token(printer, tree->children[index++], printer->option.color.operator);
-    print_expression(printer, tree->children[index++]);
+    node_next(printer);
+    consume_token(printer, printer->option.color.operator);
+    consume_expression(printer);
   }
+  tree_end(printer);
 }
 
-static void print_parenthesized_expression(Printer *printer, const TokenNode *node)
+static void consume_parenthesized_expression(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_expression(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.foreground);
+  consume_expression(printer);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_not_expression(Printer *printer, const TokenNode *node)
+static void consume_not_expression(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_space();
-  print_expression(printer, tree->children[index++]);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  space();
+  consume_expression(printer);
+  tree_end(printer);
 }
 
-static void print_cast_expression(Printer *printer, const TokenNode *node)
+static void consume_cast_expression(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_type(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_expression(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  tree_start(printer);
+  consume_type(printer);
+  consume_token(printer, printer->option.color.foreground);
+  consume_expression(printer);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_expression(Printer *printer, const TokenNode *node)
+static void consume_expression(Printer *printer)
 {
-  switch (node->kind) {
+  switch (node(printer)->kind) {
   case SYNTAX_KIND_ENTIRE_VARIABLE:
   case SYNTAX_KIND_INDEXED_VARIABLE:
-    print_variable(printer, node);
+    consume_variable(printer);
     break;
   case SYNTAX_KIND_BINARY_EXPRESSION:
-    print_binary_expression(printer, node);
+    consume_binary_expression(printer);
     break;
   case SYNTAX_KIND_PARENTHESIZED_EXPRESSION:
-    print_parenthesized_expression(printer, node);
+    consume_parenthesized_expression(printer);
     break;
   case SYNTAX_KIND_NOT_EXPRESSION:
-    print_not_expression(printer, node);
+    consume_not_expression(printer);
     break;
   case SYNTAX_KIND_CAST_EXPRESSION:
-    print_cast_expression(printer, node);
+    consume_cast_expression(printer);
     break;
   case SYNTAX_KIND_STRING_LITERAL:
-    print_token(printer, node, printer->option.color.string);
+    consume_token(printer, printer->option.color.string);
     break;
   case SYNTAX_KIND_INTEGER_LITERAL:
   case SYNTAX_KIND_TRUE_KEYWORD:
   case SYNTAX_KIND_FALSE_KEYWORD:
-    print_token(printer, node, printer->option.color.literal);
+    consume_token(printer, printer->option.color.literal);
     break;
   default:
     /* do nothing */
@@ -165,243 +193,230 @@ static void print_expression(Printer *printer, const TokenNode *node)
   }
 }
 
-static void print_statement(Printer *printer, const TokenNode *node);
+static void consume_statement(Printer *printer);
 
-static void print_assignment_statement(Printer *printer, const TokenNode *node)
+static void consume_assignment_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_variable(printer, tree->children[index++]);
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.operator);
-  print_space();
-  print_expression(printer, tree->children[index++]);
+  tree_start(printer);
+  consume_variable(printer);
+  space();
+  consume_token(printer, printer->option.color.operator);
+  space();
+  consume_expression(printer);
+  tree_end(printer);
 }
 
-static void print_if_statement(Printer *printer, const TokenNode *node)
+static void consume_if_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_space();
-  print_expression(printer, tree->children[index++]);
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_newline();
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  space();
+  consume_expression(printer);
+  space();
+  consume_token(printer, printer->option.color.keyword);
+  newline();
   ++printer->indent;
-  print_indent(printer);
-  print_statement(printer, tree->children[index++]);
+  indent(printer);
+  consume_statement(printer);
   --printer->indent;
-  if (tree->children[index]) {
-    print_newline();
-    print_indent(printer);
-    print_token(printer, tree->children[index++], printer->option.color.keyword);
-    if (tree->children[index]->kind == SYNTAX_KIND_IF_STATEMENT) {
-      print_space();
-      print_statement(printer, tree->children[index++]);
+  if (node(printer)) {
+    newline();
+    indent(printer);
+    consume_token(printer, printer->option.color.keyword);
+    if (node(printer)->kind == SYNTAX_KIND_IF_STATEMENT) {
+      space();
+      consume_statement(printer);
     } else {
-      print_newline();
+      newline();
       ++printer->indent;
-      print_indent(printer);
-      print_statement(printer, tree->children[index++]);
+      indent(printer);
+      consume_statement(printer);
       --printer->indent;
     }
   }
+  tree_end(printer);
 }
 
-static void print_while_statement(Printer *printer, const TokenNode *node)
+static void consume_while_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_space();
-  print_expression(printer, tree->children[index++]);
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_newline();
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  space();
+  consume_expression(printer);
+  space();
+  consume_token(printer, printer->option.color.keyword);
+  newline();
   ++printer->indent;
-  print_indent(printer);
-  print_statement(printer, tree->children[index++]);
+  indent(printer);
+  consume_statement(printer);
   --printer->indent;
+  tree_end(printer);
 }
 
-static void print_actual_parameter_list(Printer *printer, const TokenNode *node)
+static void consume_actual_parameter_list(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.foreground);
   while (1) {
-    print_expression(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    consume_expression(printer);
+    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_space();
+    consume_token(printer, printer->option.color.foreground);
+    space();
   }
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_break_statement(Printer *printer, const TokenNode *node)
+static void consume_break_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  tree_end(printer);
 }
 
-static void print_call_statement(Printer *printer, const TokenNode *node)
+static void consume_call_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.procedure);
-  if (tree->children[index]) {
-    print_actual_parameter_list(printer, tree->children[index++]);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  space();
+  consume_token(printer, printer->option.color.procedure);
+  if (node(printer)) {
+    consume_actual_parameter_list(printer);
   } else {
-    index++;
+    node_next(printer);
   }
+  tree_end(printer);
 }
 
-static void print_return_statement(Printer *printer, const TokenNode *node)
+static void consume_return_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  tree_end(printer);
 }
 
-static void print_input_list(Printer *printer, const TokenNode *node)
+static void consume_input_list(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.foreground);
   while (1) {
-    print_variable(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    consume_variable(printer);
+    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_space();
+    consume_token(printer, printer->option.color.foreground);
+    space();
   }
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_input_statement(Printer *printer, const TokenNode *node)
+static void consume_input_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  if (tree->children[index]) {
-    print_input_list(printer, tree->children[index++]);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  if (node(printer)) {
+    consume_input_list(printer);
   } else {
-    index++;
+    node_next(printer);
   }
+  tree_end(printer);
 }
 
-static void print_output_value(Printer *printer, const TokenNode *node)
+static void consume_output_value(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_expression(printer, tree->children[index++]);
-  if (tree->children[index]) {
-    print_space();
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_space();
-    print_token(printer, tree->children[index++], printer->option.color.literal);
+  tree_start(printer);
+  consume_expression(printer);
+  if (node(printer)) {
+    space();
+    consume_token(printer, printer->option.color.foreground);
+    space();
+    consume_token(printer, printer->option.color.literal);
   }
+  tree_end(printer);
 }
 
-static void print_output_list(Printer *printer, const TokenNode *node)
+static void consume_output_list(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.foreground);
   while (1) {
-    print_output_value(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    consume_output_value(printer);
+    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_space();
+    consume_token(printer, printer->option.color.foreground);
+    space();
   }
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_output_statement(Printer *printer, const TokenNode *node)
+static void consume_output_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  if (tree->children[index]) {
-    print_output_list(printer, tree->children[index++]);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  if (node(printer)) {
+    consume_output_list(printer);
   } else {
-    index++;
+    node_next(printer);
   }
+  tree_end(printer);
 }
 
-static void print_compound_statement(Printer *printer, const TokenNode *node)
+static void consume_compound_statement(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_newline();
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  newline();
   ++printer->indent;
   while (1) {
-    print_indent(printer);
-    print_statement(printer, tree->children[index++]);
-    if (tree->children[index]->kind != SYNTAX_KIND_SEMICOLON_TOKEN) {
+    indent(printer);
+    consume_statement(printer);
+    if (node(printer)->kind != SYNTAX_KIND_SEMICOLON_TOKEN) {
       break;
     }
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_newline();
+    consume_token(printer, printer->option.color.foreground);
+    newline();
   }
   --printer->indent;
-  print_newline();
-  print_indent(printer);
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
+  newline();
+  indent(printer);
+  consume_token(printer, printer->option.color.keyword);
+  tree_end(printer);
 }
 
-static void print_statement(Printer *printer, const TokenNode *node)
+static void consume_statement(Printer *printer)
 {
-  switch (node->kind) {
+  switch (node(printer)->kind) {
   case SYNTAX_KIND_ASSIGNMENT_STATEMENT:
-    print_assignment_statement(printer, node);
+    consume_assignment_statement(printer);
     break;
   case SYNTAX_KIND_IF_STATEMENT:
-    print_if_statement(printer, node);
+    consume_if_statement(printer);
     break;
   case SYNTAX_KIND_WHILE_STATEMENT:
-    print_while_statement(printer, node);
+    consume_while_statement(printer);
     break;
   case SYNTAX_KIND_BREAK_STATEMENT:
-    print_break_statement(printer, node);
+    consume_break_statement(printer);
     break;
   case SYNTAX_KIND_CALL_STATEMENT:
-    print_call_statement(printer, node);
+    consume_call_statement(printer);
     break;
   case SYNTAX_KIND_RETURN_STATEMENT:
-    print_return_statement(printer, node);
+    consume_return_statement(printer);
     break;
   case SYNTAX_KIND_INPUT_STATEMENT:
-    print_input_statement(printer, node);
+    consume_input_statement(printer);
     break;
   case SYNTAX_KIND_OUTPUT_STATEMENT:
-    print_output_statement(printer, node);
+    consume_output_statement(printer);
     break;
   case SYNTAX_KIND_COMPOUND_STATEMENT:
-    print_compound_statement(printer, node);
+    consume_compound_statement(printer);
     break;
   default:
     /* do nothing */
@@ -409,133 +424,132 @@ static void print_statement(Printer *printer, const TokenNode *node)
   }
 }
 
-static void print_variable_declaration(Printer *printer, const TokenNode *node)
+static void consume_variable_declaration(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
+  tree_start(printer);
   while (1) {
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    consume_token(printer, printer->option.color.foreground);
+    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_space();
+    consume_token(printer, printer->option.color.foreground);
+    space();
   }
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_space();
-  print_type(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  space();
+  consume_token(printer, printer->option.color.foreground);
+  space();
+  consume_type(printer);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_variable_declaration_part(Printer *printer, const TokenNode *node)
+static void consume_variable_declaration_part(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_newline();
+  unsigned long count = tree(printer)->children_count;
+  unsigned long index;
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  newline();
   ++printer->indent;
-  while (index < tree->children_count) {
-    print_indent(printer);
-    print_variable_declaration(printer, tree->children[index++]);
-    print_newline();
+  for (index = 1; index < count; ++index) {
+    indent(printer);
+    consume_variable_declaration(printer);
+    newline();
   }
   --printer->indent;
+  tree_end(printer);
 }
 
-static void print_formal_parameter_section(Printer *printer, const TokenNode *node)
+static void consume_formal_parameter_section(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
+  tree_start(printer);
   while (1) {
-    print_token(printer, tree->children[index++], printer->option.color.parameter);
-    if (tree->children[index]->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    consume_token(printer, printer->option.color.parameter);
+    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
       break;
     }
-    print_token(printer, tree->children[index++], printer->option.color.foreground);
-    print_space();
+    consume_token(printer, printer->option.color.foreground);
+    space();
   }
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_space();
-  print_type(printer, tree->children[index++]);
+  space();
+  consume_token(printer, printer->option.color.foreground);
+  space();
+  consume_type(printer);
+  tree_end(printer);
 }
 
-static void print_formal_parameter_list(Printer *printer, const TokenNode *node)
+static void consume_formal_parameter_list(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  while (tree->children[index]->kind == SYNTAX_KIND_FORMAL_PARAMETER_SECTION) {
-    print_formal_parameter_section(printer, tree->children[index++]);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.foreground);
+  while (node(printer)->kind == SYNTAX_KIND_FORMAL_PARAMETER_SECTION) {
+    consume_formal_parameter_section(printer);
   }
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
+  consume_token(printer, printer->option.color.foreground);
+  tree_end(printer);
 }
 
-static void print_procedure_declaration(Printer *printer, const TokenNode *node)
+static void consume_procedure_declaration(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.procedure);
-  if (tree->children[index]) {
-    print_formal_parameter_list(printer, tree->children[index++]);
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  space();
+  consume_token(printer, printer->option.color.procedure);
+  if (node(printer)) {
+    consume_formal_parameter_list(printer);
   } else {
-    index++;
+    node_next(printer);
   }
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_newline();
-  if (tree->children[index]) {
-    print_indent(printer);
-    print_variable_declaration_part(printer, tree->children[index++]);
+  consume_token(printer, printer->option.color.foreground);
+  newline();
+  if (node(printer)) {
+    indent(printer);
+    consume_variable_declaration_part(printer);
   } else {
-    index++;
+    node_next(printer);
   }
-  print_indent(printer);
-  print_compound_statement(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_newline();
+  indent(printer);
+  consume_compound_statement(printer);
+  consume_token(printer, printer->option.color.foreground);
+  newline();
+  tree_end(printer);
 }
 
-static void print_program(Printer *printer, const TokenNode *node)
+static void consume_program(Printer *printer)
 {
-  const TokenTree *tree  = (TokenTree *) node;
-  unsigned long    index = 0;
-
-  print_token(printer, tree->children[index++], printer->option.color.keyword);
-  print_space();
-  print_token(printer, tree->children[index++], printer->option.color.program);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_newline();
+  tree_start(printer);
+  consume_token(printer, printer->option.color.keyword);
+  space();
+  consume_token(printer, printer->option.color.program);
+  consume_token(printer, printer->option.color.foreground);
+  newline();
   ++printer->indent;
   while (1) {
-    if (tree->children[index]->kind == SYNTAX_KIND_VARIABLE_DECLARATION_PART) {
-      print_indent(printer);
-      print_variable_declaration_part(printer, tree->children[index++]);
-    } else if (tree->children[index]->kind == SYNTAX_KIND_PROCEDURE_DECLARATION) {
-      print_indent(printer);
-      print_procedure_declaration(printer, tree->children[index++]);
+    if (node(printer)->kind == SYNTAX_KIND_VARIABLE_DECLARATION_PART) {
+      indent(printer);
+      consume_variable_declaration_part(printer);
+    } else if (node(printer)->kind == SYNTAX_KIND_PROCEDURE_DECLARATION) {
+      indent(printer);
+      consume_procedure_declaration(printer);
     } else {
       break;
     }
   }
   --printer->indent;
-  print_indent(printer);
-  print_compound_statement(printer, tree->children[index++]);
-  print_token(printer, tree->children[index++], printer->option.color.foreground);
-  print_newline();
+  indent(printer);
+  consume_compound_statement(printer);
+  consume_token(printer, printer->option.color.foreground);
+  newline();
+  tree_end(printer);
 }
 
 void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
 {
+  TokenNode **root = (TokenNode **) &node;
   Printer printer;
   printer.indent = 0;
+  array_init(&printer.stack, sizeof(TokenNode **));
+  array_push(&printer.stack, &root);
   if (option) {
     printer.option = *option;
   } else {
@@ -550,5 +564,6 @@ void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
     printer.option.color.literal    = 0x79C0FF;
     /* clang-format on */
   }
-  print_program(&printer, node);
+  consume_program(&printer);
+  array_deinit(&printer.stack);
 }
