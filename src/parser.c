@@ -246,11 +246,9 @@ static const SyntaxKind FIRST_STANDARD_TYPE[] = {
   SYNTAX_KIND_CHAR_KEYWORD,
 };
 
-static const unsigned long FIRST_STANDARD_TYPE_COUNT = sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind);
-
 static void parse_standard_type(Parser *parser)
 {
-  expect_any(parser, FIRST_STANDARD_TYPE, FIRST_STANDARD_TYPE_COUNT);
+  expect_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind));
 }
 
 static void parse_array_type(Parser *parser)
@@ -267,7 +265,7 @@ static void parse_array_type(Parser *parser)
 
 static void parse_type(Parser *parser)
 {
-  if (check_any(parser, FIRST_STANDARD_TYPE, FIRST_STANDARD_TYPE_COUNT)) {
+  if (check_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind))) {
     parse_standard_type(parser);
   } else {
     parse_array_type(parser);
@@ -332,7 +330,7 @@ static void parse_factor(Parser *parser)
     parse_parenthesized_expression(parser);
   } else if (check(parser, SYNTAX_KIND_NOT_KEYWORD)) {
     parse_not_expression(parser);
-  } else if (check_any(parser, FIRST_STANDARD_TYPE, FIRST_STANDARD_TYPE_COUNT)) {
+  } else if (check_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind))) {
     parse_cast_expression(parser);
   } else {
     expect_any(parser, FIRST_CONSTANT, sizeof(FIRST_CONSTANT) / sizeof(SyntaxKind));
