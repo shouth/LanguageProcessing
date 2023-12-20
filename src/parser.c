@@ -324,8 +324,6 @@ static const SyntaxKind FIRST_CONSTANT[] = {
   SYNTAX_KIND_STRING_LITERAL,
 };
 
-static const unsigned long FIRST_CONSTANT_COUNT = sizeof(FIRST_CONSTANT) / sizeof(SyntaxKind);
-
 static void parse_factor(Parser *parser)
 {
   if (check(parser, SYNTAX_KIND_IDENTIFIER_TOKEN)) {
@@ -337,7 +335,7 @@ static void parse_factor(Parser *parser)
   } else if (check_any(parser, FIRST_STANDARD_TYPE, FIRST_STANDARD_TYPE_COUNT)) {
     parse_cast_expression(parser);
   } else {
-    expect_any(parser, FIRST_CONSTANT, FIRST_CONSTANT_COUNT);
+    expect_any(parser, FIRST_CONSTANT, sizeof(FIRST_CONSTANT) / sizeof(SyntaxKind));
   }
 }
 
@@ -347,13 +345,11 @@ static const SyntaxKind FIRST_MULTIPLICATIVE_OPERATOR[] = {
   SYNTAX_KIND_AND_KEYWORD,
 };
 
-static const unsigned long FIRST_MULTIPLICATIVE_OPERATOR_COUNT = sizeof(FIRST_MULTIPLICATIVE_OPERATOR) / sizeof(SyntaxKind);
-
 static void parse_term(Parser *parser)
 {
   unsigned long checkpoint = node_checkpoint(parser);
   parse_factor(parser);
-  while (eat_any(parser, FIRST_MULTIPLICATIVE_OPERATOR, FIRST_MULTIPLICATIVE_OPERATOR_COUNT)) {
+  while (eat_any(parser, FIRST_MULTIPLICATIVE_OPERATOR, sizeof(FIRST_MULTIPLICATIVE_OPERATOR) / sizeof(SyntaxKind))) {
     node_start_at(parser, checkpoint);
     parse_factor(parser);
     node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
@@ -366,17 +362,15 @@ static const SyntaxKind FIRST_ADDITIVE_OPERATOR[] = {
   SYNTAX_KIND_OR_KEYWORD,
 };
 
-static const unsigned long FIRST_ADDITIVE_OPERATOR_COUNT = sizeof(FIRST_ADDITIVE_OPERATOR) / sizeof(SyntaxKind);
-
 static void parse_simple_expression(Parser *parser)
 {
   unsigned long checkpoint = node_checkpoint(parser);
-  if (check_any(parser, FIRST_ADDITIVE_OPERATOR, FIRST_ADDITIVE_OPERATOR_COUNT)) {
+  if (check_any(parser, FIRST_ADDITIVE_OPERATOR, sizeof(FIRST_ADDITIVE_OPERATOR) / sizeof(SyntaxKind))) {
     node_null(parser);
   } else {
     parse_term(parser);
   }
-  while (eat_any(parser, FIRST_ADDITIVE_OPERATOR, FIRST_ADDITIVE_OPERATOR_COUNT)) {
+  while (eat_any(parser, FIRST_ADDITIVE_OPERATOR, sizeof(FIRST_ADDITIVE_OPERATOR) / sizeof(SyntaxKind))) {
     node_start_at(parser, checkpoint);
     parse_term(parser);
     node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
@@ -392,13 +386,11 @@ static const SyntaxKind FIRST_RELATIONAL_OPERATOR[] = {
   SYNTAX_KIND_GREATER_THAN_EQUAL_TOKEN,
 };
 
-static const unsigned long FIRST_RELATIONAL_OPERATOR_COUNT = sizeof(FIRST_RELATIONAL_OPERATOR) / sizeof(SyntaxKind);
-
 static void parse_expression(Parser *parser)
 {
   unsigned long checkpoint = node_checkpoint(parser);
   parse_simple_expression(parser);
-  while (eat_any(parser, FIRST_RELATIONAL_OPERATOR, FIRST_RELATIONAL_OPERATOR_COUNT)) {
+  while (eat_any(parser, FIRST_RELATIONAL_OPERATOR, sizeof(FIRST_RELATIONAL_OPERATOR) / sizeof(SyntaxKind))) {
     node_start_at(parser, checkpoint);
     parse_simple_expression(parser);
     node_finish(parser, SYNTAX_KIND_BINARY_EXPRESSION);
@@ -496,12 +488,10 @@ static const SyntaxKind FIRST_INPUT_STATEMENT[] = {
   SYNTAX_KIND_READLN_KEYWORD,
 };
 
-static const unsigned long FIRST_INPUT_STATEMENT_COUNT = sizeof(FIRST_INPUT_STATEMENT) / sizeof(SyntaxKind);
-
 static void parse_input_statement(Parser *parser)
 {
   node_start(parser);
-  expect_any(parser, FIRST_INPUT_STATEMENT, FIRST_INPUT_STATEMENT_COUNT);
+  expect_any(parser, FIRST_INPUT_STATEMENT, sizeof(FIRST_INPUT_STATEMENT) / sizeof(SyntaxKind));
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN)) {
     parse_input_list(parser);
   } else {
@@ -539,12 +529,10 @@ static const SyntaxKind FIRST_OUTPUT_STATEMENT[] = {
   SYNTAX_KIND_WRITELN_KEYWORD,
 };
 
-static const unsigned long FIRST_OUTPUT_STATEMENT_COUNT = sizeof(FIRST_OUTPUT_STATEMENT) / sizeof(SyntaxKind);
-
 static void parse_output_statement(Parser *parser)
 {
   node_start(parser);
-  expect_any(parser, FIRST_OUTPUT_STATEMENT, FIRST_OUTPUT_STATEMENT_COUNT);
+  expect_any(parser, FIRST_OUTPUT_STATEMENT, sizeof(FIRST_OUTPUT_STATEMENT) / sizeof(SyntaxKind));
   if (check(parser, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN)) {
     parse_output_list(parser);
   } else {
@@ -578,9 +566,9 @@ static void parse_statement(Parser *parser)
     parse_call_statement(parser);
   } else if (check(parser, SYNTAX_KIND_RETURN_KEYWORD)) {
     parse_return_statement(parser);
-  } else if (check_any(parser, FIRST_INPUT_STATEMENT, FIRST_INPUT_STATEMENT_COUNT)) {
+  } else if (check_any(parser, FIRST_INPUT_STATEMENT, sizeof(FIRST_INPUT_STATEMENT) / sizeof(SyntaxKind))) {
     parse_input_statement(parser);
-  } else if (check_any(parser, FIRST_OUTPUT_STATEMENT, FIRST_OUTPUT_STATEMENT_COUNT)) {
+  } else if (check_any(parser, FIRST_OUTPUT_STATEMENT, sizeof(FIRST_OUTPUT_STATEMENT) / sizeof(SyntaxKind))) {
     parse_output_statement(parser);
   } else if (check(parser, SYNTAX_KIND_BEGIN_KEYWORD)) {
     parse_compound_statement(parser);
