@@ -256,6 +256,22 @@ static void consume_expression(Printer *printer)
 
 static void consume_statement(Printer *printer);
 
+static void consume_nested_statement(Printer *printer)
+{
+  const TokenNode *statement = node(printer);
+  if (statement->kind != SYNTAX_KIND_COMPOUND_STATEMENT) {
+    ++printer->indent;
+    newline();
+    indent(printer);
+  } else {
+    space();
+  }
+  consume_statement(printer);
+  if (statement->kind != SYNTAX_KIND_COMPOUND_STATEMENT) {
+    --printer->indent;
+  }
+}
+
 static void consume_assignment_statement(Printer *printer)
 {
   tree_start(printer);
@@ -275,11 +291,7 @@ static void consume_if_statement(Printer *printer)
   consume_expression(printer);
   space();
   consume_token_keyword(printer);
-  newline();
-  ++printer->indent;
-  indent(printer);
-  consume_statement(printer);
-  --printer->indent;
+  consume_nested_statement(printer);
   if (node(printer)) {
     newline();
     indent(printer);
@@ -288,11 +300,7 @@ static void consume_if_statement(Printer *printer)
       space();
       consume_statement(printer);
     } else {
-      newline();
-      ++printer->indent;
-      indent(printer);
-      consume_statement(printer);
-      --printer->indent;
+      consume_nested_statement(printer);
     }
   }
   tree_end(printer);
@@ -306,11 +314,7 @@ static void consume_while_statement(Printer *printer)
   consume_expression(printer);
   space();
   consume_token_keyword(printer);
-  newline();
-  ++printer->indent;
-  indent(printer);
-  consume_statement(printer);
-  --printer->indent;
+  consume_nested_statement(printer);
   tree_end(printer);
 }
 
@@ -440,6 +444,10 @@ static void consume_compound_statement(Printer *printer)
       break;
     }
     consume_token_foreground(printer);
+    if (!node(printer) && node_index(printer) + 2 == node_count(printer)) {
+      node_next(printer);
+      break;
+    }
     newline();
   }
   --printer->indent;
