@@ -65,9 +65,9 @@ void report_annotation(Report *report, unsigned long start, unsigned long end, c
 void report_annotation_with_args(Report *report, unsigned long start, unsigned long end, const char *format, va_list args)
 {
   ReportAnnotation label;
-  label._start   = start;
-  label._end     = end;
-  label._message = vformat(format, args);
+  label._start_offset = start;
+  label._end_offset   = end;
+  label._message      = vformat(format, args);
   array_push(&report->_annotations, &label);
 }
 

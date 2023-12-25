@@ -23,9 +23,9 @@ void         *array_back(const Array *array);
 void          array_reserve(Array *array, unsigned long capacity);
 void          array_fit(Array *array);
 void          array_push(Array *array, void *value);
-void          array_push_n(Array *array, void *value, unsigned long count);
+void          array_push_count(Array *array, void *value, unsigned long count);
 void          array_pop(Array *array);
-void          array_pop_n(Array *array, unsigned long count);
+void          array_pop_count(Array *array, unsigned long count);
 void          array_clear(Array *array);
 void         *array_steal(Array *array);
 

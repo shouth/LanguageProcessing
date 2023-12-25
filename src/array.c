@@ -78,10 +78,10 @@ void array_fit(Array *array)
 
 void array_push(Array *array, void *value)
 {
-  array_push_n(array, value, 1);
+  array_push_count(array, value, 1);
 }
 
-void array_push_n(Array *array, void *value, unsigned long count)
+void array_push_count(Array *array, void *value, unsigned long count)
 {
   if (array_count(array) + count > array_capacity(array)) {
     unsigned long capacity = array_capacity(array) ? array_capacity(array) : 1;
@@ -96,10 +96,10 @@ void array_push_n(Array *array, void *value, unsigned long count)
 
 void array_pop(Array *array)
 {
-  array_pop_n(array, 1);
+  array_pop_count(array, 1);
 }
 
-void array_pop_n(Array *array, unsigned long count)
+void array_pop_count(Array *array, unsigned long count)
 {
   if (array->_count > count) {
     array->_count -= count;

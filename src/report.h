@@ -16,9 +16,11 @@ typedef struct ReportAnnotation ReportAnnotation;
 typedef struct Report           Report;
 
 struct ReportAnnotation {
-  unsigned long _start;
-  unsigned long _end;
-  char         *_message;
+  unsigned long  _start_offset;
+  unsigned long  _end_offset;
+  SourceLocation _start;
+  SourceLocation _end;
+  char          *_message;
 };
 
 struct Report {

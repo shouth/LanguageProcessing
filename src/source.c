@@ -24,7 +24,7 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
       unsigned long length;
       array_init(&text, sizeof(char));
       while ((length = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
-        array_push_n(&text, buffer, length);
+        array_push_count(&text, buffer, length);
       }
       buffer[0] = '\0';
       array_push(&text, buffer);

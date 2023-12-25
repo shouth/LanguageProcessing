@@ -1,49 +1,209 @@
+#include <locale.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "array.h"
 #include "report.h"
 #include "source.h"
-#include "utility.h"
 
-typedef struct DisplaySegment    DisplaySegment;
-typedef struct DisplayLine       DisplayLine;
-typedef struct DisplayAnnotation DisplayAnnotation;
-typedef struct ReportEmitter     ReportEmitter;
-
-struct DisplaySegment {
-  unsigned long            start;
-  unsigned long            end;
-  const DisplayAnnotation *annotaion;
-  DisplaySegment          *next;
-};
-
-struct DisplayLine {
-  unsigned long   number;
-  char           *display_text;
-  unsigned long   display_text_length;
-  DisplaySegment *color_segments;
-  DisplaySegment *designator_segments;
-};
-
-struct DisplayAnnotation {
-  SourceLocation          start;
-  SourceLocation          end;
-  const ReportAnnotation *annotaion;
-};
+typedef struct ReportEmitter ReportEmitter;
+typedef struct Canvas        ReportCanvas;
+typedef struct CanvasCell    ReportCell;
 
 struct ReportEmitter {
-  const Report      *report;
-  const Source      *source;
-  SourceLocation     location;
-  unsigned long      number_margin;
-  unsigned long      indent_width;
-  DisplayAnnotation *annotaions;
-  unsigned long      annotation_count;
-  DisplayLine       *lines;
-  unsigned long      line_count;
+  unsigned long number_margin;
+  unsigned long tab_width;
 };
+
+typedef enum {
+  CANVAS_NORMAL    = 1 << 0,
+  CANVAS_BOLD      = 1 << 1,
+  CANVAS_FAINT     = 1 << 2,
+  CANVAS_ITALIC    = 1 << 3,
+  CANVAS_UNDERLINE = 1 << 4
+} CanvasStyleAttribute;
+
+typedef enum {
+  CANVAS_4BIT  = 1 << 24,
+  CANVAS_8BIT  = 1 << 25,
+  CANVAS_24BIT = 1 << 26
+} CanvasColorAttribute;
+
+struct CanvasCell {
+  char          character[4];
+  int           size;
+  unsigned int  style;
+  unsigned long foreground;
+  unsigned long background;
+};
+
+struct Canvas {
+  Array         lines;
+  unsigned long current_line;
+  unsigned long current_column;
+};
+
+static void canvas_init(ReportCanvas *canvas)
+{
+  array_init(&canvas->lines, sizeof(Array));
+  {
+    Array line;
+    array_init(&line, sizeof(ReportCell));
+    array_push(&canvas->lines, &line);
+  }
+  canvas->current_line   = 0;
+  canvas->current_column = 0;
+}
+
+static void canvas_deinit(ReportCanvas *canvas)
+{
+  unsigned long i;
+  for (i = 0; i < array_count(&canvas->lines); ++i) {
+    Array *line = array_at(&canvas->lines, i);
+    array_deinit(line);
+  }
+  array_deinit(&canvas->lines);
+}
+
+#define BUFFER_SIZE 1024
+
+static void canvas_next_line(ReportCanvas *canvas)
+{
+  ++canvas->current_line;
+  canvas->current_column = 0;
+  if (canvas->current_line >= array_count(&canvas->lines)) {
+    Array line;
+    array_init(&line, sizeof(ReportCell));
+    array_push(&canvas->lines, &line);
+  }
+}
+
+static void canvas_draw(
+  ReportCanvas *canvas,
+  unsigned long style, unsigned long foreground, unsigned long background,
+  const char *format, ...)
+{
+  va_list args;
+  Array  *line  = array_at(&canvas->lines, canvas->current_line);
+  FILE   *file  = tmpfile();
+  long    index = 0;
+  char    buffer[BUFFER_SIZE + 1];
+
+  setlocale(LC_ALL, "C.UTF-8");
+  va_start(args, format);
+  vfprintf(file, format, args);
+  va_end(args);
+  rewind(file);
+  mblen(NULL, 0);
+  while (fgets(buffer + index, BUFFER_SIZE - index, file)) {
+    while (buffer[index]) {
+      int size = mblen(buffer + index, BUFFER_SIZE - index);
+      if (size < 0) {
+        int remain = strlen(buffer + index);
+        memmove(buffer, buffer + index, remain);
+        index = remain;
+        break;
+      }
+
+      {
+        unsigned long initial_line_width = array_count(line);
+        ReportCell    cell;
+        cell.style      = style;
+        cell.foreground = foreground;
+        cell.background = background;
+        cell.size       = size;
+        memcpy(cell.character, buffer + index, size);
+        if (canvas->current_column < initial_line_width) {
+          memcpy(array_at(line, canvas->current_column), &cell, sizeof(ReportCell));
+        } else {
+          array_push(line, &cell);
+        }
+        ++canvas->current_column;
+        index += size;
+      }
+    }
+  }
+  fclose(file);
+}
+
+static void canvas_position(ReportCanvas *canvas, unsigned long *line, unsigned long *column)
+{
+  *line   = canvas->current_line;
+  *column = canvas->current_column;
+}
+
+static void canvas_seek(ReportCanvas *canvas, unsigned long line, unsigned long column)
+{
+  canvas->current_line   = line;
+  canvas->current_column = column;
+
+  while (canvas->current_line >= array_count(&canvas->lines)) {
+    Array line;
+    array_init(&line, sizeof(ReportCell));
+    array_push(&canvas->lines, &line);
+  }
+
+  while (canvas->current_column >= array_count(array_at(&canvas->lines, canvas->current_line))) {
+    ReportCell cell;
+    cell.style      = CANVAS_NORMAL;
+    cell.foreground = 0;
+    cell.background = 0;
+    cell.size       = 1;
+    strcpy(cell.character, " ");
+    array_push(array_at(&canvas->lines, canvas->current_line), &cell);
+  }
+}
+
+static void canvas_print(ReportCanvas *canvas, FILE *stream)
+{
+  unsigned long line, column;
+  for (line = 0; line < array_count(&canvas->lines); ++line) {
+    Array *line_array = array_at(&canvas->lines, line);
+    for (column = 0; column < array_count(line_array); ++column) {
+      ReportCell *cell = array_at(line_array, column);
+      if (cell->style & CANVAS_BOLD) {
+        fprintf(stream, "\033[1m");
+      }
+      if (cell->style & CANVAS_FAINT) {
+        fprintf(stream, "\033[2m");
+      }
+      if (cell->style & CANVAS_ITALIC) {
+        fprintf(stream, "\033[3m");
+      }
+      if (cell->style & CANVAS_UNDERLINE) {
+        fprintf(stream, "\033[4m");
+      }
+      if (cell->foreground & CANVAS_4BIT) {
+        fprintf(stream, "\033[%lum", cell->foreground & 0xFFFFFF);
+      } else if (cell->foreground & CANVAS_8BIT) {
+        fprintf(stream, "\033[38;5;%lum", cell->foreground & 0xFFFFFF);
+      } else if (cell->foreground & CANVAS_24BIT) {
+        fprintf(stream, "\033[38;2;%lu;%lu;%lum",
+          (cell->foreground >> 16) & 0xFF,
+          (cell->foreground >> 8) & 0xFF,
+          cell->foreground & 0xFF);
+      }
+      if (cell->background & CANVAS_4BIT) {
+        fprintf(stream, "\033[%lum", cell->background & 0xFFFFFF);
+      } else if (cell->background & CANVAS_8BIT) {
+        fprintf(stream, "\033[48;5;%lum", cell->background & 0xFFFFFF);
+      } else if (cell->background & CANVAS_24BIT) {
+        fprintf(stream, "\033[48;2;%lu;%lu;%lum",
+          (cell->background >> 16) & 0xFF,
+          (cell->background >> 8) & 0xFF,
+          cell->background & 0xFF);
+      }
+      fprintf(stream, "%.*s", (int) cell->size, cell->character);
+      fprintf(stream, "\033[0m");
+    }
+    if (line + 1 < array_count(&canvas->lines)) {
+      fprintf(stream, "\n");
+    }
+  }
+  fflush(stream);
+}
 
 static unsigned long digits(unsigned long number)
 {
@@ -55,312 +215,210 @@ static unsigned long digits(unsigned long number)
   return result;
 }
 
-static int display_segment_compare(const void *left, const void *right)
+static int compare_annotation(const void *left, const void *right)
 {
-  const DisplaySegment *l = left;
-  const DisplaySegment *r = right;
+  const ReportAnnotation *left_annotation  = left;
+  const ReportAnnotation *right_annotation = right;
 
-  if (l->start != r->start) {
-    return l->start < r->start ? -1 : 1;
-  } else if (l->end != r->end) {
-    return l->end < r->end ? -1 : 1;
-  } else if (l->annotaion->annotaion->_start != r->annotaion->annotaion->_start) {
-    return l->annotaion->annotaion->_start < r->annotaion->annotaion->_start ? -1 : 1;
-  } else if (l->annotaion->annotaion->_end != r->annotaion->annotaion->_end) {
-    return l->annotaion->annotaion->_end < r->annotaion->annotaion->_end ? -1 : 1;
+  if (left_annotation->_start_offset != right_annotation->_start_offset) {
+    return left_annotation->_start_offset < right_annotation->_start_offset ? -1 : 1;
+  } else if (left_annotation->_end_offset != right_annotation->_end_offset) {
+    return left_annotation->_end_offset < right_annotation->_end_offset ? -1 : 1;
   } else {
-    return l->annotaion->annotaion < r->annotaion->annotaion ? -1 : 1;
+    return 0;
   }
 }
 
-static void display_segment_serialize(DisplaySegment *segments, unsigned long count)
+static void display_location(const Source *source, unsigned long offset, unsigned long tab_width, SourceLocation *location)
 {
-  unsigned long   i;
-  DisplaySegment *list = NULL;
-
-  qsort(segments, count, sizeof(DisplaySegment), &display_segment_compare);
-  for (i = 0; i < count; ++i) {
-    DisplaySegment  *segment = segments + i;
-    DisplaySegment **tail    = &list;
-
-    while (*tail && segment->start < (*tail)->start) {
-      tail = &(*tail)->next;
-    }
-
-    *tail = segment;
-    while (*tail && segment->end < (*tail)->start) {
-      tail = &(*tail)->next;
-    }
-
-    if (*tail) {
-      (*tail)->start = segment->end;
-    }
-    segment->next = *tail;
-  }
-}
-
-static void display_line_init(DisplayLine *line, unsigned long number, const ReportEmitter *emitter)
-{
-  unsigned long line_length = emitter->source->line_lengths[number];
-  unsigned long line_offset = emitter->source->line_offsets[number];
-
-  Array         segments;
-  unsigned long column;
-  unsigned long display_column;
   unsigned long i;
-
-  line->number = number;
-  array_init(&segments, sizeof(DisplaySegment));
-
-  line->display_text_length = 0;
-  for (column = 0; column < line_length; ++column) {
-    if (emitter->source->text[line_offset + column] == '\t') {
-      line->display_text_length += emitter->indent_width - line->display_text_length % emitter->indent_width;
+  unsigned long column = 0;
+  source_location(source, offset, location);
+  for (i = 0; i < location->column; ++i) {
+    if (source->text[source->line_offsets[location->line] + i] == '\t') {
+      column += tab_width - (column % tab_width);
     } else {
-      line->display_text_length += 1;
+      ++column;
     }
   }
-
-  line->display_text = xmalloc(sizeof(char) * (line->display_text_length + 1));
-  for (display_column = 0, column = 0; column < line_length; ++column) {
-    if (emitter->source->text[line_offset + column] == '\t') {
-      unsigned long width = emitter->indent_width - display_column % emitter->indent_width;
-      for (i = 0; i < width; ++i) {
-        line->display_text[display_column++] = ' ';
-      }
-    } else {
-      line->display_text[display_column++] = emitter->source->text[line_offset + column];
-    }
-  }
-  line->display_text[line->display_text_length] = '\0';
-
-  {
-    Array color_segments;
-    array_init(&color_segments, sizeof(DisplaySegment));
-    for (i = 0; i < emitter->annotation_count; ++i) {
-      int is_start = emitter->annotaions[i].start.line == number;
-      int is_end   = emitter->annotaions[i].end.line == number;
-
-      if (is_start && is_end) {
-        DisplaySegment segment;
-        segment.start     = emitter->annotaions[i].start.column;
-        segment.end       = emitter->annotaions[i].end.column;
-        segment.annotaion = emitter->annotaions + i;
-        segment.next      = NULL;
-        array_push(&color_segments, &segment);
-      } else if (is_start) {
-        DisplaySegment segment;
-        segment.start     = emitter->annotaions[i].start.column;
-        segment.end       = segment.start + 1;
-        segment.annotaion = emitter->annotaions + i;
-        segment.next      = NULL;
-        array_push(&color_segments, &segment);
-      } else if (is_end) {
-        DisplaySegment segment;
-        segment.start     = emitter->annotaions[i].end.column;
-        segment.end       = segment.start + 1;
-        segment.annotaion = emitter->annotaions + i;
-        segment.next      = NULL;
-        array_push(&color_segments, &segment);
-      }
-    }
-    display_segment_serialize(array_data(&color_segments), array_count(&color_segments));
-    line->color_segments = array_steal(&color_segments);
-  }
-
-  {
-    Array designator_segments;
-    array_init(&designator_segments, sizeof(DisplaySegment));
-    for (i = 0; i < emitter->annotation_count; ++i) {
-      int is_start = emitter->annotaions[i].start.line == number;
-      int is_end   = emitter->annotaions[i].end.line == number;
-
-      if (is_start && is_end) {
-        DisplaySegment segment;
-        segment.start     = emitter->annotaions[i].start.column;
-        segment.end       = emitter->annotaions[i].end.column + 1;
-        segment.annotaion = emitter->annotaions + i;
-        segment.next      = NULL;
-        array_push(&designator_segments, &segment);
-      } else if (is_start) {
-        DisplaySegment segment;
-        segment.start     = 0;
-        segment.end       = emitter->annotaions[i].end.column + 1;
-        segment.annotaion = emitter->annotaions + i;
-        segment.next      = NULL;
-        array_push(&designator_segments, &segment);
-      } else if (is_end) {
-        DisplaySegment segment;
-        segment.start     = emitter->annotaions[i].start.column;
-        segment.end       = line_length;
-        segment.annotaion = emitter->annotaions + i;
-        segment.next      = NULL;
-        array_push(&designator_segments, &segment);
-      }
-    }
-    display_segment_serialize(array_data(&designator_segments), array_count(&designator_segments));
-    line->designator_segments = array_steal(&designator_segments);
-  }
-}
-
-static void display_line_deinit(DisplayLine *line)
-{
-  free(line->display_text);
-  free(line->color_segments);
-  free(line->designator_segments);
+  location->column = column;
 }
 
 static void report_emitter_init(ReportEmitter *emitter, Report *report, const Source *source)
 {
-  unsigned long i, j;
-  Array         annotations;
-  Array         lines;
-  unsigned long start_line = -1ul;
-  unsigned long end_line   = -1ul;
-
-  emitter->report       = report;
-  emitter->source       = source;
-  emitter->indent_width = 4;
-  source_location(source, report->_offset, &emitter->location);
-
-  array_init(&annotations, sizeof(DisplayAnnotation));
+  unsigned long i;
+  emitter->tab_width = 4;
   for (i = 0; i < array_count(&report->_annotations); ++i) {
-    DisplayAnnotation annotation;
-    annotation.annotaion = array_at(&report->_annotations, i);
-    source_location(source, annotation.annotaion->_start, &annotation.start);
-    source_location(source, annotation.annotaion->_end - 1, &annotation.end);
-    array_push(&annotations, &annotation);
+    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+    display_location(source, annotation->_start_offset, emitter->tab_width, &annotation->_start);
+    display_location(source, annotation->_end_offset - 1, emitter->tab_width, &annotation->_end);
   }
-  emitter->annotation_count = array_count(&annotations);
-  emitter->annotaions       = array_steal(&annotations);
+  qsort(array_data(&report->_annotations), array_count(&report->_annotations), sizeof(ReportAnnotation), &compare_annotation);
+  emitter->number_margin = digits(((ReportAnnotation *) array_back(&report->_annotations))->_end.line + 1);
+}
 
-  for (i = 0; i < emitter->annotation_count; ++i) {
-    if (start_line == -1ul || start_line > emitter->annotaions[i].start.line) {
-      start_line = emitter->annotaions[i].start.line;
-    }
-    if (end_line == -1ul || end_line < emitter->annotaions[i].end.line) {
-      end_line = emitter->annotaions[i].end.line;
+static unsigned long display_line_width(const Source *source, unsigned long line, unsigned long tab_width)
+{
+  unsigned long i;
+  unsigned long width = 0;
+  for (i = 0; i < source->line_lengths[line]; ++i) {
+    if (source->text[source->line_offsets[line] + i] == '\t') {
+      width += tab_width - (width % tab_width);
+    } else {
+      ++width;
     }
   }
+  return width;
+}
 
-  array_init(&lines, sizeof(DisplayLine));
-  for (i = start_line; i <= end_line; ++i) {
-    for (j = 0; j < emitter->annotation_count; ++j) {
-      DisplayLine line;
-      if (i == emitter->annotaions[j].start.line) {
-        display_line_init(&line, i, emitter);
-        array_push(&lines, &line);
-        break;
+static char *display_line(const Source *source, unsigned long line, unsigned long tab_width)
+{
+  unsigned long i, j;
+  unsigned long width  = display_line_width(source, line, tab_width);
+  char         *result = malloc(width + 1);
+  unsigned long offset = 0;
+  for (i = 0; i < source->line_lengths[line]; ++i) {
+    if (source->text[source->line_offsets[line] + i] == '\t') {
+      unsigned long adjusted_width = tab_width - (offset % tab_width);
+      for (j = 0; j < adjusted_width; ++j) {
+        result[offset] = ' ';
+        ++offset;
       }
-      if (i == emitter->annotaions[j].end.line) {
-        display_line_init(&line, i, emitter);
-        array_push(&lines, &line);
-        break;
-      }
+    } else {
+      result[offset] = source->text[source->line_offsets[line] + i];
+      ++offset;
     }
   }
-
-  emitter->line_count    = array_count(&lines);
-  emitter->lines         = array_steal(&lines);
-  emitter->number_margin = digits(emitter->lines[emitter->line_count - 1].number);
-}
-
-static void report_emitter_deinit(ReportEmitter *emitter)
-{
-  unsigned long i;
-  for (i = 0; i < emitter->line_count; ++i) {
-    display_line_deinit(emitter->lines + i);
-  }
-  free(emitter->lines);
-  free(emitter->annotaions);
-}
-
-static void emit_head_line(const ReportEmitter *emitter)
-{
-  switch (emitter->report->_kind) {
-  case REPORT_KIND_ERROR:
-    fprintf(stderr, "[ERROR] ");
-    break;
-  case REPORT_KIND_WARN:
-    fprintf(stderr, "[WARN] ");
-    break;
-  case REPORT_KIND_NOTE:
-    fprintf(stderr, "[NOTE] ");
-    break;
-  }
-  fprintf(stderr, "%s\n", emitter->report->_message);
-}
-
-static void emit_location_line(const ReportEmitter *emitter)
-{
-  fprintf(stderr, "%*.s ╭─[%s:%lu:%lu]\n",
-    (int) emitter->number_margin, "",
-    emitter->source->file_name,
-    emitter->location.line + 1, emitter->location.column + 1);
-}
-
-static void emit_source_line(const ReportEmitter *emitter, const DisplayLine *line)
-{
-  unsigned long current_display_column = 0;
-
-  fprintf(stderr, "%*.s%lu │ ",
-    (int) (emitter->number_margin - digits(line->number + 1)), "",
-    line->number + 1);
-
-  fprintf(stderr, "%.*s", (int) (line->display_text_length - current_display_column), line->display_text + current_display_column);
-  fprintf(stderr, "\n");
-}
-
-static void emit_designator_line(const ReportEmitter *emitter, const DisplayLine *line)
-{
-  fprintf(stderr, "%*.s │ ", (int) emitter->number_margin, "");
-
-  fprintf(stderr, "\n");
-}
-
-static void emit_connector_lines(const ReportEmitter *emitter, const DisplayLine *line)
-{
-  fprintf(stderr, "%*.s │ ", (int) emitter->number_margin, "");
-
-  fprintf(stderr, "\n");
-}
-
-static void emit_interest_lines(const ReportEmitter *emitter)
-{
-  unsigned long i;
-
-  fprintf(stderr, "%*.s │ \n", (int) emitter->number_margin, "");
-  for (i = 0; i < emitter->line_count; ++i) {
-    if (i > 0 && emitter->lines[i - 1].number + 1 != emitter->lines[i].number) {
-      fprintf(stderr, "%*.s ┆ \n", (int) emitter->number_margin, "");
-    }
-
-    emit_source_line(emitter, emitter->lines + i);
-    emit_designator_line(emitter, emitter->lines + i);
-    emit_connector_lines(emitter, emitter->lines + i);
-  }
-  fprintf(stderr, "%*.s │ \n", (int) emitter->number_margin, "");
-}
-
-static void emit_tail_line(const ReportEmitter *emitter)
-{
-  unsigned long i;
-  for (i = 0; i <= emitter->number_margin; ++i) {
-    fprintf(stderr, "─");
-  }
-  fprintf(stderr, "╯\n");
+  result[width] = '\0';
+  return result;
 }
 
 void report_emit(Report *report, const Source *source)
 {
   ReportEmitter emitter;
+  ReportCanvas  canvas;
   report_emitter_init(&emitter, report, source);
+  canvas_init(&canvas);
 
-  emit_head_line(&emitter);
-  emit_location_line(&emitter);
-  emit_interest_lines(&emitter);
-  emit_tail_line(&emitter);
+  switch (report->_kind) {
+  case REPORT_KIND_ERROR:
+    canvas_draw(&canvas, CANVAS_BOLD, CANVAS_4BIT | 91, 0, "[ERROR] ");
+    break;
+  case REPORT_KIND_WARN:
+    canvas_draw(&canvas, CANVAS_NORMAL, CANVAS_4BIT | 93, 0, "[WARN] ");
+    break;
+  case REPORT_KIND_NOTE:
+    canvas_draw(&canvas, CANVAS_NORMAL, CANVAS_4BIT | 96, 0, "[NOTE] ");
+    break;
+  }
+  canvas_draw(&canvas, CANVAS_NORMAL, 0, 0, "%s", report->_message);
+  canvas_next_line(&canvas);
 
-  report_emitter_deinit(&emitter);
+  {
+    SourceLocation location;
+    source_location(source, report->_offset, &location);
+    canvas_draw(&canvas, CANVAS_FAINT, 0, 0, " %*.s ╭─[",
+      (int) emitter.number_margin, "");
+    canvas_draw(&canvas, CANVAS_NORMAL, 0, 0, "%s:%lu:%lu",
+      source->file_name,
+      location.line + 1, location.column + 1);
+    canvas_draw(&canvas, CANVAS_FAINT, 0, 0, "]");
+    canvas_next_line(&canvas);
+  }
+ 
+  {
+    Array         multiline_annotations;
+    Array         multiline_annotations_in_range;
+    unsigned long i, j;
+
+    array_init(&multiline_annotations, sizeof(ReportAnnotation *));
+    array_init(&multiline_annotations_in_range, sizeof(unsigned char));
+    for (i = 0; i < array_count(&report->_annotations); ++i) {
+      const ReportAnnotation *annotation = array_at(&report->_annotations, i);
+      if (annotation->_start.line != annotation->_end.line) {
+        unsigned char flag = 0;
+        array_push(&multiline_annotations, &annotation);
+        array_push(&multiline_annotations_in_range, &flag);
+      }
+    }
+
+    for (i = 0; i < array_count(&report->_annotations); ++i) {
+      const ReportAnnotation *start = array_at(&report->_annotations, i);
+      const ReportAnnotation *end   = start + 1;
+      while (end - start < (long) array_count(&report->_annotations) && start->_start.line == end->_start.line) {
+        ++end;
+      }
+
+      canvas_draw(&canvas, CANVAS_FAINT, 0, 0, " %*.s │", emitter.number_margin, "");
+      canvas_next_line(&canvas);
+      canvas_draw(&canvas, CANVAS_FAINT, 0, 0, " %*.lu │ ", (int) emitter.number_margin, start->_start.line + 1);
+      for (j = 0; j < array_count(&multiline_annotations); ++j) {
+        unsigned char *flag = array_at(&multiline_annotations_in_range, j);
+        if (*flag) {
+          canvas_draw(&canvas, CANVAS_NORMAL, 0, 0, "│ ");
+        } else {
+          canvas_draw(&canvas, CANVAS_NORMAL, 0, 0, "  ");
+        }
+      }
+      {
+        unsigned long line_width = display_line_width(source, start->_start.line, emitter.tab_width);
+        char         *line       = display_line(source, start->_start.line, emitter.tab_width);
+
+        const ReportAnnotation *annotation;
+        unsigned long           line_offset;
+        unsigned long           column_offset;
+
+        canvas_position(&canvas, &line_offset, &column_offset);
+        canvas_draw(&canvas, CANVAS_NORMAL, 0, 0, "%s", line);
+
+        for (annotation = start; annotation < end; ++annotation) {
+          unsigned long annotation_end = annotation->_start.line == annotation->_end.line ? annotation->_end.column + 1 : line_width;
+          canvas_seek(&canvas, line_offset, column_offset + annotation->_start.column);
+          canvas_draw(&canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "%.*s",
+            (int) (annotation_end - annotation->_start.column), line + annotation->_start.column);
+        }
+        canvas_next_line(&canvas);
+
+        canvas_draw(&canvas, CANVAS_FAINT, 0, 0, " %*.s │ ", (int) emitter.number_margin, "");
+        for (j = 0; j < array_count(&multiline_annotations); ++j) {
+          unsigned char *flag = array_at(&multiline_annotations_in_range, j);
+          if (*flag) {
+            canvas_draw(&canvas, CANVAS_NORMAL, 0, 0, "│ ");
+          } else {
+            canvas_draw(&canvas, CANVAS_NORMAL, 0, 0, "  ");
+          }
+        }
+
+        canvas_position(&canvas, &line_offset, &column_offset);
+        for (annotation = start; annotation < end; ++annotation) {
+          if (annotation->_start.line == annotation->_end.line) {
+            canvas_seek(&canvas, line_offset, column_offset + annotation->_start.column);
+            canvas_draw(&canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "┬");
+            for (j = annotation->_start.column + 1; j <= annotation->_end.column; ++j) {
+              canvas_draw(&canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "─");
+            }
+          }
+        }
+
+        canvas_next_line(&canvas);
+        free(line);
+      }
+    }
+  }
+  canvas_draw(&canvas, CANVAS_FAINT, 0, 0, " %*.s │", (int) emitter.number_margin, "");
+  canvas_next_line(&canvas);
+
+  {
+    unsigned long i;
+    canvas_draw(&canvas, CANVAS_FAINT, 0, 0, "─");
+    for (i = 0; i <= emitter.number_margin; ++i) {
+      canvas_draw(&canvas, CANVAS_FAINT, 0, 0, "─");
+    }
+    canvas_draw(&canvas, CANVAS_FAINT, 0, 0, "╯");
+    canvas_next_line(&canvas);
+  }
+
+  canvas_print(&canvas, stderr);
+  canvas_deinit(&canvas);
   report_deinit(report);
 }

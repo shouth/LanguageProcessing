@@ -2,7 +2,6 @@
 #define SOURCE_H
 
 typedef struct SourceLocation SourceLocation;
-typedef struct SourceLine     SourceLine;
 typedef struct Source         Source;
 
 struct SourceLocation {
