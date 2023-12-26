@@ -324,11 +324,15 @@ static void draw_annotation_lines(
     canvas_style(canvas, CANVAS_RESET);
     switch (connector->kind) {
     case CONNECTOR_END:
-      canvas_seek(canvas, line_offset + j, column_offset + connector->column);
       canvas_style_foreground(canvas, CANVAS_4BIT | 91);
       if (connector->multiline) {
+        canvas_seek(canvas, line_offset + j, column_offset);
+        for (j = 0; j < connector->column; ++j) {
+          canvas_draw(canvas, "─");
+        }
         canvas_draw(canvas, "┴");
       } else {
+        canvas_seek(canvas, line_offset + j, column_offset + connector->column);
         canvas_draw(canvas, "╰");
       }
       for (j = connector->column + 1; j < label_offset + 3; ++j) {
