@@ -228,7 +228,7 @@ static void draw_indicator_line(
       array_push(&indicators, &indicator);
     } else if (annotation->_end.line == line_number) {
       indicator.kind   = INDICATOR_END;
-      indicator.column = annotation->_end.column - 1;
+      indicator.column = annotation->_end.column;
       indicator.length = 1;
       array_push(&indicators, &indicator);
     }
