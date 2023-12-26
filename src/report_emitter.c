@@ -6,6 +6,83 @@
 #include "report.h"
 #include "source.h"
 
+typedef struct LineSegment LineSegment;
+typedef struct Indicator   Indicator;
+typedef struct Connector   Connector;
+
+typedef enum {
+  INDICATOR_INLINE,
+  INDICATOR_END,
+  INDICATOR_BEGIN
+} IndicatorKind;
+
+typedef enum {
+  CONNECTOR_END,
+  CONNECTOR_BEGIN
+} ConnectorKind;
+
+struct LineSegment {
+  unsigned long start;
+  unsigned long end;
+};
+
+struct Indicator {
+  IndicatorKind kind;
+  unsigned long column;
+  unsigned long length;
+};
+
+struct Connector {
+  const ReportAnnotation *annotation;
+  ConnectorKind           kind;
+  int                     multiline;
+  unsigned long           column;
+};
+
+static int compare_line_segments(const void *left, const void *right)
+{
+  const LineSegment *left_segment  = left;
+  const LineSegment *right_segment = right;
+
+  if (left_segment->start != right_segment->start) {
+    return left_segment->start < right_segment->start ? -1 : 1;
+  } else if (left_segment->end != right_segment->end) {
+    return left_segment->end > right_segment->end ? -1 : 1;
+  } else {
+    return 0;
+  }
+}
+
+static int compare_indicators(const void *left, const void *right)
+{
+  const Indicator *left_indicator  = left;
+  const Indicator *right_indicator = right;
+
+  if (left_indicator->kind != right_indicator->kind) {
+    return left_indicator->kind < right_indicator->kind ? -1 : 1;
+  } else if (left_indicator->column != right_indicator->column) {
+    return left_indicator->column < right_indicator->column ? -1 : 1;
+  } else if (left_indicator->length != right_indicator->length) {
+    return left_indicator->length > right_indicator->length ? -1 : 1;
+  } else {
+    return 0;
+  }
+}
+
+static int compare_connectors(const void *left, const void *right)
+{
+  const Connector *left_connector  = left;
+  const Connector *right_connector = right;
+
+  if (left_connector->kind != right_connector->kind) {
+    return left_connector->kind < right_connector->kind ? -1 : 1;
+  } else if (left_connector->column != right_connector->column) {
+    return left_connector->column < right_connector->column ? -1 : 1;
+  } else {
+    return 0;
+  }
+}
+
 static void draw_head_line(Canvas *canvas, const Report *report)
 {
   switch (report->_kind) {
@@ -44,27 +121,12 @@ static void draw_location_line(Canvas *canvas, const Report *report, const Sourc
   canvas_style(canvas, CANVAS_RESET);
 }
 
-static int compare_annotations_source_segment(const void *left, const void *right)
-{
-  const ReportAnnotation *left_annotation  = left;
-  const ReportAnnotation *right_annotation = right;
-
-  if (left_annotation->_start_offset != right_annotation->_start_offset) {
-    return left_annotation->_start_offset < right_annotation->_start_offset ? -1 : 1;
-  } else if (left_annotation->_end_offset != right_annotation->_end_offset) {
-    return left_annotation->_end_offset > right_annotation->_end_offset ? -1 : 1;
-  } else {
-    return 0;
-  }
-}
-
 static void draw_interest_source(
-  Canvas           *canvas,
-  ReportAnnotation *annotations,
-  unsigned long     count,
-  const Source     *source,
-  unsigned long     line_number,
-  int               tab_width)
+  Canvas       *canvas,
+  const Report *report,
+  const Source *source,
+  unsigned long line_number,
+  int           tab_width)
 {
   unsigned long i, j;
   unsigned long line_width;
@@ -72,6 +134,8 @@ static void draw_interest_source(
 
   unsigned long line_offset;
   unsigned long column_offset;
+
+  Array segments;
 
   line_width = 0;
   for (i = 0; i < source->line_lengths[line_number]; ++i) {
@@ -98,151 +162,209 @@ static void draw_interest_source(
   }
   line[line_width] = '\0';
 
-  qsort(annotations, count, sizeof(ReportAnnotation), &compare_annotations_source_segment);
+  array_init(&segments, sizeof(LineSegment));
+  for (i = 0; i < array_count(&report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+    LineSegment       segment;
+    if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
+      segment.start = annotation->_start.column;
+      segment.end   = annotation->_end.column;
+      array_push(&segments, &segment);
+    } else if (annotation->_start.line == line_number) {
+      segment.start = annotation->_start.column;
+      segment.end   = line_width;
+      array_push(&segments, &segment);
+    } else if (annotation->_end.line == line_number) {
+      segment.start = 0;
+      segment.end   = annotation->_end.column;
+      array_push(&segments, &segment);
+    }
+  }
+  qsort(
+    array_data(&segments), array_count(&segments),
+    sizeof(LineSegment), &compare_line_segments);
 
   canvas_position(canvas, &line_offset, &column_offset);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_draw(canvas, "%s", line);
   canvas_style(canvas, CANVAS_RESET);
 
-  for (i = 0; i < count; ++i) {
-    unsigned long annotation_start
-      = annotations[i]._start.line == line_number ? annotations[i]._start.column : 0;
-    unsigned long annotation_end
-      = annotations[i]._end.line == line_number ? annotations[i]._end.column + 1 : line_width;
-    canvas_seek(canvas, line_offset, column_offset + annotation_start);
+  for (i = 0; i < array_count(&segments); ++i) {
+    LineSegment *segment = array_at(&segments, i);
+    canvas_seek(canvas, line_offset, column_offset + segment->start);
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
-    canvas_draw(canvas, "%.*s", (int) (annotation_end - annotation_start), line + annotation_start);
+    canvas_draw(canvas, "%.*s", (int) (segment->end - segment->start), line + segment->start);
     canvas_style(canvas, CANVAS_RESET);
   }
-  free(line);
-}
 
-static void draw_connector_left_part(
-  Canvas                 *canvas,
-  const ReportAnnotation *annotations,
-  const unsigned char    *flags,
-  unsigned long           count)
-{
-  unsigned long i;
-  for (i = 0; i < count; ++i) {
-    if (flags[i]) {
-      canvas_draw(canvas, "│ ");
-    } else {
-      canvas_draw(canvas, "  ");
-    }
-  }
+  free(line);
+  array_deinit(&segments);
 }
 
 static void draw_indicator_line(
-  Canvas           *canvas,
-  ReportAnnotation *line_annotations,
-  unsigned long     line_annotation_count,
-  ReportAnnotation *multiline_annotations,
-  unsigned char    *multiline_annotation_flags,
-  unsigned long     multiline_annotation_count,
-  unsigned long     line_number,
-  int               number_margin)
+  Canvas       *canvas,
+  const Report *report,
+  unsigned long line_number,
+  int           number_margin)
 {
   unsigned long i, j;
   unsigned long line_offset;
   unsigned long column_offset;
 
-  qsort(line_annotations, line_annotation_count, sizeof(ReportAnnotation), &compare_annotations_source_segment);
+  Array indicators;
+  array_init(&indicators, sizeof(Indicator));
+  for (i = 0; i < array_count(&report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+    Indicator         indicator;
+    if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
+      indicator.kind   = INDICATOR_INLINE;
+      indicator.column = annotation->_start.column;
+      indicator.length = annotation->_end.column - annotation->_start.column;
+      array_push(&indicators, &indicator);
+    } else if (annotation->_start.line == line_number) {
+      indicator.kind   = INDICATOR_BEGIN;
+      indicator.column = annotation->_start.column;
+      indicator.length = 1;
+      array_push(&indicators, &indicator);
+    } else if (annotation->_end.line == line_number) {
+      indicator.kind   = INDICATOR_END;
+      indicator.column = annotation->_end.column - 1;
+      indicator.length = 1;
+      array_push(&indicators, &indicator);
+    }
+  }
+  qsort(array_data(&indicators), array_count(&indicators), sizeof(Indicator), &compare_indicators);
 
   canvas_style(canvas, CANVAS_FAINT);
   canvas_draw(canvas, " %*.s │ ", number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
-  draw_connector_left_part(
-    canvas, multiline_annotations, multiline_annotation_flags, multiline_annotation_count);
 
   canvas_position(canvas, &line_offset, &column_offset);
-  canvas_style_foreground(canvas, CANVAS_4BIT | 91);
-  for (i = 0; i < line_annotation_count; ++i) {
-    if (line_annotations[i]._start.line == line_annotations[i]._end.line) {
-      canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._start.column);
+  for (i = 0; i < array_count(&indicators); ++i) {
+    Indicator *indicator = array_at(&indicators, i);
+    canvas_seek(canvas, line_offset, column_offset + indicator->column);
+    canvas_style_foreground(canvas, CANVAS_4BIT | 91);
+    switch (indicator->kind) {
+    case INDICATOR_INLINE:
       canvas_draw(canvas, "┬");
-      for (j = line_annotations[i]._start.column + 1; j <= line_annotations[i]._end.column; ++j) {
+      for (j = 1; j < indicator->length; ++j) {
         canvas_draw(canvas, "─");
       }
+      break;
+
+    case INDICATOR_END:
+    case INDICATOR_BEGIN:
+      canvas_draw(canvas, "▲");
+      break;
     }
+    canvas_style(canvas, CANVAS_RESET);
   }
-  canvas_style(canvas, CANVAS_RESET);
 
-  canvas_style_foreground(canvas, CANVAS_4BIT | 91);
-  for (i = 0; i < line_annotation_count; ++i) {
-    if (line_annotations[i]._start.line != line_annotations[i]._end.line) {
-      if (line_annotations[i]._start.line == line_number) {
-        canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._start.column);
-        canvas_draw(canvas, "▲");
-      } else {
-        canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._end.column);
-        canvas_draw(canvas, "▲");
-      }
-    }
-  }
-  canvas_style(canvas, CANVAS_RESET);
-}
-
-static int compare_annotations_connector(const void *left, const void *right)
-{
-  const ReportAnnotation *left_annotation  = left;
-  const ReportAnnotation *right_annotation = right;
-
-  if (left_annotation->_start.line != right_annotation->_start.line) {
-    return left_annotation->_start.line > right_annotation->_start.line ? -1 : 1;
-  } else if (left_annotation->_end.line != right_annotation->_end.line) {
-    return left_annotation->_end.line > right_annotation->_end.line ? -1 : 1;
-  } else {
-    return 0;
-  }
+  array_deinit(&indicators);
 }
 
 static void draw_annotation_lines(
-  Canvas           *canvas,
-  ReportAnnotation *local_annotations,
-  unsigned long     local_count,
-  ReportAnnotation *multiline_annotations,
-  unsigned char    *multiline_annotations_flags,
-  unsigned long     multiline_count,
-  unsigned long     line_number,
-  int               number_margin)
+  Canvas       *canvas,
+  const Report *report,
+  unsigned long line_number,
+  int           number_margin)
 {
-  unsigned long i;
-  unsigned long column_end;
+  unsigned long i, j;
+  unsigned long label_offset = -1ul;
+  unsigned long line_offset;
+  unsigned long column_offset;
 
-  qsort(local_annotations, local_count, sizeof(ReportAnnotation), &compare_annotations_connector);
+  Array connectors;
+  array_init(&connectors, sizeof(Connector));
+  for (i = 0; i < array_count(&report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+    Connector         connector;
+    connector.annotation = annotation;
 
-  column_end = -1ul;
-  for (i = 0; i < local_count; ++i) {
-    if (local_annotations[i]._end.line == line_number) {
-      if (column_end == -1ul || column_end < local_annotations[i]._end.column) {
-        column_end = local_annotations[i]._end.column;
-      }
+    if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
+      connector.kind      = CONNECTOR_END;
+      connector.multiline = 0;
+      connector.column    = annotation->_start.column;
+      array_push(&connectors, &connector);
+    } else if (annotation->_start.line == line_number) {
+      connector.kind      = CONNECTOR_BEGIN;
+      connector.multiline = 1;
+      connector.column    = annotation->_start.column;
+      array_push(&connectors, &connector);
+    } else if (annotation->_end.line == line_number) {
+      connector.kind      = CONNECTOR_END;
+      connector.multiline = 1;
+      connector.column    = annotation->_end.column;
+      array_push(&connectors, &connector);
+    }
+
+    if (annotation->_end.line == line_number && label_offset > annotation->_end.column) {
+      label_offset = annotation->_end.column;
     }
   }
+  qsort(array_data(&connectors), array_count(&connectors), sizeof(Connector), &compare_connectors);
+
+  canvas_style(canvas, CANVAS_FAINT);
+  canvas_draw(canvas, " %*.s │ ", number_margin, "");
+  canvas_position(canvas, &line_offset, &column_offset);
+  for (i = 1; i < 2 * array_count(&connectors) - 1; ++i) {
+    canvas_next_line(canvas);
+    canvas_draw(canvas, " %*.s │ ", number_margin, "");
+  }
+  canvas_style(canvas, CANVAS_RESET);
+
+  for (i = array_count(&connectors); i > 0; --i) {
+    Connector *connector = array_at(&connectors, i - 1);
+
+    canvas_style_foreground(canvas, CANVAS_4BIT | 91);
+    for (j = 0; j < 2 * i - 2; ++j) {
+      canvas_seek(canvas, line_offset + j, column_offset + connector->column);
+      canvas_draw(canvas, "│");
+    }
+    canvas_style(canvas, CANVAS_RESET);
+    switch (connector->kind) {
+    case CONNECTOR_END:
+      canvas_seek(canvas, line_offset + j, column_offset + connector->column);
+      canvas_style_foreground(canvas, CANVAS_4BIT | 91);
+      if (connector->multiline) {
+        canvas_draw(canvas, "┴");
+      } else {
+        canvas_draw(canvas, "╰");
+      }
+      for (j = connector->column + 1; j < label_offset + 3; ++j) {
+        canvas_draw(canvas, "─");
+      }
+      canvas_style(canvas, CANVAS_RESET);
+      canvas_style_foreground(canvas, CANVAS_4BIT | 97);
+      canvas_draw(canvas, " %s", connector->annotation->_message);
+      canvas_style(canvas, CANVAS_RESET);
+      break;
+
+    case CONNECTOR_BEGIN:
+      canvas_seek(canvas, line_offset + j, column_offset);
+      canvas_style_foreground(canvas, CANVAS_4BIT | 91);
+      for (j = 0; j < connector->column; ++j) {
+        canvas_draw(canvas, "─");
+      }
+      canvas_draw(canvas, "╯");
+      canvas_style(canvas, CANVAS_RESET);
+      break;
+    }
+  }
+
+  array_deinit(&connectors);
 }
 
 static void draw_interest_lines(Canvas *canvas, const Report *report, const Source *source, int number_margin, int tab_width)
 {
-  Array         multiline_annotations;
-  Array         multiline_annotations_flags;
   unsigned long i, j;
 
   unsigned long start_line    = -1ul;
   unsigned long end_line      = 0;
   unsigned long previous_line = -1ul;
 
-  array_init(&multiline_annotations, sizeof(ReportAnnotation));
-  array_init(&multiline_annotations_flags, sizeof(unsigned char));
   for (i = 0; i < array_count(&report->_annotations); ++i) {
     ReportAnnotation *annotation = array_at(&report->_annotations, i);
-    if (annotation->_start.line != annotation->_end.line) {
-      unsigned char flag = 0;
-      array_push(&multiline_annotations, annotation);
-      array_push(&multiline_annotations_flags, &flag);
-    }
-
     if (start_line > annotation->_start.line) {
       start_line = annotation->_start.line;
     }
@@ -263,6 +385,9 @@ static void draw_interest_lines(Canvas *canvas, const Report *report, const Sour
     }
 
     if (array_count(&annotations)) {
+      if (i != start_line) {
+        canvas_next_line(canvas);
+      }
       canvas_style(canvas, CANVAS_FAINT);
       if (previous_line != -1ul && previous_line + 1 != i) {
         canvas_draw(canvas, " %*.s ┆", number_margin, "");
@@ -273,32 +398,14 @@ static void draw_interest_lines(Canvas *canvas, const Report *report, const Sour
 
       canvas_draw(canvas, " %*.lu │ ", number_margin, i + 1);
       canvas_style(canvas, CANVAS_RESET);
-      draw_connector_left_part(
-        canvas,
-        array_data(&multiline_annotations),
-        array_data(&multiline_annotations_flags),
-        array_count(&multiline_annotations));
-      draw_interest_source(
-        canvas, array_data(&annotations), array_count(&annotations), source, i, tab_width);
+      draw_interest_source(canvas, report, source, i, tab_width);
       canvas_next_line(canvas);
-      draw_indicator_line(
-        canvas,
-        array_data(&annotations), array_count(&annotations),
-        array_data(&multiline_annotations), array_data(&multiline_annotations_flags),
-        array_count(&multiline_annotations),
-        i, number_margin);
-      draw_annotation_lines(
-        canvas,
-        array_data(&annotations), array_count(&annotations),
-        array_data(&multiline_annotations), array_data(&multiline_annotations_flags),
-        array_count(&multiline_annotations),
-        i, number_margin);
+      draw_indicator_line(canvas, report, i, number_margin);
+      canvas_next_line(canvas);
+      draw_annotation_lines(canvas, report, i, number_margin);
     }
     array_deinit(&annotations);
   }
-
-  array_deinit(&multiline_annotations);
-  array_deinit(&multiline_annotations_flags);
 }
 
 static void draw_tail_lines(Canvas *canvas, int number_margin)
