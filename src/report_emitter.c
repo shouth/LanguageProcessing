@@ -24,7 +24,9 @@ static void draw_head_line(Canvas *canvas, const Report *report)
     break;
   }
   canvas_style(canvas, CANVAS_RESET);
+  canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_draw(canvas, "%s", report->_message);
+  canvas_style(canvas, CANVAS_RESET);
 }
 
 static void draw_location_line(Canvas *canvas, const Report *report, const Source *source, int number_margin)
@@ -34,7 +36,9 @@ static void draw_location_line(Canvas *canvas, const Report *report, const Sourc
   canvas_style(canvas, CANVAS_FAINT);
   canvas_draw(canvas, " %*.s ╭─[", number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
+  canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_draw(canvas, "%s:%lu:%lu", source->file_name, location.line + 1, location.column + 1);
+  canvas_style(canvas, CANVAS_RESET);
   canvas_style(canvas, CANVAS_FAINT);
   canvas_draw(canvas, "]");
   canvas_style(canvas, CANVAS_RESET);
@@ -97,7 +101,9 @@ static void draw_interest_source(
   qsort(annotations, count, sizeof(ReportAnnotation), &compare_annotations_source_segment);
 
   canvas_position(canvas, &line_offset, &column_offset);
+  canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_draw(canvas, "%s", line);
+  canvas_style(canvas, CANVAS_RESET);
 
   for (i = 0; i < count; ++i) {
     unsigned long annotation_start
