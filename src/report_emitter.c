@@ -1,230 +1,43 @@
-#include <locale.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "array.h"
+#include "canvas.h"
 #include "report.h"
 #include "source.h"
-
-typedef struct Canvas     Canvas;
-typedef struct CanvasCell CanvasCell;
-
-typedef enum {
-  CANVAS_NORMAL    = 1 << 0,
-  CANVAS_BOLD      = 1 << 1,
-  CANVAS_FAINT     = 1 << 2,
-  CANVAS_ITALIC    = 1 << 3,
-  CANVAS_UNDERLINE = 1 << 4
-} CanvasStyleAttribute;
-
-typedef enum {
-  CANVAS_4BIT  = 1 << 24,
-  CANVAS_8BIT  = 1 << 25,
-  CANVAS_24BIT = 1 << 26
-} CanvasColorAttribute;
-
-struct CanvasCell {
-  char          character[4];
-  int           size;
-  unsigned int  style;
-  unsigned long foreground;
-  unsigned long background;
-};
-
-struct Canvas {
-  Array         lines;
-  unsigned long current_line;
-  unsigned long current_column;
-};
-
-static void canvas_init(Canvas *canvas)
-{
-  array_init(&canvas->lines, sizeof(Array));
-  {
-    Array line;
-    array_init(&line, sizeof(CanvasCell));
-    array_push(&canvas->lines, &line);
-  }
-  canvas->current_line   = 0;
-  canvas->current_column = 0;
-}
-
-static void canvas_deinit(Canvas *canvas)
-{
-  unsigned long i;
-  for (i = 0; i < array_count(&canvas->lines); ++i) {
-    Array *line = array_at(&canvas->lines, i);
-    array_deinit(line);
-  }
-  array_deinit(&canvas->lines);
-}
-
-#define BUFFER_SIZE 1024
-
-static void canvas_next_line(Canvas *canvas)
-{
-  ++canvas->current_line;
-  canvas->current_column = 0;
-  if (canvas->current_line >= array_count(&canvas->lines)) {
-    Array line;
-    array_init(&line, sizeof(CanvasCell));
-    array_push(&canvas->lines, &line);
-  }
-}
-
-static void canvas_draw(
-  Canvas       *canvas,
-  unsigned long style, unsigned long foreground, unsigned long background,
-  const char *format, ...)
-{
-  va_list args;
-  Array  *line  = array_at(&canvas->lines, canvas->current_line);
-  FILE   *file  = tmpfile();
-  long    index = 0;
-  char    buffer[BUFFER_SIZE + 1];
-
-  setlocale(LC_ALL, "C.UTF-8");
-  va_start(args, format);
-  vfprintf(file, format, args);
-  va_end(args);
-  rewind(file);
-  mblen(NULL, 0);
-  while (fgets(buffer + index, BUFFER_SIZE - index, file)) {
-    while (buffer[index]) {
-      int size = mblen(buffer + index, BUFFER_SIZE - index);
-      if (size < 0) {
-        int remain = strlen(buffer + index);
-        memmove(buffer, buffer + index, remain);
-        index = remain;
-        break;
-      }
-
-      {
-        unsigned long initial_line_width = array_count(line);
-        CanvasCell    cell;
-        cell.style      = style;
-        cell.foreground = foreground;
-        cell.background = background;
-        cell.size       = size;
-        memcpy(cell.character, buffer + index, size);
-        if (canvas->current_column < initial_line_width) {
-          memcpy(array_at(line, canvas->current_column), &cell, sizeof(CanvasCell));
-        } else {
-          array_push(line, &cell);
-        }
-        ++canvas->current_column;
-        index += size;
-      }
-    }
-  }
-  fclose(file);
-}
-
-static void canvas_position(Canvas *canvas, unsigned long *line, unsigned long *column)
-{
-  *line   = canvas->current_line;
-  *column = canvas->current_column;
-}
-
-static void canvas_seek(Canvas *canvas, unsigned long line, unsigned long column)
-{
-  canvas->current_line   = line;
-  canvas->current_column = column;
-
-  while (canvas->current_line >= array_count(&canvas->lines)) {
-    Array line;
-    array_init(&line, sizeof(CanvasCell));
-    array_push(&canvas->lines, &line);
-  }
-
-  while (canvas->current_column >= array_count(array_at(&canvas->lines, canvas->current_line))) {
-    CanvasCell cell;
-    cell.style      = CANVAS_NORMAL;
-    cell.foreground = 0;
-    cell.background = 0;
-    cell.size       = 1;
-    strcpy(cell.character, " ");
-    array_push(array_at(&canvas->lines, canvas->current_line), &cell);
-  }
-}
-
-static void canvas_print(Canvas *canvas, FILE *stream)
-{
-  unsigned long line, column;
-  for (line = 0; line < array_count(&canvas->lines); ++line) {
-    Array *line_array = array_at(&canvas->lines, line);
-    for (column = 0; column < array_count(line_array); ++column) {
-      CanvasCell *cell = array_at(line_array, column);
-      if (cell->style & CANVAS_BOLD) {
-        fprintf(stream, "\033[1m");
-      }
-      if (cell->style & CANVAS_FAINT) {
-        fprintf(stream, "\033[2m");
-      }
-      if (cell->style & CANVAS_ITALIC) {
-        fprintf(stream, "\033[3m");
-      }
-      if (cell->style & CANVAS_UNDERLINE) {
-        fprintf(stream, "\033[4m");
-      }
-      if (cell->foreground & CANVAS_4BIT) {
-        fprintf(stream, "\033[%lum", cell->foreground & 0xFFFFFF);
-      } else if (cell->foreground & CANVAS_8BIT) {
-        fprintf(stream, "\033[38;5;%lum", cell->foreground & 0xFFFFFF);
-      } else if (cell->foreground & CANVAS_24BIT) {
-        fprintf(stream, "\033[38;2;%lu;%lu;%lum",
-          (cell->foreground >> 16) & 0xFF,
-          (cell->foreground >> 8) & 0xFF,
-          cell->foreground & 0xFF);
-      }
-      if (cell->background & CANVAS_4BIT) {
-        fprintf(stream, "\033[%lum", cell->background & 0xFFFFFF);
-      } else if (cell->background & CANVAS_8BIT) {
-        fprintf(stream, "\033[48;5;%lum", cell->background & 0xFFFFFF);
-      } else if (cell->background & CANVAS_24BIT) {
-        fprintf(stream, "\033[48;2;%lu;%lu;%lum",
-          (cell->background >> 16) & 0xFF,
-          (cell->background >> 8) & 0xFF,
-          cell->background & 0xFF);
-      }
-      fprintf(stream, "%.*s", (int) cell->size, cell->character);
-      fprintf(stream, "\033[0m");
-    }
-    if (line + 1 < array_count(&canvas->lines)) {
-      fprintf(stream, "\n");
-    }
-  }
-  fflush(stream);
-}
 
 static void draw_head_line(Canvas *canvas, const Report *report)
 {
   switch (report->_kind) {
   case REPORT_KIND_ERROR:
-    canvas_draw(canvas, CANVAS_BOLD, CANVAS_4BIT | 91, 0, "[ERROR] ");
+    canvas_style(canvas, CANVAS_BOLD);
+    canvas_style_foreground(canvas, CANVAS_4BIT | 91);
+    canvas_draw(canvas, "[ERROR] ");
     break;
   case REPORT_KIND_WARN:
-    canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 93, 0, "[WARN] ");
+    canvas_style_foreground(canvas, CANVAS_4BIT | 93);
+    canvas_draw(canvas, "[WARN] ");
     break;
   case REPORT_KIND_NOTE:
-    canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 96, 0, "[NOTE] ");
+    canvas_style_foreground(canvas, CANVAS_4BIT | 96);
+    canvas_draw(canvas, "[NOTE] ");
     break;
   }
-  canvas_draw(canvas, CANVAS_NORMAL, 0, 0, "%s", report->_message);
+  canvas_style(canvas, CANVAS_RESET);
+  canvas_draw(canvas, "%s", report->_message);
 }
 
 static void draw_location_line(Canvas *canvas, const Report *report, const Source *source, int number_margin)
 {
   SourceLocation location;
   source_location(source, report->_offset, &location);
-  canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s ╭─[",
-    number_margin, "");
-  canvas_draw(canvas, CANVAS_NORMAL, 0, 0, "%s:%lu:%lu",
-    source->file_name,
-    location.line + 1, location.column + 1);
-  canvas_draw(canvas, CANVAS_FAINT, 0, 0, "]");
+  canvas_style(canvas, CANVAS_FAINT);
+  canvas_draw(canvas, " %*.s ╭─[", number_margin, "");
+  canvas_style(canvas, CANVAS_RESET);
+  canvas_draw(canvas, "%s:%lu:%lu", source->file_name, location.line + 1, location.column + 1);
+  canvas_style(canvas, CANVAS_FAINT);
+  canvas_draw(canvas, "]");
+  canvas_style(canvas, CANVAS_RESET);
 }
 
 static int compare_annotations_source_segment(const void *left, const void *right)
@@ -284,7 +97,7 @@ static void draw_interest_source(
   qsort(annotations, count, sizeof(ReportAnnotation), &compare_annotations_source_segment);
 
   canvas_position(canvas, &line_offset, &column_offset);
-  canvas_draw(canvas, CANVAS_NORMAL, 0, 0, "%s", line);
+  canvas_draw(canvas, "%s", line);
 
   for (i = 0; i < count; ++i) {
     unsigned long annotation_start
@@ -292,8 +105,9 @@ static void draw_interest_source(
     unsigned long annotation_end
       = annotations[i]._end.line == line_number ? annotations[i]._end.column + 1 : line_width;
     canvas_seek(canvas, line_offset, column_offset + annotation_start);
-    canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "%.*s",
-      (int) (annotation_end - annotation_start), line + annotation_start);
+    canvas_style_foreground(canvas, CANVAS_4BIT | 91);
+    canvas_draw(canvas, "%.*s", (int) (annotation_end - annotation_start), line + annotation_start);
+    canvas_style(canvas, CANVAS_RESET);
   }
   free(line);
 }
@@ -307,9 +121,9 @@ static void draw_connector_left_part(
   unsigned long i;
   for (i = 0; i < count; ++i) {
     if (flags[i]) {
-      canvas_draw(canvas, CANVAS_NORMAL, 0, 0, "│ ");
+      canvas_draw(canvas, "│ ");
     } else {
-      canvas_draw(canvas, CANVAS_NORMAL, 0, 0, "  ");
+      canvas_draw(canvas, "  ");
     }
   }
 }
@@ -330,32 +144,38 @@ static void draw_indicator_line(
 
   qsort(line_annotations, line_annotation_count, sizeof(ReportAnnotation), &compare_annotations_source_segment);
 
-  canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s │ ", number_margin, "");
+  canvas_style(canvas, CANVAS_FAINT);
+  canvas_draw(canvas, " %*.s │ ", number_margin, "");
+  canvas_style(canvas, CANVAS_RESET);
   draw_connector_left_part(
     canvas, multiline_annotations, multiline_annotation_flags, multiline_annotation_count);
 
   canvas_position(canvas, &line_offset, &column_offset);
+  canvas_style_foreground(canvas, CANVAS_4BIT | 91);
   for (i = 0; i < line_annotation_count; ++i) {
     if (line_annotations[i]._start.line == line_annotations[i]._end.line) {
       canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._start.column);
-      canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "┬");
+      canvas_draw(canvas, "┬");
       for (j = line_annotations[i]._start.column + 1; j <= line_annotations[i]._end.column; ++j) {
-        canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "─");
+        canvas_draw(canvas, "─");
       }
     }
   }
+  canvas_style(canvas, CANVAS_RESET);
 
+  canvas_style_foreground(canvas, CANVAS_4BIT | 91);
   for (i = 0; i < line_annotation_count; ++i) {
     if (line_annotations[i]._start.line != line_annotations[i]._end.line) {
       if (line_annotations[i]._start.line == line_number) {
         canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._start.column);
-        canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "▲");
+        canvas_draw(canvas, "▲");
       } else {
         canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._end.column);
-        canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "▲");
+        canvas_draw(canvas, "▲");
       }
     }
   }
+  canvas_style(canvas, CANVAS_RESET);
 }
 
 static int compare_annotations_connector(const void *left, const void *right)
@@ -395,8 +215,6 @@ static void draw_annotation_lines(
       }
     }
   }
-
-
 }
 
 static void draw_interest_lines(Canvas *canvas, const Report *report, const Source *source, int number_margin, int tab_width)
@@ -439,14 +257,16 @@ static void draw_interest_lines(Canvas *canvas, const Report *report, const Sour
     }
 
     if (array_count(&annotations)) {
+      canvas_style(canvas, CANVAS_FAINT);
       if (previous_line != -1ul && previous_line + 1 != i) {
-        canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s ┆", number_margin, "");
+        canvas_draw(canvas, " %*.s ┆", number_margin, "");
       } else {
-        canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s │", number_margin, "");
+        canvas_draw(canvas, " %*.s │", number_margin, "");
       }
       canvas_next_line(canvas);
 
-      canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.lu │ ", number_margin, i + 1);
+      canvas_draw(canvas, " %*.lu │ ", number_margin, i + 1);
+      canvas_style(canvas, CANVAS_RESET);
       draw_connector_left_part(
         canvas,
         array_data(&multiline_annotations),
@@ -478,14 +298,16 @@ static void draw_interest_lines(Canvas *canvas, const Report *report, const Sour
 static void draw_tail_lines(Canvas *canvas, int number_margin)
 {
   int i;
-  canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s │", number_margin, "");
+  canvas_style(canvas, CANVAS_FAINT);
+  canvas_draw(canvas, " %*.s │", number_margin, "");
   canvas_next_line(canvas);
 
-  canvas_draw(canvas, CANVAS_FAINT, 0, 0, "─");
+  canvas_draw(canvas, "─");
   for (i = 0; i <= number_margin; ++i) {
-    canvas_draw(canvas, CANVAS_FAINT, 0, 0, "─");
+    canvas_draw(canvas, "─");
   }
-  canvas_draw(canvas, CANVAS_FAINT, 0, 0, "╯");
+  canvas_draw(canvas, "╯");
+  canvas_style(canvas, CANVAS_RESET);
 }
 
 static int digits(unsigned long number)
