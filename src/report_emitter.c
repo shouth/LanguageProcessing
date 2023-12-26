@@ -193,7 +193,7 @@ static void draw_interest_source(
     LineSegment *segment = array_at(&segments, i);
     canvas_seek(canvas, line_offset, column_offset + segment->start);
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
-    canvas_draw(canvas, "%.*s", (int) (segment->end - segment->start), line + segment->start);
+    canvas_draw(canvas, "%.*s", (int) (segment->end - segment->start + 1), line + segment->start);
     canvas_style(canvas, CANVAS_RESET);
   }
 
@@ -219,7 +219,7 @@ static void draw_indicator_line(
     if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
       indicator.kind   = INDICATOR_INLINE;
       indicator.column = annotation->_start.column;
-      indicator.length = annotation->_end.column - annotation->_start.column;
+      indicator.length = annotation->_end.column - annotation->_start.column + 1;
       array_push(&indicators, &indicator);
     } else if (annotation->_start.line == line_number) {
       indicator.kind   = INDICATOR_BEGIN;
