@@ -199,32 +199,7 @@ static void canvas_print(Canvas *canvas, FILE *stream)
   fflush(stream);
 }
 
-static int digits(unsigned long number)
-{
-  int result = 1;
-  while (number > 9) {
-    ++result;
-    number /= 10;
-  }
-  return result;
-}
-
-static void display_location(const Source *source, unsigned long offset, unsigned long tab_width, SourceLocation *location)
-{
-  unsigned long i;
-  unsigned long column = 0;
-  source_location(source, offset, location);
-  for (i = 0; i < location->column; ++i) {
-    if (source->text[source->line_offsets[location->line] + i] == '\t') {
-      column += tab_width - (column % tab_width);
-    } else {
-      ++column;
-    }
-  }
-  location->column = column;
-}
-
-void draw_head_line(Canvas *canvas, const Report *report)
+static void draw_head_line(Canvas *canvas, const Report *report)
 {
   switch (report->_kind) {
   case REPORT_KIND_ERROR:
@@ -240,7 +215,7 @@ void draw_head_line(Canvas *canvas, const Report *report)
   canvas_draw(canvas, CANVAS_NORMAL, 0, 0, "%s", report->_message);
 }
 
-void draw_location_line(Canvas *canvas, const Report *report, const Source *source, int number_margin)
+static void draw_location_line(Canvas *canvas, const Report *report, const Source *source, int number_margin)
 {
   SourceLocation location;
   source_location(source, report->_offset, &location);
@@ -260,13 +235,13 @@ static int compare_annotations_source_segment(const void *left, const void *righ
   if (left_annotation->_start_offset != right_annotation->_start_offset) {
     return left_annotation->_start_offset < right_annotation->_start_offset ? -1 : 1;
   } else if (left_annotation->_end_offset != right_annotation->_end_offset) {
-    return left_annotation->_end_offset < right_annotation->_end_offset ? -1 : 1;
+    return left_annotation->_end_offset > right_annotation->_end_offset ? -1 : 1;
   } else {
     return 0;
   }
 }
 
-void draw_interest_source(
+static void draw_interest_source(
   Canvas           *canvas,
   ReportAnnotation *annotations,
   unsigned long     count,
@@ -323,7 +298,7 @@ void draw_interest_source(
   free(line);
 }
 
-void draw_connector_left_part(
+static void draw_connector_left_part(
   Canvas                 *canvas,
   const ReportAnnotation *annotations,
   const unsigned char    *flags,
@@ -339,13 +314,14 @@ void draw_connector_left_part(
   }
 }
 
-void draw_indicator_line(
+static void draw_indicator_line(
   Canvas           *canvas,
   ReportAnnotation *line_annotations,
   unsigned long     line_annotation_count,
   ReportAnnotation *multiline_annotations,
   unsigned char    *multiline_annotation_flags,
   unsigned long     multiline_annotation_count,
+  unsigned long     line_number,
   int               number_margin)
 {
   unsigned long i, j;
@@ -371,34 +347,67 @@ void draw_indicator_line(
 
   for (i = 0; i < line_annotation_count; ++i) {
     if (line_annotations[i]._start.line != line_annotations[i]._end.line) {
-      canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._start.column);
-      canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "┬");
-      for (j = line_annotations[i]._start.column + 1; j < line_offset; ++j) {
-        canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "─");
+      if (line_annotations[i]._start.line == line_number) {
+        canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._start.column);
+        canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "▲");
+      } else {
+        canvas_seek(canvas, line_offset, column_offset + line_annotations[i]._end.column);
+        canvas_draw(canvas, CANVAS_NORMAL, CANVAS_4BIT | 91, 0, "▲");
       }
     }
   }
 }
 
-void draw_connector_lines(
+static int compare_annotations_connector(const void *left, const void *right)
+{
+  const ReportAnnotation *left_annotation  = left;
+  const ReportAnnotation *right_annotation = right;
+
+  if (left_annotation->_start.line != right_annotation->_start.line) {
+    return left_annotation->_start.line > right_annotation->_start.line ? -1 : 1;
+  } else if (left_annotation->_end.line != right_annotation->_end.line) {
+    return left_annotation->_end.line > right_annotation->_end.line ? -1 : 1;
+  } else {
+    return 0;
+  }
+}
+
+static void draw_annotation_lines(
   Canvas           *canvas,
   ReportAnnotation *local_annotations,
   unsigned long     local_count,
   ReportAnnotation *multiline_annotations,
   unsigned char    *multiline_annotations_flags,
   unsigned long     multiline_count,
+  unsigned long     line_number,
   int               number_margin)
 {
+  unsigned long i;
+  unsigned long column_end;
+
+  qsort(local_annotations, local_count, sizeof(ReportAnnotation), &compare_annotations_connector);
+
+  column_end = -1ul;
+  for (i = 0; i < local_count; ++i) {
+    if (local_annotations[i]._end.line == line_number) {
+      if (column_end == -1ul || column_end < local_annotations[i]._end.column) {
+        column_end = local_annotations[i]._end.column;
+      }
+    }
+  }
+
+
 }
 
-void draw_interest_lines(Canvas *canvas, const Report *report, const Source *source, int number_margin, int tab_width)
+static void draw_interest_lines(Canvas *canvas, const Report *report, const Source *source, int number_margin, int tab_width)
 {
   Array         multiline_annotations;
   Array         multiline_annotations_flags;
   unsigned long i, j;
 
-  unsigned long start_line = -1ul;
-  unsigned long end_line   = 0;
+  unsigned long start_line    = -1ul;
+  unsigned long end_line      = 0;
+  unsigned long previous_line = -1ul;
 
   array_init(&multiline_annotations, sizeof(ReportAnnotation));
   array_init(&multiline_annotations_flags, sizeof(unsigned char));
@@ -430,7 +439,11 @@ void draw_interest_lines(Canvas *canvas, const Report *report, const Source *sou
     }
 
     if (array_count(&annotations)) {
-      canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s │", number_margin, "");
+      if (previous_line != -1ul && previous_line + 1 != i) {
+        canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s ┆", number_margin, "");
+      } else {
+        canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s │", number_margin, "");
+      }
       canvas_next_line(canvas);
 
       canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.lu │ ", number_margin, i + 1);
@@ -447,13 +460,13 @@ void draw_interest_lines(Canvas *canvas, const Report *report, const Source *sou
         array_data(&annotations), array_count(&annotations),
         array_data(&multiline_annotations), array_data(&multiline_annotations_flags),
         array_count(&multiline_annotations),
-        number_margin);
-      draw_connector_lines(
+        i, number_margin);
+      draw_annotation_lines(
         canvas,
         array_data(&annotations), array_count(&annotations),
         array_data(&multiline_annotations), array_data(&multiline_annotations_flags),
         array_count(&multiline_annotations),
-        number_margin);
+        i, number_margin);
     }
     array_deinit(&annotations);
   }
@@ -462,7 +475,7 @@ void draw_interest_lines(Canvas *canvas, const Report *report, const Source *sou
   array_deinit(&multiline_annotations_flags);
 }
 
-void draw_tail_lines(Canvas *canvas, int number_margin)
+static void draw_tail_lines(Canvas *canvas, int number_margin)
 {
   int i;
   canvas_draw(canvas, CANVAS_FAINT, 0, 0, " %*.s │", number_margin, "");
@@ -473,6 +486,31 @@ void draw_tail_lines(Canvas *canvas, int number_margin)
     canvas_draw(canvas, CANVAS_FAINT, 0, 0, "─");
   }
   canvas_draw(canvas, CANVAS_FAINT, 0, 0, "╯");
+}
+
+static int digits(unsigned long number)
+{
+  int result = 1;
+  while (number > 9) {
+    ++result;
+    number /= 10;
+  }
+  return result;
+}
+
+static void display_location(const Source *source, unsigned long offset, unsigned long tab_width, SourceLocation *location)
+{
+  unsigned long i;
+  unsigned long column = 0;
+  source_location(source, offset, location);
+  for (i = 0; i < location->column; ++i) {
+    if (source->text[source->line_offsets[location->line] + i] == '\t') {
+      column += tab_width - (column % tab_width);
+    } else {
+      ++column;
+    }
+  }
+  location->column = column;
 }
 
 void report_emit(Report *report, const Source *source)
