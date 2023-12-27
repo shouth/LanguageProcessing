@@ -91,6 +91,20 @@ static int compare_connectors(const void *left, const void *right)
   }
 }
 
+static int compare_annotations(const void *left, const void *right)
+{
+  const ReportAnnotation *left_annotation  = left;
+  const ReportAnnotation *right_annotation = right;
+
+  if (left_annotation->_start_offset != right_annotation->_start_offset) {
+    return left_annotation->_start_offset < right_annotation->_start_offset ? -1 : 1;
+  } else if (left_annotation->_end_offset != right_annotation->_end_offset) {
+    return left_annotation->_end_offset < right_annotation->_end_offset ? -1 : 1;
+  } else {
+    return 0;
+  }
+}
+
 static void write_head_line(Writer *writer, Canvas *canvas)
 {
   switch (writer->report->_kind) {
@@ -129,7 +143,35 @@ static void write_location_line(Writer *writer, Canvas *canvas)
   canvas_style(canvas, CANVAS_RESET);
 }
 
-static void write_interest_source(Writer *writer, Canvas *canvas, unsigned long line_number)
+static void write_annotation_left(Writer *writer, Canvas *canvas, unsigned long line_number, unsigned long line_column, int connect)
+{
+  const ReportAnnotation *strike = NULL;
+  unsigned long i;
+
+  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
+    if (annotation->_start.line != annotation->_end.line) {
+      if (strike) {
+        canvas_draw(canvas, "──");
+      } else if (line_number < annotation->_start.line || line_number > annotation->_end.line) {
+        canvas_draw(canvas, "  ");
+      } else if (line_number < annotation->_end.line) {
+        canvas_draw(canvas, "│ ");
+      } else if (line_column < annotation->_end.column) {
+        canvas_draw(canvas, "│ ");
+      } else if (line_column > annotation->_end.column) {
+        canvas_draw(canvas, "  ");
+      } else if (connect) {
+        canvas_draw(canvas, "╰─");
+        strike = annotation;
+      } else {
+        canvas_draw(canvas, "│ ");
+      }
+    }
+  }
+}
+
+static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line_number)
 {
   unsigned long i, j;
   unsigned long line_width;
@@ -183,10 +225,13 @@ static void write_interest_source(Writer *writer, Canvas *canvas, unsigned long 
       array_push(&segments, &segment);
     }
   }
-  qsort(
-    array_data(&segments), array_count(&segments),
-    sizeof(LineSegment), &compare_line_segments);
+  qsort(array_data(&segments), array_count(&segments), sizeof(LineSegment), &compare_line_segments);
 
+  canvas_style(canvas, CANVAS_FAINT);
+  canvas_draw(canvas, " %*.lu │ ", writer->number_margin, line_number + 1);
+  canvas_style(canvas, CANVAS_RESET);
+
+  write_annotation_left(writer, canvas, line_number, 0, 0);
   canvas_position(canvas, &line_offset, &column_offset);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_draw(canvas, "%s", line);
@@ -238,6 +283,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   canvas_draw(canvas, " %*.s │ ", writer->number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
 
+  write_annotation_left(writer, canvas, line_number, 0, 0);
   canvas_position(canvas, &line_offset, &column_offset);
   for (i = 0; i < array_count(&indicators); ++i) {
     Indicator *indicator = array_at(&indicators, i);
@@ -301,10 +347,12 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
 
   canvas_style(canvas, CANVAS_FAINT);
   canvas_draw(canvas, " %*.s │ ", writer->number_margin, "");
+  write_annotation_left(writer, canvas, line_number, 0, 0);
   canvas_position(canvas, &line_offset, &column_offset);
   for (i = 1; i < 2 * array_count(&connectors) - 1; ++i) {
     canvas_next_line(canvas);
     canvas_draw(canvas, " %*.s │ ", writer->number_margin, "");
+    write_annotation_left(writer, canvas, line_number, 0, i % 2);
   }
   canvas_style(canvas, CANVAS_RESET);
 
@@ -393,11 +441,10 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
       } else {
         canvas_draw(canvas, " %*.s │", writer->number_margin, "");
       }
+      canvas_style(canvas, CANVAS_RESET);
       canvas_next_line(canvas);
 
-      canvas_draw(canvas, " %*.lu │ ", writer->number_margin, i + 1);
-      canvas_style(canvas, CANVAS_RESET);
-      write_interest_source(writer, canvas, i);
+      write_source_line(writer, canvas, i);
       canvas_next_line(canvas);
       write_indicator_line(writer, canvas, i);
       canvas_next_line(canvas);
@@ -452,6 +499,8 @@ void report_emit(Report *report, const Source *source)
   Writer        writer;
   Canvas        canvas;
   unsigned long i;
+
+  qsort(array_data(&report->_annotations), array_count(&report->_annotations), sizeof(ReportAnnotation), &compare_annotations);
 
   canvas_init(&canvas);
 
