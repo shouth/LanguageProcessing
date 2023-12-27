@@ -350,9 +350,10 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   write_annotation_left(writer, canvas, line_number, 0, 0);
   canvas_position(canvas, &line_offset, &column_offset);
   for (i = 1; i < 2 * array_count(&connectors) - 1; ++i) {
+    Connector *connector = array_at(&connectors, i / 2);
     canvas_next_line(canvas);
     canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
-    write_annotation_left(writer, canvas, line_number, 0, i % 2);
+    write_annotation_left(writer, canvas, line_number, connector->column, i % 2);
   }
   canvas_style(canvas, CANVAS_RESET);
 
