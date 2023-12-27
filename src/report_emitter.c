@@ -143,11 +143,17 @@ static void write_location_line(Writer *writer, Canvas *canvas)
   canvas_style(canvas, CANVAS_RESET);
 }
 
-static void write_annotation_left(Writer *writer, Canvas *canvas, unsigned long line_number, unsigned long line_column, int connect)
+static void write_annotation_left(
+  Writer       *writer,
+  Canvas       *canvas,
+  unsigned long line_number,
+  unsigned long line_column,
+  const ReportAnnotation *connect)
 {
   const ReportAnnotation *strike = NULL;
   unsigned long           i;
 
+  canvas_style_foreground(canvas, CANVAS_4BIT | 91);
   for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
     ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
     if (annotation->_start.line != annotation->_end.line) {
@@ -155,20 +161,34 @@ static void write_annotation_left(Writer *writer, Canvas *canvas, unsigned long 
         canvas_write(canvas, "──");
       } else if (line_number < annotation->_start.line || line_number > annotation->_end.line) {
         canvas_write(canvas, "  ");
-      } else if (line_number < annotation->_end.line) {
-        canvas_write(canvas, "│ ");
-      } else if (line_column < annotation->_end.column) {
-        canvas_write(canvas, "│ ");
-      } else if (line_column > annotation->_end.column) {
-        canvas_write(canvas, "  ");
-      } else if (connect) {
-        canvas_write(canvas, "╰─");
-        strike = annotation;
+      } else if (line_number == annotation->_start.line) {
+        if (line_column > annotation->_start.column) {
+          canvas_write(canvas, "│ ");
+        } else if (line_column < annotation->_start.column) {
+          canvas_write(canvas, "  ");
+        } else if (annotation == connect) {
+          canvas_write(canvas, "╭─");
+          strike = annotation;
+        } else {
+          canvas_write(canvas, "  ");
+        }
+      } else if (line_number == annotation->_end.line) {
+        if (line_column < annotation->_end.column) {
+          canvas_write(canvas, "│ ");
+        } else if (line_column > annotation->_end.column) {
+          canvas_write(canvas, "  ");
+        } else if (annotation == connect) {
+          canvas_write(canvas, "╰─");
+          strike = annotation;
+        } else {
+          canvas_write(canvas, "│ ");
+        }
       } else {
         canvas_write(canvas, "│ ");
       }
     }
   }
+  canvas_style(canvas, CANVAS_RESET);
 }
 
 static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line_number)
@@ -231,7 +251,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   canvas_write(canvas, " %*.lu │ ", writer->number_margin, line_number + 1);
   canvas_style(canvas, CANVAS_RESET);
 
-  write_annotation_left(writer, canvas, line_number, 0, 0);
+  write_annotation_left(writer, canvas, line_number, 0, NULL);
   canvas_position(canvas, &line_offset, &column_offset);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_write(canvas, "%s", line);
@@ -283,7 +303,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
 
-  write_annotation_left(writer, canvas, line_number, 0, 0);
+  write_annotation_left(writer, canvas, line_number, 0, NULL);
   canvas_position(canvas, &line_offset, &column_offset);
   for (i = 0; i < array_count(&indicators); ++i) {
     Indicator *indicator = array_at(&indicators, i);
@@ -345,15 +365,18 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   }
   qsort(array_data(&connectors), array_count(&connectors), sizeof(Connector), &compare_connectors);
 
-  canvas_style(canvas, CANVAS_FAINT);
-  canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
-  write_annotation_left(writer, canvas, line_number, 0, 0);
-  canvas_position(canvas, &line_offset, &column_offset);
-  for (i = 1; i < 2 * array_count(&connectors) - 1; ++i) {
+  for (i = 0; i < 2 * array_count(&connectors) - 1; ++i) {
     Connector *connector = array_at(&connectors, i / 2);
-    canvas_next_line(canvas);
+    if (i > 0) {
+      canvas_next_line(canvas);
+    }
+    canvas_style(canvas, CANVAS_FAINT);
     canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
-    write_annotation_left(writer, canvas, line_number, connector->column, i % 2);
+    canvas_style(canvas, CANVAS_RESET);
+    write_annotation_left(writer, canvas, line_number, connector->column, (i + 1) % 2 ? connector->annotation : NULL);
+    if (i == 0) {
+      canvas_position(canvas, &line_offset, &column_offset);
+    }
   }
   canvas_style(canvas, CANVAS_RESET);
 
@@ -438,11 +461,12 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
       }
       canvas_style(canvas, CANVAS_FAINT);
       if (previous_line != -1ul && previous_line + 1 != i) {
-        canvas_write(canvas, " %*.s ┆", writer->number_margin, "");
+        canvas_write(canvas, " %*.s ┆ ", writer->number_margin, "");
       } else {
-        canvas_write(canvas, " %*.s │", writer->number_margin, "");
+        canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
       }
       canvas_style(canvas, CANVAS_RESET);
+      write_annotation_left(writer, canvas, i, 0, NULL);
       canvas_next_line(canvas);
 
       write_source_line(writer, canvas, i);
