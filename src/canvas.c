@@ -67,7 +67,7 @@ void canvas_style_background(Canvas *canvas, unsigned long color)
   canvas->background = color;
 }
 
-void canvas_draw(Canvas *canvas, const char *format, ...)
+void canvas_write(Canvas *canvas, const char *format, ...)
 {
   va_list args;
   Array  *line  = array_at(&canvas->lines, canvas->current_line);

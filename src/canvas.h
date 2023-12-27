@@ -45,7 +45,7 @@ void canvas_next_line(Canvas *canvas);
 void canvas_style(Canvas *canvas, unsigned long style);
 void canvas_style_foreground(Canvas *canvas, unsigned long color);
 void canvas_style_background(Canvas *canvas, unsigned long color);
-void canvas_draw(Canvas *canvas, const char *format, ...);
+void canvas_write(Canvas *canvas, const char *format, ...);
 void canvas_position(Canvas *canvas, unsigned long *line, unsigned long *column);
 void canvas_seek(Canvas *canvas, unsigned long line, unsigned long column);
 void canvas_print(Canvas *canvas, FILE *stream);
