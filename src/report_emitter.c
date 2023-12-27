@@ -473,13 +473,10 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
   }
 }
 
-static void write_tail_lines(Writer *writer, Canvas *canvas)
+static void write_tail_line(Writer *writer, Canvas *canvas)
 {
   int i;
   canvas_style(canvas, CANVAS_FAINT);
-  canvas_write(canvas, " %*.s │", writer->number_margin, "");
-  canvas_next_line(canvas);
-
   canvas_write(canvas, "─");
   for (i = 0; i <= writer->number_margin; ++i) {
     canvas_write(canvas, "─");
@@ -552,7 +549,7 @@ void report_emit(Report *report, const Source *source)
   write_interest_lines(&writer, &canvas);
   canvas_next_line(&canvas);
 
-  write_tail_lines(&writer, &canvas);
+  write_tail_line(&writer, &canvas);
   canvas_next_line(&canvas);
 
   canvas_print(&canvas, stderr);
