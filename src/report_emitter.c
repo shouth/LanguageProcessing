@@ -9,6 +9,7 @@
 typedef struct LineSegment LineSegment;
 typedef struct Indicator   Indicator;
 typedef struct Connector   Connector;
+typedef struct Writer      Writer;
 
 typedef enum {
   INDICATOR_INLINE,
@@ -37,6 +38,13 @@ struct Connector {
   ConnectorKind           kind;
   int                     multiline;
   unsigned long           column;
+};
+
+struct Writer {
+  const Report *report;
+  const Source *source;
+  int           number_margin;
+  int           tab_width;
 };
 
 static int compare_line_segments(const void *left, const void *right)
@@ -83,9 +91,9 @@ static int compare_connectors(const void *left, const void *right)
   }
 }
 
-static void draw_head_line(Canvas *canvas, const Report *report)
+static void write_head_line(Writer *writer, Canvas *canvas)
 {
-  switch (report->_kind) {
+  switch (writer->report->_kind) {
   case REPORT_KIND_ERROR:
     canvas_style(canvas, CANVAS_BOLD);
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
@@ -102,31 +110,26 @@ static void draw_head_line(Canvas *canvas, const Report *report)
   }
   canvas_style(canvas, CANVAS_RESET);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
-  canvas_draw(canvas, "%s", report->_message);
+  canvas_draw(canvas, "%s", writer->report->_message);
   canvas_style(canvas, CANVAS_RESET);
 }
 
-static void draw_location_line(Canvas *canvas, const Report *report, const Source *source, int number_margin)
+static void write_location_line(Writer *writer, Canvas *canvas)
 {
   SourceLocation location;
-  source_location(source, report->_offset, &location);
+  source_location(writer->source, writer->report->_offset, &location);
   canvas_style(canvas, CANVAS_FAINT);
-  canvas_draw(canvas, " %*.s ╭─[", number_margin, "");
+  canvas_draw(canvas, " %*.s ╭─[", writer->number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
-  canvas_draw(canvas, "%s:%lu:%lu", source->file_name, location.line + 1, location.column + 1);
+  canvas_draw(canvas, "%s:%lu:%lu", writer->source->file_name, location.line + 1, location.column + 1);
   canvas_style(canvas, CANVAS_RESET);
   canvas_style(canvas, CANVAS_FAINT);
   canvas_draw(canvas, "]");
   canvas_style(canvas, CANVAS_RESET);
 }
 
-static void draw_interest_source(
-  Canvas       *canvas,
-  const Report *report,
-  const Source *source,
-  unsigned long line_number,
-  int           tab_width)
+static void write_interest_source(Writer *writer, Canvas *canvas, unsigned long line_number)
 {
   unsigned long i, j;
   unsigned long line_width;
@@ -138,9 +141,9 @@ static void draw_interest_source(
   Array segments;
 
   line_width = 0;
-  for (i = 0; i < source->line_lengths[line_number]; ++i) {
-    if (source->text[source->line_offsets[line_number] + i] == '\t') {
-      line_width += tab_width - (line_width % tab_width);
+  for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
+    if (writer->source->text[writer->source->line_offsets[line_number] + i] == '\t') {
+      line_width += writer->tab_width - (line_width % writer->tab_width);
     } else {
       ++line_width;
     }
@@ -148,23 +151,23 @@ static void draw_interest_source(
 
   line        = malloc(line_width + 1);
   line_offset = 0;
-  for (i = 0; i < source->line_lengths[line_number]; ++i) {
-    if (source->text[source->line_offsets[line_number] + i] == '\t') {
-      unsigned long adjusted_width = tab_width - (line_offset % tab_width);
+  for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
+    if (writer->source->text[writer->source->line_offsets[line_number] + i] == '\t') {
+      unsigned long adjusted_width = writer->tab_width - (line_offset % writer->tab_width);
       for (j = 0; j < adjusted_width; ++j) {
         line[line_offset] = ' ';
         ++line_offset;
       }
     } else {
-      line[line_offset] = source->text[source->line_offsets[line_number] + i];
+      line[line_offset] = writer->source->text[writer->source->line_offsets[line_number] + i];
       ++line_offset;
     }
   }
   line[line_width] = '\0';
 
   array_init(&segments, sizeof(LineSegment));
-  for (i = 0; i < array_count(&report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
     LineSegment       segment;
     if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
       segment.start = annotation->_start.column;
@@ -201,11 +204,7 @@ static void draw_interest_source(
   array_deinit(&segments);
 }
 
-static void draw_indicator_line(
-  Canvas       *canvas,
-  const Report *report,
-  unsigned long line_number,
-  int           number_margin)
+static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long line_number)
 {
   unsigned long i, j;
   unsigned long line_offset;
@@ -213,8 +212,8 @@ static void draw_indicator_line(
 
   Array indicators;
   array_init(&indicators, sizeof(Indicator));
-  for (i = 0; i < array_count(&report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
     Indicator         indicator;
     if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
       indicator.kind   = INDICATOR_INLINE;
@@ -236,7 +235,7 @@ static void draw_indicator_line(
   qsort(array_data(&indicators), array_count(&indicators), sizeof(Indicator), &compare_indicators);
 
   canvas_style(canvas, CANVAS_FAINT);
-  canvas_draw(canvas, " %*.s │ ", number_margin, "");
+  canvas_draw(canvas, " %*.s │ ", writer->number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
 
   canvas_position(canvas, &line_offset, &column_offset);
@@ -263,11 +262,7 @@ static void draw_indicator_line(
   array_deinit(&indicators);
 }
 
-static void draw_annotation_lines(
-  Canvas       *canvas,
-  const Report *report,
-  unsigned long line_number,
-  int           number_margin)
+static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long line_number)
 {
   unsigned long i, j;
   unsigned long label_offset = -1ul;
@@ -276,8 +271,8 @@ static void draw_annotation_lines(
 
   Array connectors;
   array_init(&connectors, sizeof(Connector));
-  for (i = 0; i < array_count(&report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
     Connector         connector;
     connector.annotation = annotation;
 
@@ -305,11 +300,11 @@ static void draw_annotation_lines(
   qsort(array_data(&connectors), array_count(&connectors), sizeof(Connector), &compare_connectors);
 
   canvas_style(canvas, CANVAS_FAINT);
-  canvas_draw(canvas, " %*.s │ ", number_margin, "");
+  canvas_draw(canvas, " %*.s │ ", writer->number_margin, "");
   canvas_position(canvas, &line_offset, &column_offset);
   for (i = 1; i < 2 * array_count(&connectors) - 1; ++i) {
     canvas_next_line(canvas);
-    canvas_draw(canvas, " %*.s │ ", number_margin, "");
+    canvas_draw(canvas, " %*.s │ ", writer->number_margin, "");
   }
   canvas_style(canvas, CANVAS_RESET);
 
@@ -359,7 +354,7 @@ static void draw_annotation_lines(
   array_deinit(&connectors);
 }
 
-static void draw_interest_lines(Canvas *canvas, const Report *report, const Source *source, int number_margin, int tab_width)
+static void write_interest_lines(Writer *writer, Canvas *canvas)
 {
   unsigned long i, j;
 
@@ -367,8 +362,8 @@ static void draw_interest_lines(Canvas *canvas, const Report *report, const Sour
   unsigned long end_line      = 0;
   unsigned long previous_line = -1ul;
 
-  for (i = 0; i < array_count(&report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
     if (start_line > annotation->_start.line) {
       start_line = annotation->_start.line;
     }
@@ -381,8 +376,8 @@ static void draw_interest_lines(Canvas *canvas, const Report *report, const Sour
     Array annotations;
     array_init(&annotations, sizeof(ReportAnnotation));
 
-    for (j = 0; j < array_count(&report->_annotations); ++j) {
-      ReportAnnotation *annotation = array_at(&report->_annotations, j);
+    for (j = 0; j < array_count(&writer->report->_annotations); ++j) {
+      ReportAnnotation *annotation = array_at(&writer->report->_annotations, j);
       if (i == annotation->_start.line || i == annotation->_end.line) {
         array_push(&annotations, annotation);
       }
@@ -394,25 +389,25 @@ static void draw_interest_lines(Canvas *canvas, const Report *report, const Sour
       }
       canvas_style(canvas, CANVAS_FAINT);
       if (previous_line != -1ul && previous_line + 1 != i) {
-        canvas_draw(canvas, " %*.s ┆", number_margin, "");
+        canvas_draw(canvas, " %*.s ┆", writer->number_margin, "");
       } else {
-        canvas_draw(canvas, " %*.s │", number_margin, "");
+        canvas_draw(canvas, " %*.s │", writer->number_margin, "");
       }
       canvas_next_line(canvas);
 
-      canvas_draw(canvas, " %*.lu │ ", number_margin, i + 1);
+      canvas_draw(canvas, " %*.lu │ ", writer->number_margin, i + 1);
       canvas_style(canvas, CANVAS_RESET);
-      draw_interest_source(canvas, report, source, i, tab_width);
+      write_interest_source(writer, canvas, i);
       canvas_next_line(canvas);
-      draw_indicator_line(canvas, report, i, number_margin);
+      write_indicator_line(writer, canvas, i);
       canvas_next_line(canvas);
-      draw_annotation_lines(canvas, report, i, number_margin);
+      write_annotation_lines(writer, canvas, i);
     }
     array_deinit(&annotations);
   }
 }
 
-static void draw_tail_lines(Canvas *canvas, int number_margin)
+static void write_tail_lines(Canvas *canvas, int number_margin)
 {
   int i;
   canvas_style(canvas, CANVAS_FAINT);
@@ -454,40 +449,42 @@ static void display_location(const Source *source, unsigned long offset, unsigne
 
 void report_emit(Report *report, const Source *source)
 {
+  Writer        writer;
+  Canvas        canvas;
   unsigned long i;
-  int           number_margin;
-  int           tab_width = 4;
 
-  Canvas canvas;
   canvas_init(&canvas);
 
-  number_margin = 0;
+  writer.report        = report;
+  writer.source        = source;
+  writer.tab_width     = 4;
+  writer.number_margin = 0;
   for (i = 0; i < array_count(&report->_annotations); ++i) {
     int               margin;
     ReportAnnotation *annotation = array_at(&report->_annotations, i);
-    display_location(source, annotation->_start_offset, tab_width, &annotation->_start);
-    display_location(source, annotation->_end_offset - 1, tab_width, &annotation->_end);
+    display_location(source, annotation->_start_offset, writer.tab_width, &annotation->_start);
+    display_location(source, annotation->_end_offset - 1, writer.tab_width, &annotation->_end);
 
     margin = digits(annotation->_start.line + 1);
-    if (number_margin < margin) {
-      number_margin = margin;
+    if (writer.number_margin < margin) {
+      writer.number_margin = margin;
     }
     margin = digits(annotation->_end.line + 1);
-    if (number_margin < margin) {
-      number_margin = margin;
+    if (writer.number_margin < margin) {
+      writer.number_margin = margin;
     }
   }
 
-  draw_head_line(&canvas, report);
+  write_head_line(&writer, &canvas);
   canvas_next_line(&canvas);
 
-  draw_location_line(&canvas, report, source, number_margin);
+  write_location_line(&writer, &canvas);
   canvas_next_line(&canvas);
 
-  draw_interest_lines(&canvas, report, source, number_margin, tab_width);
+  write_interest_lines(&writer, &canvas);
   canvas_next_line(&canvas);
 
-  draw_tail_lines(&canvas, number_margin);
+  write_tail_lines(&canvas, writer.number_margin);
   canvas_next_line(&canvas);
 
   canvas_print(&canvas, stderr);
