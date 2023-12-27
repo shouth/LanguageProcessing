@@ -4,7 +4,7 @@
 #include "report.h"
 #include "source.h"
 #include "syntax_kind.h"
-#include "token.h"
+#include "token_tree.h"
 
 static SyntaxKind token_cursor_lex(TokenCursor *cursor, TokenInfo *info, Report *report)
 {

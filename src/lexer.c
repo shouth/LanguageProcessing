@@ -4,7 +4,7 @@
 #include "report.h"
 #include "source.h"
 #include "syntax_kind.h"
-#include "token.h"
+#include "token_tree.h"
 
 typedef struct Lexer Lexer;
 

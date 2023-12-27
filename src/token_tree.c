@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "syntax_kind.h"
-#include "token.h"
+#include "token_tree.h"
 #include "utility.h"
 
 static unsigned long token_node_text_length(const TokenNode *node)

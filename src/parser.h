@@ -2,7 +2,7 @@
 #define PARSER_H
 
 #include "source.h"
-#include "token.h"
+#include "token_tree.h"
 
 int mppl_parse(const Source *source, TokenTree *tree);
 

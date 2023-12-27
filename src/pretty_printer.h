@@ -1,7 +1,7 @@
 #ifndef PRETTY_PRINTER_H
 #define PRETTY_PRINTER_H
 
-#include "token.h"
+#include "token_tree.h"
 
 typedef struct PrinterOption PrinterOption;
 

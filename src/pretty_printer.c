@@ -4,7 +4,7 @@
 #include "array.h"
 #include "pretty_printer.h"
 #include "syntax_kind.h"
-#include "token.h"
+#include "token_tree.h"
 
 typedef struct PrinterCursor PrinterCursor;
 typedef struct Printer       Printer;

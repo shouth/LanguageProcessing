@@ -8,8 +8,8 @@
 #include "report.h"
 #include "source.h"
 #include "syntax_kind.h"
-#include "token.h"
 #include "token_cursor.h"
+#include "token_tree.h"
 #include "utility.h"
 
 typedef struct Parser Parser;

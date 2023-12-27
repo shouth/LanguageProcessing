@@ -6,7 +6,7 @@
 #include "parser.h"
 #include "pretty_printer.h"
 #include "source.h"
-#include "token.h"
+#include "token_tree.h"
 
 int main(int argc, const char **argv)
 {
