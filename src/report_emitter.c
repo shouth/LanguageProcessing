@@ -144,10 +144,10 @@ static void write_location_line(Writer *writer, Canvas *canvas)
 }
 
 static void write_annotation_left(
-  Writer       *writer,
-  Canvas       *canvas,
-  unsigned long line_number,
-  unsigned long line_column,
+  Writer                 *writer,
+  Canvas                 *canvas,
+  unsigned long           line_number,
+  unsigned long           line_column,
   const ReportAnnotation *connect)
 {
   const ReportAnnotation *strike = NULL;
@@ -445,37 +445,31 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
   }
 
   for (i = start_line; i <= end_line; ++i) {
-    Array annotations;
-    array_init(&annotations, sizeof(ReportAnnotation));
-
     for (j = 0; j < array_count(&writer->report->_annotations); ++j) {
       ReportAnnotation *annotation = array_at(&writer->report->_annotations, j);
       if (i == annotation->_start.line || i == annotation->_end.line) {
-        array_push(&annotations, annotation);
-      }
-    }
-
-    if (array_count(&annotations)) {
-      if (i != start_line) {
+        if (i != start_line) {
+          canvas_next_line(canvas);
+        }
+        canvas_style(canvas, CANVAS_FAINT);
+        if (previous_line != -1ul && previous_line + 1 != i) {
+          canvas_write(canvas, " %*.s ╎ ", writer->number_margin, "");
+        } else {
+          canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
+        }
+        canvas_style(canvas, CANVAS_RESET);
+        write_annotation_left(writer, canvas, i, 0, NULL);
         canvas_next_line(canvas);
-      }
-      canvas_style(canvas, CANVAS_FAINT);
-      if (previous_line != -1ul && previous_line + 1 != i) {
-        canvas_write(canvas, " %*.s ┆ ", writer->number_margin, "");
-      } else {
-        canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
-      }
-      canvas_style(canvas, CANVAS_RESET);
-      write_annotation_left(writer, canvas, i, 0, NULL);
-      canvas_next_line(canvas);
 
-      write_source_line(writer, canvas, i);
-      canvas_next_line(canvas);
-      write_indicator_line(writer, canvas, i);
-      canvas_next_line(canvas);
-      write_annotation_lines(writer, canvas, i);
+        write_source_line(writer, canvas, i);
+        canvas_next_line(canvas);
+        write_indicator_line(writer, canvas, i);
+        canvas_next_line(canvas);
+        write_annotation_lines(writer, canvas, i);
+        previous_line = i;
+      }
+      break;
     }
-    array_deinit(&annotations);
   }
 }
 
