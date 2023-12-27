@@ -13,6 +13,10 @@
       "userUid": "automatic",
       "userGid": "automatic",
       "upgradePackages": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "2.43.0",
+      "ppa": false
     }
   },
   "customizations": {
