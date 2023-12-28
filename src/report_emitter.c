@@ -470,8 +470,8 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
         write_indicator_line(writer, canvas, i);
         write_annotation_lines(writer, canvas, i);
         previous_line = i;
+        break;
       }
-      break;
     }
   }
 }
