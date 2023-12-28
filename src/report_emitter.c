@@ -126,6 +126,7 @@ static void write_head_line(Writer *writer, Canvas *canvas)
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_write(canvas, "%s", writer->report->_message);
   canvas_style(canvas, CANVAS_RESET);
+  canvas_next_line(canvas);
 }
 
 static void write_location_line(Writer *writer, Canvas *canvas)
@@ -141,6 +142,7 @@ static void write_location_line(Writer *writer, Canvas *canvas)
   canvas_style(canvas, CANVAS_FAINT);
   canvas_write(canvas, "]");
   canvas_style(canvas, CANVAS_RESET);
+  canvas_next_line(canvas);
 }
 
 static void write_annotation_left(
@@ -264,6 +266,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
     canvas_write(canvas, "%.*s", (int) (segment->end - segment->start + 1), line + segment->start);
     canvas_style(canvas, CANVAS_RESET);
   }
+  canvas_next_line(canvas);
 
   free(line);
   array_deinit(&segments);
@@ -324,6 +327,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
     }
     canvas_style(canvas, CANVAS_RESET);
   }
+  canvas_next_line(canvas);
 
   array_deinit(&indicators);
 }
@@ -422,6 +426,7 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       break;
     }
   }
+  canvas_next_line(canvas);
 
   array_deinit(&connectors);
 }
@@ -462,9 +467,7 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
         canvas_next_line(canvas);
 
         write_source_line(writer, canvas, i);
-        canvas_next_line(canvas);
         write_indicator_line(writer, canvas, i);
-        canvas_next_line(canvas);
         write_annotation_lines(writer, canvas, i);
         previous_line = i;
       }
@@ -483,6 +486,7 @@ static void write_tail_line(Writer *writer, Canvas *canvas)
   }
   canvas_write(canvas, "╯");
   canvas_style(canvas, CANVAS_RESET);
+  canvas_next_line(canvas);
 }
 
 static int digits(unsigned long number)
@@ -541,16 +545,9 @@ void report_emit(Report *report, const Source *source)
   }
 
   write_head_line(&writer, &canvas);
-  canvas_next_line(&canvas);
-
   write_location_line(&writer, &canvas);
-  canvas_next_line(&canvas);
-
   write_interest_lines(&writer, &canvas);
-  canvas_next_line(&canvas);
-
   write_tail_line(&writer, &canvas);
-  canvas_next_line(&canvas);
 
   canvas_print(&canvas, stderr);
   canvas_deinit(&canvas);
