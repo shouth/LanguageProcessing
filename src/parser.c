@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #include "array.h"
-#include "bit_set.h"
+#include "bitset.h"
 #include "parser.h"
 #include "report.h"
 #include "source.h"
@@ -20,7 +20,7 @@ struct Parser {
   Token        *token;
   Array        *parents;
   Array        *children;
-  BitSet        expected[bit_set_bits_to_buckets(SYNTAX_KIND_EOF_TOKEN + 1)];
+  BitSet       *expected;
   Array        *errors;
   int           alive;
 };
@@ -88,7 +88,7 @@ static Token *token(Parser *parser)
 static void bump(Parser *parser)
 {
   if (token(parser)) {
-    bit_set_zero(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1);
+    bitset_clear(parser->expected);
     array_push(parser->children, &parser->token);
     parser->offset += parser->token->text_length;
     parser->token = NULL;
@@ -102,7 +102,7 @@ static int check_any(Parser *parser, const SyntaxKind *kinds, unsigned long coun
   } else {
     unsigned long i;
     for (i = 0; i < count; ++i) {
-      bit_set_set(parser->expected, kinds[i], 1);
+      bitset_set(parser->expected, kinds[i], 1);
     }
     for (i = 0; i < count; ++i) {
       if (token(parser)->kind == kinds[i]) {
@@ -196,16 +196,16 @@ static void error_unexpected(Parser *parser)
   SyntaxKind    kind;
 
   for (kind = 0; kind <= SYNTAX_KIND_EOF_TOKEN; ++kind) {
-    if (bit_set_get(parser->expected, kind)) {
+    if (bitset_set(parser->expected, kind, -1)) {
       if (cursor > 0) {
-        if (bit_set_count(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1) > 1) {
+        if (bitset_count(parser->expected) > 1) {
           cursor += sprintf(expected + cursor, ", ");
         } else {
           cursor += sprintf(expected + cursor, " and ");
         }
       }
       cursor += sprintf(expected + cursor, "%s", SYNTAX_KIND_DISPLAY_STRING[kind]);
-      bit_set_set(parser->expected, kind, 0);
+      bitset_set(parser->expected, kind, 0);
     }
   }
 
@@ -668,7 +668,7 @@ int mppl_parse(const Source *source, TokenTree *tree)
   parser.parents  = array_new(sizeof(unsigned long));
   parser.children = array_new(sizeof(TokenNode *));
   parser.errors   = array_new(sizeof(Report));
-  bit_set_zero(parser.expected, SYNTAX_KIND_EOF_TOKEN + 1);
+  parser.expected = bitset_new(SYNTAX_KIND_EOF_TOKEN + 1);
   token_cursor_init(&parser.cursor, source);
   parser.token  = NULL;
   parser.alive  = 1;
@@ -688,6 +688,7 @@ int mppl_parse(const Source *source, TokenTree *tree)
   }
   result = !array_count(parser.errors);
 
+  bitset_free(parser.expected);
   array_free(parser.errors);
   array_free(parser.children);
   array_free(parser.parents);
