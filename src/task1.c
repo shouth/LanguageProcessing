@@ -199,9 +199,11 @@ static void token_count_print(TokenCount *count)
     unsigned long max_token_width
       = get_max_token_display_width(array_data(count->token_counts), array_count(count->token_counts));
     unsigned long max_identifier_width
-      = identifier_prefix_width + get_max_token_display_width(array_data(count->identifer_counts), array_count(count->identifer_counts));
+      = get_max_token_display_width(array_data(count->identifer_counts), array_count(count->identifer_counts))
+      + identifier_prefix_width;
 
-    max_token_display_width = max_token_width > max_identifier_width ? max_token_width : max_identifier_width;
+    max_token_display_width
+      = max_token_width > max_identifier_width ? max_token_width : max_identifier_width;
   }
 
   {
@@ -210,7 +212,8 @@ static void token_count_print(TokenCount *count)
     unsigned long max_identifier_count_width
       = get_max_count_display_width(array_data(count->identifer_counts), array_count(count->identifer_counts));
 
-    max_count_display_width = max_token_count_width > max_identifier_count_width ? max_token_count_width : max_identifier_count_width;
+    max_count_display_width
+      = max_token_count_width > max_identifier_count_width ? max_token_count_width : max_identifier_count_width;
   }
 
   for (i = 0; i < array_count(count->token_counts); ++i) {
@@ -221,10 +224,12 @@ static void token_count_print(TokenCount *count)
 
     if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER_TOKEN) {
       for (j = 0; j < array_count(count->identifer_counts); ++j) {
-        TokenCountEntry *identifier_entry       = array_at(count->identifer_counts, j);
-        unsigned long    identifier_space_width = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
+        TokenCountEntry *identifier_entry = array_at(count->identifer_counts, j);
+        unsigned long    identifier_space_width
+          = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
           + (max_count_display_width - get_count_display_width(identifier_entry)) + 2;
-        printf("%s\"%s\"%*c%lu\n", identifier_prefix, identifier_entry->token.text, (int) identifier_space_width, ' ', identifier_entry->count);
+        printf("%s\"%s\"%*c%lu\n",
+          identifier_prefix, identifier_entry->token.text, (int) identifier_space_width, ' ', identifier_entry->count);
       }
     }
   }
