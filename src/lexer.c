@@ -76,7 +76,7 @@ static int tokenize(Lexer *lexer, SyntaxKind kind, TokenInfo *info)
   token_info_init(info, kind, lexer->source->text + lexer->offset, lexer->index);
   lexer->offset += lexer->index;
   lexer->index = 0;
-  return 1;
+  return kind != SYNTAX_KIND_BAD_TOKEN;
 }
 
 static int token_error(Lexer *lexer, TokenInfo *info, Report *report, const char *format, ...)
