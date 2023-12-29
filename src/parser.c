@@ -18,21 +18,21 @@ struct Parser {
   TokenCursor   cursor;
   unsigned long offset;
   Token        *token;
-  Array         parents;
-  Array         children;
+  Array        *parents;
+  Array        *children;
   BitSet        expected[bit_set_bits_to_buckets(SYNTAX_KIND_EOF_TOKEN + 1)];
-  Array         errors;
+  Array        *errors;
   int           alive;
 };
 
 static unsigned long node_checkpoint(Parser *parser)
 {
-  return array_count(&parser->children);
+  return array_count(parser->children);
 }
 
 static void node_start_at(Parser *parser, unsigned long checkpoint)
 {
-  array_push(&parser->parents, &checkpoint);
+  array_push(parser->parents, &checkpoint);
 }
 
 static void node_start(Parser *parser)
@@ -43,20 +43,20 @@ static void node_start(Parser *parser)
 static void node_finish(Parser *parser, SyntaxKind kind)
 {
   TokenTree    *tree       = xmalloc(sizeof(TokenTree));
-  unsigned long checkpoint = *(unsigned long *) array_back(&parser->parents);
+  unsigned long checkpoint = *(unsigned long *) array_back(parser->parents);
 
-  array_pop(&parser->parents);
-  token_tree_init(tree, kind, array_at(&parser->children, checkpoint), array_count(&parser->children) - checkpoint);
-  while (array_count(&parser->children) > checkpoint) {
-    array_pop(&parser->children);
+  array_pop(parser->parents);
+  token_tree_init(tree, kind, array_at(parser->children, checkpoint), array_count(parser->children) - checkpoint);
+  while (array_count(parser->children) > checkpoint) {
+    array_pop(parser->children);
   }
-  array_push(&parser->children, &tree);
+  array_push(parser->children, &tree);
 }
 
 static void node_null(Parser *parser)
 {
   TokenNode *node = NULL;
-  array_push(&parser->children, &node);
+  array_push(parser->children, &node);
 }
 
 static Token *token(Parser *parser)
@@ -75,7 +75,7 @@ static Token *token(Parser *parser)
     }
 
     if (token.kind == SYNTAX_KIND_BAD_TOKEN) {
-      array_push(&parser->errors, &report);
+      array_push(parser->errors, &report);
     }
     parser->token  = xmalloc(sizeof(Token));
     *parser->token = token;
@@ -89,7 +89,7 @@ static void bump(Parser *parser)
 {
   if (token(parser)) {
     bit_set_zero(parser->expected, SYNTAX_KIND_EOF_TOKEN + 1);
-    array_push(&parser->children, &parser->token);
+    array_push(parser->children, &parser->token);
     parser->offset += parser->token->text_length;
     parser->token = NULL;
   }
@@ -213,9 +213,9 @@ static void error_unexpected(Parser *parser)
     Report report;
     report_init(&report, REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
     report_annotation(&report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
-    array_push(&parser->errors, &report);
+    array_push(parser->errors, &report);
   } else {
-    report_annotation(array_back(&parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+    report_annotation(array_back(parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
   }
 
   parser->alive = 0;
@@ -665,9 +665,9 @@ int mppl_parse(const Source *source, TokenTree *tree)
 {
   Parser parser;
   int    result;
-  array_init(&parser.parents, sizeof(unsigned long));
-  array_init(&parser.children, sizeof(TokenNode *));
-  array_init(&parser.errors, sizeof(Report));
+  parser.parents  = array_new(sizeof(unsigned long));
+  parser.children = array_new(sizeof(TokenNode *));
+  parser.errors   = array_new(sizeof(Report));
   bit_set_zero(parser.expected, SYNTAX_KIND_EOF_TOKEN + 1);
   token_cursor_init(&parser.cursor, source);
   parser.token  = NULL;
@@ -675,21 +675,21 @@ int mppl_parse(const Source *source, TokenTree *tree)
   parser.offset = 0;
 
   parse_program(&parser);
-  *tree = **(TokenTree **) array_data(&parser.children);
-  free(*(TokenNode **) array_data(&parser.children));
+  *tree = **(TokenTree **) array_data(parser.children);
+  free(*(TokenNode **) array_data(parser.children));
 
   {
     unsigned long i;
-    for (i = 0; i < array_count(&parser.errors); ++i) {
-      Report *report = array_at(&parser.errors, i);
+    for (i = 0; i < array_count(parser.errors); ++i) {
+      Report *report = array_at(parser.errors, i);
       report_emit(report, source);
     }
     fflush(stdout);
   }
-  result = !array_count(&parser.errors);
+  result = !array_count(parser.errors);
 
-  array_deinit(&parser.parents);
-  array_deinit(&parser.children);
-  array_deinit(&parser.errors);
+  array_free(parser.errors);
+  array_free(parser.children);
+  array_free(parser.parents);
   return result;
 }

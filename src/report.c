@@ -32,26 +32,26 @@ void report_deinit(Report *report)
   unsigned long i;
   free(report->_message);
 
-  for (i = 0; i < array_count(&report->_notes); ++i) {
-    char **note = array_at(&report->_notes, i);
+  for (i = 0; i < array_count(report->_notes); ++i) {
+    char **note = array_at(report->_notes, i);
     free(*note);
   }
-  array_deinit(&report->_notes);
+  array_free(report->_notes);
 
-  for (i = 0; i < array_count(&report->_annotations); ++i) {
-    ReportAnnotation *label = array_at(&report->_annotations, i);
+  for (i = 0; i < array_count(report->_annotations); ++i) {
+    ReportAnnotation *label = array_at(report->_annotations, i);
     free(label->_message);
   }
-  array_deinit(&report->_annotations);
+  array_free(report->_annotations);
 }
 
 void report_init_with_args(Report *report, ReportKind kind, unsigned long offset, const char *format, va_list args)
 {
-  report->_kind    = kind;
-  report->_offset  = offset;
-  report->_message = vformat(format, args);
-  array_init(&report->_notes, sizeof(char *));
-  array_init(&report->_annotations, sizeof(ReportAnnotation));
+  report->_kind        = kind;
+  report->_offset      = offset;
+  report->_message     = vformat(format, args);
+  report->_notes       = array_new(sizeof(char *));
+  report->_annotations = array_new(sizeof(ReportAnnotation));
 }
 
 void report_annotation(Report *report, unsigned long start, unsigned long end, const char *format, ...)
@@ -68,7 +68,7 @@ void report_annotation_with_args(Report *report, unsigned long start, unsigned l
   label._start_offset = start;
   label._end_offset   = end;
   label._message      = vformat(format, args);
-  array_push(&report->_annotations, &label);
+  array_push(report->_annotations, &label);
 }
 
 void report_note(Report *report, const char *format, ...)
@@ -82,5 +82,5 @@ void report_note(Report *report, const char *format, ...)
 void report_note_with_args(Report *report, const char *format, va_list args)
 {
   char *note = vformat(format, args);
-  array_push(&report->_notes, &note);
+  array_push(report->_notes, &note);
 }

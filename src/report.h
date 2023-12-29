@@ -27,8 +27,8 @@ struct Report {
   ReportKind    _kind;
   unsigned long _offset;
   char         *_message;
-  Array         _annotations;
-  Array         _notes;
+  Array        *_annotations;
+  Array        *_notes;
 };
 
 void report_init(Report *report, ReportKind kind, unsigned long offset, const char *format, ...);

@@ -31,7 +31,7 @@ struct CanvasCell {
 };
 
 struct Canvas {
-  Array         lines;
+  Array        *lines;
   unsigned long current_line;
   unsigned long current_column;
   unsigned long style;

@@ -156,8 +156,8 @@ static void write_annotation_left(
   unsigned long           i;
 
   canvas_style_foreground(canvas, CANVAS_4BIT | 91);
-  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
+  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
     if (annotation->_start.line != annotation->_end.line) {
       if (strike) {
         canvas_write(canvas, "──");
@@ -202,7 +202,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   unsigned long line_offset;
   unsigned long column_offset;
 
-  Array segments;
+  Array *segments = array_new(sizeof(LineSegment));
 
   line_width = 0;
   for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
@@ -229,25 +229,24 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   }
   line[line_width] = '\0';
 
-  array_init(&segments, sizeof(LineSegment));
-  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
+  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
     LineSegment       segment;
     if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
       segment.start = annotation->_start.column;
       segment.end   = annotation->_end.column;
-      array_push(&segments, &segment);
+      array_push(segments, &segment);
     } else if (annotation->_start.line == line_number) {
       segment.start = annotation->_start.column;
       segment.end   = line_width;
-      array_push(&segments, &segment);
+      array_push(segments, &segment);
     } else if (annotation->_end.line == line_number) {
       segment.start = 0;
       segment.end   = annotation->_end.column;
-      array_push(&segments, &segment);
+      array_push(segments, &segment);
     }
   }
-  qsort(array_data(&segments), array_count(&segments), sizeof(LineSegment), &compare_line_segments);
+  qsort(array_data(segments), array_count(segments), sizeof(LineSegment), &compare_line_segments);
 
   canvas_style(canvas, CANVAS_FAINT);
   canvas_write(canvas, " %*.lu │ ", writer->number_margin, line_number + 1);
@@ -259,8 +258,8 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   canvas_write(canvas, "%s", line);
   canvas_style(canvas, CANVAS_RESET);
 
-  for (i = 0; i < array_count(&segments); ++i) {
-    LineSegment *segment = array_at(&segments, i);
+  for (i = 0; i < array_count(segments); ++i) {
+    LineSegment *segment = array_at(segments, i);
     canvas_seek(canvas, line_offset, column_offset + segment->start);
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
     canvas_write(canvas, "%.*s", (int) (segment->end - segment->start + 1), line + segment->start);
@@ -269,7 +268,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   canvas_next_line(canvas);
 
   free(line);
-  array_deinit(&segments);
+  array_free(segments);
 }
 
 static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long line_number)
@@ -278,29 +277,28 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   unsigned long line_offset;
   unsigned long column_offset;
 
-  Array indicators;
-  array_init(&indicators, sizeof(Indicator));
-  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
+  Array *indicators = array_new(sizeof(Indicator));
+  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
     Indicator         indicator;
     if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
       indicator.kind   = INDICATOR_INLINE;
       indicator.column = annotation->_start.column;
       indicator.length = annotation->_end.column - annotation->_start.column + 1;
-      array_push(&indicators, &indicator);
+      array_push(indicators, &indicator);
     } else if (annotation->_start.line == line_number) {
       indicator.kind   = INDICATOR_BEGIN;
       indicator.column = annotation->_start.column;
       indicator.length = 1;
-      array_push(&indicators, &indicator);
+      array_push(indicators, &indicator);
     } else if (annotation->_end.line == line_number) {
       indicator.kind   = INDICATOR_END;
       indicator.column = annotation->_end.column;
       indicator.length = 1;
-      array_push(&indicators, &indicator);
+      array_push(indicators, &indicator);
     }
   }
-  qsort(array_data(&indicators), array_count(&indicators), sizeof(Indicator), &compare_indicators);
+  qsort(array_data(indicators), array_count(indicators), sizeof(Indicator), &compare_indicators);
 
   canvas_style(canvas, CANVAS_FAINT);
   canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
@@ -308,8 +306,8 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
 
   write_annotation_left(writer, canvas, line_number, 0, NULL);
   canvas_position(canvas, &line_offset, &column_offset);
-  for (i = 0; i < array_count(&indicators); ++i) {
-    Indicator *indicator = array_at(&indicators, i);
+  for (i = 0; i < array_count(indicators); ++i) {
+    Indicator *indicator = array_at(indicators, i);
     canvas_seek(canvas, line_offset, column_offset + indicator->column);
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
     switch (indicator->kind) {
@@ -329,7 +327,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   }
   canvas_next_line(canvas);
 
-  array_deinit(&indicators);
+  array_free(indicators);
 }
 
 static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long line_number)
@@ -339,10 +337,9 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   unsigned long line_offset;
   unsigned long column_offset;
 
-  Array connectors;
-  array_init(&connectors, sizeof(Connector));
-  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
+  Array *connectors = array_new(sizeof(Connector));
+  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
     Connector         connector;
     connector.annotation = annotation;
 
@@ -350,27 +347,27 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       connector.kind      = CONNECTOR_END;
       connector.multiline = 0;
       connector.column    = annotation->_start.column;
-      array_push(&connectors, &connector);
+      array_push(connectors, &connector);
     } else if (annotation->_start.line == line_number) {
       connector.kind      = CONNECTOR_BEGIN;
       connector.multiline = 1;
       connector.column    = annotation->_start.column;
-      array_push(&connectors, &connector);
+      array_push(connectors, &connector);
     } else if (annotation->_end.line == line_number) {
       connector.kind      = CONNECTOR_END;
       connector.multiline = 1;
       connector.column    = annotation->_end.column;
-      array_push(&connectors, &connector);
+      array_push(connectors, &connector);
     }
 
     if (annotation->_end.line == line_number && label_offset > annotation->_end.column) {
       label_offset = annotation->_end.column;
     }
   }
-  qsort(array_data(&connectors), array_count(&connectors), sizeof(Connector), &compare_connectors);
+  qsort(array_data(connectors), array_count(connectors), sizeof(Connector), &compare_connectors);
 
-  for (i = 0; i < 2 * array_count(&connectors) - 1; ++i) {
-    Connector *connector = array_at(&connectors, i / 2);
+  for (i = 0; i < 2 * array_count(connectors) - 1; ++i) {
+    Connector *connector = array_at(connectors, i / 2);
     if (i > 0) {
       canvas_next_line(canvas);
     }
@@ -384,8 +381,8 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   }
   canvas_style(canvas, CANVAS_RESET);
 
-  for (i = array_count(&connectors); i > 0; --i) {
-    Connector *connector = array_at(&connectors, i - 1);
+  for (i = array_count(connectors); i > 0; --i) {
+    Connector *connector = array_at(connectors, i - 1);
 
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
     for (j = 0; j < 2 * i - 2; ++j) {
@@ -428,7 +425,7 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   }
   canvas_next_line(canvas);
 
-  array_deinit(&connectors);
+  array_free(connectors);
 }
 
 static void write_interest_lines(Writer *writer, Canvas *canvas)
@@ -439,8 +436,8 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
   unsigned long end_line      = 0;
   unsigned long previous_line = -1ul;
 
-  for (i = 0; i < array_count(&writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(&writer->report->_annotations, i);
+  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
     if (start_line > annotation->_start.line) {
       start_line = annotation->_start.line;
     }
@@ -450,8 +447,8 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
   }
 
   for (i = start_line; i <= end_line; ++i) {
-    for (j = 0; j < array_count(&writer->report->_annotations); ++j) {
-      ReportAnnotation *annotation = array_at(&writer->report->_annotations, j);
+    for (j = 0; j < array_count(writer->report->_annotations); ++j) {
+      ReportAnnotation *annotation = array_at(writer->report->_annotations, j);
       if (i == annotation->_start.line || i == annotation->_end.line) {
         if (i != start_line) {
           canvas_next_line(canvas);
@@ -520,7 +517,7 @@ void report_emit(Report *report, const Source *source)
   Canvas        canvas;
   unsigned long i;
 
-  qsort(array_data(&report->_annotations), array_count(&report->_annotations), sizeof(ReportAnnotation), &compare_annotations);
+  qsort(array_data(report->_annotations), array_count(report->_annotations), sizeof(ReportAnnotation), &compare_annotations);
 
   canvas_init(&canvas);
 
@@ -528,9 +525,9 @@ void report_emit(Report *report, const Source *source)
   writer.source        = source;
   writer.tab_width     = 4;
   writer.number_margin = 0;
-  for (i = 0; i < array_count(&report->_annotations); ++i) {
+  for (i = 0; i < array_count(report->_annotations); ++i) {
     int               margin;
-    ReportAnnotation *annotation = array_at(&report->_annotations, i);
+    ReportAnnotation *annotation = array_at(report->_annotations, i);
     display_location(source, annotation->_start_offset, writer.tab_width, &annotation->_start);
     display_location(source, annotation->_end_offset - 1, writer.tab_width, &annotation->_end);
 

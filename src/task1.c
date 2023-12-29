@@ -22,8 +22,8 @@ struct TokenCountEntry {
 };
 
 struct TokenCount {
-  Array token_counts;
-  Array identifer_counts;
+  Array *token_counts;
+  Array *identifer_counts;
 };
 
 static void increment_token(Map *counts, TokenInfo *info)
@@ -78,7 +78,7 @@ static void list_token(Map *counts, Array *list)
 {
   MapIterator iterator;
   map_iterator(&iterator, counts);
-  array_init_with_capacity(list, sizeof(TokenCountEntry), map_count(counts));
+  list = array_new_with_capacity(sizeof(TokenCountEntry), map_count(counts));
   while (map_iterator_next(&iterator)) {
     array_push(list, map_iterator_value(&iterator));
     free(map_iterator_value(&iterator));
@@ -125,23 +125,23 @@ static void token_count_init(TokenCount *count, const Source *source)
     increment_token(&token_counts, &token);
   }
   token_info_deinit(&token);
-  list_token(&token_counts, &count->token_counts);
-  list_token(&identifier_counts, &count->identifer_counts);
+  list_token(&token_counts, count->token_counts);
+  list_token(&identifier_counts, count->identifer_counts);
 }
 
 static void token_count_deinit(TokenCount *count)
 {
   unsigned long i;
 
-  for (i = 0; i < array_count(&count->token_counts); ++i) {
-    token_info_deinit(array_at(&count->token_counts, i));
+  for (i = 0; i < array_count(count->token_counts); ++i) {
+    token_info_deinit(array_at(count->token_counts, i));
   }
-  array_deinit(&count->token_counts);
+  array_free(count->token_counts);
 
-  for (i = 0; i < array_count(&count->identifer_counts); ++i) {
-    token_info_deinit(array_at(&count->identifer_counts, i));
+  for (i = 0; i < array_count(count->identifer_counts); ++i) {
+    token_info_deinit(array_at(count->identifer_counts, i));
   }
-  array_deinit(&count->identifer_counts);
+  array_free(count->identifer_counts);
 }
 
 unsigned long get_token_display_width(TokenCountEntry *entry)
@@ -196,28 +196,32 @@ static void token_count_print(TokenCount *count)
   unsigned long max_count_display_width;
 
   {
-    unsigned long max_token_width      = get_max_token_display_width(array_data(&count->token_counts), array_count(&count->token_counts));
-    unsigned long max_identifier_width = identifier_prefix_width + get_max_token_display_width(array_data(&count->identifer_counts), array_count(&count->identifer_counts));
+    unsigned long max_token_width
+      = get_max_token_display_width(array_data(count->token_counts), array_count(count->token_counts));
+    unsigned long max_identifier_width
+      = identifier_prefix_width + get_max_token_display_width(array_data(count->identifer_counts), array_count(count->identifer_counts));
 
     max_token_display_width = max_token_width > max_identifier_width ? max_token_width : max_identifier_width;
   }
 
   {
-    unsigned long max_token_count_width      = get_max_count_display_width(array_data(&count->token_counts), array_count(&count->token_counts));
-    unsigned long max_identifier_count_width = get_max_count_display_width(array_data(&count->identifer_counts), array_count(&count->identifer_counts));
+    unsigned long max_token_count_width
+      = get_max_count_display_width(array_data(count->token_counts), array_count(count->token_counts));
+    unsigned long max_identifier_count_width
+      = get_max_count_display_width(array_data(count->identifer_counts), array_count(count->identifer_counts));
 
     max_count_display_width = max_token_count_width > max_identifier_count_width ? max_token_count_width : max_identifier_count_width;
   }
 
-  for (i = 0; i < array_count(&count->token_counts); ++i) {
-    TokenCountEntry *token_entry       = array_at(&count->token_counts, i);
+  for (i = 0; i < array_count(count->token_counts); ++i) {
+    TokenCountEntry *token_entry       = array_at(count->token_counts, i);
     unsigned long    token_space_width = (max_token_display_width - get_token_display_width(token_entry))
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
     printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
     if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER_TOKEN) {
-      for (j = 0; j < array_count(&count->identifer_counts); ++j) {
-        TokenCountEntry *identifier_entry       = array_at(&count->identifer_counts, j);
+      for (j = 0; j < array_count(count->identifer_counts); ++j) {
+        TokenCountEntry *identifier_entry       = array_at(count->identifer_counts, j);
         unsigned long    identifier_space_width = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
           + (max_count_display_width - get_count_display_width(identifier_entry)) + 2;
         printf("%s\"%s\"%*c%lu\n", identifier_prefix, identifier_entry->token.text, (int) identifier_space_width, ' ', identifier_entry->count);

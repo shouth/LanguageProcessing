@@ -3,16 +3,9 @@
 
 typedef struct Array Array;
 
-struct Array {
-  void         *_data;
-  unsigned long _size;
-  unsigned long _count;
-  unsigned long _capacity;
-};
-
-void array_init(Array *array, unsigned long size);
-void array_init_with_capacity(Array *array, unsigned long size, unsigned long capacity);
-void array_deinit(Array *array);
+Array *array_new(unsigned long size);
+Array *array_new_with_capacity(unsigned long size, unsigned long capacity);
+void   array_free(Array *array);
 
 unsigned long array_count(const Array *array);
 unsigned long array_capacity(const Array *array);

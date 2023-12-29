@@ -19,18 +19,17 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
   {
     FILE *file = fopen(source->file_name, "rb");
     if (file) {
-      Array         text;
+      Array        *text = array_new(sizeof(char));
       char          buffer[4096];
       unsigned long length;
-      array_init(&text, sizeof(char));
       while ((length = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
-        array_push_count(&text, buffer, length);
+        array_push_count(text, buffer, length);
       }
       buffer[0] = '\0';
-      array_push(&text, buffer);
-      array_fit(&text);
-      source->text_length = array_count(&text) - 1;
-      source->text        = array_steal(&text);
+      array_push(text, buffer);
+      array_fit(text);
+      source->text_length = array_count(text) - 1;
+      source->text        = array_steal(text);
     } else {
       source->text_length = -1ul;
       source->text        = NULL;
@@ -39,15 +38,13 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
   }
 
   if (source->text) {
-    Array         line_offsets;
-    Array         line_lengths;
-    unsigned long offset = 0;
-    array_init(&line_offsets, sizeof(unsigned long));
-    array_init(&line_lengths, sizeof(unsigned long));
-    array_push(&line_offsets, &offset);
+    Array        *line_offsets = array_new(sizeof(unsigned long));
+    Array        *line_lengths = array_new(sizeof(unsigned long));
+    unsigned long offset       = 0;
+    array_push(line_offsets, &offset);
     while (offset < source->text_length) {
       unsigned long length = strcspn(source->text + offset, "\r\n");
-      array_push(&line_lengths, &length);
+      array_push(line_lengths, &length);
       offset += length;
 
       if (offset < source->text_length) {
@@ -56,14 +53,12 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
         } else {
           offset += 1;
         }
-        array_push(&line_offsets, &offset);
+        array_push(line_offsets, &offset);
       }
     }
-    array_fit(&line_offsets);
-    array_fit(&line_lengths);
-    source->line_count   = array_count(&line_offsets);
-    source->line_offsets = array_steal(&line_offsets);
-    source->line_lengths = array_steal(&line_lengths);
+    source->line_count   = array_count(line_offsets);
+    source->line_offsets = array_steal(line_offsets);
+    source->line_lengths = array_steal(line_lengths);
   } else {
     source->line_count   = -1ul;
     source->line_offsets = NULL;

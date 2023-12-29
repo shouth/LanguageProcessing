@@ -27,15 +27,14 @@ int token_cursor_next(TokenCursor *cursor, Token *token, Report *report)
   if (cursor->_offset == -1ul) {
     return 0;
   } else {
-    Array     trivia;
+    Array    *trivia = array_new(sizeof(TokenInfo));
     TokenInfo info;
 
-    array_init(&trivia, sizeof(TokenInfo));
     while (syntax_kind_is_trivia(token_cursor_lex(cursor, &info, report))) {
-      array_push(&trivia, &info);
+      array_push(trivia, &info);
     }
-    token_init(token, &info, array_data(&trivia), array_count(&trivia));
-    array_deinit(&trivia);
+    token_init(token, &info, array_data(trivia), array_count(trivia));
+    array_free(trivia);
     return 1;
   }
 }

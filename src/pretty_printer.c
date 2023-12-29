@@ -18,24 +18,24 @@ struct PrinterCursor {
 struct Printer {
   unsigned long indent;
   PrinterOption option;
-  Array         stack;
+  Array        *stack;
 };
 
 static const TokenNode *node(Printer *printer)
 {
-  PrinterCursor *cursor = array_back(&printer->stack);
+  PrinterCursor *cursor = array_back(printer->stack);
   return cursor->node[cursor->index];
 }
 
 static unsigned long node_count(Printer *printer)
 {
-  PrinterCursor *cursor = array_back(&printer->stack);
+  PrinterCursor *cursor = array_back(printer->stack);
   return cursor->count;
 }
 
 static unsigned long node_index(Printer *printer)
 {
-  PrinterCursor *cursor = array_back(&printer->stack);
+  PrinterCursor *cursor = array_back(printer->stack);
   return cursor->index;
 }
 
@@ -45,7 +45,7 @@ static void push_stack(Printer *printer, TokenNode **node, unsigned long count)
   cursor.node  = node;
   cursor.count = count;
   cursor.index = 0;
-  array_push(&printer->stack, &cursor);
+  array_push(printer->stack, &cursor);
 }
 
 static void tree_start(Printer *printer)
@@ -56,13 +56,13 @@ static void tree_start(Printer *printer)
 
 static void node_next(Printer *printer)
 {
-  PrinterCursor *cursor = array_back(&printer->stack);
+  PrinterCursor *cursor = array_back(printer->stack);
   ++cursor->index;
 }
 
 static void tree_end(Printer *printer)
 {
-  array_pop(&printer->stack);
+  array_pop(printer->stack);
   node_next(printer);
 }
 
@@ -614,7 +614,7 @@ void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
 {
   Printer printer;
   printer.indent = 0;
-  array_init(&printer.stack, sizeof(PrinterCursor));
+  printer.stack  = array_new(sizeof(PrinterCursor));
   push_stack(&printer, (TokenNode **) &node, 1);
   if (option) {
     printer.option = *option;
@@ -631,5 +631,5 @@ void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
     /* clang-format on */
   }
   consume_program(&printer);
-  array_deinit(&printer.stack);
+  array_free(printer.stack);
 }

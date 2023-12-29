@@ -5,43 +5,55 @@
 
 #include "array.h"
 
-void array_init(Array *array, unsigned long size)
+struct Array {
+  void         *data;
+  unsigned long size;
+  unsigned long count;
+  unsigned long capacity;
+};
+
+Array *array_new(unsigned long size)
 {
-  array_init_with_capacity(array, size, 0);
+  return array_new_with_capacity(size, 0);
 }
 
-void array_init_with_capacity(Array *array, unsigned long size, unsigned long capacity)
+Array *array_new_with_capacity(unsigned long size, unsigned long capacity)
 {
-  array->_data     = NULL;
-  array->_size     = size;
-  array->_count    = 0;
-  array->_capacity = 0;
+  Array *array    = malloc(sizeof(Array));
+  array->data     = NULL;
+  array->size     = size;
+  array->count    = 0;
+  array->capacity = 0;
   array_reserve(array, capacity);
+  return array;
 }
 
-void array_deinit(Array *array)
+void array_free(Array *array)
 {
-  free(array->_data);
+  if (array) {
+    free(array->data);
+    free(array);
+  }
 }
 
 unsigned long array_count(const Array *array)
 {
-  return array->_count;
+  return array->count;
 }
 
 unsigned long array_capacity(const Array *array)
 {
-  return array->_capacity;
+  return array->capacity;
 }
 
 void *array_data(const Array *array)
 {
-  return array->_data;
+  return array->data;
 }
 
 void *array_at(const Array *array, unsigned long index)
 {
-  return (char *) array->_data + array->_size * index;
+  return (char *) array->data + array->size * index;
 }
 
 void *array_front(const Array *array)
@@ -51,28 +63,28 @@ void *array_front(const Array *array)
 
 void *array_back(const Array *array)
 {
-  return array_at(array, array->_count - 1);
+  return array_at(array, array->count - 1);
 }
 
 void array_reserve(Array *array, unsigned long capacity)
 {
-  if (array->_capacity < capacity) {
-    void *new = realloc(array->_data, array->_size * capacity);
+  if (array->capacity < capacity) {
+    void *new = realloc(array->data, array->size * capacity);
     if (!new) {
       fprintf(stderr, "Internal Error: Failed to allocate memory\n");
       exit(EXIT_FAILURE);
     }
-    array->_data     = new;
-    array->_capacity = capacity;
+    array->data     = new;
+    array->capacity = capacity;
   }
 }
 
 void array_fit(Array *array)
 {
-  void *new = realloc(array->_data, array->_size * array->_count);
+  void *new = realloc(array->data, array->size * array->count);
   if (new) {
-    array->_data     = new;
-    array->_capacity = array->_count;
+    array->data     = new;
+    array->capacity = array->count;
   }
 }
 
@@ -90,8 +102,8 @@ void array_push_count(Array *array, void *value, unsigned long count)
     }
     array_reserve(array, capacity);
   }
-  memcpy(array_at(array, array_count(array)), value, array->_size * count);
-  array->_count += count;
+  memcpy(array_at(array, array_count(array)), value, array->size * count);
+  array->count += count;
 }
 
 void array_pop(Array *array)
@@ -101,23 +113,24 @@ void array_pop(Array *array)
 
 void array_pop_count(Array *array, unsigned long count)
 {
-  if (array->_count > count) {
-    array->_count -= count;
+  if (array->count > count) {
+    array->count -= count;
   } else {
-    array->_count = 0;
+    array->count = 0;
   }
 }
 
 void array_clear(Array *array)
 {
-  array->_count = 0;
+  array->count = 0;
 }
 
 void *array_steal(Array *array)
 {
-  void *result     = array->_data;
-  array->_data     = NULL;
-  array->_capacity = 0;
-  array->_count    = 0;
+  void *result    = array->data;
+  array->data     = NULL;
+  array->capacity = 0;
+  array->count    = 0;
+  array_free(array);
   return result;
 }

@@ -9,12 +9,11 @@
 
 void canvas_init(Canvas *canvas)
 {
-  array_init(&canvas->lines, sizeof(Array));
-  {
-    Array line;
-    array_init(&line, sizeof(CanvasCell));
-    array_push(&canvas->lines, &line);
-  }
+  Array *line   = array_new(sizeof(CanvasCell));
+  canvas->lines = array_new(sizeof(Array *));
+
+  array_push(canvas->lines, &line);
+
   canvas->current_line   = 0;
   canvas->current_column = 0;
 
@@ -26,11 +25,11 @@ void canvas_init(Canvas *canvas)
 void canvas_deinit(Canvas *canvas)
 {
   unsigned long i;
-  for (i = 0; i < array_count(&canvas->lines); ++i) {
-    Array *line = array_at(&canvas->lines, i);
-    array_deinit(line);
+  for (i = 0; i < array_count(canvas->lines); ++i) {
+    Array **line = array_at(canvas->lines, i);
+    array_free(*line);
   }
-  array_deinit(&canvas->lines);
+  array_free(canvas->lines);
 }
 
 #define BUFFER_SIZE 1024
@@ -39,10 +38,9 @@ void canvas_next_line(Canvas *canvas)
 {
   ++canvas->current_line;
   canvas->current_column = 0;
-  if (canvas->current_line >= array_count(&canvas->lines)) {
-    Array line;
-    array_init(&line, sizeof(CanvasCell));
-    array_push(&canvas->lines, &line);
+  if (canvas->current_line >= array_count(canvas->lines)) {
+    Array *line = array_new(sizeof(CanvasCell));
+    array_push(canvas->lines, &line);
   }
 }
 
@@ -70,7 +68,7 @@ void canvas_style_background(Canvas *canvas, unsigned long color)
 void canvas_write(Canvas *canvas, const char *format, ...)
 {
   va_list args;
-  Array  *line  = array_at(&canvas->lines, canvas->current_line);
+  Array **line  = array_at(canvas->lines, canvas->current_line);
   FILE   *file  = tmpfile();
   long    index = 0;
   char    buffer[BUFFER_SIZE + 1];
@@ -92,7 +90,7 @@ void canvas_write(Canvas *canvas, const char *format, ...)
       }
 
       {
-        unsigned long initial_line_width = array_count(line);
+        unsigned long initial_line_width = array_count(*line);
         CanvasCell    cell;
         cell.style      = canvas->style;
         cell.foreground = canvas->foreground;
@@ -100,9 +98,9 @@ void canvas_write(Canvas *canvas, const char *format, ...)
         cell.size       = size;
         memcpy(cell.character, buffer + index, size);
         if (canvas->current_column < initial_line_width) {
-          memcpy(array_at(line, canvas->current_column), &cell, sizeof(CanvasCell));
+          memcpy(array_at(*line, canvas->current_column), &cell, sizeof(CanvasCell));
         } else {
-          array_push(line, &cell);
+          array_push(*line, &cell);
         }
         ++canvas->current_column;
         index += size;
@@ -120,33 +118,34 @@ void canvas_position(Canvas *canvas, unsigned long *line, unsigned long *column)
 
 void canvas_seek(Canvas *canvas, unsigned long line, unsigned long column)
 {
+  Array **last_line;
   canvas->current_line   = line;
   canvas->current_column = column;
 
-  while (canvas->current_line >= array_count(&canvas->lines)) {
-    Array line;
-    array_init(&line, sizeof(CanvasCell));
-    array_push(&canvas->lines, &line);
+  while (canvas->current_line >= array_count(canvas->lines)) {
+    Array *line = array_new(sizeof(CanvasCell));
+    array_push(canvas->lines, &line);
   }
 
-  while (canvas->current_column >= array_count(array_at(&canvas->lines, canvas->current_line))) {
+  last_line = array_at(canvas->lines, canvas->current_line);
+  while (canvas->current_column >= array_count(*last_line)) {
     CanvasCell cell;
     cell.style      = 0;
     cell.foreground = 0;
     cell.background = 0;
     cell.size       = 1;
     strcpy(cell.character, " ");
-    array_push(array_at(&canvas->lines, canvas->current_line), &cell);
+    array_push(*last_line, &cell);
   }
 }
 
 void canvas_print(Canvas *canvas, FILE *stream)
 {
   unsigned long line, column;
-  for (line = 0; line < array_count(&canvas->lines); ++line) {
-    Array *line_array = array_at(&canvas->lines, line);
-    for (column = 0; column < array_count(line_array); ++column) {
-      CanvasCell *cell = array_at(line_array, column);
+  for (line = 0; line < array_count(canvas->lines); ++line) {
+    Array **line_array = array_at(canvas->lines, line);
+    for (column = 0; column < array_count(*line_array); ++column) {
+      CanvasCell *cell = array_at(*line_array, column);
       if (cell->style & CANVAS_BOLD) {
         fprintf(stream, "\033[1m");
       }
@@ -182,7 +181,7 @@ void canvas_print(Canvas *canvas, FILE *stream)
       fprintf(stream, "%.*s", (int) cell->size, cell->character);
       fprintf(stream, "\033[0m");
     }
-    if (line + 1 < array_count(&canvas->lines)) {
+    if (line + 1 < array_count(canvas->lines)) {
       fprintf(stream, "\n");
     }
   }
