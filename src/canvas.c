@@ -7,29 +7,48 @@
 #include "array.h"
 #include "canvas.h"
 
-void canvas_init(Canvas *canvas)
+struct CanvasCell {
+  char          character[4];
+  int           size;
+  unsigned int  style;
+  unsigned long foreground;
+  unsigned long background;
+};
+
+struct Canvas {
+  Array        *lines;
+  unsigned long current_line;
+  unsigned long current_column;
+  unsigned long style;
+  unsigned long foreground;
+  unsigned long background;
+};
+
+Canvas *canvas_new(void)
 {
-  Array *line   = array_new(sizeof(CanvasCell));
-  canvas->lines = array_new(sizeof(Array *));
-
+  Canvas *canvas = malloc(sizeof(Canvas));
+  Array  *line   = array_new(sizeof(CanvasCell));
+  canvas->lines  = array_new(sizeof(Array *));
   array_push(canvas->lines, &line);
-
   canvas->current_line   = 0;
   canvas->current_column = 0;
-
-  canvas->style      = CANVAS_RESET;
-  canvas->foreground = 0;
-  canvas->background = 0;
+  canvas->style          = CANVAS_RESET;
+  canvas->foreground     = 0;
+  canvas->background     = 0;
+  return canvas;
 }
 
-void canvas_deinit(Canvas *canvas)
+void canvas_free(Canvas *canvas)
 {
-  unsigned long i;
-  for (i = 0; i < array_count(canvas->lines); ++i) {
-    Array **line = array_at(canvas->lines, i);
-    array_free(*line);
+  if (canvas) {
+    unsigned long i;
+    for (i = 0; i < array_count(canvas->lines); ++i) {
+      Array **line = array_at(canvas->lines, i);
+      array_free(*line);
+    }
+    array_free(canvas->lines);
+    free(canvas);
   }
-  array_free(canvas->lines);
 }
 
 #define BUFFER_SIZE 1024

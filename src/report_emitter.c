@@ -514,12 +514,10 @@ static void display_location(const Source *source, unsigned long offset, unsigne
 void report_emit(Report *report, const Source *source)
 {
   Writer        writer;
-  Canvas        canvas;
+  Canvas       *canvas = canvas_new();
   unsigned long i;
 
   qsort(array_data(report->_annotations), array_count(report->_annotations), sizeof(ReportAnnotation), &compare_annotations);
-
-  canvas_init(&canvas);
 
   writer.report        = report;
   writer.source        = source;
@@ -541,12 +539,12 @@ void report_emit(Report *report, const Source *source)
     }
   }
 
-  write_head_line(&writer, &canvas);
-  write_location_line(&writer, &canvas);
-  write_interest_lines(&writer, &canvas);
-  write_tail_line(&writer, &canvas);
+  write_head_line(&writer, canvas);
+  write_location_line(&writer, canvas);
+  write_interest_lines(&writer, canvas);
+  write_tail_line(&writer, canvas);
 
-  canvas_print(&canvas, stderr);
-  canvas_deinit(&canvas);
+  canvas_print(canvas, stderr);
+  canvas_free(canvas);
   report_deinit(report);
 }
