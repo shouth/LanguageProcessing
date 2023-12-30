@@ -122,8 +122,9 @@ static TokenStatus token_string(Lexer *lexer, TokenInfo *info)
       } else if (is_newline(first(lexer)) || first(lexer) == EOF) {
         tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
         return TOKEN_ERROR_UNTERMINATED_STRING;
-      } else {
-        contain_non_graphic |= !eat_if(lexer, &is_graphic);
+      } else if (!eat_if(lexer, &is_graphic)) {
+        contain_non_graphic = 1;
+        bump(lexer);
       }
     }
   } else {
