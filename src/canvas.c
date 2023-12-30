@@ -129,10 +129,14 @@ void canvas_write(Canvas *canvas, const char *format, ...)
   fclose(file);
 }
 
-void canvas_position(Canvas *canvas, unsigned long *line, unsigned long *column)
+unsigned long canvas_line(const Canvas *canvas)
 {
-  *line   = canvas->current_line;
-  *column = canvas->current_column;
+  return canvas->current_line;
+}
+
+unsigned long canvas_column(const Canvas *canvas)
+{
+  return canvas->current_column;
 }
 
 void canvas_seek(Canvas *canvas, unsigned long line, unsigned long column)
