@@ -18,6 +18,7 @@ struct Parser {
   TokenCursor   cursor;
   unsigned long offset;
   Token        *token;
+  TokenStatus   status;
   Array        *parents;
   Array        *children;
   BitSet       *expected;
@@ -61,28 +62,21 @@ static void node_null(Parser *parser)
 
 static Token *token(Parser *parser)
 {
-  Token  token;
-  Report report;
+  Token         token;
+  unsigned long i;
 
   if (parser->token) {
     return parser->token;
   }
 
-  if (token_cursor_next(&parser->cursor, &token, &report)) {
-    unsigned long i;
-    for (i = 0; i < token.trivia_count; ++i) {
-      parser->offset += token.trivia[i].text_length;
-    }
-
-    if (token.kind == SYNTAX_KIND_BAD_TOKEN) {
-      array_push(parser->errors, &report);
-    }
-    parser->token  = xmalloc(sizeof(Token));
-    *parser->token = token;
-    return parser->token;
-  } else {
-    return NULL;
+  parser->status = token_cursor_next(&parser->cursor, &token);
+  for (i = 0; i < token.trivia_count; ++i) {
+    parser->offset += token.trivia[i].text_length;
   }
+
+  parser->token  = xmalloc(sizeof(Token));
+  *parser->token = token;
+  return parser->token;
 }
 
 static void bump(Parser *parser)
@@ -194,6 +188,7 @@ static void error_unexpected(Parser *parser)
   char          expected[1024];
   unsigned long cursor = 0;
   SyntaxKind    kind;
+  Report       *report;
 
   for (kind = 0; kind <= SYNTAX_KIND_EOF_TOKEN; ++kind) {
     if (bitset_set(parser->expected, kind, -1)) {
@@ -209,14 +204,32 @@ static void error_unexpected(Parser *parser)
     }
   }
 
-  if (token(parser)->kind != SYNTAX_KIND_BAD_TOKEN) {
-    Report report;
-    report_init(&report, REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
-    report_annotation(&report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
-    array_push(parser->errors, &report);
+  if (token(parser)->kind == SYNTAX_KIND_BAD_TOKEN) {
+    switch (parser->status) {
+    case TOKEN_ERROR_STRAY_CHAR: {
+      report = report_new(REPORT_KIND_ERROR, parser->offset, "stray `%s` in program", token(parser)->text);
+      break;
+    }
+    case TOKEN_ERROR_NONGRAPHIC_CHAR: {
+      report = report_new(REPORT_KIND_ERROR, parser->offset, "non-graphic character in string");
+      break;
+    }
+    case TOKEN_ERROR_UNTERMINATED_STRING: {
+      report = report_new(REPORT_KIND_ERROR, parser->offset, "string is unterminated");
+      break;
+    }
+    case TOKEN_ERROR_UNTERMINATED_COMMENT: {
+      report = report_new(REPORT_KIND_ERROR, parser->offset, "comment is unterminated");
+      break;
+    }
+    default:
+      unreachable();
+    }
   } else {
-    report_annotation(array_back(parser->errors), parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+    report = report_new(REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
   }
+  report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+  array_push(parser->errors, &report);
 
   parser->alive = 0;
   bump(parser);
@@ -667,7 +680,7 @@ int mppl_parse(const Source *source, TokenTree *tree)
   int    result;
   parser.parents  = array_new(sizeof(unsigned long));
   parser.children = array_new(sizeof(TokenNode *));
-  parser.errors   = array_new(sizeof(Report));
+  parser.errors   = array_new(sizeof(Report *));
   parser.expected = bitset_new(SYNTAX_KIND_EOF_TOKEN + 1);
   token_cursor_init(&parser.cursor, source);
   parser.token  = NULL;
@@ -681,8 +694,8 @@ int mppl_parse(const Source *source, TokenTree *tree)
   {
     unsigned long i;
     for (i = 0; i < array_count(parser.errors); ++i) {
-      Report *report = array_at(parser.errors, i);
-      report_emit(report, source);
+      Report **report = array_at(parser.errors, i);
+      report_emit(*report, source);
     }
     fflush(stdout);
   }
