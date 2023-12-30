@@ -10,8 +10,8 @@
 
 int main(int argc, const char **argv)
 {
-  Source   *source;
-  TokenTree tree;
+  Source    *source;
+  TokenTree *tree;
 
   if (argc < 2) {
     fprintf(stderr, "[Usage] %s <filename>\n", argv[0]);
@@ -22,7 +22,7 @@ int main(int argc, const char **argv)
   if (mppl_parse(source, &tree)) {
     mppl_pretty_print((const TokenNode *) &tree, NULL);
   }
-  token_tree_deinit(&tree);
+  token_tree_free(tree);
   source_free(source);
   return EXIT_SUCCESS;
 }
