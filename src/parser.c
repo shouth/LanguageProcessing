@@ -43,11 +43,11 @@ static void node_start(Parser *parser)
 
 static void node_finish(Parser *parser, SyntaxKind kind)
 {
-  TokenTree    *tree       = xmalloc(sizeof(TokenTree));
   unsigned long checkpoint = *(unsigned long *) array_back(parser->parents);
+  TokenTree    *tree
+    = token_tree_new(kind, array_at(parser->children, checkpoint), array_count(parser->children) - checkpoint);
 
   array_pop(parser->parents);
-  token_tree_init(tree, kind, array_at(parser->children, checkpoint), array_count(parser->children) - checkpoint);
   while (array_count(parser->children) > checkpoint) {
     array_pop(parser->children);
   }
@@ -62,20 +62,16 @@ static void node_null(Parser *parser)
 
 static Token *token(Parser *parser)
 {
-  Token         token;
   unsigned long i;
 
   if (parser->token) {
     return parser->token;
   }
 
-  parser->status = token_cursor_next(&parser->cursor, &token);
-  for (i = 0; i < token.trivia_count; ++i) {
-    parser->offset += token.trivia[i].text_length;
+  parser->status = token_cursor_next(&parser->cursor, &parser->token);
+  for (i = 0; i < parser->token->trivia_count; ++i) {
+    parser->offset += parser->token->trivia[i].text_length;
   }
-
-  parser->token  = xmalloc(sizeof(Token));
-  *parser->token = token;
   return parser->token;
 }
 
@@ -674,7 +670,7 @@ static void parse_program(Parser *parser)
   node_finish(parser, SYNTAX_KIND_PROGRAM);
 }
 
-int mppl_parse(const Source *source, TokenTree *tree)
+int mppl_parse(const Source *source, TokenTree **tree)
 {
   Parser parser;
   int    result;
@@ -688,8 +684,7 @@ int mppl_parse(const Source *source, TokenTree *tree)
   parser.offset = 0;
 
   parse_program(&parser);
-  *tree = **(TokenTree **) array_data(parser.children);
-  free(*(TokenNode **) array_data(parser.children));
+  *tree = *(TokenTree **) array_data(parser.children);
 
   {
     unsigned long i;

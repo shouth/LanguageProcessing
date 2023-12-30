@@ -12,6 +12,6 @@ struct TokenCursor {
 };
 
 void        token_cursor_init(TokenCursor *cursor, const Source *source);
-TokenStatus token_cursor_next(TokenCursor *cursor, Token *token);
+TokenStatus token_cursor_next(TokenCursor *cursor, Token **token);
 
 #endif

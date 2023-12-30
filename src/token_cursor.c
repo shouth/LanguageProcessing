@@ -21,7 +21,7 @@ void token_cursor_init(TokenCursor *cursor, const Source *source)
   cursor->_offset = 0;
 }
 
-TokenStatus token_cursor_next(TokenCursor *cursor, Token *token)
+TokenStatus token_cursor_next(TokenCursor *cursor, Token **token)
 {
   if (cursor->_offset == -1ul) {
     return 0;
@@ -37,7 +37,7 @@ TokenStatus token_cursor_next(TokenCursor *cursor, Token *token)
       }
       array_push(trivia, &info);
     }
-    token_init(token, &info, array_data(trivia), array_count(trivia));
+    *token = token_new(&info, array_data(trivia), array_count(trivia));
     array_free(trivia);
     return status;
   }

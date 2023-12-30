@@ -4,6 +4,6 @@
 #include "source.h"
 #include "token_tree.h"
 
-int mppl_parse(const Source *source, TokenTree *tree);
+int mppl_parse(const Source *source, TokenTree **tree);
 
 #endif
