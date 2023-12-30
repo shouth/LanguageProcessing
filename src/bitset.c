@@ -50,7 +50,7 @@ unsigned long bitset_count(BitSet *bitset)
 {
   unsigned long result = 0;
   unsigned long i;
-  for (i = 0; i < bitset->count; ++i) {
+  for (i = 0; i < bitset->bits; ++i) {
     result += bitset_set(bitset, i, -1);
   }
   return result;
