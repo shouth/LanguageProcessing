@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "array.h"
 #include "canvas.h"
@@ -25,8 +26,9 @@ typedef enum {
 } ConnectorKind;
 
 struct LineSegment {
-  unsigned long start;
-  unsigned long end;
+  const ReportAnnotation *annotation;
+  unsigned long           start;
+  unsigned long           end;
 };
 
 struct Indicator {
@@ -305,12 +307,16 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   unsigned long line_offset;
   unsigned long column_offset;
 
-  Array *segments = array_new(sizeof(LineSegment));
+  Array *segments    = array_new(sizeof(LineSegment));
+  Array *nongraphics = array_new(sizeof(LineSegment));
 
   line_width = 0;
   for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
-    if (writer->source->text[writer->source->line_offsets[line_number] + i] == '\t') {
+    char c = writer->source->text[writer->source->line_offsets[line_number] + i];
+    if (c == '\t') {
       line_width += writer->tab_width - (line_width % writer->tab_width);
+    } else if (!is_graphic(c)) {
+      line_width += strlen("\\xXX");
     } else {
       ++line_width;
     }
@@ -319,15 +325,24 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   line        = malloc(line_width + 1);
   line_offset = 0;
   for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
-    if (writer->source->text[writer->source->line_offsets[line_number] + i] == '\t') {
+    char c = writer->source->text[writer->source->line_offsets[line_number] + i];
+    if (c == '\t') {
       unsigned long adjusted_width = writer->tab_width - (line_offset % writer->tab_width);
       for (j = 0; j < adjusted_width; ++j) {
-        line[line_offset] = ' ';
-        ++line_offset;
+        line[line_offset++] = ' ';
       }
+    } else if (!is_graphic(c)) {
+      LineSegment segment;
+      segment.annotation  = NULL;
+      segment.start       = line_offset;
+      line[line_offset++] = '\\';
+      line[line_offset++] = 'x';
+      line[line_offset++] = "0123456789ABCDEF"[(c >> 4) & 0xF];
+      line[line_offset++] = "0123456789ABCDEF"[c & 0xF];
+      segment.end         = line_offset - 1;
+      array_push(nongraphics, &segment);
     } else {
-      line[line_offset] = writer->source->text[writer->source->line_offsets[line_number] + i];
-      ++line_offset;
+      line[line_offset++] = writer->source->text[writer->source->line_offsets[line_number] + i];
     }
   }
   line[line_width] = '\0';
@@ -335,6 +350,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   for (i = 0; i < array_count(writer->report->_annotations); ++i) {
     ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
     LineSegment       segment;
+    segment.annotation = annotation;
     if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
       segment.start = annotation->_start.column;
       segment.end   = annotation->_end.column;
@@ -356,7 +372,8 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   canvas_style(canvas, CANVAS_RESET);
 
   write_annotation_left(writer, canvas, line_number, 0, NULL);
-  canvas_position(canvas, &line_offset, &column_offset);
+  line_offset   = canvas_line(canvas);
+  column_offset = canvas_column(canvas);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
   canvas_write(canvas, "%s", line);
   canvas_style(canvas, CANVAS_RESET);
@@ -367,10 +384,22 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
     canvas_write(canvas, "%.*s", (int) (segment->end - segment->start + 1), line + segment->start);
     canvas_style(canvas, CANVAS_RESET);
+
+    for (j = 0; j < array_count(nongraphics); ++j) {
+      LineSegment *nongraphic = array_at(nongraphics, j);
+      if (nongraphic->start >= segment->start && nongraphic->end <= segment->end) {
+        canvas_seek(canvas, line_offset, column_offset + nongraphic->start);
+        canvas_style(canvas, CANVAS_FAINT);
+        canvas_style_foreground(canvas, CANVAS_4BIT | 91);
+        canvas_write(canvas, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
+        canvas_style(canvas, CANVAS_RESET);
+      }
+    }
   }
   canvas_next_line(canvas);
 
   free(line);
+  array_free(nongraphics);
   array_free(segments);
 }
 
@@ -408,7 +437,8 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   canvas_style(canvas, CANVAS_RESET);
 
   write_annotation_left(writer, canvas, line_number, 0, NULL);
-  canvas_position(canvas, &line_offset, &column_offset);
+  line_offset   = canvas_line(canvas);
+  column_offset = canvas_column(canvas);
   for (i = 0; i < array_count(indicators); ++i) {
     Indicator *indicator = array_at(indicators, i);
     canvas_seek(canvas, line_offset, column_offset + indicator->column);
@@ -439,6 +469,7 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   unsigned long label_offset = -1ul;
   unsigned long line_offset;
   unsigned long column_offset;
+  unsigned long end_line_offset;
 
   Array *connectors = array_new(sizeof(Connector));
   for (i = 0; i < array_count(writer->report->_annotations); ++i) {
@@ -471,18 +502,18 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
 
   for (i = 0; i < 2 * array_count(connectors) - 1; ++i) {
     Connector *connector = array_at(connectors, i / 2);
-    if (i > 0) {
-      canvas_next_line(canvas);
-    }
     canvas_style(canvas, CANVAS_FAINT);
     canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
     canvas_style(canvas, CANVAS_RESET);
     write_annotation_left(writer, canvas, line_number, connector->column, (i + 1) % 2 ? connector->annotation : NULL);
     if (i == 0) {
-      canvas_position(canvas, &line_offset, &column_offset);
+      line_offset   = canvas_line(canvas);
+      column_offset = canvas_column(canvas);
     }
+    canvas_next_line(canvas);
   }
   canvas_style(canvas, CANVAS_RESET);
+  end_line_offset = canvas_line(canvas);
 
   for (i = array_count(connectors); i > 0; --i) {
     Connector *connector = array_at(connectors, i - 1);
@@ -526,8 +557,7 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       break;
     }
   }
-  canvas_next_line(canvas);
-
+  canvas_seek(canvas, end_line_offset, 0);
   array_free(connectors);
 }
 
@@ -605,8 +635,11 @@ static void display_location(const Source *source, unsigned long offset, unsigne
   unsigned long column = 0;
   source_location(source, offset, location);
   for (i = 0; i < location->column; ++i) {
-    if (source->text[source->line_offsets[location->line] + i] == '\t') {
+    char c = source->text[source->line_offsets[location->line] + i];
+    if (c == '\t') {
       column += tab_width - (column % tab_width);
+    } else if (!is_graphic(c)) {
+      column += strlen("\\xXX");
     } else {
       ++column;
     }
