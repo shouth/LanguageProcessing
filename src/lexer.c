@@ -81,7 +81,6 @@ static TokenStatus tokenize(Lexer *lexer, SyntaxKind kind, TokenInfo *info)
 
 static TokenStatus token_unexpected(Lexer *lexer, TokenInfo *info)
 {
-  bump(lexer);
   tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
   return TOKEN_ERROR_STRAY_CHAR;
 }
