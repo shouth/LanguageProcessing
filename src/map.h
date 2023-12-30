@@ -1,58 +1,28 @@
 #ifndef MAP_H
 #define MAP_H
 
-typedef unsigned long      MapHasher(const void *);
-typedef int                MapComparator(const void *, const void *);
-typedef struct MapBucket   MapBucket;
-typedef struct MapIterator MapIterator;
-typedef struct MapEntry    MapEntry;
-typedef struct Map         Map;
+typedef unsigned long    MapHasher(const void *);
+typedef int              MapComparator(const void *, const void *);
+typedef struct MapBucket MapBucket;
+typedef struct MapIndex  MapIndex;
+typedef struct Map       Map;
 
-struct MapBucket {
-  unsigned long hop;
-  void         *key;
-  void         *value;
-};
-
-struct MapIterator {
-  Map       *parent;
-  MapBucket *bucket;
-};
-
-struct MapEntry {
-  Map       *parent;
-  void      *key;
+struct MapIndex {
   MapBucket *bucket;
   MapBucket *slot;
 };
 
-struct Map {
-  unsigned long  count;
-  unsigned long  mask;
-  MapBucket     *buckets;
-  MapHasher     *hasher;
-  MapComparator *comparator;
-};
-
-void map_init(Map *map, MapHasher *hasher, MapComparator *comparator);
-void map_init_with_capacity(Map *map, unsigned long capacity, MapHasher *hasher, MapComparator *comparator);
-void map_deinit(Map *map);
-
-void  map_iterator(MapIterator *iterator, Map *map);
-int   map_iterator_next(MapIterator *iterator);
-void *map_iterator_key(MapIterator *iterator);
-void *map_iterator_value(MapIterator *iterator);
-void  map_iterator_update(MapIterator *iterator, void *value);
-
-int   map_entry(Map *map, void *key, MapEntry *entry);
-void *map_entry_key(MapEntry *entry);
-void *map_entry_value(MapEntry *entry);
-void  map_entry_update(MapEntry *entry, void *value);
-void  map_entry_erase(MapEntry *entry);
-
+Map          *map_new(MapHasher *hasher, MapComparator *comparator);
+Map          *map_new_with_capacity(unsigned long capacity, MapHasher *hasher, MapComparator *comparator);
+void          map_free(Map *map);
 unsigned long map_count(Map *map);
-void         *map_value(Map *map, void *key);
-void          map_update(Map *map, void *key, void *value);
-void          map_erase(Map *map, void *key);
+void          map_reserve(Map *map, unsigned long capacity);
+int           map_find(Map *map, void *key, MapIndex *index);
+void          map_index(Map *map, MapIndex *index);
+int           map_next(Map *map, MapIndex *index);
+void         *map_key(Map *map, MapIndex *index);
+void         *map_value(Map *map, MapIndex *index);
+void          map_update(Map *map, MapIndex *index, void *key, void *value);
+void          map_erase(Map *map, MapIndex *index);
 
 #endif
