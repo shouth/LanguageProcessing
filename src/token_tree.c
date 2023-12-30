@@ -70,7 +70,7 @@ void token_tree_free(TokenTree *tree)
   free(tree->children);
 }
 
-void token_info_init(TokenInfo *info, SyntaxKind kind, const char *token, unsigned long text_length)
+void token_info_init(TrivialToken *info, SyntaxKind kind, const char *token, unsigned long text_length)
 {
   info->kind        = kind;
   info->text_length = text_length;
@@ -79,28 +79,26 @@ void token_info_init(TokenInfo *info, SyntaxKind kind, const char *token, unsign
   info->text[text_length] = '\0';
 }
 
-void token_info_deinit(TokenInfo *info)
+void token_info_deinit(TrivialToken *info)
 {
   free(info->text);
 }
 
-Token *token_new(const TokenInfo *info, const TokenInfo *trivia, unsigned long trivia_count)
+Token *token_new(SyntaxKind kind, char *text, unsigned long text_length, TrivialToken *trivia, unsigned long trivia_count)
 {
-  Token *token = xmalloc(sizeof(Token));
-  memcpy(token, info, sizeof(TokenInfo));
-  if ((token->trivia_count = trivia_count)) {
-    token->trivia = xmalloc(sizeof(TokenInfo) * trivia_count);
-    memcpy(token->trivia, trivia, sizeof(TokenInfo) * trivia_count);
-  } else {
-    token->trivia = NULL;
-  }
+  Token *token        = xmalloc(sizeof(Token));
+  token->kind         = kind;
+  token->text         = text;
+  token->text_length  = text_length;
+  token->trivia       = trivia;
+  token->trivia_count = trivia_count;
   return token;
 }
 
 void token_free(Token *token)
 {
   unsigned long i;
-  token_info_deinit((TokenInfo *) token);
+  token_info_deinit((TrivialToken *) token);
   for (i = 0; i < token->trivia_count; ++i) {
     token_info_deinit(token->trivia + i);
   }
