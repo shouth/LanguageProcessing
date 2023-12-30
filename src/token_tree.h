@@ -43,14 +43,14 @@ struct TokenNode {
   unsigned long text_length;
 };
 
-void token_tree_init(TokenTree *tree, SyntaxKind kind, const TokenNode **children, unsigned long children_count);
-void token_tree_deinit(TokenTree *tree);
+TokenTree *token_tree_new(SyntaxKind kind, const TokenNode **children, unsigned long children_count);
+void       token_tree_free(TokenTree *tree);
 
 void token_info_init(TokenInfo *info, SyntaxKind kind, const char *token, unsigned long text_length);
 void token_info_deinit(TokenInfo *info);
 
-void token_init(Token *token, const TokenInfo *info, const TokenInfo *trivia, unsigned long trivia_count);
-void token_deinit(Token *token);
+Token *token_new(const TokenInfo *info, const TokenInfo *trivia, unsigned long trivia_count);
+void   token_free(Token *token);
 
 void token_node_print(TokenNode *node);
 
