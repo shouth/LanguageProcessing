@@ -8,8 +8,8 @@ typedef struct MapIndex  MapIndex;
 typedef struct Map       Map;
 
 struct MapIndex {
-  MapBucket *bucket;
-  MapBucket *slot;
+  MapBucket *_bucket;
+  MapBucket *_slot;
 };
 
 Map          *map_new(MapHasher *hasher, MapComparator *comparator);

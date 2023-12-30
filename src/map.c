@@ -62,8 +62,8 @@ unsigned long map_count(Map *map)
 
 static void map_index_init(MapIndex *index, Map *map, void *key)
 {
-  index->bucket = map->buckets + (map->hasher(key) & map->mask);
-  index->slot   = NULL;
+  index->_bucket = map->buckets + (map->hasher(key) & map->mask);
+  index->_slot   = NULL;
 }
 
 void map_reserve(Map *map, unsigned long capacity)
@@ -108,83 +108,83 @@ int map_find(Map *map, void *key, MapIndex *index)
   unsigned long i;
   map_index_init(index, map, key);
   for (i = 0; i < NEIGHBORHOOD; ++i) {
-    if (index->bucket->hop & (1ul << i) && map->comparator(key, index->bucket[i].key)) {
-      index->slot = index->bucket + i;
+    if (index->_bucket->hop & (1ul << i) && map->comparator(key, index->_bucket[i].key)) {
+      index->_slot = index->_bucket + i;
       break;
     }
   }
-  return !!index->slot;
+  return !!index->_slot;
 }
 
 void map_index(Map *map, MapIndex *index)
 {
-  index->bucket = map->buckets;
-  index->slot   = NULL;
+  index->_bucket = map->buckets;
+  index->_slot   = NULL;
 }
 
 int map_next(Map *map, MapIndex *index)
 {
   unsigned long i;
-  if (index->slot) {
-    ++index->slot;
+  if (index->_slot) {
+    ++index->_slot;
   } else {
-    index->slot = index->bucket;
+    index->_slot = index->_bucket;
   }
 
-  for (i = index->slot - index->bucket; i < NEIGHBORHOOD; ++i) {
-    if (index->bucket->hop & (1ul << i)) {
-      index->slot = index->bucket + i;
+  for (i = index->_slot - index->_bucket; i < NEIGHBORHOOD; ++i) {
+    if (index->_bucket->hop & (1ul << i)) {
+      index->_slot = index->_bucket + i;
       return 1;
     }
   }
 
-  ++index->bucket;
-  for (; index->bucket < map->buckets + map->mask + NEIGHBORHOOD; ++index->bucket) {
-    if (index->bucket->hop) {
+  ++index->_bucket;
+  for (; index->_bucket < map->buckets + map->mask + NEIGHBORHOOD; ++index->_bucket) {
+    if (index->_bucket->hop) {
       for (i = 0; i < NEIGHBORHOOD; ++i) {
-        if (index->bucket->hop & (1ul << i)) {
-          index->slot = index->bucket + i;
+        if (index->_bucket->hop & (1ul << i)) {
+          index->_slot = index->_bucket + i;
           return 1;
         }
       }
     }
   }
 
-  index->bucket = NULL;
-  index->slot   = NULL;
+  index->_bucket = NULL;
+  index->_slot   = NULL;
   return 0;
 }
 
 void *map_key(Map *map, MapIndex *index)
 {
-  return index->slot ? index->slot->key : NULL;
+  return index->_slot ? index->_slot->key : NULL;
 }
 
 void *map_value(Map *map, MapIndex *index)
 {
-  return index->slot ? index->slot->value : NULL;
+  return index->_slot ? index->_slot->value : NULL;
 }
 
 void map_update(Map *map, MapIndex *index, void *key, void *value)
 {
-  MapBucket *empty = index->slot;
+  MapBucket *empty = index->_slot;
 
   if (!empty) {
-    long i = index->bucket - map->buckets < NEIGHBORHOOD
-      ? -(index->bucket - map->buckets)
+    long i = index->_bucket - map->buckets < NEIGHBORHOOD
+      ? -(index->_bucket - map->buckets)
       : -NEIGHBORHOOD + 1;
 
     unsigned long hop = 0;
     for (; i < NEIGHBORHOOD * 8; ++i) {
-      hop = (hop >> 1) | index->bucket[i].hop;
+      hop = (hop >> 1) | index->_bucket[i].hop;
       if (i >= 0 && !(hop & 1)) {
-        empty = index->bucket + i;
+        empty = index->_bucket + i;
         break;
       }
     }
 
     if (empty) {
-      while (empty - index->bucket >= NEIGHBORHOOD) {
+      while (empty - index->_bucket >= NEIGHBORHOOD) {
         MapBucket *bucket = empty - NEIGHBORHOOD + 2;
         for (; bucket < empty; ++bucket) {
           if (bucket->hop & ((1ul << (empty - bucket + 1)) - 1)) {
@@ -214,8 +214,8 @@ void map_update(Map *map, MapIndex *index, void *key, void *value)
   if (empty) {
     empty->key   = key;
     empty->value = value;
-    index->bucket->hop |= 1ul << (empty - index->bucket);
-    index->slot = empty;
+    index->_bucket->hop |= 1ul << (empty - index->_bucket);
+    index->_slot = empty;
     ++map->count;
   } else {
     map_reserve(map, (map->mask + 1) << 1);
@@ -226,9 +226,9 @@ void map_update(Map *map, MapIndex *index, void *key, void *value)
 
 void map_erase(Map *map, MapIndex *index)
 {
-  if (index->slot) {
-    index->bucket->hop &= ~(1ul << (index->slot - index->bucket));
-    index->slot = NULL;
+  if (index->_slot) {
+    index->_bucket->hop &= ~(1ul << (index->_slot - index->_bucket));
+    index->_slot = NULL;
     --map->count;
   }
 }
