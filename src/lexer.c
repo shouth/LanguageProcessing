@@ -46,56 +46,59 @@ static int eat_if(Lexer *lexer, int (*predicate)(int))
   return result;
 }
 
-static TokenStatus tokenize(Lexer *lexer, SyntaxKind kind, TokenInfo *info)
+static TokenStatus tokenize(Lexer *lexer, SyntaxKind kind, LexedToken *lexed)
 {
-  token_info_init(info, kind, lexer->source->text + lexer->offset, lexer->index);
+  lexed->kind   = kind;
+  lexed->offset = lexer->offset;
+  lexed->length = lexer->index;
+
   lexer->offset += lexer->index;
   lexer->index = 0;
   return TOKEN_OK;
 }
 
-static TokenStatus token_unexpected(Lexer *lexer, TokenInfo *info)
+static TokenStatus token_unexpected(Lexer *lexer, LexedToken *lexed)
 {
-  tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
+  tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, lexed);
   return TOKEN_ERROR_STRAY_CHAR;
 }
 
-static TokenStatus token_identifier_and_keyword(Lexer *lexer, TokenInfo *info)
+static TokenStatus token_identifier_and_keyword(Lexer *lexer, LexedToken *lexed)
 {
   if (eat_if(lexer, &is_alphabet)) {
     SyntaxKind kind;
     while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
     kind = syntax_kind_from_keyword(lexer->source->text + lexer->offset, lexer->index);
-    return tokenize(lexer, kind != SYNTAX_KIND_BAD_TOKEN ? kind : SYNTAX_KIND_IDENTIFIER_TOKEN, info);
+    return tokenize(lexer, kind != SYNTAX_KIND_BAD_TOKEN ? kind : SYNTAX_KIND_IDENTIFIER_TOKEN, lexed);
   } else {
-    return token_unexpected(lexer, info);
+    return token_unexpected(lexer, lexed);
   }
 }
 
-static TokenStatus token_integer(Lexer *lexer, TokenInfo *info)
+static TokenStatus token_integer(Lexer *lexer, LexedToken *lexed)
 {
   if (eat_if(lexer, &is_number)) {
     while (eat_if(lexer, &is_number)) { }
-    return tokenize(lexer, SYNTAX_KIND_INTEGER_LITERAL, info);
+    return tokenize(lexer, SYNTAX_KIND_INTEGER_LITERAL, lexed);
   } else {
-    return token_unexpected(lexer, info);
+    return token_unexpected(lexer, lexed);
   }
 }
 
-static TokenStatus token_string(Lexer *lexer, TokenInfo *info)
+static TokenStatus token_string(Lexer *lexer, LexedToken *lexed)
 {
   if (eat(lexer, '\'')) {
     int contain_non_graphic = 0;
     while (1) {
       if (eat(lexer, '\'') && !eat(lexer, '\'')) {
         if (contain_non_graphic) {
-          tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
+          tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, lexed);
           return TOKEN_ERROR_NONGRAPHIC_CHAR;
         } else {
-          return tokenize(lexer, SYNTAX_KIND_STRING_LITERAL, info);
+          return tokenize(lexer, SYNTAX_KIND_STRING_LITERAL, lexed);
         }
       } else if (is_newline(first(lexer)) || first(lexer) == EOF) {
-        tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
+        tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, lexed);
         return TOKEN_ERROR_UNTERMINATED_STRING;
       } else if (!eat_if(lexer, &is_graphic)) {
         contain_non_graphic = 1;
@@ -103,34 +106,34 @@ static TokenStatus token_string(Lexer *lexer, TokenInfo *info)
       }
     }
   } else {
-    return token_unexpected(lexer, info);
+    return token_unexpected(lexer, lexed);
   }
 }
 
-static int token_whitespace(Lexer *lexer, TokenInfo *info)
+static int token_whitespace(Lexer *lexer, LexedToken *lexed)
 {
   if (eat_if(lexer, &is_space)) {
     while (eat_if(lexer, &is_space)) { }
-    return tokenize(lexer, SYNTAX_KIND_SPACE_TRIVIA, info);
+    return tokenize(lexer, SYNTAX_KIND_SPACE_TRIVIA, lexed);
   } else if (eat(lexer, '\r')) {
     eat(lexer, '\n');
-    return tokenize(lexer, SYNTAX_KIND_NEWLINE_TRIVIA, info);
+    return tokenize(lexer, SYNTAX_KIND_NEWLINE_TRIVIA, lexed);
   } else if (eat(lexer, '\n')) {
     eat(lexer, '\r');
-    return tokenize(lexer, SYNTAX_KIND_NEWLINE_TRIVIA, info);
+    return tokenize(lexer, SYNTAX_KIND_NEWLINE_TRIVIA, lexed);
   } else {
-    return token_unexpected(lexer, info);
+    return token_unexpected(lexer, lexed);
   }
 }
 
-static int token_comment(Lexer *lexer, TokenInfo *info)
+static int token_comment(Lexer *lexer, LexedToken *lexed)
 {
   if (eat(lexer, '{')) {
     while (1) {
       if (eat(lexer, '}')) {
-        return tokenize(lexer, SYNTAX_KIND_BRACES_COMMENT_TRIVIA, info);
+        return tokenize(lexer, SYNTAX_KIND_BRACES_COMMENT_TRIVIA, lexed);
       } else if (first(lexer) == EOF) {
-        tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
+        tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, lexed);
         return TOKEN_ERROR_UNTERMINATED_COMMENT;
       } else {
         bump(lexer);
@@ -140,72 +143,72 @@ static int token_comment(Lexer *lexer, TokenInfo *info)
     if (eat(lexer, '*')) {
       while (1) {
         if (eat(lexer, '*') && eat(lexer, '/')) {
-          return tokenize(lexer, SYNTAX_KIND_C_COMMENT_TRIVIA, info);
+          return tokenize(lexer, SYNTAX_KIND_C_COMMENT_TRIVIA, lexed);
         } else if (first(lexer) == EOF) {
-          tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, info);
+          tokenize(lexer, SYNTAX_KIND_BAD_TOKEN, lexed);
           return TOKEN_ERROR_UNTERMINATED_COMMENT;
         } else {
           bump(lexer);
         }
       }
     } else {
-      return token_unexpected(lexer, info);
+      return token_unexpected(lexer, lexed);
     }
   } else {
-    return token_unexpected(lexer, info);
+    return token_unexpected(lexer, lexed);
   }
 }
 
-static int token_symbol(Lexer *lexer, TokenInfo *info)
+static int token_symbol(Lexer *lexer, LexedToken *lexed)
 {
   if (eat(lexer, '+')) {
-    return tokenize(lexer, SYNTAX_KIND_PLUS_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_PLUS_TOKEN, lexed);
   } else if (eat(lexer, '-')) {
-    return tokenize(lexer, SYNTAX_KIND_MINUS_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_MINUS_TOKEN, lexed);
   } else if (eat(lexer, '*')) {
-    return tokenize(lexer, SYNTAX_KIND_STAR_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_STAR_TOKEN, lexed);
   } else if (eat(lexer, '=')) {
-    return tokenize(lexer, SYNTAX_KIND_EQUAL_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_EQUAL_TOKEN, lexed);
   } else if (eat(lexer, '<')) {
     if (eat(lexer, '>')) {
-      return tokenize(lexer, SYNTAX_KIND_NOT_EQUAL_TOKEN, info);
+      return tokenize(lexer, SYNTAX_KIND_NOT_EQUAL_TOKEN, lexed);
     } else if (eat(lexer, '=')) {
-      return tokenize(lexer, SYNTAX_KIND_LESS_THAN_EQUAL_TOKEN, info);
+      return tokenize(lexer, SYNTAX_KIND_LESS_THAN_EQUAL_TOKEN, lexed);
     } else {
-      return tokenize(lexer, SYNTAX_KIND_LESS_THAN_TOKEN, info);
+      return tokenize(lexer, SYNTAX_KIND_LESS_THAN_TOKEN, lexed);
     }
   } else if (eat(lexer, '>')) {
     if (eat(lexer, '=')) {
-      return tokenize(lexer, SYNTAX_KIND_GREATER_THAN_EQUAL_TOKEN, info);
+      return tokenize(lexer, SYNTAX_KIND_GREATER_THAN_EQUAL_TOKEN, lexed);
     } else {
-      return tokenize(lexer, SYNTAX_KIND_GREATER_THAN_TOKEN, info);
+      return tokenize(lexer, SYNTAX_KIND_GREATER_THAN_TOKEN, lexed);
     }
   } else if (eat(lexer, '(')) {
-    return tokenize(lexer, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_LEFT_PARENTHESIS_TOKEN, lexed);
   } else if (eat(lexer, ')')) {
-    return tokenize(lexer, SYNTAX_KIND_RIGHT_PARENTHESIS_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_RIGHT_PARENTHESIS_TOKEN, lexed);
   } else if (eat(lexer, '[')) {
-    return tokenize(lexer, SYNTAX_KIND_LEFT_BRACKET_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_LEFT_BRACKET_TOKEN, lexed);
   } else if (eat(lexer, ']')) {
-    return tokenize(lexer, SYNTAX_KIND_RIGHT_BRACKET_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_RIGHT_BRACKET_TOKEN, lexed);
   } else if (eat(lexer, ':')) {
     if (eat(lexer, '=')) {
-      return tokenize(lexer, SYNTAX_KIND_ASSIGN_TOKEN, info);
+      return tokenize(lexer, SYNTAX_KIND_ASSIGN_TOKEN, lexed);
     } else {
-      return tokenize(lexer, SYNTAX_KIND_COLON_TOKEN, info);
+      return tokenize(lexer, SYNTAX_KIND_COLON_TOKEN, lexed);
     }
   } else if (eat(lexer, '.')) {
-    return tokenize(lexer, SYNTAX_KIND_DOT_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_DOT_TOKEN, lexed);
   } else if (eat(lexer, ',')) {
-    return tokenize(lexer, SYNTAX_KIND_COMMA_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_COMMA_TOKEN, lexed);
   } else if (eat(lexer, ';')) {
-    return tokenize(lexer, SYNTAX_KIND_SEMICOLON_TOKEN, info);
+    return tokenize(lexer, SYNTAX_KIND_SEMICOLON_TOKEN, lexed);
   } else {
-    return token_unexpected(lexer, info);
+    return token_unexpected(lexer, lexed);
   }
 }
 
-TokenStatus mppl_lex(const Source *source, unsigned long offset, TokenInfo *info)
+TokenStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *lexed)
 {
   Lexer lexer;
   lexer.source = source;
@@ -213,19 +216,19 @@ TokenStatus mppl_lex(const Source *source, unsigned long offset, TokenInfo *info
   lexer.index  = 0;
 
   if (first(&lexer) == EOF) {
-    tokenize(&lexer, SYNTAX_KIND_EOF_TOKEN, info);
+    tokenize(&lexer, SYNTAX_KIND_EOF_TOKEN, lexed);
     return TOKEN_EOF;
   } else if (is_alphabet(first(&lexer))) {
-    return token_identifier_and_keyword(&lexer, info);
+    return token_identifier_and_keyword(&lexer, lexed);
   } else if (is_number(first(&lexer))) {
-    return token_integer(&lexer, info);
+    return token_integer(&lexer, lexed);
   } else if (first(&lexer) == '\'') {
-    return token_string(&lexer, info);
+    return token_string(&lexer, lexed);
   } else if (is_space(first(&lexer)) || is_newline(first(&lexer))) {
-    return token_whitespace(&lexer, info);
+    return token_whitespace(&lexer, lexed);
   } else if (first(&lexer) == '{' || first(&lexer) == '/') {
-    return token_comment(&lexer, info);
+    return token_comment(&lexer, lexed);
   } else {
-    return token_symbol(&lexer, info);
+    return token_symbol(&lexer, lexed);
   }
 }
