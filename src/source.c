@@ -76,10 +76,13 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
 
 void source_free(Source *source)
 {
-  free(source->file_name);
-  free(source->text);
-  free(source->line_offsets);
-  free(source->line_lengths);
+  if (source) {
+    free(source->file_name);
+    free(source->text);
+    free(source->line_offsets);
+    free(source->line_lengths);
+    free(source);
+  }
 }
 
 const char *source_text(const Source *source)
