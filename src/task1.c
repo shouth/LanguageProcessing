@@ -29,18 +29,18 @@ struct TokenCount {
 static void increment_token(Map *counts, TokenInfo *info)
 {
   TokenCountEntry *counter;
-  MapEntry         entry;
+  MapIndex         entry;
 
   counter        = xmalloc(sizeof(TokenCountEntry));
   counter->token = *info;
   counter->count = 0;
 
-  if (map_entry(counts, &counter->token, &entry)) {
+  if (map_find(counts, &counter->token, &entry)) {
     token_info_deinit(&counter->token);
     free(counter);
-    counter = map_entry_value(&entry);
+    counter = map_value(counts, &entry);
   } else {
-    map_entry_update(&entry, counter);
+    map_update(counts, &entry, &counter->token, counter);
   }
 
   ++counter->count;
@@ -74,30 +74,31 @@ static int token_info_equal(const void *left, const void *right)
   return !token_info_compare(left, right);
 }
 
-static void list_token(Map *counts, Array *list)
+static Array *list_token(Map *counts)
 {
-  MapIterator iterator;
-  map_iterator(&iterator, counts);
-  list = array_new_with_capacity(sizeof(TokenCountEntry), map_count(counts));
-  while (map_iterator_next(&iterator)) {
-    array_push(list, map_iterator_value(&iterator));
-    free(map_iterator_value(&iterator));
+  Array   *list = array_new_with_capacity(sizeof(TokenCountEntry), map_count(counts));
+  MapIndex entry;
+  map_index(counts, &entry);
+  while (map_next(counts, &entry)) {
+    array_push(list, map_value(counts, &entry));
+    free(map_value(counts, &entry));
   }
-  map_deinit(counts);
+  map_free(counts);
   qsort(array_data(list), array_count(list), sizeof(TokenCountEntry), &token_info_compare);
+  return list;
 }
 
 static void token_count_init(TokenCount *count, const Source *source)
 {
   TokenInfo token;
   Report    report;
-  Map       token_counts;
-  Map       identifier_counts;
+  Map      *token_counts;
+  Map      *identifier_counts;
 
   unsigned long offset = 0;
 
-  map_init(&token_counts, &token_info_hash, &token_info_equal);
-  map_init(&identifier_counts, &token_info_hash, &token_info_equal);
+  token_counts      = map_new(&token_info_hash, &token_info_equal);
+  identifier_counts = map_new(&token_info_hash, &token_info_equal);
   while (mppl_lex(source, offset, &token, &report) && token.kind != SYNTAX_KIND_EOF_TOKEN) {
     offset += token.text_length;
     if (syntax_kind_is_trivia(token.kind)) {
@@ -107,7 +108,7 @@ static void token_count_init(TokenCount *count, const Source *source)
 
     switch (token.kind) {
     case SYNTAX_KIND_IDENTIFIER_TOKEN:
-      increment_token(&identifier_counts, &token);
+      increment_token(identifier_counts, &token);
       token_info_init(&token, SYNTAX_KIND_IDENTIFIER_TOKEN, "NAME", 4);
       break;
     case SYNTAX_KIND_INTEGER_LITERAL:
@@ -122,11 +123,11 @@ static void token_count_init(TokenCount *count, const Source *source)
       /* do nothing */
       break;
     }
-    increment_token(&token_counts, &token);
+    increment_token(token_counts, &token);
   }
   token_info_deinit(&token);
-  list_token(&token_counts, count->token_counts);
-  list_token(&identifier_counts, count->identifer_counts);
+  count->token_counts     = list_token(token_counts);
+  count->identifer_counts = list_token(identifier_counts);
 }
 
 static void token_count_deinit(TokenCount *count)
