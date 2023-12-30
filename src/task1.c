@@ -16,7 +16,7 @@ typedef struct TokenCountEntry TokenCountEntry;
 typedef struct TokenCount      TokenCount;
 
 struct TokenCountEntry {
-  TokenInfo     token;
+  TrivialToken  token;
   unsigned long count;
 };
 
@@ -25,17 +25,22 @@ struct TokenCount {
   Array *identifer_counts;
 };
 
-static void increment_token(Map *counts, TokenInfo *info)
+static void increment_token(Map *counts, SyntaxKind kind, const char *text, unsigned long text_length)
 {
   TokenCountEntry *counter;
   MapIndex         entry;
 
   counter        = xmalloc(sizeof(TokenCountEntry));
-  counter->token = *info;
   counter->count = 0;
 
+  counter->token.kind = kind;
+  counter->token.text = xmalloc(sizeof(char) * (text_length + 1));
+  strncpy(counter->token.text, text, sizeof(char) * text_length);
+  counter->token.text[text_length] = '\0';
+  counter->token.text_length       = text_length;
+
   if (map_find(counts, &counter->token, &entry)) {
-    token_info_deinit(&counter->token);
+    free(counter->token.text);
     free(counter);
     counter = map_value(counts, &entry);
   } else {
@@ -47,17 +52,17 @@ static void increment_token(Map *counts, TokenInfo *info)
 
 static unsigned long token_info_hash(const void *key)
 {
-  const TokenInfo *info = key;
-  unsigned long    hash = FNV1A_INIT;
-  hash                  = fnv1a(hash, &info->kind, sizeof(SyntaxKind));
-  hash                  = fnv1a(hash, info->text, info->text_length);
+  const TrivialToken *info = key;
+  unsigned long       hash = FNV1A_INIT;
+  hash                     = fnv1a(hash, &info->kind, sizeof(SyntaxKind));
+  hash                     = fnv1a(hash, info->text, info->text_length);
   return hash;
 }
 
-static int token_info_compare(const void *left, const void *right)
+static int tirivial_token_compare(const void *left, const void *right)
 {
-  const TokenInfo *l = left;
-  const TokenInfo *r = right;
+  const TrivialToken *l = left;
+  const TrivialToken *r = right;
 
   if (l->kind < r->kind) {
     return -1;
@@ -70,7 +75,7 @@ static int token_info_compare(const void *left, const void *right)
 
 static int token_info_equal(const void *left, const void *right)
 {
-  return !token_info_compare(left, right);
+  return !tirivial_token_compare(left, right);
 }
 
 static Array *list_token(Map *counts)
@@ -83,13 +88,13 @@ static Array *list_token(Map *counts)
     free(map_value(counts, &entry));
   }
   map_free(counts);
-  qsort(array_data(list), array_count(list), sizeof(TokenCountEntry), &token_info_compare);
+  qsort(array_data(list), array_count(list), sizeof(TokenCountEntry), &tirivial_token_compare);
   return list;
 }
 
 static TokenStatus token_count_init(TokenCount *count, const Source *source)
 {
-  TokenInfo   token;
+  LexedToken  token;
   TokenStatus status;
   Map        *token_counts;
   Map        *identifier_counts;
@@ -104,32 +109,27 @@ static TokenStatus token_count_init(TokenCount *count, const Source *source)
       break;
     }
 
-    offset += token.text_length;
+    offset += token.length;
     if (syntax_kind_is_trivia(token.kind)) {
-      token_info_deinit(&token);
       continue;
     }
 
     switch (token.kind) {
     case SYNTAX_KIND_IDENTIFIER_TOKEN:
-      increment_token(identifier_counts, &token);
-      token_info_init(&token, SYNTAX_KIND_IDENTIFIER_TOKEN, "NAME", 4);
+      increment_token(identifier_counts, token.kind, source->text + token.offset, token.length);
+      increment_token(token_counts, SYNTAX_KIND_IDENTIFIER_TOKEN, "NAME", 4);
       break;
     case SYNTAX_KIND_INTEGER_LITERAL:
-      token_info_deinit(&token);
-      token_info_init(&token, SYNTAX_KIND_INTEGER_LITERAL, "NUMBER", 6);
+      increment_token(token_counts, SYNTAX_KIND_INTEGER_LITERAL, "NUMBER", 6);
       break;
     case SYNTAX_KIND_STRING_LITERAL:
-      token_info_deinit(&token);
-      token_info_init(&token, SYNTAX_KIND_STRING_LITERAL, "STRING", 6);
+      increment_token(token_counts, SYNTAX_KIND_STRING_LITERAL, "STRING", 6);
       break;
     default:
-      /* do nothing */
+      increment_token(token_counts, token.kind, source->text + token.offset, token.length);
       break;
     }
-    increment_token(token_counts, &token);
   }
-  token_info_deinit(&token);
   count->token_counts     = list_token(token_counts);
   count->identifer_counts = list_token(identifier_counts);
   return status;
@@ -140,12 +140,14 @@ static void token_count_deinit(TokenCount *count)
   unsigned long i;
 
   for (i = 0; i < array_count(count->token_counts); ++i) {
-    token_info_deinit(array_at(count->token_counts, i));
+    TokenCountEntry *entry = array_at(count->token_counts, i);
+    free(entry->token.text);
   }
   array_free(count->token_counts);
 
   for (i = 0; i < array_count(count->identifer_counts); ++i) {
-    token_info_deinit(array_at(count->identifer_counts, i));
+    TokenCountEntry *entry = array_at(count->identifer_counts, i);
+    free(entry->token.text);
   }
   array_free(count->identifer_counts);
 }
@@ -243,7 +245,7 @@ static void token_count_print(TokenCount *count)
 
 void task1(int argc, const char **argv)
 {
-  Source     *source;
+  Source    *source;
   TokenCount counter;
 
   if (argc < 2) {
