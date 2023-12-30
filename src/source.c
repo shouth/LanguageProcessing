@@ -8,8 +8,9 @@
 #include "source.h"
 #include "utility.h"
 
-int source_init(Source *source, const char *file_name, unsigned long file_name_length)
+Source *source_new(const char *file_name, unsigned long file_name_length)
 {
+  Source *source = xmalloc(sizeof(Source));
   {
     source->file_name = xmalloc(file_name_length + 1);
     strncpy(source->file_name, file_name, file_name_length);
@@ -66,14 +67,14 @@ int source_init(Source *source, const char *file_name, unsigned long file_name_l
   }
 
   if (source->file_name && source->text && source->line_offsets) {
-    return 1;
+    return source;
   } else {
-    source_deinit(source);
-    return 0;
+    source_free(source);
+    return NULL;
   }
 }
 
-void source_deinit(Source *source)
+void source_free(Source *source)
 {
   free(source->file_name);
   free(source->text);
