@@ -118,18 +118,17 @@ int map_find(Map *map, void *key, MapIndex *index)
 
 void map_index(Map *map, MapIndex *index)
 {
-  index->bucket = NULL;
+  index->bucket = map->buckets;
   index->slot   = NULL;
 }
 
 int map_next(Map *map, MapIndex *index)
 {
   unsigned long i;
-  if (index->bucket) {
+  if (index->slot) {
     ++index->slot;
   } else {
-    index->bucket = map->buckets;
-    index->slot   = map->buckets;
+    index->slot = index->bucket;
   }
 
   for (i = index->slot - index->bucket; i < NEIGHBORHOOD - 1; ++i) {
