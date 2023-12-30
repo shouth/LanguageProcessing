@@ -6,7 +6,6 @@
 #include "array.h"
 #include "lexer.h"
 #include "map.h"
-#include "report.h"
 #include "source.h"
 #include "syntax_kind.h"
 #include "tasks.h"
@@ -88,18 +87,23 @@ static Array *list_token(Map *counts)
   return list;
 }
 
-static void token_count_init(TokenCount *count, const Source *source)
+static TokenStatus token_count_init(TokenCount *count, const Source *source)
 {
-  TokenInfo token;
-  Report    report;
-  Map      *token_counts;
-  Map      *identifier_counts;
+  TokenInfo   token;
+  TokenStatus status;
+  Map        *token_counts;
+  Map        *identifier_counts;
 
   unsigned long offset = 0;
 
   token_counts      = map_new(&token_info_hash, &token_info_equal);
   identifier_counts = map_new(&token_info_hash, &token_info_equal);
-  while (mppl_lex(source, offset, &token, &report) && token.kind != SYNTAX_KIND_EOF_TOKEN) {
+  while (1) {
+    status = mppl_lex(source, offset, &token);
+    if (status != TOKEN_OK) {
+      break;
+    }
+
     offset += token.text_length;
     if (syntax_kind_is_trivia(token.kind)) {
       token_info_deinit(&token);
@@ -128,6 +132,7 @@ static void token_count_init(TokenCount *count, const Source *source)
   token_info_deinit(&token);
   count->token_counts     = list_token(token_counts);
   count->identifer_counts = list_token(identifier_counts);
+  return status;
 }
 
 static void token_count_deinit(TokenCount *count)
@@ -247,8 +252,25 @@ void task1(int argc, const char **argv)
   }
 
   source_init(&source, argv[1], strlen(argv[1]));
-  token_count_init(&counter, &source);
-  token_count_print(&counter);
+  switch (token_count_init(&counter, &source)) {
+  case TOKEN_EOF:
+    token_count_print(&counter);
+    break;
+  case TOKEN_ERROR_STRAY_CHAR:
+    fprintf(stderr, "Error: Stray character in program\n");
+    break;
+  case TOKEN_ERROR_NONGRAPHIC_CHAR:
+    fprintf(stderr, "Error: Non-graphic character in string\n");
+    break;
+  case TOKEN_ERROR_UNTERMINATED_STRING:
+    fprintf(stderr, "Error: String is unterminated\n");
+    break;
+  case TOKEN_ERROR_UNTERMINATED_COMMENT:
+    fprintf(stderr, "Error: Comment is unterminated\n");
+    break;
+  default:
+    unreachable();
+  }
   token_count_deinit(&counter);
   source_deinit(&source);
 }
