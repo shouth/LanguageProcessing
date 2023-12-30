@@ -243,7 +243,7 @@ static void token_count_print(TokenCount *count)
 
 void task1(int argc, const char **argv)
 {
-  Source     source;
+  Source     *source;
   TokenCount counter;
 
   if (argc < 2) {
@@ -251,8 +251,8 @@ void task1(int argc, const char **argv)
     exit(EXIT_FAILURE);
   }
 
-  source_init(&source, argv[1], strlen(argv[1]));
-  switch (token_count_init(&counter, &source)) {
+  source = source_new(argv[1], strlen(argv[1]));
+  switch (token_count_init(&counter, source)) {
   case TOKEN_EOF:
     token_count_print(&counter);
     break;
@@ -272,5 +272,5 @@ void task1(int argc, const char **argv)
     unreachable();
   }
   token_count_deinit(&counter);
-  source_deinit(&source);
+  source_free(source);
 }
