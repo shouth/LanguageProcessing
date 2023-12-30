@@ -1,15 +1,18 @@
-#include "token_cursor.h"
+#include <string.h>
+
 #include "array.h"
 #include "lexer.h"
 #include "source.h"
 #include "syntax_kind.h"
+#include "token_cursor.h"
 #include "token_tree.h"
+#include "utility.h"
 
-static TokenStatus token_cursor_lex(TokenCursor *cursor, TokenInfo *info)
+static TokenStatus token_cursor_lex(TokenCursor *cursor, LexedToken *lexed)
 {
-  TokenStatus status = mppl_lex(cursor->_source, cursor->_offset, info);
-  cursor->_offset += info->text_length;
-  if (info->kind == SYNTAX_KIND_EOF_TOKEN) {
+  TokenStatus status = mppl_lex(cursor->_source, cursor->_offset, lexed);
+  cursor->_offset += lexed->length;
+  if (lexed->kind == SYNTAX_KIND_EOF_TOKEN) {
     cursor->_offset = -1ul;
   }
   return status;
@@ -26,19 +29,34 @@ TokenStatus token_cursor_next(TokenCursor *cursor, Token **token)
   if (cursor->_offset == -1ul) {
     return 0;
   } else {
-    Array      *trivia = array_new(sizeof(TokenInfo));
-    TokenInfo   info;
+    Array      *trivials = array_new(sizeof(TrivialToken));
+    LexedToken  lexed;
     TokenStatus status;
 
     while (1) {
-      status = token_cursor_lex(cursor, &info);
-      if (!syntax_kind_is_trivia(info.kind)) {
+      TrivialToken trivia;
+      status = token_cursor_lex(cursor, &lexed);
+      if (!syntax_kind_is_trivia(lexed.kind)) {
         break;
       }
-      array_push(trivia, &info);
+      trivia.kind        = lexed.kind;
+      trivia.text_length = lexed.length;
+      trivia.text        = xmalloc(sizeof(char) * (lexed.length + 1));
+      strncpy(trivia.text, cursor->_source->text + lexed.offset, sizeof(char) * lexed.length);
+      trivia.text[lexed.length] = '\0';
+      array_push(trivials, &trivia);
     }
-    *token = token_new(&info, array_data(trivia), array_count(trivia));
-    array_free(trivia);
+
+    {
+      unsigned long trivia_count = array_count(trivials);
+      TrivialToken *trivia_data  = array_steal(trivials);
+      char         *text         = xmalloc(sizeof(char) * (lexed.length + 1));
+      strncpy(text, cursor->_source->text + lexed.offset, sizeof(char) * lexed.length);
+      text[lexed.length] = '\0';
+
+      *token = token_new(lexed.kind, text, lexed.length, trivia_data, trivia_count);
+    }
+    array_free(trivials);
     return status;
   }
 }
