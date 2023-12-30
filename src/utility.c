@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "utility.h"
 
@@ -23,4 +24,29 @@ unsigned long fnv1a(unsigned long hash, const void *ptr, unsigned long len)
     hash = (hash ^ *data) * prime;
   }
   return 0xFFFFFFFFul & hash;
+}
+
+int is_alphabet(int c)
+{
+  return !!strchr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c);
+}
+
+int is_number(int c)
+{
+  return c >= '0' && c <= '9';
+}
+
+int is_space(int c)
+{
+  return !!strchr(" \t", c);
+}
+
+int is_newline(int c)
+{
+  return !!strchr("\r\n", c);
+}
+
+int is_graphic(int c)
+{
+  return is_alphabet(c) || is_number(c) || is_space(c) || is_newline(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
 }

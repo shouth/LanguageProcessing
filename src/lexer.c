@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include <string.h>
 
 #include "lexer.h"
 #include "source.h"
 #include "syntax_kind.h"
 #include "token_tree.h"
+#include "utility.h"
 
 typedef struct Lexer Lexer;
 
@@ -44,31 +44,6 @@ static int eat_if(Lexer *lexer, int (*predicate)(int))
     bump(lexer);
   }
   return result;
-}
-
-static int is_alphabet(int c)
-{
-  return !!strchr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c);
-}
-
-static int is_number(int c)
-{
-  return c >= '0' && c <= '9';
-}
-
-static int is_space(int c)
-{
-  return !!strchr(" \t", c);
-}
-
-static int is_newline(int c)
-{
-  return !!strchr("\r\n", c);
-}
-
-static int is_graphic(int c)
-{
-  return is_alphabet(c) || is_number(c) || is_space(c) || is_newline(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
 }
 
 static TokenStatus tokenize(Lexer *lexer, SyntaxKind kind, TokenInfo *info)

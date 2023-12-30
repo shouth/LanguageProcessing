@@ -9,6 +9,12 @@ void *xmalloc(unsigned long size);
 
 unsigned long fnv1a(unsigned long hash, const void *ptr, unsigned long len);
 
+int is_alphabet(int c);
+int is_number(int c);
+int is_space(int c);
+int is_newline(int c);
+int is_graphic(int c);
+
 #define unreachable()                                                                            \
   do {                                                                                           \
     fprintf(stderr, "Internal Error: Entered unreachable region [%s:%d]\n", __FILE__, __LINE__); \
