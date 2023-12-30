@@ -8,6 +8,15 @@ typedef struct Token     Token;
 typedef struct TokenTree TokenTree;
 typedef struct TokenNode TokenNode;
 
+typedef enum {
+  TOKEN_OK,
+  TOKEN_EOF,
+  TOKEN_ERROR_STRAY_CHAR,
+  TOKEN_ERROR_NONGRAPHIC_CHAR,
+  TOKEN_ERROR_UNTERMINATED_STRING,
+  TOKEN_ERROR_UNTERMINATED_COMMENT
+} TokenStatus;
+
 struct TokenInfo {
   SyntaxKind    kind;
   unsigned long text_length;
