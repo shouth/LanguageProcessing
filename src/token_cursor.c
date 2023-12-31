@@ -12,7 +12,7 @@ static TokenStatus token_cursor_lex(TokenCursor *cursor, LexedToken *lexed)
 {
   TokenStatus status = mppl_lex(cursor->_source, cursor->_offset, lexed);
   cursor->_offset += lexed->length;
-  if (lexed->kind == SYNTAX_KIND_EOF_TOKEN) {
+  if (lexed->kind == SYNTAX_EOF_TOKEN) {
     cursor->_offset = -1ul;
   }
   return status;

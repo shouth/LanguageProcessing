@@ -132,7 +132,7 @@ static void consume_token_literal(Printer *printer)
 
 static void consume_type(Printer *printer)
 {
-  if (node(printer)->kind == SYNTAX_KIND_ARRAY_TYPE) {
+  if (node(printer)->kind == SYNTAX_ARRAY_TYPE) {
     tree_start(printer);
     consume_token_keyword(printer);
     consume_token_foreground(printer);
@@ -169,7 +169,7 @@ static void consume_indexed_variable(Printer *printer)
 
 static void consume_variable(Printer *printer)
 {
-  if (node(printer)->kind == SYNTAX_KIND_ENTIRE_VARIABLE) {
+  if (node(printer)->kind == SYNTAX_ENTIRE_VAR) {
     consume_entire_variable(printer);
   } else {
     consume_indexed_variable(printer);
@@ -224,28 +224,28 @@ static void consume_cast_expression(Printer *printer)
 static void consume_expression(Printer *printer)
 {
   switch (node(printer)->kind) {
-  case SYNTAX_KIND_ENTIRE_VARIABLE:
-  case SYNTAX_KIND_INDEXED_VARIABLE:
+  case SYNTAX_ENTIRE_VAR:
+  case SYNTAX_INDEXED_VAR:
     consume_variable(printer);
     break;
-  case SYNTAX_KIND_BINARY_EXPRESSION:
+  case SYNTAX_BINARY_EXPR:
     consume_binary_expression(printer);
     break;
-  case SYNTAX_KIND_PARENTHESIZED_EXPRESSION:
+  case SYNTAX_PAREN_EXPR:
     consume_parenthesized_expression(printer);
     break;
-  case SYNTAX_KIND_NOT_EXPRESSION:
+  case SYNTAX_NOT_EXPR:
     consume_not_expression(printer);
     break;
-  case SYNTAX_KIND_CAST_EXPRESSION:
+  case SYNTAX_CAST_EXPR:
     consume_cast_expression(printer);
     break;
-  case SYNTAX_KIND_STRING_LITERAL:
+  case SYNTAX_STRING_LIT:
     consume_token_string(printer);
     break;
-  case SYNTAX_KIND_INTEGER_LITERAL:
-  case SYNTAX_KIND_TRUE_KEYWORD:
-  case SYNTAX_KIND_FALSE_KEYWORD:
+  case SYNTAX_NUMBER_LIT:
+  case SYNTAX_TRUE_KW:
+  case SYNTAX_FALSE_KW:
     consume_token_literal(printer);
     break;
   default:
@@ -259,7 +259,7 @@ static void consume_statement(Printer *printer);
 static void consume_nested_statement(Printer *printer)
 {
   const TokenNode *statement = node(printer);
-  if (statement->kind != SYNTAX_KIND_COMPOUND_STATEMENT) {
+  if (statement->kind != SYNTAX_COMPOUND_STMT) {
     ++printer->indent;
     newline();
     indent(printer);
@@ -267,7 +267,7 @@ static void consume_nested_statement(Printer *printer)
     space();
   }
   consume_statement(printer);
-  if (statement->kind != SYNTAX_KIND_COMPOUND_STATEMENT) {
+  if (statement->kind != SYNTAX_COMPOUND_STMT) {
     --printer->indent;
   }
 }
@@ -296,7 +296,7 @@ static void consume_if_statement(Printer *printer)
     newline();
     indent(printer);
     consume_token_keyword(printer);
-    if (node(printer)->kind == SYNTAX_KIND_IF_STATEMENT) {
+    if (node(printer)->kind == SYNTAX_IF_STMT) {
       space();
       consume_statement(printer);
     } else {
@@ -324,7 +324,7 @@ static void consume_actual_parameter_list(Printer *printer)
   consume_token_foreground(printer);
   while (1) {
     consume_expression(printer);
-    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    if (node(printer)->kind != SYNTAX_COMMA_TOKEN) {
       break;
     }
     consume_token_foreground(printer);
@@ -368,7 +368,7 @@ static void consume_input_list(Printer *printer)
   consume_token_foreground(printer);
   while (1) {
     consume_variable(printer);
-    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    if (node(printer)->kind != SYNTAX_COMMA_TOKEN) {
       break;
     }
     consume_token_foreground(printer);
@@ -409,7 +409,7 @@ static void consume_output_list(Printer *printer)
   consume_token_foreground(printer);
   while (1) {
     consume_output_value(printer);
-    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    if (node(printer)->kind != SYNTAX_COMMA_TOKEN) {
       break;
     }
     consume_token_foreground(printer);
@@ -440,7 +440,7 @@ static void consume_compound_statement(Printer *printer)
   while (1) {
     indent(printer);
     consume_statement(printer);
-    if (node(printer)->kind != SYNTAX_KIND_SEMICOLON_TOKEN) {
+    if (node(printer)->kind != SYNTAX_SEMI_TOKEN) {
       break;
     }
     consume_token_foreground(printer);
@@ -460,31 +460,31 @@ static void consume_compound_statement(Printer *printer)
 static void consume_statement(Printer *printer)
 {
   switch (node(printer)->kind) {
-  case SYNTAX_KIND_ASSIGNMENT_STATEMENT:
+  case SYNTAX_ASSIGN_STMT:
     consume_assignment_statement(printer);
     break;
-  case SYNTAX_KIND_IF_STATEMENT:
+  case SYNTAX_IF_STMT:
     consume_if_statement(printer);
     break;
-  case SYNTAX_KIND_WHILE_STATEMENT:
+  case SYNTAX_WHILE_STMT:
     consume_while_statement(printer);
     break;
-  case SYNTAX_KIND_BREAK_STATEMENT:
+  case SYNTAX_BREAK_STMT:
     consume_break_statement(printer);
     break;
-  case SYNTAX_KIND_CALL_STATEMENT:
+  case SYNTAX_CALL_STMT:
     consume_call_statement(printer);
     break;
-  case SYNTAX_KIND_RETURN_STATEMENT:
+  case SYNTAX_RETURN_STMT:
     consume_return_statement(printer);
     break;
-  case SYNTAX_KIND_INPUT_STATEMENT:
+  case SYNTAX_INPUT_STMT:
     consume_input_statement(printer);
     break;
-  case SYNTAX_KIND_OUTPUT_STATEMENT:
+  case SYNTAX_OUTPUT_STMT:
     consume_output_statement(printer);
     break;
-  case SYNTAX_KIND_COMPOUND_STATEMENT:
+  case SYNTAX_COMPOUND_STMT:
     consume_compound_statement(printer);
     break;
   default:
@@ -498,7 +498,7 @@ static void consume_variable_declaration(Printer *printer)
   tree_start(printer);
   while (1) {
     consume_token_foreground(printer);
-    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    if (node(printer)->kind != SYNTAX_COMMA_TOKEN) {
       break;
     }
     consume_token_foreground(printer);
@@ -532,7 +532,7 @@ static void consume_formal_parameter_section(Printer *printer)
   tree_start(printer);
   while (1) {
     consume_token_parameter(printer);
-    if (node(printer)->kind != SYNTAX_KIND_COMMA_TOKEN) {
+    if (node(printer)->kind != SYNTAX_COMMA_TOKEN) {
       break;
     }
     consume_token_foreground(printer);
@@ -549,7 +549,7 @@ static void consume_formal_parameter_list(Printer *printer)
 {
   tree_start(printer);
   consume_token_foreground(printer);
-  while (node(printer)->kind == SYNTAX_KIND_FORMAL_PARAMETER_SECTION) {
+  while (node(printer)->kind == SYNTAX_FORMAL_PARAM_SECTION) {
     consume_formal_parameter_section(printer);
   }
   consume_token_foreground(printer);
@@ -592,10 +592,10 @@ static void consume_program(Printer *printer)
   newline();
   ++printer->indent;
   while (1) {
-    if (node(printer)->kind == SYNTAX_KIND_VARIABLE_DECLARATION_PART) {
+    if (node(printer)->kind == SYNTAX_VAR_DECL_PART) {
       indent(printer);
       consume_variable_declaration_part(printer);
-    } else if (node(printer)->kind == SYNTAX_KIND_PROCEDURE_DECLARATION) {
+    } else if (node(printer)->kind == SYNTAX_PROCEDURE_DECL) {
       indent(printer);
       consume_procedure_declaration(printer);
     } else {

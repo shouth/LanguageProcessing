@@ -130,15 +130,15 @@ static TokenStatus token_count_init(Counter *count, const Source *source)
     }
 
     switch (token.kind) {
-    case SYNTAX_KIND_IDENTIFIER_TOKEN:
+    case SYNTAX_IDENT_TOKEN:
       increment_token(identifier_counts, token.kind, source->text + token.offset, token.length);
-      increment_token(token_counts, SYNTAX_KIND_IDENTIFIER_TOKEN, "NAME", 4);
+      increment_token(token_counts, SYNTAX_IDENT_TOKEN, "NAME", 4);
       break;
-    case SYNTAX_KIND_INTEGER_LITERAL:
-      increment_token(token_counts, SYNTAX_KIND_INTEGER_LITERAL, "NUMBER", 6);
+    case SYNTAX_NUMBER_LIT:
+      increment_token(token_counts, SYNTAX_NUMBER_LIT, "NUMBER", 6);
       break;
-    case SYNTAX_KIND_STRING_LITERAL:
-      increment_token(token_counts, SYNTAX_KIND_STRING_LITERAL, "STRING", 6);
+    case SYNTAX_STRING_LIT:
+      increment_token(token_counts, SYNTAX_STRING_LIT, "STRING", 6);
       break;
     default:
       increment_token(token_counts, token.kind, source->text + token.offset, token.length);
@@ -245,7 +245,7 @@ static void token_count_print(Counter *count)
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
     printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
-    if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER_TOKEN) {
+    if (token_entry->token.kind == SYNTAX_IDENT_TOKEN) {
       for (j = 0; j < array_count(count->identifer_counts); ++j) {
         CounterEntry *identifier_entry = *(CounterEntry **) array_at(count->identifer_counts, j);
         unsigned long identifier_space_width
