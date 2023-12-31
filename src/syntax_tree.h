@@ -5,11 +5,6 @@
 
 typedef struct SyntaxTree SyntaxTree;
 
-struct SyntaxTree {
-  const SyntaxTree *_parent;
-  const TokenTree  *_inner;
-};
-
 SyntaxTree       *syntax_tree_root(const TokenTree *tree);
 const SyntaxTree *syntax_tree_parent(const SyntaxTree *tree);
 unsigned long     syntax_tree_child_count(const SyntaxTree *tree);
