@@ -32,30 +32,32 @@ struct Counter {
   Array *identifer_counts;
 };
 
-static void counter_entry_init(CounterEntry *entry, SyntaxKind kind, const char *text, unsigned long text_length)
+static CounterEntry *counter_entry_new(SyntaxKind kind, const char *text, unsigned long text_length)
 {
-  entry->count      = 0;
-  entry->token.kind = kind;
-  entry->token.text = xmalloc(sizeof(char) * (text_length + 1));
+  CounterEntry *entry = xmalloc(sizeof(CounterEntry));
+  entry->count        = 0;
+  entry->token.kind   = kind;
+  entry->token.text   = xmalloc(sizeof(char) * (text_length + 1));
   strncpy(entry->token.text, text, text_length);
   entry->token.text[text_length] = '\0';
   entry->token.text_length       = text_length;
+  return entry;
 }
 
-static void counter_entry_deinit(CounterEntry *entry)
+static void counter_entry_free(CounterEntry *entry)
 {
-  free(entry->token.text);
+  if (entry) {
+    free(entry->token.text);
+    free(entry);
+  }
 }
 
 static void increment_token(Map *counts, SyntaxKind kind, const char *text, unsigned long text_length)
 {
-  CounterEntry *counter = xmalloc(sizeof(CounterEntry));
+  CounterEntry *counter = counter_entry_new(kind, text, text_length);
   MapIndex      index;
-
-  counter_entry_init(counter, kind, text, text_length);
   if (map_find(counts, &counter->token, &index)) {
-    counter_entry_deinit(counter);
-    free(counter);
+    counter_entry_free(counter);
     counter = map_value(counts, &index);
   } else {
     map_update(counts, &index, &counter->token, counter);
@@ -77,31 +79,31 @@ static int counter_token_compare(const void *left, const void *right)
   const CounterToken *l = left;
   const CounterToken *r = right;
 
-  if (l->kind < r->kind) {
-    return -1;
-  } else if (l->kind > r->kind) {
-    return 1;
-  } else {
-    return strcmp(l->text, r->text);
-  }
+  return l->kind == r->kind && l->text_length == r->text_length && strcmp(l->text, r->text) == 0;
 }
 
-static int counter_token_equal(const void *left, const void *right)
+static int counter_entry_ptr_compare(const void *left, const void *right)
 {
-  return !counter_token_compare(left, right);
+  const CounterEntry *l = *(const CounterEntry **) left;
+  const CounterEntry *r = *(const CounterEntry **) right;
+
+  if (l->token.kind != r->token.kind) {
+    return l->token.kind < r->token.kind ? -1 : 1;
+  } else {
+    return strcmp(l->token.text, r->token.text);
+  }
 }
 
 static Array *list_token(Map *counts)
 {
-  Array   *list = array_new_with_capacity(sizeof(CounterEntry), map_count(counts));
+  Array   *list = array_new_with_capacity(sizeof(CounterEntry *), map_count(counts));
   MapIndex entry;
-  map_index(counts, &entry);
-  while (map_next(counts, &entry)) {
-    array_push(list, map_value(counts, &entry));
-    free(map_value(counts, &entry));
+  for (map_index(counts, &entry); map_next(counts, &entry);) {
+    CounterEntry *value = map_value(counts, &entry);
+    array_push(list, &value);
   }
   map_free(counts);
-  qsort(array_data(list), array_count(list), sizeof(CounterEntry), &counter_token_compare);
+  qsort(array_data(list), array_count(list), sizeof(CounterEntry *), &counter_entry_ptr_compare);
   return list;
 }
 
@@ -114,8 +116,8 @@ static TokenStatus token_count_init(Counter *count, const Source *source)
 
   unsigned long offset = 0;
 
-  token_counts      = map_new(&counter_token_hash, &counter_token_equal);
-  identifier_counts = map_new(&counter_token_hash, &counter_token_equal);
+  token_counts      = map_new(&counter_token_hash, &counter_token_compare);
+  identifier_counts = map_new(&counter_token_hash, &counter_token_compare);
   while (1) {
     status = mppl_lex(source, offset, &token);
     if (status != TOKEN_OK) {
@@ -153,14 +155,14 @@ static void token_count_deinit(Counter *count)
   unsigned long i;
 
   for (i = 0; i < array_count(count->token_counts); ++i) {
-    CounterEntry *entry = array_at(count->token_counts, i);
-    counter_entry_deinit(entry);
+    CounterEntry **entry = array_at(count->token_counts, i);
+    counter_entry_free(*entry);
   }
   array_free(count->token_counts);
 
   for (i = 0; i < array_count(count->identifer_counts); ++i) {
-    CounterEntry *entry = array_at(count->identifer_counts, i);
-    counter_entry_deinit(entry);
+    CounterEntry **entry = array_at(count->identifer_counts, i);
+    counter_entry_free(*entry);
   }
   array_free(count->identifer_counts);
 }
@@ -170,12 +172,12 @@ unsigned long get_token_display_width(CounterEntry *entry)
   return entry->token.text_length;
 }
 
-unsigned long get_max_token_display_width(CounterEntry *entries, unsigned long length)
+unsigned long get_max_token_display_width(CounterEntry **entries, unsigned long length)
 {
   unsigned long result = 0;
   unsigned long i;
   for (i = 0; i < length; ++i) {
-    unsigned long width = get_token_display_width(entries + i);
+    unsigned long width = get_token_display_width(entries[i]);
     if (result < width) {
       result = width;
     }
@@ -194,12 +196,12 @@ unsigned long get_count_display_width(CounterEntry *entry)
   return result;
 }
 
-unsigned long get_max_count_display_width(CounterEntry *entries, unsigned long length)
+unsigned long get_max_count_display_width(CounterEntry **entries, unsigned long length)
 {
   unsigned long result = 0;
   unsigned long i;
   for (i = 0; i < length; ++i) {
-    unsigned long width = get_count_display_width(entries + i);
+    unsigned long width = get_count_display_width(entries[i]);
     if (result < width) {
       result = width;
     }
@@ -238,14 +240,14 @@ static void token_count_print(Counter *count)
   }
 
   for (i = 0; i < array_count(count->token_counts); ++i) {
-    CounterEntry *token_entry       = array_at(count->token_counts, i);
+    CounterEntry *token_entry       = *(CounterEntry **) array_at(count->token_counts, i);
     unsigned long token_space_width = (max_token_display_width - get_token_display_width(token_entry))
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
     printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
     if (token_entry->token.kind == SYNTAX_KIND_IDENTIFIER_TOKEN) {
       for (j = 0; j < array_count(count->identifer_counts); ++j) {
-        CounterEntry *identifier_entry = array_at(count->identifer_counts, j);
+        CounterEntry *identifier_entry = *(CounterEntry **) array_at(count->identifer_counts, j);
         unsigned long identifier_space_width
           = (max_token_display_width - identifier_prefix_width - get_token_display_width(identifier_entry))
           + (max_count_display_width - get_count_display_width(identifier_entry)) + 2;
