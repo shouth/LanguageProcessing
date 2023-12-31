@@ -56,7 +56,6 @@ TokenStatus token_cursor_next(TokenCursor *cursor, Token **token)
 
       *token = token_new(lexed.kind, text, lexed.length, trivia_data, trivia_count);
     }
-    array_free(trivials);
     return status;
   }
 }
