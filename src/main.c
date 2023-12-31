@@ -20,7 +20,7 @@ int main(int argc, const char **argv)
 
   source = source_new(argv[1], strlen(argv[1]));
   if (mppl_parse(source, &tree)) {
-    mppl_pretty_print((const TokenNode *) &tree, NULL);
+    mppl_pretty_print((const TokenNode *) tree, NULL);
   }
   token_tree_free(tree);
   source_free(source);
