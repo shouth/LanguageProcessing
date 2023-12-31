@@ -459,6 +459,11 @@ static void consume_compound_statement(Printer *printer)
 
 static void consume_statement(Printer *printer)
 {
+  if (!node(printer)) {
+    node_next(printer);
+    return;
+  }
+
   switch (node(printer)->kind) {
   case SYNTAX_ASSIGN_STMT:
     consume_assignment_statement(printer);
