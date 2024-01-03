@@ -591,9 +591,6 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
     for (j = 0; j < array_count(writer->report->_annotations); ++j) {
       ReportAnnotation *annotation = array_at(writer->report->_annotations, j);
       if (i == annotation->_start.line || i == annotation->_end.line) {
-        if (i != start_line) {
-          canvas_next_line(canvas);
-        }
         canvas_style(canvas, CANVAS_FAINT);
         if (previous_line != -1ul && previous_line + 1 != i) {
           canvas_write(canvas, " %*.s ╎ ", writer->number_margin, "");
