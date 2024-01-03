@@ -378,6 +378,14 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   canvas_write(canvas, "%s", line);
   canvas_style(canvas, CANVAS_RESET);
 
+  for (j = 0; j < array_count(nongraphics); ++j) {
+    LineSegment *nongraphic = array_at(nongraphics, j);
+    canvas_seek(canvas, line_offset, column_offset + nongraphic->start);
+    canvas_style(canvas, CANVAS_FAINT);
+    canvas_write(canvas, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
+    canvas_style(canvas, CANVAS_RESET);
+  }
+
   for (i = 0; i < array_count(segments); ++i) {
     LineSegment *segment = array_at(segments, i);
     canvas_seek(canvas, line_offset, column_offset + segment->start);
@@ -629,11 +637,19 @@ static int digits(unsigned long number)
   return result;
 }
 
-static void display_location(const Source *source, unsigned long offset, unsigned long tab_width, SourceLocation *location)
+static void display_location(const Source *source, unsigned long offset, unsigned long tab_width, int start, SourceLocation *location)
 {
   unsigned long i;
   unsigned long column = 0;
+
+  if (!start) {
+    --offset;
+  }
   source_location(source, offset, location);
+  if (!start) {
+    ++location->column;
+  }
+
   for (i = 0; i < location->column; ++i) {
     char c = source->text[source->line_offsets[location->line] + i];
     if (c == '\t') {
@@ -645,6 +661,10 @@ static void display_location(const Source *source, unsigned long offset, unsigne
     }
   }
   location->column = column;
+
+  if (!start) {
+    --location->column;
+  }
 }
 
 void report_emit(Report *report, const Source *source)
@@ -662,8 +682,8 @@ void report_emit(Report *report, const Source *source)
   for (i = 0; i < array_count(report->_annotations); ++i) {
     int               margin;
     ReportAnnotation *annotation = array_at(report->_annotations, i);
-    display_location(source, annotation->_start_offset, writer.tab_width, &annotation->_start);
-    display_location(source, annotation->_end_offset - 1, writer.tab_width, &annotation->_end);
+    display_location(source, annotation->_start_offset, writer.tab_width, 1, &annotation->_start);
+    display_location(source, annotation->_end_offset, writer.tab_width, 0, &annotation->_end);
 
     margin = digits(annotation->_start.line + 1);
     if (writer.number_margin < margin) {
