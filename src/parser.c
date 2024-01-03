@@ -531,10 +531,7 @@ static void parse_output_list(Parser *parser)
   node_finish(parser, SYNTAX_OUTPUT_LIST);
 }
 
-static const SyntaxKind FIRST_OUTPUT_STMT[] = {
-  SYNTAX_WRITE_KW,
-  SYNTAX_WRITELN_KW,
-};
+static const SyntaxKind FIRST_OUTPUT_STMT[] = { SYNTAX_WRITE_KW, SYNTAX_WRITELN_KW };
 
 static void parse_output_stmt(Parser *parser)
 {
