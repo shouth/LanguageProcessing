@@ -226,7 +226,7 @@ static void error_unexpected(Parser *parser)
       unreachable();
     }
   } else {
-    report = report_new(REPORT_KIND_ERROR, parser->offset, "expected %s, actual `%s`", expected, token(parser)->text);
+    report = report_new(REPORT_KIND_ERROR, parser->offset, "expected %s, found `%s`", expected, token(parser)->text);
   }
   report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
   array_push(parser->errors, &report);
