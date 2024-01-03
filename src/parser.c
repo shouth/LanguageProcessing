@@ -203,7 +203,11 @@ static void error_unexpected(Parser *parser)
   if (token(parser)->kind == SYNTAX_BAD_TOKEN) {
     switch (parser->status) {
     case TOKEN_ERROR_STRAY_CHAR: {
-      report = report_new(REPORT_KIND_ERROR, parser->offset, "stray `%s` in program", token(parser)->text);
+      if (is_graphic(token(parser)->text[0])) {
+        report = report_new(REPORT_KIND_ERROR, parser->offset, "stray `%s` in program", token(parser)->text);
+      } else {
+        report = report_new(REPORT_KIND_ERROR, parser->offset, "stray `\\x%X` in program", (unsigned char) token(parser)->text[0]);
+      }
       break;
     }
     case TOKEN_ERROR_NONGRAPHIC_CHAR: {
@@ -255,7 +259,7 @@ static const SyntaxKind FIRST_STANDARD_TYPE[] = {
   SYNTAX_CHAR_KW,
 };
 
-static void parse_standard_type(Parser *parser)
+static void parse_std_type(Parser *parser)
 {
   expect_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind));
 }
@@ -268,14 +272,14 @@ static void parse_array_type(Parser *parser)
   expect(parser, SYNTAX_NUMBER_LIT);
   expect(parser, SYNTAX_RBRACKET_TOKEN);
   expect(parser, SYNTAX_OF_KW);
-  parse_standard_type(parser);
+  parse_std_type(parser);
   node_finish(parser, SYNTAX_ARRAY_TYPE);
 }
 
 static void parse_type(Parser *parser)
 {
   if (check_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind))) {
-    parse_standard_type(parser);
+    parse_std_type(parser);
   } else {
     parse_array_type(parser);
   }
@@ -317,7 +321,7 @@ static void parse_not_expr(Parser *parser)
 static void parse_cast_expr(Parser *parser)
 {
   node_start(parser);
-  parse_standard_type(parser);
+  parse_std_type(parser);
   expect(parser, SYNTAX_LPAREN_TOKEN);
   parse_expr(parser);
   expect(parser, SYNTAX_RPAREN_TOKEN);
@@ -487,7 +491,7 @@ static void parse_input_list(Parser *parser)
     parse_var(parser);
   } while (eat(parser, SYNTAX_COMMA_TOKEN));
   expect(parser, SYNTAX_RPAREN_TOKEN);
-  node_finish(parser, SYTANX_KIND_INPUT_LIST);
+  node_finish(parser, SYTANX_INPUT_LIST);
 }
 
 static const SyntaxKind FIRST_INPUT_STMT[] = {
@@ -646,7 +650,7 @@ static void parse_proc_decl(Parser *parser)
   }
   parse_compound_stmt(parser);
   expect(parser, SYNTAX_SEMI_TOKEN);
-  node_finish(parser, SYNTAX_PROCEDURE_DECL);
+  node_finish(parser, SYNTAX_PROC_DECL);
 }
 
 static void parse_program(Parser *parser)
