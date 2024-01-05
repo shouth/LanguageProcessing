@@ -205,10 +205,10 @@ MpplToken   *mppl_paren_expr__rparen_token(const MpplParenExpr *expr);
 MpplToken   *mppl_not_expr__not_token(const MpplNotExpr *expr);
 AnyMpplExpr *mppl_not_expr__expr(const MpplNotExpr *expr);
 
-AnyMpplType *mppl_cast_expr__type(const MpplCastExpr *expr);
-MpplToken   *mppl_cast_expr__lparen_token(const MpplCastExpr *expr);
-AnyMpplExpr *mppl_cast_expr__expr(const MpplCastExpr *expr);
-MpplToken   *mppl_cast_expr__rparen_token(const MpplCastExpr *expr);
+AnyMpplStdType *mppl_cast_expr__type(const MpplCastExpr *expr);
+MpplToken      *mppl_cast_expr__lparen_token(const MpplCastExpr *expr);
+AnyMpplExpr    *mppl_cast_expr__expr(const MpplCastExpr *expr);
+MpplToken      *mppl_cast_expr__rparen_token(const MpplCastExpr *expr);
 
 MpplVarKind mppl_var__kind(const AnyMpplVar *var);
 

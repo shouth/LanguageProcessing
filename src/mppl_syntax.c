@@ -516,9 +516,9 @@ AnyMpplExpr *mppl_not_expr__expr(const MpplNotExpr *expr)
 
 /* cast expression */
 
-AnyMpplType *mppl_cast_expr__type(const MpplCastExpr *expr)
+AnyMpplStdType *mppl_cast_expr__type(const MpplCastExpr *expr)
 {
-  return (AnyMpplType *) syntax_tree_child(syntax(expr), 0);
+  return (AnyMpplStdType *) syntax_tree_child(syntax(expr), 0);
 }
 
 MpplToken *mppl_cast_expr__lparen_token(const MpplCastExpr *expr)
