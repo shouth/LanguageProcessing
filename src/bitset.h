@@ -1,8 +1,6 @@
 #ifndef BIT_SET_H
 #define BIT_SET_H
 
-#include <limits.h>
-
 typedef struct BitSet BitSet;
 
 BitSet       *bitset_new(unsigned long bits);
