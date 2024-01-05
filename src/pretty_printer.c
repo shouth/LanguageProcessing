@@ -46,8 +46,8 @@ static void print_indexed_var(Printer *printer, MpplIndexedVar *var);
 static void print_type(Printer *printer, AnyMpplType *type);
 static void print_std_type(Printer *printer, AnyMpplStdType *type);
 static void print_array_type(Printer *printer, MpplArrayType *type);
-static void print_output_list(Printer *printer, MpplOutputList *list);
-static void print_output_value(Printer *printer, MpplOutputValue *value);
+static void print_output_list(Printer *printer, MpplOutList *list);
+static void print_output_value(Printer *printer, MpplOutValue *value);
 static void print_literal(Printer *printer, AnyMpplLit *lit);
 static void print_token(Printer *printer, MpplToken *token);
 static void print_token_program(Printer *printer, MpplToken *token);
@@ -88,7 +88,7 @@ static void print_program(Printer *printer, MpplProgram *program)
   }
   --printer->indent;
   print_indent(printer);
-  print_comp_stmt(printer, mppl_program__comp_stmt(program));
+  print_comp_stmt(printer, mppl_program__stmt(program));
   print_token(printer, mppl_program__dot_token(program));
   print_newline();
   mppl_free(program);
@@ -166,9 +166,9 @@ static void print_fml_param_list(Printer *printer, MpplFmlParamList *list)
 {
   unsigned long i;
   print_token(printer, mppl_fml_param_list__lparen_token(list));
-  for (i = 0; i < mppl_fml_param_list__fml_param_sec_count(list); ++i) {
-    print_fml_param_sec(printer, mppl_fml_param_list__fml_param_sec(list, i));
-    if (i + 1 < mppl_fml_param_list__fml_param_sec_count(list)) {
+  for (i = 0; i < mppl_fml_param_list__sec_count(list); ++i) {
+    print_fml_param_sec(printer, mppl_fml_param_list__sec(list, i));
+    if (i + 1 < mppl_fml_param_list__sec_count(list)) {
       print_token(printer, mppl_fml_param_list__semi_token(list, i));
       print_space();
     }
@@ -258,7 +258,7 @@ static void print_if_stmt(Printer *printer, MpplIfStmt *stmt)
   MpplToken *else_token;
   print_token_keyword(printer, mppl_if_stmt__if_token(stmt));
   print_space();
-  print_expr(printer, mppl_if_stmt__expr(stmt));
+  print_expr(printer, mppl_if_stmt__cond(stmt));
   print_space();
   print_token_keyword(printer, mppl_if_stmt__then_token(stmt));
   print_stmt__conditional(printer, mppl_if_stmt__then_stmt(stmt));
@@ -281,10 +281,10 @@ static void print_while_stmt(Printer *printer, MpplWhileStmt *stmt)
 {
   print_token_keyword(printer, mppl_while_stmt__while_token(stmt));
   print_space();
-  print_expr(printer, mppl_while_stmt__expr(stmt));
+  print_expr(printer, mppl_while_stmt__cond(stmt));
   print_space();
   print_token_keyword(printer, mppl_while_stmt__do_token(stmt));
-  print_stmt__conditional(printer, mppl_while_stmt__stmt(stmt));
+  print_stmt__conditional(printer, mppl_while_stmt__do_stmt(stmt));
   mppl_free(stmt);
 }
 
@@ -324,7 +324,7 @@ static void print_input_stmt(Printer *printer, MpplInputStmt *stmt)
 
 static void print_output_stmt(Printer *printer, MpplOutputStmt *stmt)
 {
-  MpplOutputList *list;
+  MpplOutList *list;
   print_token_keyword(printer, mppl_output_stmt__write_token(stmt));
   if ((list = mppl_output_stmt__output_list(stmt))) {
     print_output_list(printer, list);
@@ -505,34 +505,34 @@ static void print_array_type(Printer *printer, MpplArrayType *type)
   print_space();
   print_token_keyword(printer, mppl_array_type__of_token(type));
   print_space();
-  print_std_type(printer, mppl_array_type__std_type(type));
+  print_std_type(printer, mppl_array_type__type(type));
   mppl_free(type);
 }
 
-static void print_output_list(Printer *printer, MpplOutputList *list)
+static void print_output_list(Printer *printer, MpplOutList *list)
 {
   unsigned long i;
-  print_token(printer, mppl_output_list__lparen_token(list));
-  for (i = 0; i < mppl_output_list__output_value_count(list); ++i) {
-    print_output_value(printer, mppl_output_list__output_value(list, i));
-    if (i + 1 < mppl_output_list__output_value_count(list)) {
-      print_token(printer, mppl_output_list__comma_token(list, i));
+  print_token(printer, mppl_out_list__lparen_token(list));
+  for (i = 0; i < mppl_out_list__out_value_count(list); ++i) {
+    print_output_value(printer, mppl_out_list__out_value(list, i));
+    if (i + 1 < mppl_out_list__out_value_count(list)) {
+      print_token(printer, mppl_out_list__comma_token(list, i));
       print_space();
     }
   }
-  print_token(printer, mppl_output_list__rparen_token(list));
+  print_token(printer, mppl_out_list__rparen_token(list));
   mppl_free(list);
 }
 
-static void print_output_value(Printer *printer, MpplOutputValue *value)
+static void print_output_value(Printer *printer, MpplOutValue *value)
 {
   MpplToken *token;
-  print_expr(printer, mppl_output_value__expr(value));
-  if ((token = mppl_output_value__colon_token(value))) {
+  print_expr(printer, mppl_out_value__expr(value));
+  if ((token = mppl_out_value__colon_token(value))) {
     print_space();
     print_token(printer, token);
     print_space();
-    print_literal(printer, (AnyMpplLit *) mppl_output_value__width(value));
+    print_literal(printer, (AnyMpplLit *) mppl_out_value__width(value));
   }
   mppl_free(value);
 }

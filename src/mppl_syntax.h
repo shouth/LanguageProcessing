@@ -84,8 +84,8 @@ typedef struct MpplStdTypeBoolean MpplStdTypeBoolean;
 typedef struct MpplStdTypeChar    MpplStdTypeChar;
 
 typedef struct MpplInputList   MpplInputList;
-typedef struct MpplOutputList  MpplOutputList;
-typedef struct MpplOutputValue MpplOutputValue;
+typedef struct MpplOutputList  MpplOutList;
+typedef struct MpplOutputValue MpplOutValue;
 
 typedef enum {
   MPPL_LIT_NUMBER,
@@ -105,7 +105,7 @@ MpplToken       *mppl_program__name(const MpplProgram *program);
 MpplToken       *mppl_program__semi_token(const MpplProgram *program);
 unsigned long    mppl_program__decl_part_count(const MpplProgram *program);
 AnyMpplDeclPart *mppl_program__decl_part(const MpplProgram *program, unsigned long index);
-MpplCompStmt    *mppl_program__comp_stmt(const MpplProgram *program);
+MpplCompStmt    *mppl_program__stmt(const MpplProgram *program);
 MpplToken       *mppl_program__dot_token(const MpplProgram *program);
 MpplToken       *mppl_program__eof_token(const MpplProgram *program);
 
@@ -131,8 +131,8 @@ MpplCompStmt     *mppl_proc_decl__comp_stmt(const MpplProcDecl *decl);
 MpplToken        *mppl_proc_decl__semi_token_1(const MpplProcDecl *decl);
 
 MpplToken       *mppl_fml_param_list__lparen_token(const MpplFmlParamList *list);
-unsigned long    mppl_fml_param_list__fml_param_sec_count(const MpplFmlParamList *list);
-MpplFmlParamSec *mppl_fml_param_list__fml_param_sec(const MpplFmlParamList *list, unsigned long index);
+unsigned long    mppl_fml_param_list__sec_count(const MpplFmlParamList *list);
+MpplFmlParamSec *mppl_fml_param_list__sec(const MpplFmlParamList *list, unsigned long index);
 MpplToken       *mppl_fml_param_list__semi_token(const MpplFmlParamList *list, unsigned long index);
 MpplToken       *mppl_fml_param_list__rparen_token(const MpplFmlParamList *list);
 
@@ -149,16 +149,16 @@ MpplToken   *mppl_assign_stmt__assign_token(const MpplAssignStmt *stmt);
 AnyMpplExpr *mppl_assign_stmt__expr(const MpplAssignStmt *stmt);
 
 MpplToken   *mppl_if_stmt__if_token(const MpplIfStmt *stmt);
-AnyMpplExpr *mppl_if_stmt__expr(const MpplIfStmt *stmt);
+AnyMpplExpr *mppl_if_stmt__cond(const MpplIfStmt *stmt);
 MpplToken   *mppl_if_stmt__then_token(const MpplIfStmt *stmt);
 AnyMpplStmt *mppl_if_stmt__then_stmt(const MpplIfStmt *stmt);
 MpplToken   *mppl_if_stmt__else_token(const MpplIfStmt *stmt);
 AnyMpplStmt *mppl_if_stmt__else_stmt(const MpplIfStmt *stmt);
 
 MpplToken   *mppl_while_stmt__while_token(const MpplWhileStmt *stmt);
-AnyMpplExpr *mppl_while_stmt__expr(const MpplWhileStmt *stmt);
+AnyMpplExpr *mppl_while_stmt__cond(const MpplWhileStmt *stmt);
 MpplToken   *mppl_while_stmt__do_token(const MpplWhileStmt *stmt);
-AnyMpplStmt *mppl_while_stmt__stmt(const MpplWhileStmt *stmt);
+AnyMpplStmt *mppl_while_stmt__do_stmt(const MpplWhileStmt *stmt);
 
 MpplToken *mppl_break_stmt__break_token(const MpplBreakStmt *stmt);
 
@@ -171,8 +171,8 @@ MpplToken *mppl_return_stmt__return_token(const MpplReturnStmt *stmt);
 MpplToken     *mppl_input_stmt__read_token(const MpplInputStmt *stmt);
 MpplInputList *mppl_input_stmt__input_list(const MpplInputStmt *stmt);
 
-MpplToken      *mppl_output_stmt__write_token(const MpplOutputStmt *stmt);
-MpplOutputList *mppl_output_stmt__output_list(const MpplOutputStmt *stmt);
+MpplToken   *mppl_output_stmt__write_token(const MpplOutputStmt *stmt);
+MpplOutList *mppl_output_stmt__output_list(const MpplOutputStmt *stmt);
 
 MpplToken    *mppl_comp_stmt__begin_token(const MpplCompStmt *stmt);
 unsigned long mppl_comp_stmt__stmt_count(const MpplCompStmt *stmt);
@@ -228,17 +228,17 @@ MpplToken      *mppl_array_type__lbracket_token(const MpplArrayType *type);
 MpplLitNumber  *mppl_array_type__size(const MpplArrayType *type);
 MpplToken      *mppl_array_type__rbracket_token(const MpplArrayType *type);
 MpplToken      *mppl_array_type__of_token(const MpplArrayType *type);
-AnyMpplStdType *mppl_array_type__std_type(const MpplArrayType *type);
+AnyMpplStdType *mppl_array_type__type(const MpplArrayType *type);
 
-MpplToken       *mppl_output_list__lparen_token(const MpplOutputList *list);
-unsigned long    mppl_output_list__output_value_count(const MpplOutputList *list);
-MpplOutputValue *mppl_output_list__output_value(const MpplOutputList *list, unsigned long index);
-MpplToken       *mppl_output_list__comma_token(const MpplOutputList *list, unsigned long index);
-MpplToken       *mppl_output_list__rparen_token(const MpplOutputList *list);
+MpplToken    *mppl_out_list__lparen_token(const MpplOutList *list);
+unsigned long mppl_out_list__out_value_count(const MpplOutList *list);
+MpplOutValue *mppl_out_list__out_value(const MpplOutList *list, unsigned long index);
+MpplToken    *mppl_out_list__comma_token(const MpplOutList *list, unsigned long index);
+MpplToken    *mppl_out_list__rparen_token(const MpplOutList *list);
 
-AnyMpplExpr   *mppl_output_value__expr(const MpplOutputValue *value);
-MpplToken     *mppl_output_value__colon_token(const MpplOutputValue *value);
-MpplLitNumber *mppl_output_value__width(const MpplOutputValue *value);
+AnyMpplExpr   *mppl_out_value__expr(const MpplOutValue *value);
+MpplToken     *mppl_out_value__colon_token(const MpplOutValue *value);
+MpplLitNumber *mppl_out_value__width(const MpplOutValue *value);
 
 MpplLitKind mppl_lit__kind(const AnyMpplLit *lit);
 

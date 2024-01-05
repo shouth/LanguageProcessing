@@ -37,7 +37,7 @@ AnyMpplDeclPart *mppl_program__decl_part(const MpplProgram *program, unsigned lo
   return (AnyMpplDeclPart *) syntax_tree_child(syntax(program), 3 + index);
 }
 
-MpplCompStmt *mppl_program__comp_stmt(const MpplProgram *program)
+MpplCompStmt *mppl_program__stmt(const MpplProgram *program)
 {
   return (MpplCompStmt *) syntax_tree_child(syntax(program), syntax_tree_child_count(syntax(program)) - 3);
 }
@@ -159,12 +159,12 @@ MpplToken *mppl_fml_param_list__lparen_token(const MpplFmlParamList *list)
   return (MpplToken *) syntax_tree_child(syntax(list), 0);
 }
 
-unsigned long mppl_fml_param_list__fml_param_sec_count(const MpplFmlParamList *list)
+unsigned long mppl_fml_param_list__sec_count(const MpplFmlParamList *list)
 {
   return (syntax_tree_child_count(syntax(list)) - 1) / 2;
 }
 
-MpplFmlParamSec *mppl_fml_param_list__fml_param_sec(const MpplFmlParamList *list, unsigned long index)
+MpplFmlParamSec *mppl_fml_param_list__sec(const MpplFmlParamList *list, unsigned long index)
 {
   return (MpplFmlParamSec *) syntax_tree_child(syntax(list), 1 + index);
 }
@@ -258,7 +258,7 @@ MpplToken *mppl_if_stmt__if_token(const MpplIfStmt *stmt)
   return (MpplToken *) syntax_tree_child(syntax(stmt), 0);
 }
 
-AnyMpplExpr *mppl_if_stmt__expr(const MpplIfStmt *stmt)
+AnyMpplExpr *mppl_if_stmt__cond(const MpplIfStmt *stmt)
 {
   return (AnyMpplExpr *) syntax_tree_child(syntax(stmt), 1);
 }
@@ -290,7 +290,7 @@ MpplToken *mppl_while_stmt__while_token(const MpplWhileStmt *stmt)
   return (MpplToken *) syntax_tree_child(syntax(stmt), 0);
 }
 
-AnyMpplExpr *mppl_while_stmt__expr(const MpplWhileStmt *stmt)
+AnyMpplExpr *mppl_while_stmt__cond(const MpplWhileStmt *stmt)
 {
   return (AnyMpplExpr *) syntax_tree_child(syntax(stmt), 1);
 }
@@ -300,7 +300,7 @@ MpplToken *mppl_while_stmt__do_token(const MpplWhileStmt *stmt)
   return (MpplToken *) syntax_tree_child(syntax(stmt), 2);
 }
 
-AnyMpplStmt *mppl_while_stmt__stmt(const MpplWhileStmt *stmt)
+AnyMpplStmt *mppl_while_stmt__do_stmt(const MpplWhileStmt *stmt)
 {
   return (AnyMpplStmt *) syntax_tree_child(syntax(stmt), 3);
 }
@@ -355,9 +355,9 @@ MpplToken *mppl_output_stmt__write_token(const MpplOutputStmt *stmt)
   return (MpplToken *) syntax_tree_child(syntax(stmt), 0);
 }
 
-MpplOutputList *mppl_output_stmt__output_list(const MpplOutputStmt *stmt)
+MpplOutList *mppl_output_stmt__output_list(const MpplOutputStmt *stmt)
 {
-  return (MpplOutputList *) syntax_tree_child(syntax(stmt), 1);
+  return (MpplOutList *) syntax_tree_child(syntax(stmt), 1);
 }
 
 /* compound statement */
@@ -637,51 +637,51 @@ MpplToken *mppl_array_type__of_token(const MpplArrayType *type)
   return (MpplToken *) syntax_tree_child(syntax(type), 4);
 }
 
-AnyMpplStdType *mppl_array_type__std_type(const MpplArrayType *type)
+AnyMpplStdType *mppl_array_type__type(const MpplArrayType *type)
 {
   return (AnyMpplStdType *) syntax_tree_child(syntax(type), 5);
 }
 
 /* output list */
 
-MpplToken *mppl_output_list__lparen_token(const MpplOutputList *list)
+MpplToken *mppl_out_list__lparen_token(const MpplOutList *list)
 {
   return (MpplToken *) syntax_tree_child(syntax(list), 0);
 }
 
-unsigned long mppl_output_list__output_value_count(const MpplOutputList *list)
+unsigned long mppl_out_list__out_value_count(const MpplOutList *list)
 {
   return (syntax_tree_child_count(syntax(list)) - 1) / 2;
 }
 
-MpplOutputValue *mppl_output_list__output_value(const MpplOutputList *list, unsigned long index)
+MpplOutValue *mppl_out_list__out_value(const MpplOutList *list, unsigned long index)
 {
-  return (MpplOutputValue *) syntax_tree_child(syntax(list), 1 + index * 2);
+  return (MpplOutValue *) syntax_tree_child(syntax(list), 1 + index * 2);
 }
 
-MpplToken *mppl_output_list__comma_token(const MpplOutputList *list, unsigned long index)
+MpplToken *mppl_out_list__comma_token(const MpplOutList *list, unsigned long index)
 {
   return (MpplToken *) syntax_tree_child(syntax(list), 2 + index * 2);
 }
 
-MpplToken *mppl_output_list__rparen_token(const MpplOutputList *list)
+MpplToken *mppl_out_list__rparen_token(const MpplOutList *list)
 {
   return (MpplToken *) syntax_tree_child(syntax(list), syntax_tree_child_count(syntax(list)) - 1);
 }
 
 /* output value */
 
-AnyMpplExpr *mppl_output_value__expr(const MpplOutputValue *value)
+AnyMpplExpr *mppl_out_value__expr(const MpplOutValue *value)
 {
   return (AnyMpplExpr *) syntax_tree_child(syntax(value), 0);
 }
 
-MpplToken *mppl_output_value__colon_token(const MpplOutputValue *value)
+MpplToken *mppl_out_value__colon_token(const MpplOutValue *value)
 {
   return (MpplToken *) syntax_tree_child(syntax(value), 1);
 }
 
-MpplLitNumber *mppl_output_value__width(const MpplOutputValue *value)
+MpplLitNumber *mppl_out_value__width(const MpplOutValue *value)
 {
   return (MpplLitNumber *) syntax_tree_child(syntax(value), 2);
 }
