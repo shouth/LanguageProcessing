@@ -553,7 +553,7 @@ static void parse_compound_stmt(Parser *parser)
     parse_stmt(parser);
   } while (eat(parser, SYNTAX_SEMI_TOKEN));
   expect(parser, SYNTAX_END_KW);
-  node_finish(parser, SYNTAX_COMPOUND_STMT);
+  node_finish(parser, SYNTAX_COMP_STMT);
 }
 
 static void parse_stmt(Parser *parser)
@@ -581,7 +581,7 @@ static void parse_stmt(Parser *parser)
   }
 }
 
-static void parse_var_decl(Parser *parser, const SyntaxKind *next, unsigned long count)
+static void parse_var_decl(Parser *parser)
 {
   node_start(parser);
   do {
@@ -597,7 +597,7 @@ static void parse_var_decl_part(Parser *parser, const SyntaxKind *next, unsigned
   node_start(parser);
   expect(parser, SYNTAX_VAR_KW);
   do {
-    parse_var_decl(parser, next, count);
+    parse_var_decl(parser);
     expect_semi(parser, next, count);
   } while (check(parser, SYNTAX_IDENT_TOKEN));
   node_finish(parser, SYNTAX_VAR_DECL_PART);
