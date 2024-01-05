@@ -445,7 +445,7 @@ static void print_not_expr(Printer *printer, MpplNotExpr *expr)
 
 static void print_cast_expr(Printer *printer, MpplCastExpr *expr)
 {
-  print_type(printer, mppl_cast_expr__type(expr));
+  print_std_type(printer, mppl_cast_expr__type(expr));
   print_token(printer, mppl_cast_expr__lparen_token(expr));
   print_expr(printer, mppl_cast_expr__expr(expr));
   print_token(printer, mppl_cast_expr__rparen_token(expr));
