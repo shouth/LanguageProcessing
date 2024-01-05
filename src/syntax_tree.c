@@ -8,6 +8,7 @@
 struct SyntaxTree {
   const SyntaxTree *parent;
   const TokenNode  *inner;
+  unsigned long     offset;
 };
 
 SyntaxTree *syntax_tree_root(const TokenTree *tree)
@@ -16,6 +17,17 @@ SyntaxTree *syntax_tree_root(const TokenTree *tree)
   root->parent     = NULL;
   root->inner      = (TokenNode *) tree;
   return root;
+}
+
+const TokenNode *syntax_tree_raw(const SyntaxTree *tree)
+{
+  return tree->inner;
+}
+
+SyntaxKind syntax_tree_kind(const SyntaxTree *tree)
+{
+  const TokenTree *inner = (TokenTree *) tree->inner;
+  return inner->kind;
 }
 
 const SyntaxTree *syntax_tree_parent(const SyntaxTree *tree)
@@ -36,7 +48,7 @@ unsigned long syntax_tree_child_count(const SyntaxTree *tree)
 SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
 {
   const TokenTree *inner = (TokenTree *) tree->inner;
-  if (syntax_kind_is_token(inner->kind) || index >= inner->children_count) {
+  if (syntax_kind_is_token(inner->kind) || index >= inner->children_count || !inner->children[index]) {
     return NULL;
   } else {
     SyntaxTree *child = xmalloc(sizeof(SyntaxTree));
