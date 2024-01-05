@@ -3,7 +3,6 @@
 #include "lexer.h"
 #include "source.h"
 #include "syntax_kind.h"
-#include "token_tree.h"
 #include "utility.h"
 
 typedef struct Lexer Lexer;
@@ -46,7 +45,7 @@ static int eat_if(Lexer *lexer, int (*predicate)(int))
   return result;
 }
 
-static TokenStatus tokenize(Lexer *lexer, SyntaxKind kind, LexedToken *lexed)
+static LexStatus tokenize(Lexer *lexer, SyntaxKind kind, LexedToken *lexed)
 {
   lexed->kind   = kind;
   lexed->offset = lexer->offset;
@@ -54,17 +53,17 @@ static TokenStatus tokenize(Lexer *lexer, SyntaxKind kind, LexedToken *lexed)
 
   lexer->offset += lexer->index;
   lexer->index = 0;
-  return TOKEN_OK;
+  return LEX_OK;
 }
 
-static TokenStatus token_unexpected(Lexer *lexer, LexedToken *lexed)
+static LexStatus token_unexpected(Lexer *lexer, LexedToken *lexed)
 {
   bump(lexer);
   tokenize(lexer, SYNTAX_BAD_TOKEN, lexed);
-  return TOKEN_ERROR_STRAY_CHAR;
+  return LEX_ERROR_STRAY_CHAR;
 }
 
-static TokenStatus token_identifier_and_keyword(Lexer *lexer, LexedToken *lexed)
+static LexStatus token_identifier_and_keyword(Lexer *lexer, LexedToken *lexed)
 {
   if (eat_if(lexer, &is_alphabet)) {
     SyntaxKind kind;
@@ -76,7 +75,7 @@ static TokenStatus token_identifier_and_keyword(Lexer *lexer, LexedToken *lexed)
   }
 }
 
-static TokenStatus token_integer(Lexer *lexer, LexedToken *lexed)
+static LexStatus token_integer(Lexer *lexer, LexedToken *lexed)
 {
   if (eat_if(lexer, &is_number)) {
     while (eat_if(lexer, &is_number)) { }
@@ -86,7 +85,7 @@ static TokenStatus token_integer(Lexer *lexer, LexedToken *lexed)
   }
 }
 
-static TokenStatus token_string(Lexer *lexer, LexedToken *lexed)
+static LexStatus token_string(Lexer *lexer, LexedToken *lexed)
 {
   if (eat(lexer, '\'')) {
     int contain_non_graphic = 0;
@@ -94,13 +93,13 @@ static TokenStatus token_string(Lexer *lexer, LexedToken *lexed)
       if (eat(lexer, '\'') && !eat(lexer, '\'')) {
         if (contain_non_graphic) {
           tokenize(lexer, SYNTAX_BAD_TOKEN, lexed);
-          return TOKEN_ERROR_NONGRAPHIC_CHAR;
+          return LEX_ERROR_NONGRAPHIC_CHAR;
         } else {
           return tokenize(lexer, SYNTAX_STRING_LIT, lexed);
         }
       } else if (is_newline(first(lexer)) || first(lexer) == EOF) {
         tokenize(lexer, SYNTAX_BAD_TOKEN, lexed);
-        return TOKEN_ERROR_UNTERMINATED_STRING;
+        return LEX_ERROR_UNTERMINATED_STRING;
       } else if (!eat_if(lexer, &is_graphic)) {
         contain_non_graphic = 1;
         bump(lexer);
@@ -135,7 +134,7 @@ static int token_comment(Lexer *lexer, LexedToken *lexed)
         return tokenize(lexer, SYNTAX_BRACES_COMMENT_TRIVIA, lexed);
       } else if (first(lexer) == EOF) {
         tokenize(lexer, SYNTAX_BAD_TOKEN, lexed);
-        return TOKEN_ERROR_UNTERMINATED_COMMENT;
+        return LEX_ERROR_UNTERMINATED_COMMENT;
       } else {
         bump(lexer);
       }
@@ -147,7 +146,7 @@ static int token_comment(Lexer *lexer, LexedToken *lexed)
           return tokenize(lexer, SYNTAX_C_COMMENT_TRIVIA, lexed);
         } else if (first(lexer) == EOF) {
           tokenize(lexer, SYNTAX_BAD_TOKEN, lexed);
-          return TOKEN_ERROR_UNTERMINATED_COMMENT;
+          return LEX_ERROR_UNTERMINATED_COMMENT;
         } else {
           bump(lexer);
         }
@@ -209,7 +208,7 @@ static int token_symbol(Lexer *lexer, LexedToken *lexed)
   }
 }
 
-TokenStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *lexed)
+LexStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *lexed)
 {
   Lexer lexer;
   lexer.source = source;
@@ -218,7 +217,7 @@ TokenStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *lex
 
   if (first(&lexer) == EOF) {
     tokenize(&lexer, SYNTAX_EOF_TOKEN, lexed);
-    return TOKEN_EOF;
+    return LEX_EOF;
   } else if (is_alphabet(first(&lexer))) {
     return token_identifier_and_keyword(&lexer, lexed);
   } else if (is_number(first(&lexer))) {

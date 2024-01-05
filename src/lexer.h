@@ -3,9 +3,17 @@
 
 #include "source.h"
 #include "syntax_kind.h"
-#include "token_tree.h"
 
 typedef struct LexedToken LexedToken;
+
+typedef enum {
+  LEX_OK,
+  LEX_EOF,
+  LEX_ERROR_STRAY_CHAR,
+  LEX_ERROR_NONGRAPHIC_CHAR,
+  LEX_ERROR_UNTERMINATED_STRING,
+  LEX_ERROR_UNTERMINATED_COMMENT
+} LexStatus;
 
 struct LexedToken {
   SyntaxKind    kind;
@@ -13,6 +21,6 @@ struct LexedToken {
   unsigned long length;
 };
 
-TokenStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *token);
+LexStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *token);
 
 #endif

@@ -4,6 +4,7 @@
 
 #include "array.h"
 #include "bitset.h"
+#include "lexer.h"
 #include "parser.h"
 #include "report.h"
 #include "source.h"
@@ -18,7 +19,7 @@ struct Parser {
   TokenCursor   cursor;
   unsigned long offset;
   Token        *token;
-  TokenStatus   status;
+  LexStatus     status;
   Array        *parents;
   Array        *children;
   BitSet       *expected;
@@ -202,7 +203,7 @@ static void error_unexpected(Parser *parser)
 
   if (token(parser)->kind == SYNTAX_BAD_TOKEN) {
     switch (parser->status) {
-    case TOKEN_ERROR_STRAY_CHAR: {
+    case LEX_ERROR_STRAY_CHAR: {
       if (is_graphic(token(parser)->text[0])) {
         report = report_new(REPORT_KIND_ERROR, parser->offset, "stray `%s` in program", token(parser)->text);
       } else {
@@ -210,15 +211,15 @@ static void error_unexpected(Parser *parser)
       }
       break;
     }
-    case TOKEN_ERROR_NONGRAPHIC_CHAR: {
+    case LEX_ERROR_NONGRAPHIC_CHAR: {
       report = report_new(REPORT_KIND_ERROR, parser->offset, "non-graphic character in string");
       break;
     }
-    case TOKEN_ERROR_UNTERMINATED_STRING: {
+    case LEX_ERROR_UNTERMINATED_STRING: {
       report = report_new(REPORT_KIND_ERROR, parser->offset, "string is unterminated");
       break;
     }
-    case TOKEN_ERROR_UNTERMINATED_COMMENT: {
+    case LEX_ERROR_UNTERMINATED_COMMENT: {
       report = report_new(REPORT_KIND_ERROR, parser->offset, "comment is unterminated");
       break;
     }

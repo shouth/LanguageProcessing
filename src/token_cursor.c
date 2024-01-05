@@ -8,9 +8,9 @@
 #include "token_tree.h"
 #include "utility.h"
 
-static TokenStatus token_cursor_lex(TokenCursor *cursor, LexedToken *lexed)
+static LexStatus token_cursor_lex(TokenCursor *cursor, LexedToken *lexed)
 {
-  TokenStatus status = mppl_lex(cursor->_source, cursor->_offset, lexed);
+  LexStatus status = mppl_lex(cursor->_source, cursor->_offset, lexed);
   cursor->_offset += lexed->length;
   if (lexed->kind == SYNTAX_EOF_TOKEN) {
     cursor->_offset = -1ul;
@@ -24,14 +24,14 @@ void token_cursor_init(TokenCursor *cursor, const Source *source)
   cursor->_offset = 0;
 }
 
-TokenStatus token_cursor_next(TokenCursor *cursor, Token **token)
+LexStatus token_cursor_next(TokenCursor *cursor, Token **token)
 {
   if (cursor->_offset == -1ul) {
     return 0;
   } else {
-    Array      *trivials = array_new(sizeof(TrivialToken));
-    LexedToken  lexed;
-    TokenStatus status;
+    Array     *trivials = array_new(sizeof(TrivialToken));
+    LexedToken lexed;
+    LexStatus  status;
 
     while (1) {
       TrivialToken trivia;

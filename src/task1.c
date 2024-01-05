@@ -107,12 +107,12 @@ static Array *list_token(Map *counts)
   return list;
 }
 
-static TokenStatus token_count_init(Counter *count, const Source *source)
+static LexStatus token_count_init(Counter *count, const Source *source)
 {
-  LexedToken  token;
-  TokenStatus status;
-  Map        *token_counts;
-  Map        *identifier_counts;
+  LexedToken token;
+  LexStatus  status;
+  Map       *token_counts;
+  Map       *identifier_counts;
 
   unsigned long offset = 0;
 
@@ -120,7 +120,7 @@ static TokenStatus token_count_init(Counter *count, const Source *source)
   identifier_counts = map_new(&counter_token_hash, &counter_token_compare);
   while (1) {
     status = mppl_lex(source, offset, &token);
-    if (status != TOKEN_OK) {
+    if (status != LEX_OK) {
       break;
     }
 
@@ -270,19 +270,19 @@ void task1(int argc, const char **argv)
 
   source = source_new(argv[1], strlen(argv[1]));
   switch (token_count_init(&counter, source)) {
-  case TOKEN_EOF:
+  case LEX_EOF:
     token_count_print(&counter);
     break;
-  case TOKEN_ERROR_STRAY_CHAR:
+  case LEX_ERROR_STRAY_CHAR:
     fprintf(stderr, "Error: Stray character in program\n");
     break;
-  case TOKEN_ERROR_NONGRAPHIC_CHAR:
+  case LEX_ERROR_NONGRAPHIC_CHAR:
     fprintf(stderr, "Error: Non-graphic character in string\n");
     break;
-  case TOKEN_ERROR_UNTERMINATED_STRING:
+  case LEX_ERROR_UNTERMINATED_STRING:
     fprintf(stderr, "Error: String is unterminated\n");
     break;
-  case TOKEN_ERROR_UNTERMINATED_COMMENT:
+  case LEX_ERROR_UNTERMINATED_COMMENT:
     fprintf(stderr, "Error: Comment is unterminated\n");
     break;
   default:
