@@ -7,6 +7,7 @@ typedef struct PrinterOption PrinterOption;
 
 struct PrinterOption {
   struct {
+    int           enabled;
     unsigned long foreground;
     unsigned long program;
     unsigned long keyword;
