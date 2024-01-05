@@ -1,6 +1,7 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
+#include <stdio.h>
 #include <stdlib.h>
 
 void *xmalloc(unsigned long size);
