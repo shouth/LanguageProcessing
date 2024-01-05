@@ -3,7 +3,6 @@
 #include "mppl_syntax.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 #include "utility.h"
 
 static const SyntaxTree *syntax(const void *node)
