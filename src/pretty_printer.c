@@ -513,7 +513,6 @@ static void consume_variable_declaration(Printer *printer)
   consume_token_foreground(printer);
   space();
   consume_type(printer);
-  consume_token_foreground(printer);
   tree_end(printer);
 }
 
@@ -526,6 +525,7 @@ static void consume_variable_declaration_part(Printer *printer)
   while (node_index(printer) < node_count(printer)) {
     indent(printer);
     consume_variable_declaration(printer);
+    consume_token_foreground(printer);
     newline();
   }
   --printer->indent;

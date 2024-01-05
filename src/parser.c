@@ -589,7 +589,6 @@ static void parse_var_decl(Parser *parser, const SyntaxKind *next, unsigned long
   } while (eat(parser, SYNTAX_COMMA_TOKEN));
   expect(parser, SYNTAX_COLON_TOKEN);
   parse_type(parser);
-  expect_semi(parser, next, count);
   node_finish(parser, SYNTAX_VAR_DECL);
 }
 
@@ -599,6 +598,7 @@ static void parse_var_decl_part(Parser *parser, const SyntaxKind *next, unsigned
   expect(parser, SYNTAX_VAR_KW);
   do {
     parse_var_decl(parser, next, count);
+    expect_semi(parser, next, count);
   } while (check(parser, SYNTAX_IDENT_TOKEN));
   node_finish(parser, SYNTAX_VAR_DECL_PART);
 }
