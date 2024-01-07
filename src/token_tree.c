@@ -7,12 +7,12 @@
 #include "token_tree.h"
 #include "utility.h"
 
-static unsigned long token_node_text_length(const TokenNode *node)
+unsigned long token_node_text_length(const TokenNode *node)
 {
   return node ? node->text_length : 0;
 }
 
-static unsigned long token_node_trivia_length(const TokenNode *node)
+unsigned long token_node_trivia_length(const TokenNode *node)
 {
   if (!node) {
     return 0;
@@ -56,18 +56,20 @@ TokenTree *token_tree_new(SyntaxKind kind, const TokenNode **children, unsigned 
 
 void token_tree_free(TokenTree *tree)
 {
-  unsigned long i;
-  for (i = 0; i < tree->children_count; ++i) {
-    if (tree->children[i]) {
-      if (syntax_kind_is_token(tree->children[i]->kind)) {
-        token_free((Token *) tree->children[i]);
-      } else {
-        token_tree_free((TokenTree *) tree->children[i]);
+  if (tree) {
+    unsigned long i;
+    for (i = 0; i < tree->children_count; ++i) {
+      if (tree->children[i]) {
+        if (syntax_kind_is_token(tree->children[i]->kind)) {
+          token_free((Token *) tree->children[i]);
+        } else {
+          token_tree_free((TokenTree *) tree->children[i]);
+        }
       }
-      free(tree->children[i]);
     }
+    free(tree->children);
+    free(tree);
   }
-  free(tree->children);
 }
 
 void token_info_init(TrivialToken *info, SyntaxKind kind, const char *token, unsigned long text_length)
@@ -97,12 +99,15 @@ Token *token_new(SyntaxKind kind, char *text, unsigned long text_length, Trivial
 
 void token_free(Token *token)
 {
-  unsigned long i;
-  token_info_deinit((TrivialToken *) token);
-  for (i = 0; i < token->trivia_count; ++i) {
-    token_info_deinit(token->trivia + i);
+  if (token) {
+    unsigned long i;
+    token_info_deinit((TrivialToken *) token);
+    for (i = 0; i < token->trivia_count; ++i) {
+      token_info_deinit(token->trivia + i);
+    }
+    free(token->trivia);
+    free(token);
   }
-  free(token->trivia);
 }
 
 static void token_node_print_impl(TokenNode *node, unsigned long depth, unsigned long offset)

@@ -34,6 +34,9 @@ struct TokenNode {
   unsigned long text_length;
 };
 
+unsigned long token_node_text_length(const TokenNode *node);
+unsigned long token_node_trivia_length(const TokenNode *node);
+
 TokenTree *token_tree_new(SyntaxKind kind, const TokenNode **children, unsigned long children_count);
 void       token_tree_free(TokenTree *tree);
 
