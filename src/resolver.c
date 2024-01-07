@@ -77,16 +77,21 @@ static void pop_scope(Resolver *resolver)
   free(scope);
 }
 
-static void try_create_def(Resolver *resolver, DefKind kind, Binding *binding, const TokenNode *node)
+static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *item_syntax, const SyntaxTree *name_syntax)
 {
-  MapIndex index;
-  if (resolver->scope && map_find(resolver->scope->defs, (void *) binding->name, &index)) {
+  MapIndex     index;
+  const Token *name_token = (const Token *) syntax_tree_raw(name_syntax);
+  Binding      binding;
+  binding.name   = name_token->text;
+  binding.offset = syntax_tree_offset(name_syntax);
+  binding.length = name_token->text_length;
+  if (resolver->scope && map_find(resolver->scope->defs, (void *) binding.name, &index)) {
     const Def *previous = map_value(resolver->scope->defs, &index);
-    error_def_conflict(resolver, &previous->binding, binding);
+    error_def_conflict(resolver, &previous->binding, &binding);
   } else {
-    const Def *def = res_create_def(resolver->res, kind, binding, node);
+    const Def *def = res_create_def(resolver->res, kind, &binding, (const TokenNode *) item_syntax);
     if (resolver->scope) {
-      map_update(resolver->scope->defs, &index, (void *) binding->name, (void *) def);
+      map_update(resolver->scope->defs, &index, (void *) binding.name, (void *) def);
     }
   }
 }
@@ -103,144 +108,91 @@ static const Def *get_def(Resolver *resolver, const char *name)
   return NULL;
 }
 
-static void enter_program(const MpplProgram *program, Resolver *resolver)
+static void try_record_ref(Resolver *resolver, const SyntaxTree *syntax, int is_proc)
 {
-  MpplToken   *name_syntax = mppl_program__name(program);
-  const Token *name_token  = (const Token *) syntax_tree_raw((SyntaxTree *) name_syntax);
-  Binding      binding;
-  binding.name   = name_token->text;
-  binding.offset = syntax_tree_offset((const SyntaxTree *) name_syntax);
-  binding.length = name_token->text_length;
-  try_create_def(resolver, DEF_PROGRAM, &binding, syntax_tree_raw((const SyntaxTree *) program));
-  mppl_free(name_syntax);
-}
-
-static void enter_proc_decl(const MpplProcDecl *decl, Resolver *resolver)
-{
-  MpplToken   *name_syntax = mppl_proc_decl__name(decl);
-  const Token *name_token  = (const Token *) syntax_tree_raw((SyntaxTree *) name_syntax);
-  Binding      binding;
-  binding.name   = name_token->text;
-  binding.offset = syntax_tree_offset((const SyntaxTree *) name_syntax);
-  binding.length = name_token->text_length;
-  try_create_def(resolver, DEF_PROC, &binding, syntax_tree_raw((const SyntaxTree *) decl));
-  mppl_free(name_syntax);
-}
-
-static void enter_var_decl(const MpplVarDecl *var_decl, Resolver *resolver)
-{
-  unsigned long i;
-  for (i = 0; i < mppl_var_decl__name_count(var_decl); ++i) {
-    MpplToken   *name_syntax = mppl_var_decl__name(var_decl, i);
-    const Token *name_token  = (const Token *) syntax_tree_raw((SyntaxTree *) name_syntax);
-    Binding      binding;
-    binding.name   = name_token->text;
-    binding.offset = syntax_tree_offset((const SyntaxTree *) name_syntax);
-    binding.length = name_token->text_length;
-    try_create_def(resolver, DEF_VAR, &binding, syntax_tree_raw((SyntaxTree *) var_decl));
-    mppl_free(name_syntax);
-  }
-}
-
-static void enter_fml_param_sec(const MpplFmlParamSec *sec, Resolver *resolver)
-{
-  unsigned long i;
-  for (i = 0; i < mppl_fml_param_sec__name_count(sec); ++i) {
-    SyntaxTree  *name_syntax = (SyntaxTree *) mppl_fml_param_sec__name(sec, i);
-    const Token *name_token  = (const Token *) syntax_tree_raw(name_syntax);
-    Binding      binding;
-    binding.name   = name_token->text;
-    binding.offset = syntax_tree_offset(name_syntax);
-    binding.length = name_token->text_length;
-    try_create_def(resolver, DEF_PARAM, &binding, syntax_tree_raw((SyntaxTree *) sec));
-    mppl_free(name_syntax);
-  }
-}
-
-static void enter_var_entire(const MpplEntireVar *var, Resolver *resolver)
-{
-  MpplToken   *name_syntax = mppl_entire_var__name(var);
-  const Token *name_token  = (const Token *) syntax_tree_raw((SyntaxTree *) name_syntax);
-  const Def   *def         = get_def(resolver, name_token->text);
-  if (def) {
-    res_record_ref(resolver->res, (const TokenNode *) name_token, def);
+  const Token *node = (const Token *) syntax_tree_raw(syntax);
+  const Def   *def  = get_def(resolver, node->text);
+  if (resolver->scope && def) {
+    res_record_ref(resolver->res, (const TokenNode *) node, def);
   } else {
     Binding binding;
-    binding.name   = name_token->text;
-    binding.offset = syntax_tree_offset((const SyntaxTree *) name_syntax);
-    binding.length = name_token->text_length;
-    error_var_res_failure(resolver, &binding);
+    binding.name   = node->text;
+    binding.offset = syntax_tree_offset(syntax);
+    binding.length = node->text_length;
+    if (is_proc) {
+      error_proc_res_failure(resolver, &binding);
+    } else {
+      error_var_res_failure(resolver, &binding);
+    }
   }
-  mppl_free(name_syntax);
-}
-
-static void enter_var_indexed(const MpplIndexedVar *var, Resolver *resolver)
-{
-  MpplToken   *name_syntax = mppl_indexed_var__name(var);
-  const Token *name_token  = (const Token *) syntax_tree_raw((SyntaxTree *) name_syntax);
-  const Def   *def         = get_def(resolver, name_token->text);
-  if (def) {
-    res_record_ref(resolver->res, (const TokenNode *) name_token, def);
-  } else {
-    Binding binding;
-    binding.name   = name_token->text;
-    binding.offset = syntax_tree_offset((const SyntaxTree *) name_syntax);
-    binding.length = name_token->text_length;
-    error_var_res_failure(resolver, &binding);
-  }
-  mppl_free(name_syntax);
-}
-
-static void enter_call_stmt(const MpplCallStmt *stmt, Resolver *resolver)
-{
-  MpplToken   *name_syntax = mppl_call_stmt__name(stmt);
-  const Token *name_token  = (const Token *) syntax_tree_raw((SyntaxTree *) name_syntax);
-  const Def   *def         = get_def(resolver, name_token->text);
-  if (def) {
-    res_record_ref(resolver->res, (const TokenNode *) name_token, def);
-  } else {
-    Binding binding;
-    binding.name   = name_token->text;
-    binding.offset = syntax_tree_offset((const SyntaxTree *) name_syntax);
-    binding.length = name_token->text_length;
-    error_proc_res_failure(resolver, &binding);
-  }
-  mppl_free(name_syntax);
 }
 
 static int visit_syntax_tree(const SyntaxTree *tree, void *resolver, int enter)
 {
   if (enter) {
+    unsigned long i;
     switch (syntax_tree_kind(tree)) {
-    case SYNTAX_PROGRAM:
-      enter_program((const MpplProgram *) tree, resolver);
+    case SYNTAX_PROGRAM: {
+      const MpplProgram *program     = (const MpplProgram *) tree;
+      MpplToken         *name_syntax = mppl_program__name(program);
+      try_create_def(resolver, DEF_PROGRAM, (const SyntaxTree *) program, (SyntaxTree *) name_syntax);
+      mppl_free(name_syntax);
       push_scope(resolver);
       return 1;
+    }
 
-    case SYNTAX_PROC_DECL:
-      enter_proc_decl((const MpplProcDecl *) tree, resolver);
+    case SYNTAX_PROC_DECL: {
+      const MpplProcDecl *decl        = (const MpplProcDecl *) tree;
+      MpplToken          *name_syntax = mppl_proc_decl__name(decl);
+      try_create_def(resolver, DEF_PROC, (const SyntaxTree *) decl, (SyntaxTree *) name_syntax);
+      mppl_free(name_syntax);
       push_scope(resolver);
       return 1;
+    }
 
-    case SYNTAX_VAR_DECL:
-      enter_var_decl((const MpplVarDecl *) tree, resolver);
+    case SYNTAX_VAR_DECL: {
+      const MpplVarDecl *var_decl = (const MpplVarDecl *) tree;
+      for (i = 0; i < mppl_var_decl__name_count(var_decl); ++i) {
+        MpplToken *name_syntax = mppl_var_decl__name(var_decl, i);
+        try_create_def(resolver, DEF_VAR, (const SyntaxTree *) var_decl, (SyntaxTree *) name_syntax);
+        mppl_free(name_syntax);
+      }
       return 0;
+    }
 
-    case SYNTAX_FML_PARAM_SECTION:
-      enter_fml_param_sec((const MpplFmlParamSec *) tree, resolver);
+    case SYNTAX_FML_PARAM_SECTION: {
+      const MpplFmlParamSec *sec = (const MpplFmlParamSec *) tree;
+      for (i = 0; i < mppl_fml_param_sec__name_count(sec); ++i) {
+        SyntaxTree *name_syntax = (SyntaxTree *) mppl_fml_param_sec__name(sec, i);
+        try_create_def(resolver, DEF_PARAM, (const SyntaxTree *) sec, name_syntax);
+        mppl_free(name_syntax);
+      }
       return 0;
+    }
 
-    case SYNTAX_ENTIRE_VAR:
-      enter_var_entire((const MpplEntireVar *) tree, resolver);
+    case SYNTAX_ENTIRE_VAR: {
+      const MpplEntireVar *var         = (const MpplEntireVar *) tree;
+      MpplToken           *name_syntax = mppl_entire_var__name(var);
+      try_record_ref(resolver, (const SyntaxTree *) name_syntax, 0);
+      mppl_free(name_syntax);
       return 0;
+    }
 
-    case SYNTAX_INDEXED_VAR:
-      enter_var_indexed((const MpplIndexedVar *) tree, resolver);
+    case SYNTAX_INDEXED_VAR: {
+      const MpplIndexedVar *var         = (const MpplIndexedVar *) tree;
+      MpplToken            *name_syntax = mppl_indexed_var__name(var);
+      try_record_ref(resolver, (const SyntaxTree *) name_syntax, 0);
+      mppl_free(name_syntax);
       return 0;
+    }
 
-    case SYNTAX_CALL_STMT:
-      enter_call_stmt((const MpplCallStmt *) tree, resolver);
+    case SYNTAX_CALL_STMT: {
+      const MpplCallStmt *stmt        = (const MpplCallStmt *) tree;
+      MpplToken          *name_syntax = mppl_call_stmt__name(stmt);
+      try_record_ref(resolver, (const SyntaxTree *) name_syntax, 1);
+      mppl_free(name_syntax);
       return 0;
+    }
 
     default:
       return 1;
