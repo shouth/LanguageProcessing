@@ -23,15 +23,15 @@ Res *res_new(void)
 
 void res_free(Res *res)
 {
-  unsigned long i;
-
   if (res) {
+    unsigned long i;
     for (i = 0; i < array_count(res->defs); ++i) {
       Def *def = *(Def **) array_at(res->defs, i);
       free(def);
     }
     array_free(res->defs);
     map_free(res->refs);
+    free(res);
   }
 }
 

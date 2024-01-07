@@ -74,17 +74,19 @@ SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
 
 void syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void *data)
 {
-  const TokenTree *inner = (TokenTree *) tree->inner;
-  visitor(tree, data, 1);
-  if (!syntax_kind_is_token(inner->kind)) {
-    unsigned long i;
-    for (i = 0; i < inner->children_count; ++i) {
-      SyntaxTree *child = syntax_tree_child(tree, i);
-      syntax_tree_visit(child, visitor, data);
-      syntax_tree_free(child);
+  if (tree) {
+    const TokenTree *inner = (TokenTree *) tree->inner;
+    visitor(tree, data, 1);
+    if (!syntax_kind_is_token(inner->kind)) {
+      unsigned long i;
+      for (i = 0; i < inner->children_count; ++i) {
+        SyntaxTree *child = syntax_tree_child(tree, i);
+        syntax_tree_visit(child, visitor, data);
+        syntax_tree_free(child);
+      }
     }
+    visitor(tree, data, 0);
   }
-  visitor(tree, data, 0);
 }
 
 SyntaxTree *syntax_tree_free(SyntaxTree *tree)
