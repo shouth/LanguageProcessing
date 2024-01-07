@@ -612,7 +612,7 @@ static void parse_formal_param_section(Parser *parser)
   } while (eat(parser, SYNTAX_COMMA_TOKEN));
   expect(parser, SYNTAX_COLON_TOKEN);
   parse_type(parser);
-  node_finish(parser, SYNTAX_FORMAL_PARAM_SECTION);
+  node_finish(parser, SYNTAX_FML_PARAM_SECTION);
 }
 
 static void parse_formal_param_list(Parser *parser)
@@ -623,7 +623,7 @@ static void parse_formal_param_list(Parser *parser)
     parse_formal_param_section(parser);
   } while (eat(parser, SYNTAX_SEMI_TOKEN));
   expect(parser, SYNTAX_RPAREN_TOKEN);
-  node_finish(parser, SYNTAX_FORMAL_PARAM_LIST);
+  node_finish(parser, SYNTAX_FML_PARAM_LIST);
 }
 
 static void parse_proc_decl(Parser *parser, const SyntaxKind *next, unsigned long count)
@@ -695,8 +695,7 @@ int mppl_parse(const Source *source, TokenTree **tree)
   {
     unsigned long i;
     for (i = 0; i < array_count(parser.errors); ++i) {
-      Report **report = array_at(parser.errors, i);
-      report_emit(*report, source);
+      report_emit(*(Report **) array_at(parser.errors, i), source);
     }
     fflush(stdout);
   }
