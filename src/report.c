@@ -474,7 +474,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
 static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long line_number)
 {
   unsigned long i, j;
-  unsigned long label_offset = -1ul;
+  unsigned long label_offset = 0;
   unsigned long line_offset;
   unsigned long column_offset;
   unsigned long end_line_offset;
@@ -502,8 +502,8 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       array_push(connectors, &connector);
     }
 
-    if (annotation->_end.line == line_number && label_offset > annotation->_start.column) {
-      label_offset = annotation->_start.column;
+    if (annotation->_end.line == line_number && label_offset < annotation->_end.column) {
+      label_offset = annotation->_end.column;
     }
   }
   qsort(array_data(connectors), array_count(connectors), sizeof(Connector), &compare_connectors);
