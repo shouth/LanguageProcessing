@@ -63,7 +63,9 @@ SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
     child->inner        = inner->children[index];
     child->offset       = tree->offset;
     for (i = 0; i <= index; ++i) {
-      child->offset += token_node_trivia_length(inner->children[i]);
+      if (i > 0) {
+        child->offset += token_node_trivia_length(inner->children[i]);
+      }
       if (i < index) {
         child->offset += token_node_text_length(inner->children[i]);
       }
