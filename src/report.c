@@ -288,7 +288,7 @@ static void write_annotation_left(
           canvas_write(canvas, "╰─");
           strike = annotation;
         } else {
-          canvas_write(canvas, "│ ");
+          canvas_write(canvas, "  ");
         }
       } else {
         canvas_write(canvas, "│ ");
