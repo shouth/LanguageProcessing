@@ -236,7 +236,7 @@ MpplStmtKind mppl_stmt__kind(const AnyMpplStmt *stmt)
 
 /* assignment statement */
 
-AnyMpplVar *mppl_assign_stmt__var(const MpplAssignStmt *stmt)
+AnyMpplVar *mppl_assign_stmt__lhs(const MpplAssignStmt *stmt)
 {
   return (AnyMpplVar *) syntax_tree_child(syntax(stmt), 0);
 }
@@ -246,7 +246,7 @@ MpplToken *mppl_assign_stmt__assign_token(const MpplAssignStmt *stmt)
   return (MpplToken *) syntax_tree_child(syntax(stmt), 1);
 }
 
-AnyMpplExpr *mppl_assign_stmt__expr(const MpplAssignStmt *stmt)
+AnyMpplExpr *mppl_assign_stmt__rhs(const MpplAssignStmt *stmt)
 {
   return (AnyMpplExpr *) syntax_tree_child(syntax(stmt), 2);
 }

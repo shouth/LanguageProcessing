@@ -144,9 +144,9 @@ AnyMpplType  *mppl_fml_param_sec__type(const MpplFmlParamSec *sec);
 
 MpplStmtKind mppl_stmt__kind(const AnyMpplStmt *stmt);
 
-AnyMpplVar  *mppl_assign_stmt__var(const MpplAssignStmt *stmt);
+AnyMpplVar  *mppl_assign_stmt__lhs(const MpplAssignStmt *stmt);
 MpplToken   *mppl_assign_stmt__assign_token(const MpplAssignStmt *stmt);
-AnyMpplExpr *mppl_assign_stmt__expr(const MpplAssignStmt *stmt);
+AnyMpplExpr *mppl_assign_stmt__rhs(const MpplAssignStmt *stmt);
 
 MpplToken   *mppl_if_stmt__if_token(const MpplIfStmt *stmt);
 AnyMpplExpr *mppl_if_stmt__cond(const MpplIfStmt *stmt);
