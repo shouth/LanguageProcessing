@@ -94,8 +94,8 @@ void map_reserve(Map *map, unsigned long capacity)
         hop = (hop >> 1) | old_buckets[i].hop;
         if (hop & 1) {
           MapIndex index;
-          map_index_init(&index, map, map->buckets[i].key);
-          map_update(map, &index, map->buckets[i].key, map->buckets[i].value);
+          map_index_init(&index, map, old_buckets[i].key);
+          map_update(map, &index, old_buckets[i].key, old_buckets[i].value);
         }
       }
       free(old_buckets);
