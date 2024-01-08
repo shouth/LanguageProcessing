@@ -27,13 +27,22 @@ const TokenNode *syntax_tree_raw(const SyntaxTree *tree)
 
 SyntaxKind syntax_tree_kind(const SyntaxTree *tree)
 {
-  const TokenTree *inner = (TokenTree *) tree->inner;
-  return inner->kind;
+  return syntax_tree_raw(tree)->kind;
 }
 
 unsigned long syntax_tree_offset(const SyntaxTree *tree)
 {
   return tree->offset;
+}
+
+unsigned long syntax_tree_text_length(const SyntaxTree *tree)
+{
+  return token_node_text_length(syntax_tree_raw(tree));
+}
+
+unsigned long syntax_tree_trivia_length(const SyntaxTree *tree)
+{
+  return token_node_trivia_length(syntax_tree_raw(tree));
 }
 
 const SyntaxTree *syntax_tree_parent(const SyntaxTree *tree)
