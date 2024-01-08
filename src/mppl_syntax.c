@@ -183,7 +183,7 @@ MpplToken *mppl_fml_param_list__rparen_token(const MpplFmlParamList *list)
 
 unsigned long mppl_fml_param_sec__name_count(const MpplFmlParamSec *sec)
 {
-  return (syntax_tree_child_count(syntax(sec)) - 3) / 2;
+  return (syntax_tree_child_count(syntax(sec)) - 1) / 2;
 }
 
 MpplToken *mppl_fml_param_sec__name(const MpplFmlParamSec *sec, unsigned long index)
