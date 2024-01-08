@@ -148,7 +148,7 @@ static void error_assign_type_mismatch(
   report_annotation(report, lhs_offset, lhs_offset + lhs_length,
     "`%s`", lhs_type_string);
   report_annotation(report, rhs_offset, rhs_offset + rhs_length,
-    "expected type `%s`, but found type `%s`", lhs_type_string, rhs_type_string);
+    "expected `%s`, found `%s`", lhs_type_string, rhs_type_string);
 
   array_push(checker->errors, &report);
   free(lhs_type_string);
@@ -172,6 +172,240 @@ static void check_assign_stmt(Checker *checker, const MpplAssignStmt *syntax)
   }
   mppl_free(lhs_syntax);
   mppl_free(rhs_syntax);
+}
+
+static void error_conditional_stmt_invalid_condition(Checker *checker, const SyntaxTree *node, const Type *type)
+{
+  char         *type_string = type_to_string(type);
+  unsigned long offset      = syntax_tree_offset(node);
+  unsigned long length      = syntax_tree_text_length(node);
+  Report       *report      = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be used as a condition", type_string);
+  report_annotation(report, offset, offset + length, "condition should be `boolean`");
+  array_push(checker->errors, &report);
+  free(type_string);
+}
+
+static void check_if_stmt(Checker *checker, const MpplIfStmt *syntax)
+{
+  AnyMpplExpr *cond_syntax = mppl_if_stmt__cond(syntax);
+  const Type  *cond_type   = get_expr_type(checker, (SyntaxTree *) cond_syntax);
+
+  if (cond_type && type_kind(cond_type) != TYPE_BOOLEAN) {
+    error_conditional_stmt_invalid_condition(checker, (SyntaxTree *) cond_syntax, cond_type);
+  }
+  mppl_free(cond_syntax);
+}
+
+static void check_while_stmt(Checker *checker, const MpplWhileStmt *syntax)
+{
+  AnyMpplExpr *cond_syntax = mppl_while_stmt__cond(syntax);
+  const Type  *cond_type   = get_expr_type(checker, (SyntaxTree *) cond_syntax);
+
+  if (cond_type && type_kind(cond_type) != TYPE_BOOLEAN) {
+    error_conditional_stmt_invalid_condition(checker, (SyntaxTree *) cond_syntax, cond_type);
+  }
+  mppl_free(cond_syntax);
+}
+
+static void error_call_stmt_non_callable(Checker *checker, const MpplToken *syntax)
+{
+  const Token  *token  = (const Token *) syntax_tree_raw((SyntaxTree *) syntax);
+  unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
+  unsigned long length = syntax_tree_text_length((SyntaxTree *) syntax);
+  Report       *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be called", token->text);
+  report_annotation(report, offset, offset + length, "an item to be called should be a `procedure`");
+  array_push(checker->errors, &report);
+}
+
+static void error_call_stmt_mismatched_param_count(
+  Checker *checker, const MpplActParamList *syntax,
+  const TypeProc *proc_type, unsigned long act_param_count)
+{
+  unsigned long offset      = syntax_tree_offset((SyntaxTree *) syntax);
+  unsigned long length      = syntax_tree_text_length((SyntaxTree *) syntax);
+  Report       *report      = report_new(REPORT_KIND_ERROR, offset, "mismatched the number of parameter");
+  unsigned long param_count = type_proc_param_count(proc_type);
+  report_annotation(report, offset, offset + length,
+    "expected %lu %s, found %lu", param_count, param_count > 1 ? "parameters" : "parameter", act_param_count);
+  array_push(checker->errors, &report);
+}
+
+static void error_call_stmt_mismatched_param_type(
+  Checker *checker, const MpplCallStmt *syntax,
+  const TypeProc *defined_type, const TypeProc *act_type)
+{
+  unsigned long i;
+  unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
+  Report       *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
+
+  MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
+  if (act_param_list_syntax) {
+    for (i = 0; i < type_proc_param_count(defined_type); ++i) {
+      AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
+      const Type  *defined_param_type = type_proc_param(defined_type, i);
+      const Type  *act_param_type     = type_proc_param(act_type, i);
+      if (!type_equal(defined_param_type, act_param_type)) {
+        unsigned long act_param_offset          = syntax_tree_offset((SyntaxTree *) act_param_syntax);
+        unsigned long act_param_length          = syntax_tree_text_length((SyntaxTree *) act_param_syntax);
+        char         *defined_param_type_string = type_to_string(defined_param_type);
+        char         *act_param_type_string     = type_to_string(act_param_type);
+        report_annotation(report, act_param_offset, act_param_offset + act_param_length,
+          "expected `%s`, found `%s`", defined_param_type_string, act_param_type_string);
+        free(defined_param_type_string);
+        free(act_param_type_string);
+      }
+      mppl_free(act_param_syntax);
+    }
+  }
+  mppl_free(act_param_list_syntax);
+  array_push(checker->errors, &report);
+}
+
+static void check_call_stmt(Checker *checker, const MpplCallStmt *syntax)
+{
+  MpplToken  *name_syntax = mppl_call_stmt__name(syntax);
+  const Type *type        = get_ref_type(checker, (SyntaxTree *) name_syntax);
+
+  if (type && type_kind(type) != TYPE_PROC) {
+    error_call_stmt_non_callable(checker, name_syntax);
+  } else {
+    MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
+    Type             *act_type;
+    {
+      Array *act_param_array = array_new(sizeof(Type *));
+      if (act_param_list_syntax) {
+        unsigned long i;
+        for (i = 0; i < mppl_act_param_list__expr_count(act_param_list_syntax); ++i) {
+          AnyMpplExpr *act_param_syntax = mppl_act_param_list__expr(act_param_list_syntax, i);
+          const Type  *act_param_type   = get_expr_type(checker, (SyntaxTree *) act_param_syntax);
+          Type        *act_param_clone  = type_clone(act_param_type);
+          array_push(act_param_array, &act_param_clone);
+          mppl_free(act_param_syntax);
+        }
+      }
+      {
+        unsigned long act_param_count = array_count(act_param_array);
+        Type        **act_param_types = array_steal(act_param_array);
+        act_type                      = type_new_proc(act_param_types, act_param_count);
+      }
+    }
+
+    if (type_proc_param_count((const TypeProc *) type) != type_proc_param_count((const TypeProc *) act_type)) {
+      error_call_stmt_mismatched_param_count(checker,
+        act_param_list_syntax, (const TypeProc *) type, type_proc_param_count((const TypeProc *) act_type));
+    } else if (!type_equal(type, act_type)) {
+      error_call_stmt_mismatched_param_type(checker,
+        syntax, (const TypeProc *) type, (TypeProc *) act_type);
+    }
+    mppl_free(act_param_list_syntax);
+    type_free(act_type);
+  }
+  mppl_free(name_syntax);
+}
+
+static void error_input_stmt_invalid_operand(Checker *checker, const MpplInputList *syntax)
+{
+  unsigned long i;
+  unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid operand");
+  for (i = 0; i < mppl_input_list__var_count(syntax); ++i) {
+    AnyMpplVar *var_syntax = mppl_input_list__var(syntax, i);
+    const Type *var_type   = get_expr_type(checker, (SyntaxTree *) var_syntax);
+
+    if (type_kind(var_type) != TYPE_INTEGER && type_kind(var_type) != TYPE_CHAR) {
+      unsigned long var_offset      = syntax_tree_offset((SyntaxTree *) var_syntax);
+      unsigned long var_length      = syntax_tree_text_length((SyntaxTree *) var_syntax);
+      char         *var_type_string = type_to_string(var_type);
+      report_annotation(report, var_offset, var_offset + var_length,
+        "expected `integer` or `char`, found `%s`", var_type_string);
+      free(var_type_string);
+    }
+  }
+}
+
+static void check_input_stmt(Checker *checker, const MpplInputStmt *syntax)
+{
+  unsigned long  i;
+  MpplInputList *input_list_syntax = mppl_input_stmt__input_list(syntax);
+
+  if (input_list_syntax) {
+    for (i = 0; i < mppl_input_list__var_count(input_list_syntax); ++i) {
+      AnyMpplVar *var_syntax = mppl_input_list__var(input_list_syntax, i);
+      const Type *var_type   = get_expr_type(checker, (SyntaxTree *) var_syntax);
+
+      mppl_free(var_syntax);
+
+      if (var_type && type_kind(var_type) != TYPE_INTEGER && type_kind(var_type) != TYPE_CHAR) {
+        error_input_stmt_invalid_operand(checker, input_list_syntax);
+        break;
+      }
+    }
+  }
+  mppl_free(input_list_syntax);
+}
+
+static void error_output_stmt_invalid_operand(Checker *checker, const MpplOutList *syntax)
+{
+  unsigned long i;
+  unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid operand");
+  for (i = 0; i < mppl_out_list__out_value_count(syntax); ++i) {
+    MpplOutValue  *out_value_syntax = mppl_out_list__out_value(syntax, i);
+    MpplToken     *colon_syntax     = mppl_out_value__colon_token(out_value_syntax);
+    MpplLitNumber *width_syntax     = mppl_out_value__width(out_value_syntax);
+    AnyMpplExpr   *expr_syntax      = mppl_out_value__expr(out_value_syntax);
+    const Type    *expr_type        = get_expr_type(checker, (SyntaxTree *) expr_syntax);
+
+    if (!type_is_std(expr_type)) {
+      if (type_kind(expr_type) != TYPE_STRING) {
+        unsigned long expr_offset      = syntax_tree_offset((SyntaxTree *) expr_syntax);
+        unsigned long expr_length      = syntax_tree_text_length((SyntaxTree *) expr_syntax);
+        char         *expr_type_string = type_to_string(expr_type);
+        report_annotation(report, expr_offset, expr_offset + expr_length,
+          "expected `integer`, `char` or `boolean`, found `%s`", expr_type_string);
+        free(expr_type_string);
+      } else if (colon_syntax) {
+        unsigned long start
+          = syntax_tree_offset((SyntaxTree *) colon_syntax);
+        unsigned long end
+          = syntax_tree_offset((SyntaxTree *) width_syntax) + syntax_tree_text_length((SyntaxTree *) width_syntax);
+        report_annotation(report, start, end,
+          "field width cannot be applied to `string`");
+        mppl_free(width_syntax);
+      }
+    }
+    mppl_free(expr_syntax);
+    mppl_free(colon_syntax);
+    mppl_free(out_value_syntax);
+  }
+  array_push(checker->errors, &report);
+}
+
+static void check_output_stmt(Checker *checker, const MpplOutputStmt *syntax)
+{
+  unsigned long i;
+  MpplOutList  *out_list_syntax = mppl_output_stmt__output_list(syntax);
+
+  if (out_list_syntax) {
+    for (i = 0; i < mppl_out_list__out_value_count(out_list_syntax); ++i) {
+      MpplOutValue *out_value_syntax = mppl_out_list__out_value(out_list_syntax, i);
+      MpplToken    *colon_syntax     = mppl_out_value__colon_token(out_value_syntax);
+      AnyMpplExpr  *expr_syntax      = mppl_out_value__expr(out_value_syntax);
+      const Type   *expr_type        = get_expr_type(checker, (SyntaxTree *) expr_syntax);
+
+      mppl_free(expr_syntax);
+      mppl_free(colon_syntax);
+      mppl_free(out_value_syntax);
+
+      if (expr_type && !type_is_std(expr_type) && (type_kind(expr_type) != TYPE_STRING || colon_syntax)) {
+        error_output_stmt_invalid_operand(checker, out_list_syntax);
+        break;
+      }
+    }
+  }
+  mppl_free(out_list_syntax);
 }
 
 static const char *op_to_str(SyntaxKind kind)
@@ -577,6 +811,26 @@ static int visit_syntax_tree(const SyntaxTree *syntax, void *checker, int enter)
     switch (syntax_tree_kind(syntax)) {
     case SYNTAX_ASSIGN_STMT:
       check_assign_stmt(checker, (const MpplAssignStmt *) syntax);
+      return 1;
+
+    case SYNTAX_IF_STMT:
+      check_if_stmt(checker, (const MpplIfStmt *) syntax);
+      return 1;
+
+    case SYNTAX_WHILE_STMT:
+      check_while_stmt(checker, (const MpplWhileStmt *) syntax);
+      return 1;
+
+    case SYNTAX_CALL_STMT:
+      check_call_stmt(checker, (const MpplCallStmt *) syntax);
+      return 1;
+
+    case SYNTAX_INPUT_STMT:
+      check_input_stmt(checker, (const MpplInputStmt *) syntax);
+      return 1;
+
+    case SYNTAX_OUTPUT_STMT:
+      check_output_stmt(checker, (const MpplOutputStmt *) syntax);
       return 1;
 
     case SYNTAX_BINARY_EXPR:
