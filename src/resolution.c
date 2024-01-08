@@ -2,54 +2,67 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "array.h"
 #include "map.h"
 #include "resolution.h"
 #include "token_tree.h"
 #include "utility.h"
 
 struct Res {
-  Array *defs;
-  Map   *refs;
+  Map *node_to_def;
+  Map *ref_to_def;
 };
 
 Res *res_new(void)
 {
-  Res *res  = xmalloc(sizeof(Res));
-  res->defs = array_new(sizeof(Def *));
-  res->refs = map_new(NULL, NULL);
+  Res *res         = xmalloc(sizeof(Res));
+  res->node_to_def = map_new(NULL, NULL);
+  res->ref_to_def  = map_new(NULL, NULL);
   return res;
 }
 
 void res_free(Res *res)
 {
   if (res) {
-    unsigned long i;
-    for (i = 0; i < array_count(res->defs); ++i) {
-      Def *def = *(Def **) array_at(res->defs, i);
-      free(def);
+    MapIndex index;
+    for (map_index(res->node_to_def, &index); map_next(res->node_to_def, &index);) {
+      free(map_value(res->node_to_def, &index));
     }
-    array_free(res->defs);
-    map_free(res->refs);
+    map_free(res->node_to_def);
+    map_free(res->ref_to_def);
     free(res);
   }
 }
 
 const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *node)
 {
-  Def *def     = xmalloc(sizeof(Def));
-  def->kind    = kind;
-  def->node    = node;
-  def->binding = *binding;
-  array_push(res->defs, &def);
-  return def;
+  MapIndex index;
+  if (map_find(res->node_to_def, (void *) node, &index)) {
+    unreachable();
+  } else {
+    Def *def     = xmalloc(sizeof(Def));
+    def->kind    = kind;
+    def->node    = node;
+    def->binding = *binding;
+    map_update(res->node_to_def, &index, (void *) node, def);
+    return def;
+  }
 }
 
 const Def *res_get_def(const Res *res, const TokenNode *node)
 {
   MapIndex index;
-  if (map_find(res->refs, (void *) node, &index)) {
-    return map_value(res->refs, &index);
+  if (map_find(res->node_to_def, (void *) node, &index)) {
+    return map_value(res->node_to_def, &index);
+  } else {
+    return NULL;
+  }
+}
+
+const Def *res_get_ref(const Res *res, const TokenNode *node)
+{
+  MapIndex index;
+  if (map_find(res->ref_to_def, (void *) node, &index)) {
+    return map_value(res->ref_to_def, &index);
   } else {
     return NULL;
   }
@@ -58,6 +71,6 @@ const Def *res_get_def(const Res *res, const TokenNode *node)
 void res_record_ref(Res *res, const TokenNode *node, const Def *def)
 {
   MapIndex index;
-  map_find(res->refs, (void *) node, &index);
-  map_update(res->refs, &index, (void *) node, (void *) def);
+  map_find(res->ref_to_def, (void *) node, &index);
+  map_update(res->ref_to_def, &index, (void *) node, (void *) def);
 }
