@@ -502,6 +502,9 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       array_push(connectors, &connector);
     }
 
+    if (annotation->_start.line == line_number && label_offset < annotation->_start.column) {
+      label_offset = annotation->_start.column;
+    }
     if (annotation->_end.line == line_number && label_offset < annotation->_end.column) {
       label_offset = annotation->_end.column;
     }
