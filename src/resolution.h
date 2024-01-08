@@ -23,12 +23,13 @@ struct Binding {
 struct Def {
   DefKind          kind;
   Binding          binding;
-  const TokenNode *node;
+  const TokenNode *id;
+  const TokenNode *body;
 };
 
 Res       *res_new(void);
 void       res_free(Res *res);
-const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *node);
+const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *id, const TokenNode *body);
 const Def *res_get_def(const Res *res, const TokenNode *node);
 const Def *res_get_ref(const Res *res, const TokenNode *node);
 void       res_record_ref(Res *res, const TokenNode *node, const Def *def);

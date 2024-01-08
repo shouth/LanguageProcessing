@@ -81,9 +81,9 @@ static const Type *get_expr_type(const Checker *checker, const SyntaxTree *tree)
   return infer_get_expr_type(checker->inference, syntax_tree_raw(tree));
 }
 
-static void record_def_type(Checker *checker, const SyntaxTree *tree, Type *type)
+static void record_def_type(Checker *checker, const SyntaxTree *name_syntax, Type *type)
 {
-  const Def *def = res_get_def(checker->res, syntax_tree_raw(tree));
+  const Def *def = res_get_def(checker->res, syntax_tree_raw(name_syntax));
   if (def) {
     infer_record_def_type(checker->inference, def, type);
   } else {
@@ -101,9 +101,10 @@ static void infer_var(Checker *checker, const MpplVarDecl *syntax)
   unsigned long i;
   AnyMpplType  *type_syntax = mppl_var_decl__type(syntax);
   for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
-    Type *type = mppl_type__to_type(type_syntax);
-    printf("recording var\n");
-    record_def_type(checker, (const SyntaxTree *) syntax, type);
+    Type      *type        = mppl_type__to_type(type_syntax);
+    MpplToken *name_syntax = mppl_var_decl__name(syntax, i);
+    record_def_type(checker, (const SyntaxTree *) name_syntax, type);
+    mppl_free(name_syntax);
   }
   mppl_free(type_syntax);
 }
@@ -113,9 +114,10 @@ static void infer_param(Checker *checker, const MpplFmlParamSec *syntax)
   unsigned long i;
   AnyMpplType  *type_syntax = mppl_fml_param_sec__type(syntax);
   for (i = 0; i < mppl_fml_param_sec__name_count(syntax); ++i) {
-    Type *type = mppl_type__to_type(type_syntax);
-    printf("recording param\n");
-    record_def_type(checker, (SyntaxTree *) syntax, type);
+    Type      *type        = mppl_type__to_type(type_syntax);
+    MpplToken *name_syntax = mppl_fml_param_sec__name(syntax, i);
+    record_def_type(checker, (SyntaxTree *) name_syntax, type);
+    mppl_free(name_syntax);
   }
   mppl_free(type_syntax);
 }
@@ -131,9 +133,11 @@ static void infer_proc(Checker *checker, const MpplProcDecl *syntax)
       MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list_syntax, i);
       infer_param(checker, param_sec_syntax);
       for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
-        const Type *param_type = get_def_type(checker, (SyntaxTree *) param_sec_syntax);
-        Type       *infer_type = type_clone(param_type);
+        MpplToken  *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
+        const Type *param_type  = get_def_type(checker, (SyntaxTree *) name_syntax);
+        Type       *infer_type  = type_clone(param_type);
         array_push(params, &infer_type);
+        mppl_free(name_syntax);
       }
       mppl_free(param_sec_syntax);
     }
@@ -141,11 +145,12 @@ static void infer_proc(Checker *checker, const MpplProcDecl *syntax)
   }
 
   {
+    MpplToken    *name_syntax = mppl_proc_decl__name(syntax);
     unsigned long param_count = array_count(params);
     Type        **param_types = array_steal(params);
     Type         *infer_type  = type_new_proc(param_types, param_count);
-    printf("recording proc\n");
-    record_def_type(checker, (SyntaxTree *) syntax, infer_type);
+    record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
+    mppl_free(name_syntax);
   }
 }
 

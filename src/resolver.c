@@ -90,7 +90,7 @@ static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *i
     error_def_conflict(resolver, &previous->binding, &binding);
   } else {
     const TokenNode *raw_syntax = (const TokenNode *) syntax_tree_raw(item_syntax);
-    const Def       *def        = res_create_def(resolver->res, kind, &binding, raw_syntax);
+    const Def       *def        = res_create_def(resolver->res, kind, &binding, (const TokenNode *) name_token, raw_syntax);
     if (resolver->scope) {
       map_update(resolver->scope->defs, &index, (void *) binding.name, (void *) def);
     }

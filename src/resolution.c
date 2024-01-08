@@ -33,17 +33,18 @@ void res_free(Res *res)
   }
 }
 
-const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *node)
+const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *id, const TokenNode *body)
 {
   MapIndex index;
-  if (map_find(res->node_to_def, (void *) node, &index)) {
+  if (map_find(res->node_to_def, (void *) id, &index)) {
     unreachable();
   } else {
     Def *def     = xmalloc(sizeof(Def));
     def->kind    = kind;
-    def->node    = node;
+    def->id      = id;
+    def->body    = body;
     def->binding = *binding;
-    map_update(res->node_to_def, &index, (void *) node, def);
+    map_update(res->node_to_def, &index, (void *) id, def);
     return def;
   }
 }
