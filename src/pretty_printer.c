@@ -245,11 +245,11 @@ static void print_stmt__conditional(Printer *printer, AnyMpplStmt *stmt)
 
 static void print_assign_stmt(Printer *printer, MpplAssignStmt *stmt)
 {
-  print_var(printer, mppl_assign_stmt__var(stmt));
+  print_var(printer, mppl_assign_stmt__lhs(stmt));
   print_space();
   print_token_operator(printer, mppl_assign_stmt__assign_token(stmt));
   print_space();
-  print_expr(printer, mppl_assign_stmt__expr(stmt));
+  print_expr(printer, mppl_assign_stmt__rhs(stmt));
   mppl_free(stmt);
 }
 
