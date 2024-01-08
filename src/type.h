@@ -10,6 +10,7 @@ typedef enum {
   TYPE_ARRAY,
   TYPE_BOOLEAN,
   TYPE_CHAR,
+  TYPE_STRING,
   TYPE_INTEGER
 } TypeKind;
 
