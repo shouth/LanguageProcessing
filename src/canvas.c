@@ -6,22 +6,29 @@
 
 #include "array.h"
 #include "canvas.h"
+#include "terminal.h"
+
+typedef struct CanvasStyle CanvasStyle;
+
+struct CanvasStyle {
+  signed char   intensity;
+  signed char   italic;
+  signed char   underline;
+  unsigned long fg;
+  unsigned long bg;
+};
 
 struct CanvasCell {
-  char          character[4];
-  int           size;
-  unsigned int  style;
-  unsigned long foreground;
-  unsigned long background;
+  char        character[4];
+  int         size;
+  CanvasStyle style;
 };
 
 struct Canvas {
   Array        *lines;
   unsigned long current_line;
   unsigned long current_column;
-  unsigned long style;
-  unsigned long foreground;
-  unsigned long background;
+  CanvasStyle   style;
 };
 
 Canvas *canvas_new(void)
@@ -30,11 +37,13 @@ Canvas *canvas_new(void)
   Array  *line   = array_new(sizeof(CanvasCell));
   canvas->lines  = array_new(sizeof(Array *));
   array_push(canvas->lines, &line);
-  canvas->current_line   = 0;
-  canvas->current_column = 0;
-  canvas->style          = CANVAS_RESET;
-  canvas->foreground     = 0;
-  canvas->background     = 0;
+  canvas->current_line    = 0;
+  canvas->current_column  = 0;
+  canvas->style.intensity = 0;
+  canvas->style.italic    = 0;
+  canvas->style.underline = 0;
+  canvas->style.fg        = 0;
+  canvas->style.bg        = 0;
   return canvas;
 }
 
@@ -63,25 +72,113 @@ void canvas_next_line(Canvas *canvas)
   }
 }
 
-void canvas_style(Canvas *canvas, unsigned long style)
+void canvas_style(Canvas *canvas, int attr, ...)
 {
-  if (style & CANVAS_RESET) {
-    canvas->style      = 0;
-    canvas->foreground = 0;
-    canvas->background = 0;
-  } else {
-    canvas->style = style;
+  switch (attr) {
+  case TERM_RESET:
+    canvas->style.intensity = 0;
+    canvas->style.italic    = 0;
+    canvas->style.underline = 0;
+    canvas->style.fg        = 0;
+    canvas->style.bg        = 0;
+    break;
+
+  case TERM_BOLD:
+    canvas->style.intensity = 1;
+    break;
+
+  case TERM_FAINT:
+    canvas->style.intensity = -1;
+    break;
+
+  case TERM_ITALIC:
+    canvas->style.italic = 1;
+    break;
+
+  case TERM_UNDERLINE:
+    canvas->style.underline = 1;
+    break;
+
+  case TERM_FG_BLACK:
+  case TERM_FG_RED:
+  case TERM_FG_GREEN:
+  case TERM_FG_YELLOW:
+  case TERM_FG_BLUE:
+  case TERM_FG_MAGENTA:
+  case TERM_FG_CYAN:
+  case TERM_FG_WHITE:
+  case TERM_FG_BRIGHT_BLACK:
+  case TERM_FG_BRIGHT_RED:
+  case TERM_FG_BRIGHT_GREEN:
+  case TERM_FG_BRIGHT_YELLOW:
+  case TERM_FG_BRIGHT_BLUE:
+  case TERM_FG_BRIGHT_MAGENTA:
+  case TERM_FG_BRIGHT_CYAN:
+  case TERM_FG_BRIGHT_WHITE:
+    canvas->style.fg = attr;
+    break;
+
+  case TERM_FG_SELECT: {
+    va_list args;
+    va_start(args, attr);
+    switch (va_arg(args, int)) {
+    case TERM_COLOR_RGB: {
+      unsigned long r  = va_arg(args, int);
+      unsigned long g  = va_arg(args, int);
+      unsigned long b  = va_arg(args, int);
+      canvas->style.fg = (TERM_COLOR_RGB << 24) | (r << 16) | (g << 8) | b;
+      break;
+    }
+    case TERM_COLOR_256: {
+      unsigned long index = va_arg(args, int);
+      canvas->style.fg    = (TERM_COLOR_256 << 24) | index;
+      break;
+    }
+    }
+    va_end(args);
+    break;
   }
-}
 
-void canvas_style_foreground(Canvas *canvas, unsigned long color)
-{
-  canvas->foreground = color;
-}
+  case TERM_BG_BLACK:
+  case TERM_BG_RED:
+  case TERM_BG_GREEN:
+  case TERM_BG_YELLOW:
+  case TERM_BG_BLUE:
+  case TERM_BG_MAGENTA:
+  case TERM_BG_CYAN:
+  case TERM_BG_WHITE:
+  case TERM_BG_BRIGHT_BLACK:
+  case TERM_BG_BRIGHT_RED:
+  case TERM_BG_BRIGHT_GREEN:
+  case TERM_BG_BRIGHT_YELLOW:
+  case TERM_BG_BRIGHT_BLUE:
+  case TERM_BG_BRIGHT_MAGENTA:
+  case TERM_BG_BRIGHT_CYAN:
+  case TERM_BG_BRIGHT_WHITE:
+    canvas->style.bg = attr;
+    break;
 
-void canvas_style_background(Canvas *canvas, unsigned long color)
-{
-  canvas->background = color;
+  case TERM_BG_SELECT: {
+    va_list args;
+    va_start(args, attr);
+    switch (va_arg(args, int)) {
+    case TERM_COLOR_RGB: {
+      unsigned long r  = va_arg(args, int);
+      unsigned long g  = va_arg(args, int);
+      unsigned long b  = va_arg(args, int);
+      canvas->style.bg = (TERM_COLOR_RGB << 24) | (r << 16) | (g << 8) | b;
+      break;
+    }
+    case TERM_COLOR_256: {
+      unsigned long index = va_arg(args, int);
+      canvas->style.bg    = (TERM_COLOR_256 << 24) | index;
+      break;
+    }
+    }
+    va_end(args);
+    break;
+  }
+  }
 }
 
 void canvas_write(Canvas *canvas, const char *format, ...)
@@ -111,10 +208,8 @@ void canvas_write(Canvas *canvas, const char *format, ...)
       {
         unsigned long initial_line_width = array_count(*line);
         CanvasCell    cell;
-        cell.style      = canvas->style;
-        cell.foreground = canvas->foreground;
-        cell.background = canvas->background;
-        cell.size       = size;
+        cell.style = canvas->style;
+        cell.size  = size;
         memcpy(cell.character, buffer + index, size);
         if (canvas->current_column < initial_line_width) {
           memcpy(array_at(*line, canvas->current_column), &cell, sizeof(CanvasCell));
@@ -153,10 +248,8 @@ void canvas_seek(Canvas *canvas, unsigned long line, unsigned long column)
   last_line = array_at(canvas->lines, canvas->current_line);
   while (canvas->current_column >= array_count(*last_line)) {
     CanvasCell cell;
-    cell.style      = 0;
-    cell.foreground = 0;
-    cell.background = 0;
-    cell.size       = 1;
+    cell.style = canvas->style;
+    cell.size  = 1;
     strcpy(cell.character, " ");
     array_push(*last_line, &cell);
   }
@@ -168,38 +261,47 @@ void canvas_print(Canvas *canvas, FILE *stream)
   for (line = 0; line < array_count(canvas->lines); ++line) {
     Array **line_array = array_at(canvas->lines, line);
     for (column = 0; column < array_count(*line_array); ++column) {
-      CanvasCell *cell = array_at(*line_array, column);
-      if (cell->style & CANVAS_BOLD) {
+      CanvasCell *cell      = array_at(*line_array, column);
+      int         fg_format = cell->style.fg >> 24;
+      int         bg_format = cell->style.bg >> 24;
+      if (cell->style.intensity > 0) {
         fprintf(stream, "\033[1m");
-      }
-      if (cell->style & CANVAS_FAINT) {
+      } else if (cell->style.intensity < 0) {
         fprintf(stream, "\033[2m");
       }
-      if (cell->style & CANVAS_ITALIC) {
+      if (cell->style.italic) {
         fprintf(stream, "\033[3m");
       }
-      if (cell->style & CANVAS_UNDERLINE) {
+      if (cell->style.underline) {
         fprintf(stream, "\033[4m");
       }
-      if (cell->foreground & CANVAS_4BIT) {
-        fprintf(stream, "\033[%lum", cell->foreground & 0xFFFFFF);
-      } else if (cell->foreground & CANVAS_8BIT) {
-        fprintf(stream, "\033[38;5;%lum", cell->foreground & 0xFFFFFF);
-      } else if (cell->foreground & CANVAS_24BIT) {
+      switch (fg_format) {
+      case 0:
+        if (cell->style.fg) {
+          fprintf(stream, "\033[%lum", cell->style.fg);
+        }
+        break;
+      case TERM_COLOR_RGB:
         fprintf(stream, "\033[38;2;%lu;%lu;%lum",
-          (cell->foreground >> 16) & 0xFF,
-          (cell->foreground >> 8) & 0xFF,
-          cell->foreground & 0xFF);
+          (cell->style.fg >> 16) & 0xFF, (cell->style.fg >> 8) & 0xFF, cell->style.fg & 0xFF);
+        break;
+      case TERM_COLOR_256:
+        fprintf(stream, "\033[38;5;%lum", cell->style.fg & 0xFF);
+        break;
       }
-      if (cell->background & CANVAS_4BIT) {
-        fprintf(stream, "\033[%lum", cell->background & 0xFFFFFF);
-      } else if (cell->background & CANVAS_8BIT) {
-        fprintf(stream, "\033[48;5;%lum", cell->background & 0xFFFFFF);
-      } else if (cell->background & CANVAS_24BIT) {
+      switch (bg_format) {
+      case 0:
+        if (cell->style.bg) {
+          fprintf(stream, "\033[%lum", cell->style.bg);
+        }
+        break;
+      case TERM_COLOR_RGB:
         fprintf(stream, "\033[48;2;%lu;%lu;%lum",
-          (cell->background >> 16) & 0xFF,
-          (cell->background >> 8) & 0xFF,
-          cell->background & 0xFF);
+          (cell->style.bg >> 16) & 0xFF, (cell->style.bg >> 8) & 0xFF, cell->style.bg & 0xFF);
+        break;
+      case TERM_COLOR_256:
+        fprintf(stream, "\033[48;5;%lum", cell->style.bg & 0xFFFFFF);
+        break;
       }
       fprintf(stream, "%.*s", (int) cell->size, cell->character);
       fprintf(stream, "\033[0m");
