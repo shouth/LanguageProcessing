@@ -255,30 +255,58 @@ static void error_call_stmt_mismatched_param_type(
 {
   unsigned long     i;
   MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
+  MpplToken        *name_syntax           = mppl_call_stmt__name(syntax);
 
-  unsigned long offset = syntax_tree_offset((SyntaxTree *) act_param_list_syntax);
-  Report       *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
-  if (act_param_list_syntax) {
-    for (i = 0; i < type_proc_param_count(defined_type); ++i) {
-      AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
-      const Type  *defined_param_type = type_proc_param(defined_type, i);
-      const Type  *act_param_type     = type_proc_param(act_type, i);
-      if (!type_equal(defined_param_type, act_param_type)) {
-        unsigned long act_param_offset          = syntax_tree_offset((SyntaxTree *) act_param_syntax);
-        unsigned long act_param_length          = syntax_tree_text_length((SyntaxTree *) act_param_syntax);
-        char         *defined_param_type_string = type_to_string(defined_param_type);
-        char         *act_param_type_string     = type_to_string(act_param_type);
-        report_annotation(report, act_param_offset, act_param_offset + act_param_length,
-          "expected `%s`, found `%s`", defined_param_type_string, act_param_type_string);
-        free(defined_param_type_string);
-        free(act_param_type_string);
+  {
+    unsigned long offset = syntax_tree_offset((SyntaxTree *) act_param_list_syntax);
+    Report       *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
+    if (act_param_list_syntax) {
+      for (i = 0; i < type_proc_param_count(defined_type); ++i) {
+        AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
+        const Type  *defined_param_type = type_proc_param(defined_type, i);
+        const Type  *act_param_type     = type_proc_param(act_type, i);
+        if (!type_equal(defined_param_type, act_param_type)) {
+          unsigned long act_param_offset          = syntax_tree_offset((SyntaxTree *) act_param_syntax);
+          unsigned long act_param_length          = syntax_tree_text_length((SyntaxTree *) act_param_syntax);
+          char         *defined_param_type_string = type_to_string(defined_param_type);
+          char         *act_param_type_string     = type_to_string(act_param_type);
+          report_annotation(report, act_param_offset, act_param_offset + act_param_length,
+            "expected `%s`, found `%s`", defined_param_type_string, act_param_type_string);
+          free(defined_param_type_string);
+          free(act_param_type_string);
+        }
+        mppl_free(act_param_syntax);
       }
-      mppl_free(act_param_syntax);
     }
+    array_push(checker->errors, &report);
   }
-  array_push(checker->errors, &report);
 
+  {
+    const Def        *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
+    MpplProcDecl     *proc_decl_syntax      = (MpplProcDecl *) syntax_tree_root(def->body, def->offset);
+    MpplToken        *id_syntax             = mppl_proc_decl__name(proc_decl_syntax);
+    MpplFmlParamList *fml_param_list_syntax = mppl_proc_decl__fml_param_list(proc_decl_syntax);
+    unsigned long     name_offset           = syntax_tree_offset((SyntaxTree *) id_syntax);
+    unsigned long     name_length           = syntax_tree_text_length((SyntaxTree *) id_syntax);
+
+    Report *report = report_new(REPORT_KIND_NOTE, name_offset, "defined here");
+    report_annotation(report, name_offset, name_offset + name_length, NULL);
+    for (i = 0; i < mppl_fml_param_list__sec_count(fml_param_list_syntax); ++i) {
+      MpplFmlParamSec *fml_param_sec_syntax = mppl_fml_param_list__sec(fml_param_list_syntax, i);
+      AnyMpplType     *type_syntax          = mppl_fml_param_sec__type(fml_param_sec_syntax);
+      unsigned long    type_offset          = syntax_tree_offset((SyntaxTree *) type_syntax);
+      unsigned long    type_length          = syntax_tree_text_length((SyntaxTree *) type_syntax);
+      report_annotation(report, type_offset, type_offset + type_length, NULL);
+      mppl_free(type_syntax);
+      mppl_free(fml_param_sec_syntax);
+    }
+    array_push(checker->errors, &report);
+    mppl_free(fml_param_list_syntax);
+    mppl_free(id_syntax);
+    mppl_free(proc_decl_syntax);
+  }
   mppl_free(act_param_list_syntax);
+  mppl_free(name_syntax);
 }
 
 static void check_call_stmt(Checker *checker, const MpplCallStmt *syntax)
@@ -945,7 +973,7 @@ int mppl_check(const Source *source, const TokenNode *tree, const Res *resolutio
   checker.inference = infer_new();
   checker.errors    = array_new(sizeof(Report *));
 
-  syntax = syntax_tree_root((const TokenTree *) tree);
+  syntax = syntax_tree_root(tree, 0);
   syntax_tree_visit(syntax, &visit_syntax_tree, &checker);
   syntax_tree_free(syntax);
 
