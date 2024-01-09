@@ -256,7 +256,7 @@ static void error_call_stmt_mismatched_param_type(
   unsigned long     i;
   MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
 
-  unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
+  unsigned long offset = syntax_tree_offset((SyntaxTree *) act_param_list_syntax);
   Report       *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
   if (act_param_list_syntax) {
     for (i = 0; i < type_proc_param_count(defined_type); ++i) {
