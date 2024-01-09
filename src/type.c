@@ -152,14 +152,17 @@ static unsigned long type_to_string__impl(FILE *stream, const Type *type)
     unsigned long length = 0;
     TypeProc     *proc   = (TypeProc *) type;
     unsigned long i;
-    length += fprintf(stream, "procedure(");
-    for (i = 0; i < proc->param_count; ++i) {
-      if (i > 0) {
-        length += fprintf(stream, ", ");
+    length += fprintf(stream, "procedure");
+    if (proc->param_count > 0) {
+      length += fprintf(stream, "(");
+      for (i = 0; i < proc->param_count; ++i) {
+        if (i > 0) {
+          length += fprintf(stream, ", ");
+        }
+        length += type_to_string__impl(stream, proc->param[i]);
       }
-      length += type_to_string__impl(stream, proc->param[i]);
+      length += fprintf(stream, ")");
     }
-    length += fprintf(stream, ")");
     return length;
   }
 
@@ -176,6 +179,9 @@ static unsigned long type_to_string__impl(FILE *stream, const Type *type)
 
   case TYPE_CHAR:
     return fprintf(stream, "char");
+
+  case TYPE_STRING:
+    return fprintf(stream, "string");
 
   case TYPE_INTEGER:
     return fprintf(stream, "integer");
