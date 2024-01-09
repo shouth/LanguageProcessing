@@ -90,7 +90,8 @@ static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *i
     error_def_conflict(resolver, &previous->binding, &binding);
   } else {
     const TokenNode *raw_syntax = (const TokenNode *) syntax_tree_raw(item_syntax);
-    const Def       *def        = res_create_def(resolver->res, kind, &binding, (const TokenNode *) name_token, raw_syntax);
+    unsigned long    offset     = syntax_tree_offset(item_syntax);
+    const Def       *def        = res_create_def(resolver->res, kind, &binding, (const TokenNode *) name_token, raw_syntax, offset);
     if (resolver->scope) {
       map_update(resolver->scope->defs, &index, (void *) binding.name, (void *) def);
     }
@@ -223,7 +224,7 @@ int mppl_resolve(const Source *source, const TokenNode *tree, Res **resolution)
   resolver.res    = res_new();
   resolver.errors = array_new(sizeof(Report *));
 
-  syntax = syntax_tree_root((const TokenTree *) tree);
+  syntax = syntax_tree_root(tree, token_node_trivia_length(tree));
   syntax_tree_visit(syntax, &visit_syntax_tree, &resolver);
   syntax_tree_free(syntax);
 
