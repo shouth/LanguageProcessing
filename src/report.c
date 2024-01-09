@@ -328,18 +328,14 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
     char c = writer->source->text[writer->source->line_offsets[line_number] + i];
     if (c == '\t') {
       unsigned long adjusted_width = writer->tab_width - (line_offset % writer->tab_width);
-      for (j = 0; j < adjusted_width; ++j) {
-        line[line_offset++] = ' ';
-      }
+      line_offset += sprintf(line + line_offset, "%*.s", (int) adjusted_width, "");
     } else if (!is_graphic(c)) {
       LineSegment segment;
-      segment.annotation  = NULL;
-      segment.start       = line_offset;
-      line[line_offset++] = '\\';
-      line[line_offset++] = 'x';
-      line[line_offset++] = "0123456789ABCDEF"[(c >> 4) & 0xF];
-      line[line_offset++] = "0123456789ABCDEF"[c & 0xF];
-      segment.end         = line_offset - 1;
+      segment.annotation = NULL;
+
+      segment.start = line_offset;
+      line_offset += sprintf(line + line_offset, "\\x%X", (unsigned char) (c & 0xFF));
+      segment.end = line_offset - 1;
       array_push(nongraphics, &segment);
     } else {
       line[line_offset++] = writer->source->text[writer->source->line_offsets[line_number] + i];
