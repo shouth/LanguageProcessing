@@ -255,7 +255,8 @@ static void write_annotation_left(
   Canvas                 *canvas,
   unsigned long           line_number,
   unsigned long           line_column,
-  const ReportAnnotation *connect)
+  const ReportAnnotation *connect,
+  int                     dotted)
 {
   const ReportAnnotation *strike = NULL;
   unsigned long           i;
@@ -270,7 +271,7 @@ static void write_annotation_left(
         canvas_write(canvas, "  ");
       } else if (line_number == annotation->start.line) {
         if (line_column > annotation->start.column) {
-          canvas_write(canvas, "│ ");
+          canvas_write(canvas, dotted ? "╎ " : "│ ");
         } else if (line_column < annotation->start.column) {
           canvas_write(canvas, "  ");
         } else if (annotation == connect) {
@@ -281,7 +282,7 @@ static void write_annotation_left(
         }
       } else if (line_number == annotation->end.line) {
         if (line_column < annotation->end.column) {
-          canvas_write(canvas, "│ ");
+          canvas_write(canvas, dotted ? "╎ " : "│ ");
         } else if (line_column > annotation->end.column) {
           canvas_write(canvas, "  ");
         } else if (annotation == connect) {
@@ -291,7 +292,7 @@ static void write_annotation_left(
           canvas_write(canvas, "  ");
         }
       } else {
-        canvas_write(canvas, "│ ");
+        canvas_write(canvas, dotted ? "╎ " : "│ ");
       }
     }
   }
@@ -367,7 +368,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   canvas_write(canvas, " %*.lu │ ", writer->number_margin, line_number + 1);
   canvas_style(canvas, CANVAS_RESET);
 
-  write_annotation_left(writer, canvas, line_number, 0, NULL);
+  write_annotation_left(writer, canvas, line_number, 0, NULL, 0);
   line_offset   = canvas_line(canvas);
   column_offset = canvas_column(canvas);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
@@ -440,7 +441,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
 
-  write_annotation_left(writer, canvas, line_number, 0, NULL);
+  write_annotation_left(writer, canvas, line_number, 0, NULL, 0);
   line_offset   = canvas_line(canvas);
   column_offset = canvas_column(canvas);
   for (i = 0; i < array_count(indicators); ++i) {
@@ -512,7 +513,7 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
     canvas_style(canvas, CANVAS_FAINT);
     canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
     canvas_style(canvas, CANVAS_RESET);
-    write_annotation_left(writer, canvas, line_number, connector->column, (i + 1) % 2 ? connector->annotation : NULL);
+    write_annotation_left(writer, canvas, line_number, connector->column, (i + 1) % 2 ? connector->annotation : NULL, 0);
     if (i == 0) {
       line_offset   = canvas_line(canvas);
       column_offset = canvas_column(canvas);
@@ -590,14 +591,11 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
     for (j = 0; j < array_count(writer->report->annotations); ++j) {
       ReportAnnotation *annotation = array_at(writer->report->annotations, j);
       if (i == annotation->start.line || i == annotation->end.line) {
-        canvas_style(canvas, CANVAS_FAINT);
-        if (previous_line != -1ul && previous_line + 1 != i) {
-          canvas_write(canvas, " %*.s ╎ ", writer->number_margin, "");
-        } else {
-          canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
-        }
-        canvas_style(canvas, CANVAS_RESET);
-        write_annotation_left(writer, canvas, i, 0, NULL);
+        int dotted = previous_line != -1ul && previous_line + 1 != i;
+        canvas_style(canvas, TERM_FAINT);
+        canvas_write(canvas, " %*.s %s", writer->number_margin, "", dotted ? "╎ " : "│ ");
+        canvas_style(canvas, TERM_RESET);
+        write_annotation_left(writer, canvas, i, 0, NULL, dotted);
         canvas_next_line(canvas);
 
         write_source_line(writer, canvas, i);
