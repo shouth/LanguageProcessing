@@ -82,7 +82,7 @@ static void error_proc_param_type(Checker *checker, const MpplFmlParamList *synt
       unsigned long type_length = syntax_tree_text_length((SyntaxTree *) type_syntax);
       char         *type_string = type_to_string(type);
       report_annotation(report, type_offset, type_offset + type_length,
-        "parameter type should be `integer`, `boolean` or `char`", type_string);
+        "parameter type should be one of `integer`, `boolean`, or `char`", type_string);
       free(type_string);
     }
 
@@ -147,7 +147,7 @@ static void error_assign_impossible(const Checker *checker, const SyntaxTree *lh
   unsigned long length          = syntax_tree_text_length(lhs);
   Report       *report          = report_new(REPORT_KIND_ERROR, offset, "assignment operation cannot be applied to `%s`", lhs_type_string);
   report_annotation(report, offset, offset + length,
-    "left operand of assignment statement should be a variable of standard type", lhs_type_string);
+    "left operand of `:=` should be a variable of standard type", lhs_type_string);
   array_push(checker->errors, &report);
   free(lhs_type_string);
 }
@@ -232,7 +232,7 @@ static void error_call_stmt_non_callable(Checker *checker, const MpplToken *synt
   unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
   unsigned long length = syntax_tree_text_length((SyntaxTree *) syntax);
   Report       *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be called", token->text);
-  report_annotation(report, offset, offset + length, "an item to be called should be a `procedure`");
+  report_annotation(report, offset, offset + length, "a called item should be a `procedure`");
   array_push(checker->errors, &report);
 }
 
@@ -347,7 +347,7 @@ static void error_input_stmt_invalid_operand(Checker *checker, const MpplInputLi
       unsigned long var_length      = syntax_tree_text_length((SyntaxTree *) var_syntax);
       char         *var_type_string = type_to_string(var_type);
       report_annotation(report, var_offset, var_offset + var_length,
-        "expected `integer` or `char`, found `%s`", var_type_string);
+        "expected one of `integer`, or `char`, found `%s`", var_type_string);
       free(var_type_string);
     }
   }
@@ -398,7 +398,7 @@ static void error_output_stmt_invalid_operand(Checker *checker, const MpplOutLis
         unsigned long expr_length      = syntax_tree_text_length((SyntaxTree *) expr_syntax);
         char         *expr_type_string = type_to_string(expr_type);
         report_annotation(report, expr_offset, expr_offset + expr_length,
-          "expected `integer`, `char` or `boolean`, found `%s`", expr_type_string);
+          "expected one of `integer`, `char`, or `boolean`, found `%s`", expr_type_string);
         free(expr_type_string);
       } else if (colon_syntax) {
         unsigned long start
@@ -512,7 +512,7 @@ static void error_binary_expr_invalid_operand(
   }
 
   report_annotation(report, lhs_offset, lhs_offset + lhs_length, "`%s`", lhs_type_str);
-  report_annotation(report, op_offset, op_offset + op_length, "binary operation `%s` can be applied to %s", op_str, type_str);
+  report_annotation(report, op_offset, op_offset + op_length, "operands of `%s` should be %s", op_str, type_str);
   report_annotation(report, rhs_offset, rhs_offset + rhs_length, "`%s`", rhs_type_str);
 
   array_push(checker->errors, &report);
@@ -535,7 +535,7 @@ static void error_unary_expr_invalid_operand(
 
   Report *report = report_new(REPORT_KIND_ERROR, syntax_tree_offset(node),
     "unary operation `%s` cannot be applied to `%s`", op_str, rhs_type_str);
-  report_annotation(report, op_offset, op_offset + op_length, "unary operation `%s` can be applied to %s", op_str, type_str);
+  report_annotation(report, op_offset, op_offset + op_length, "operands of `%s` should be %s", op_str, type_str);
   report_annotation(report, rhs_offset, rhs_offset + rhs_length, "`%s`", rhs_type_str);
   array_push(checker->errors, &report);
 
@@ -589,7 +589,7 @@ static void check_binary_expr(Checker *checker, const MpplBinaryExpr *syntax)
             (SyntaxTree *) syntax, (SyntaxTree *) op_syntax,
             lhs_invalid, (SyntaxTree *) lhs_syntax, lhs_type,
             rhs_invalid, (SyntaxTree *) rhs_syntax, rhs_type,
-            "`integer`, `char` or `boolean`");
+            "one of `integer`, `char`, or `boolean`");
         } else if (!type_equal(lhs_type, rhs_type)) {
           error_relational_mismatched_type(checker,
             (SyntaxTree *) syntax, (SyntaxTree *) lhs_syntax, lhs_type, (SyntaxTree *) rhs_syntax, rhs_type);
@@ -727,11 +727,11 @@ static void error_cast_expr_invalid_operand(
   Report *report = report_new(REPORT_KIND_ERROR, syntax_tree_offset(node), "non-standard type cast");
   if (!type_is_std(cast_type)) {
     report_annotation(report, type_offset, type_offset + type_length,
-      "expression can be cast to `integer`, `boolean` or `char`");
+      "expression can be cast to one of `integer`, `boolean`, or `char`");
   }
   if (!type_is_std(expr_type)) {
     report_annotation(report, expr_offset, expr_offset + expr_length,
-      "expression to be cast should be `integer`, `boolean` or `char`");
+      "expression to be cast should be one of `integer`, `boolean`, or `char`");
   }
   array_push(checker->errors, &report);
   free(cast_type_string);
