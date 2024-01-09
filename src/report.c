@@ -190,9 +190,7 @@ static int compare_connectors(const void *left, const void *right)
   const Connector *left_connector  = left;
   const Connector *right_connector = right;
 
-  if (left_connector->kind != right_connector->kind) {
-    return left_connector->kind < right_connector->kind ? -1 : 1;
-  } else if (left_connector->column != right_connector->column) {
+  if (left_connector->column != right_connector->column) {
     return left_connector->column < right_connector->column ? -1 : 1;
   } else {
     return 0;
@@ -276,7 +274,9 @@ static void write_annotation_left(
       } else if (line_number < annotation->start.line || line_number > annotation->end.line) {
         canvas_write(canvas, "  ");
       } else if (line_number == annotation->start.line) {
-        if (line_column > annotation->start.column) {
+        if (line_column == -1ul) {
+          canvas_write(canvas, "  ");
+        } else if (line_column > annotation->start.column) {
           canvas_write(canvas, dotted ? "╎ " : "│ ");
         } else if (line_column < annotation->start.column) {
           canvas_write(canvas, "  ");
@@ -284,10 +284,12 @@ static void write_annotation_left(
           canvas_write(canvas, "╭─");
           strike = annotation;
         } else {
-          canvas_write(canvas, "  ");
+          canvas_write(canvas, dotted ? "╎ " : "│ ");
         }
       } else if (line_number == annotation->end.line) {
-        if (line_column < annotation->end.column) {
+        if (line_column == -1ul) {
+          canvas_write(canvas, dotted ? "╎ " : "│ ");
+        } else if (line_column < annotation->end.column) {
           canvas_write(canvas, dotted ? "╎ " : "│ ");
         } else if (line_column > annotation->end.column) {
           canvas_write(canvas, "  ");
@@ -374,7 +376,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   canvas_write(canvas, " %*.lu │ ", writer->number_margin, line_number + 1);
   canvas_style(canvas, TERM_RESET);
 
-  write_annotation_left(writer, canvas, line_number, 0, NULL, 0);
+  write_annotation_left(writer, canvas, line_number, -1ul, NULL, 0);
   line_offset   = canvas_line(canvas);
   column_offset = canvas_column(canvas);
   canvas_style(canvas, TERM_FG_BRIGHT_WHITE);
@@ -450,7 +452,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
   canvas_style(canvas, TERM_RESET);
 
-  write_annotation_left(writer, canvas, line_number, 0, NULL, 0);
+  write_annotation_left(writer, canvas, line_number, -1ul, NULL, 0);
   line_offset   = canvas_line(canvas);
   column_offset = canvas_column(canvas);
   for (i = 0; i < array_count(indicators); ++i) {
@@ -567,12 +569,12 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
           canvas_write(canvas, "─");
         }
         canvas_write(canvas, connector->annotation->message ? "┴" : "╯");
-      } else if (connector->depth != -1ul) {
+      } else if (connector->annotation->message) {
         canvas_seek(canvas, line_offset + j, column_offset + connector->column);
         canvas_write(canvas, "╰");
       }
 
-      if (connector->depth != -1ul) {
+      if (connector->annotation->message) {
         for (j = connector->column + 1; j < label_offset + 3; ++j) {
           canvas_write(canvas, "─");
         }
@@ -625,7 +627,7 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
         canvas_style(canvas, TERM_FAINT);
         canvas_write(canvas, " %*.s %s", writer->number_margin, "", dotted ? "╎ " : "│ ");
         canvas_style(canvas, TERM_RESET);
-        write_annotation_left(writer, canvas, i, 0, NULL, dotted);
+        write_annotation_left(writer, canvas, i, -1ul, NULL, dotted);
         canvas_next_line(canvas);
 
         write_source_line(writer, canvas, i);
