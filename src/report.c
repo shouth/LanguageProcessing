@@ -52,19 +52,19 @@ struct Writer {
 };
 
 struct ReportAnnotation {
-  unsigned long  _start_offset;
-  unsigned long  _end_offset;
-  SourceLocation _start;
-  SourceLocation _end;
-  char          *_message;
+  unsigned long  start_offset;
+  unsigned long  end_offset;
+  SourceLocation start;
+  SourceLocation end;
+  char          *message;
 };
 
 struct Report {
-  ReportKind    _kind;
-  unsigned long _offset;
-  char         *_message;
-  Array        *_annotations;
-  Array        *_notes;
+  ReportKind    kind;
+  unsigned long offset;
+  char         *message;
+  Array        *annotations;
+  Array        *notes;
 };
 
 char *vformat(const char *format, va_list args)
@@ -93,31 +93,31 @@ void report_free(Report *report)
 {
   if (report) {
     unsigned long i;
-    free(report->_message);
+    free(report->message);
 
-    for (i = 0; i < array_count(report->_notes); ++i) {
-      char **note = array_at(report->_notes, i);
+    for (i = 0; i < array_count(report->notes); ++i) {
+      char **note = array_at(report->notes, i);
       free(*note);
     }
-    array_free(report->_notes);
+    array_free(report->notes);
 
-    for (i = 0; i < array_count(report->_annotations); ++i) {
-      ReportAnnotation *label = array_at(report->_annotations, i);
-      free(label->_message);
+    for (i = 0; i < array_count(report->annotations); ++i) {
+      ReportAnnotation *label = array_at(report->annotations, i);
+      free(label->message);
     }
-    array_free(report->_annotations);
+    array_free(report->annotations);
     free(report);
   }
 }
 
 Report *report_new_with_args(ReportKind kind, unsigned long offset, const char *format, va_list args)
 {
-  Report *report       = xmalloc(sizeof(Report));
-  report->_kind        = kind;
-  report->_offset      = offset;
-  report->_message     = vformat(format, args);
-  report->_notes       = array_new(sizeof(char *));
-  report->_annotations = array_new(sizeof(ReportAnnotation));
+  Report *report      = xmalloc(sizeof(Report));
+  report->kind        = kind;
+  report->offset      = offset;
+  report->message     = vformat(format, args);
+  report->notes       = array_new(sizeof(char *));
+  report->annotations = array_new(sizeof(ReportAnnotation));
   return report;
 }
 
@@ -132,10 +132,10 @@ void report_annotation(Report *report, unsigned long start, unsigned long end, c
 void report_annotation_with_args(Report *report, unsigned long start, unsigned long end, const char *format, va_list args)
 {
   ReportAnnotation label;
-  label._start_offset = start;
-  label._end_offset   = end;
-  label._message      = vformat(format, args);
-  array_push(report->_annotations, &label);
+  label.start_offset = start;
+  label.end_offset   = end;
+  label.message      = vformat(format, args);
+  array_push(report->annotations, &label);
 }
 
 void report_note(Report *report, const char *format, ...)
@@ -149,7 +149,7 @@ void report_note(Report *report, const char *format, ...)
 void report_note_with_args(Report *report, const char *format, va_list args)
 {
   char *note = vformat(format, args);
-  array_push(report->_notes, &note);
+  array_push(report->notes, &note);
 }
 
 static int compare_line_segments(const void *left, const void *right)
@@ -201,10 +201,10 @@ static int compare_annotations(const void *left, const void *right)
   const ReportAnnotation *left_annotation  = left;
   const ReportAnnotation *right_annotation = right;
 
-  if (left_annotation->_start_offset != right_annotation->_start_offset) {
-    return left_annotation->_start_offset < right_annotation->_start_offset ? -1 : 1;
-  } else if (left_annotation->_end_offset != right_annotation->_end_offset) {
-    return left_annotation->_end_offset < right_annotation->_end_offset ? -1 : 1;
+  if (left_annotation->start_offset != right_annotation->start_offset) {
+    return left_annotation->start_offset < right_annotation->start_offset ? -1 : 1;
+  } else if (left_annotation->end_offset != right_annotation->end_offset) {
+    return left_annotation->end_offset < right_annotation->end_offset ? -1 : 1;
   } else {
     return 0;
   }
@@ -212,7 +212,7 @@ static int compare_annotations(const void *left, const void *right)
 
 static void write_head_line(Writer *writer, Canvas *canvas)
 {
-  switch (writer->report->_kind) {
+  switch (writer->report->kind) {
   case REPORT_KIND_ERROR:
     canvas_style(canvas, CANVAS_BOLD);
     canvas_style_foreground(canvas, CANVAS_4BIT | 91);
@@ -229,7 +229,7 @@ static void write_head_line(Writer *writer, Canvas *canvas)
   }
   canvas_style(canvas, CANVAS_RESET);
   canvas_style_foreground(canvas, CANVAS_4BIT | 97);
-  canvas_write(canvas, "%s", writer->report->_message);
+  canvas_write(canvas, "%s", writer->report->message);
   canvas_style(canvas, CANVAS_RESET);
   canvas_next_line(canvas);
 }
@@ -237,7 +237,7 @@ static void write_head_line(Writer *writer, Canvas *canvas)
 static void write_location_line(Writer *writer, Canvas *canvas)
 {
   SourceLocation location;
-  source_location(writer->source, writer->report->_offset, &location);
+  source_location(writer->source, writer->report->offset, &location);
   canvas_style(canvas, CANVAS_FAINT);
   canvas_write(canvas, " %*.s ╭─[", writer->number_margin, "");
   canvas_style(canvas, CANVAS_RESET);
@@ -261,17 +261,17 @@ static void write_annotation_left(
   unsigned long           i;
 
   canvas_style_foreground(canvas, CANVAS_4BIT | 91);
-  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
-    if (annotation->_start.line != annotation->_end.line) {
+  for (i = 0; i < array_count(writer->report->annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->annotations, i);
+    if (annotation->start.line != annotation->end.line) {
       if (strike) {
         canvas_write(canvas, "──");
-      } else if (line_number < annotation->_start.line || line_number > annotation->_end.line) {
+      } else if (line_number < annotation->start.line || line_number > annotation->end.line) {
         canvas_write(canvas, "  ");
-      } else if (line_number == annotation->_start.line) {
-        if (line_column > annotation->_start.column) {
+      } else if (line_number == annotation->start.line) {
+        if (line_column > annotation->start.column) {
           canvas_write(canvas, "│ ");
-        } else if (line_column < annotation->_start.column) {
+        } else if (line_column < annotation->start.column) {
           canvas_write(canvas, "  ");
         } else if (annotation == connect) {
           canvas_write(canvas, "╭─");
@@ -279,10 +279,10 @@ static void write_annotation_left(
         } else {
           canvas_write(canvas, "  ");
         }
-      } else if (line_number == annotation->_end.line) {
-        if (line_column < annotation->_end.column) {
+      } else if (line_number == annotation->end.line) {
+        if (line_column < annotation->end.column) {
           canvas_write(canvas, "│ ");
-        } else if (line_column > annotation->_end.column) {
+        } else if (line_column > annotation->end.column) {
           canvas_write(canvas, "  ");
         } else if (annotation == connect) {
           canvas_write(canvas, "╰─");
@@ -347,21 +347,21 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
   }
   line[line_width] = '\0';
 
-  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
+  for (i = 0; i < array_count(writer->report->annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->annotations, i);
     LineSegment       segment;
     segment.annotation = annotation;
-    if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
-      segment.start = annotation->_start.column;
-      segment.end   = annotation->_end.column;
+    if (annotation->start.line == line_number && annotation->end.line == line_number) {
+      segment.start = annotation->start.column;
+      segment.end   = annotation->end.column;
       array_push(segments, &segment);
-    } else if (annotation->_start.line == line_number) {
-      segment.start = annotation->_start.column;
+    } else if (annotation->start.line == line_number) {
+      segment.start = annotation->start.column;
       segment.end   = line_width;
       array_push(segments, &segment);
-    } else if (annotation->_end.line == line_number) {
+    } else if (annotation->end.line == line_number) {
       segment.start = 0;
-      segment.end   = annotation->_end.column;
+      segment.end   = annotation->end.column;
       array_push(segments, &segment);
     }
   }
@@ -418,22 +418,22 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
   unsigned long column_offset;
 
   Array *indicators = array_new(sizeof(Indicator));
-  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
+  for (i = 0; i < array_count(writer->report->annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->annotations, i);
     Indicator         indicator;
-    if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
+    if (annotation->start.line == line_number && annotation->end.line == line_number) {
       indicator.kind   = INDICATOR_INLINE;
-      indicator.column = annotation->_start.column;
-      indicator.length = annotation->_end.column - annotation->_start.column + 1;
+      indicator.column = annotation->start.column;
+      indicator.length = annotation->end.column - annotation->start.column + 1;
       array_push(indicators, &indicator);
-    } else if (annotation->_start.line == line_number) {
+    } else if (annotation->start.line == line_number) {
       indicator.kind   = INDICATOR_BEGIN;
-      indicator.column = annotation->_start.column;
+      indicator.column = annotation->start.column;
       indicator.length = 1;
       array_push(indicators, &indicator);
-    } else if (annotation->_end.line == line_number) {
+    } else if (annotation->end.line == line_number) {
       indicator.kind   = INDICATOR_END;
-      indicator.column = annotation->_end.column;
+      indicator.column = annotation->end.column;
       indicator.length = 1;
       array_push(indicators, &indicator);
     }
@@ -480,33 +480,33 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   unsigned long end_line_offset;
 
   Array *connectors = array_new(sizeof(Connector));
-  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
+  for (i = 0; i < array_count(writer->report->annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->annotations, i);
     Connector         connector;
     connector.annotation = annotation;
 
-    if (annotation->_start.line == line_number && annotation->_end.line == line_number) {
+    if (annotation->start.line == line_number && annotation->end.line == line_number) {
       connector.kind      = CONNECTOR_END;
       connector.multiline = 0;
-      connector.column    = annotation->_start.column;
+      connector.column    = annotation->start.column;
       array_push(connectors, &connector);
-    } else if (annotation->_start.line == line_number) {
+    } else if (annotation->start.line == line_number) {
       connector.kind      = CONNECTOR_BEGIN;
       connector.multiline = 1;
-      connector.column    = annotation->_start.column;
+      connector.column    = annotation->start.column;
       array_push(connectors, &connector);
-    } else if (annotation->_end.line == line_number) {
+    } else if (annotation->end.line == line_number) {
       connector.kind      = CONNECTOR_END;
       connector.multiline = 1;
-      connector.column    = annotation->_end.column;
+      connector.column    = annotation->end.column;
       array_push(connectors, &connector);
     }
 
-    if (annotation->_start.line == line_number && label_offset < annotation->_start.column) {
-      label_offset = annotation->_start.column;
+    if (annotation->start.line == line_number && label_offset < annotation->start.column) {
+      label_offset = annotation->start.column;
     }
-    if (annotation->_end.line == line_number && label_offset < annotation->_end.column) {
-      label_offset = annotation->_end.column;
+    if (annotation->end.line == line_number && label_offset < annotation->end.column) {
+      label_offset = annotation->end.column;
     }
   }
   qsort(array_data(connectors), array_count(connectors), sizeof(Connector), &compare_connectors);
@@ -553,7 +553,7 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       }
       canvas_style(canvas, CANVAS_RESET);
       canvas_style_foreground(canvas, CANVAS_4BIT | 97);
-      canvas_write(canvas, " %s", connector->annotation->_message);
+      canvas_write(canvas, " %s", connector->annotation->message);
       canvas_style(canvas, CANVAS_RESET);
       break;
 
@@ -580,20 +580,20 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
   unsigned long end_line      = 0;
   unsigned long previous_line = -1ul;
 
-  for (i = 0; i < array_count(writer->report->_annotations); ++i) {
-    ReportAnnotation *annotation = array_at(writer->report->_annotations, i);
-    if (start_line > annotation->_start.line) {
-      start_line = annotation->_start.line;
+  for (i = 0; i < array_count(writer->report->annotations); ++i) {
+    ReportAnnotation *annotation = array_at(writer->report->annotations, i);
+    if (start_line > annotation->start.line) {
+      start_line = annotation->start.line;
     }
-    if (end_line < annotation->_end.line) {
-      end_line = annotation->_end.line;
+    if (end_line < annotation->end.line) {
+      end_line = annotation->end.line;
     }
   }
 
   for (i = start_line; i <= end_line; ++i) {
-    for (j = 0; j < array_count(writer->report->_annotations); ++j) {
-      ReportAnnotation *annotation = array_at(writer->report->_annotations, j);
-      if (i == annotation->_start.line || i == annotation->_end.line) {
+    for (j = 0; j < array_count(writer->report->annotations); ++j) {
+      ReportAnnotation *annotation = array_at(writer->report->annotations, j);
+      if (i == annotation->start.line || i == annotation->end.line) {
         canvas_style(canvas, CANVAS_FAINT);
         if (previous_line != -1ul && previous_line + 1 != i) {
           canvas_write(canvas, " %*.s ╎ ", writer->number_margin, "");
@@ -673,23 +673,23 @@ void report_emit(Report *report, const Source *source)
   Canvas       *canvas = canvas_new();
   unsigned long i;
 
-  qsort(array_data(report->_annotations), array_count(report->_annotations), sizeof(ReportAnnotation), &compare_annotations);
+  qsort(array_data(report->annotations), array_count(report->annotations), sizeof(ReportAnnotation), &compare_annotations);
 
   writer.report        = report;
   writer.source        = source;
   writer.tab_width     = 4;
   writer.number_margin = 0;
-  for (i = 0; i < array_count(report->_annotations); ++i) {
+  for (i = 0; i < array_count(report->annotations); ++i) {
     int               margin;
-    ReportAnnotation *annotation = array_at(report->_annotations, i);
-    display_location(source, annotation->_start_offset, writer.tab_width, 1, &annotation->_start);
-    display_location(source, annotation->_end_offset, writer.tab_width, 0, &annotation->_end);
+    ReportAnnotation *annotation = array_at(report->annotations, i);
+    display_location(source, annotation->start_offset, writer.tab_width, 1, &annotation->start);
+    display_location(source, annotation->end_offset, writer.tab_width, 0, &annotation->end);
 
-    margin = digits(annotation->_start.line + 1);
+    margin = digits(annotation->start.line + 1);
     if (writer.number_margin < margin) {
       writer.number_margin = margin;
     }
-    margin = digits(annotation->_end.line + 1);
+    margin = digits(annotation->end.line + 1);
     if (writer.number_margin < margin) {
       writer.number_margin = margin;
     }
