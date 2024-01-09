@@ -3,7 +3,6 @@
 
 #include <stdarg.h>
 
-#include "array.h"
 #include "source.h"
 
 typedef enum {
