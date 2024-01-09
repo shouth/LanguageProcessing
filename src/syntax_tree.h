@@ -6,7 +6,7 @@
 typedef struct SyntaxTree SyntaxTree;
 typedef int               SyntaxTreeVisitor(const SyntaxTree *tree, void *data, int enter);
 
-SyntaxTree       *syntax_tree_root(const TokenTree *tree);
+SyntaxTree       *syntax_tree_root(const TokenNode *tree, unsigned long offset);
 const TokenNode  *syntax_tree_raw(const SyntaxTree *tree);
 SyntaxKind        syntax_tree_kind(const SyntaxTree *tree);
 unsigned long     syntax_tree_offset(const SyntaxTree *tree);

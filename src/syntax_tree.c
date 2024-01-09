@@ -11,12 +11,12 @@ struct SyntaxTree {
   unsigned long     offset;
 };
 
-SyntaxTree *syntax_tree_root(const TokenTree *tree)
+SyntaxTree *syntax_tree_root(const TokenNode *node, unsigned long offset)
 {
   SyntaxTree *root = xmalloc(sizeof(SyntaxTree));
   root->parent     = NULL;
-  root->inner      = (TokenNode *) tree;
-  root->offset     = token_node_trivia_length((const TokenNode *) tree);
+  root->inner      = node;
+  root->offset     = offset;
   return root;
 }
 
