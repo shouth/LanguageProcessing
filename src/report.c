@@ -33,9 +33,10 @@ struct LineSegment {
 };
 
 struct Indicator {
-  IndicatorKind kind;
-  unsigned long column;
-  unsigned long length;
+  const ReportAnnotation *annotation;
+  IndicatorKind           kind;
+  unsigned long           column;
+  unsigned long           length;
 };
 
 struct Connector {
@@ -135,7 +136,7 @@ void report_annotation_with_args(Report *report, unsigned long start, unsigned l
   ReportAnnotation label;
   label.start_offset = start;
   label.end_offset   = end;
-  label.message      = vformat(format, args);
+  label.message      = format ? vformat(format, args) : NULL;
   array_push(report->annotations, &label);
 }
 
@@ -423,19 +424,22 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
     ReportAnnotation *annotation = array_at(writer->report->annotations, i);
     Indicator         indicator;
     if (annotation->start.line == line_number && annotation->end.line == line_number) {
-      indicator.kind   = INDICATOR_INLINE;
-      indicator.column = annotation->start.column;
-      indicator.length = annotation->end.column - annotation->start.column + 1;
+      indicator.annotation = annotation;
+      indicator.kind       = INDICATOR_INLINE;
+      indicator.column     = annotation->start.column;
+      indicator.length     = annotation->end.column - annotation->start.column + 1;
       array_push(indicators, &indicator);
     } else if (annotation->start.line == line_number) {
-      indicator.kind   = INDICATOR_BEGIN;
-      indicator.column = annotation->start.column;
-      indicator.length = 1;
+      indicator.annotation = annotation;
+      indicator.kind       = INDICATOR_BEGIN;
+      indicator.column     = annotation->start.column;
+      indicator.length     = 1;
       array_push(indicators, &indicator);
     } else if (annotation->end.line == line_number) {
-      indicator.kind   = INDICATOR_END;
-      indicator.column = annotation->end.column;
-      indicator.length = 1;
+      indicator.annotation = annotation;
+      indicator.kind       = INDICATOR_END;
+      indicator.column     = annotation->end.column;
+      indicator.length     = 1;
       array_push(indicators, &indicator);
     }
   }
@@ -454,7 +458,7 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
     canvas_style(canvas, TERM_FG_BRIGHT_RED);
     switch (indicator->kind) {
     case INDICATOR_INLINE:
-      canvas_write(canvas, "┬");
+      canvas_write(canvas, indicator->annotation->message ? "┬" : "─");
       for (j = 1; j < indicator->length; ++j) {
         canvas_write(canvas, "─");
       }
@@ -544,18 +548,21 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
         for (j = 0; j < connector->column; ++j) {
           canvas_write(canvas, "─");
         }
-        canvas_write(canvas, "┴");
-      } else {
+        canvas_write(canvas, connector->annotation->message ? "┴" : "╯");
+      } else if (connector->annotation->message) {
         canvas_seek(canvas, line_offset + j, column_offset + connector->column);
         canvas_write(canvas, "╰");
       }
-      for (j = connector->column + 1; j < label_offset + 3; ++j) {
-        canvas_write(canvas, "─");
-      }
-      canvas_style(canvas, TERM_RESET);
 
-      canvas_style(canvas, TERM_FG_BRIGHT_WHITE);
-      canvas_write(canvas, " %s", connector->annotation->message);
+      if (connector->annotation->message) {
+        for (j = connector->column + 1; j < label_offset + 3; ++j) {
+          canvas_write(canvas, "─");
+        }
+        canvas_style(canvas, TERM_RESET);
+
+        canvas_style(canvas, TERM_FG_BRIGHT_WHITE);
+        canvas_write(canvas, " %s", connector->annotation->message);
+      }
       canvas_style(canvas, TERM_RESET);
       break;
 
