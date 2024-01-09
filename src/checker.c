@@ -23,16 +23,6 @@ struct Checker {
   Array     *errors;
 };
 
-static const Type *get_def_type(const Checker *checker, const SyntaxTree *tree)
-{
-  const Def *def = res_get_def(checker->res, syntax_tree_raw(tree));
-  if (def) {
-    return infer_get_def_type(checker->inference, def);
-  } else {
-    unreachable();
-  }
-}
-
 static const Type *get_ref_type(const Checker *checker, const SyntaxTree *tree)
 {
   const Def *def = res_get_ref(checker->res, syntax_tree_raw(tree));
@@ -76,49 +66,78 @@ static void infer_var(Checker *checker, const MpplVarDecl *syntax)
   mppl_free(type_syntax);
 }
 
-static void infer_param(Checker *checker, const MpplFmlParamSec *syntax)
+static void error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax)
 {
   unsigned long i;
-  AnyMpplType  *type_syntax = mppl_fml_param_sec__type(syntax);
-  for (i = 0; i < mppl_fml_param_sec__name_count(syntax); ++i) {
-    Type      *type        = mppl_type__to_type(type_syntax);
-    MpplToken *name_syntax = mppl_fml_param_sec__name(syntax, i);
-    record_def_type(checker, (SyntaxTree *) name_syntax, type);
-    mppl_free(name_syntax);
+  unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
+  Report       *report = report_new(REPORT_KIND_ERROR, offset, "invalid parameter type");
+
+  for (i = 0; i < mppl_fml_param_list__sec_count(syntax); ++i) {
+    MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(syntax, i);
+    AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
+    Type            *type             = mppl_type__to_type(type_syntax);
+
+    if (!type_is_std(type)) {
+      unsigned long type_offset = syntax_tree_offset((SyntaxTree *) type_syntax);
+      unsigned long type_length = syntax_tree_text_length((SyntaxTree *) type_syntax);
+      char         *type_string = type_to_string(type);
+      report_annotation(report, type_offset, type_offset + type_length,
+        "parameter type should be `integer`, `boolean` or `char`", type_string);
+      free(type_string);
+    }
+
+    type_free(type);
+    mppl_free(type_syntax);
+    mppl_free(param_sec_syntax);
   }
-  mppl_free(type_syntax);
+  array_push(checker->errors, &report);
 }
 
 static void infer_proc(Checker *checker, const MpplProcDecl *syntax)
 {
   unsigned long i, j;
   Array        *params = array_new(sizeof(Type *));
+  unsigned long param_count;
+  Type        **param_types;
+  Type         *infer_type;
+  int           needs_report = 0;
 
-  {
-    MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
-    for (i = 0; i < mppl_fml_param_list__sec_count(param_list_syntax); ++i) {
-      MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list_syntax, i);
-      infer_param(checker, param_sec_syntax);
+  MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
+  for (i = 0; i < mppl_fml_param_list__sec_count(param_list_syntax); ++i) {
+    MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list_syntax, i);
+    AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
+    Type            *type             = mppl_type__to_type(type_syntax);
+
+    if (!type_is_std(type)) {
+      needs_report = 1;
+    } else {
       for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
-        MpplToken  *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
-        const Type *param_type  = get_def_type(checker, (SyntaxTree *) name_syntax);
-        Type       *infer_type  = type_clone(param_type);
-        array_push(params, &infer_type);
+        MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
+        Type      *param_type  = type_clone(type);
+        Type      *infer_type  = type_clone(type);
+        array_push(params, &param_type);
+        record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
         mppl_free(name_syntax);
       }
-      mppl_free(param_sec_syntax);
     }
-    mppl_free(param_list_syntax);
+
+    type_free(type);
+    mppl_free(type_syntax);
+    mppl_free(param_sec_syntax);
   }
 
-  {
-    MpplToken    *name_syntax = mppl_proc_decl__name(syntax);
-    unsigned long param_count = array_count(params);
-    Type        **param_types = array_steal(params);
-    Type         *infer_type  = type_new_proc(param_types, param_count);
+  param_count = array_count(params);
+  param_types = array_steal(params);
+  infer_type  = type_new_proc(param_types, param_count);
+  if (needs_report) {
+    type_free(infer_type);
+    error_proc_param_type(checker, param_list_syntax);
+  } else {
+    MpplToken *name_syntax = mppl_proc_decl__name(syntax);
     record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
     mppl_free(name_syntax);
   }
+  mppl_free(param_list_syntax);
 }
 
 static void error_assign_impossible(const Checker *checker, const SyntaxTree *lhs, const Type *lhs_type)
@@ -234,11 +253,11 @@ static void error_call_stmt_mismatched_param_type(
   Checker *checker, const MpplCallStmt *syntax,
   const TypeProc *defined_type, const TypeProc *act_type)
 {
-  unsigned long i;
+  unsigned long     i;
+  MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
+
   unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
   Report       *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
-
-  MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
   if (act_param_list_syntax) {
     for (i = 0; i < type_proc_param_count(defined_type); ++i) {
       AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
@@ -257,8 +276,9 @@ static void error_call_stmt_mismatched_param_type(
       mppl_free(act_param_syntax);
     }
   }
-  mppl_free(act_param_list_syntax);
   array_push(checker->errors, &report);
+
+  mppl_free(act_param_list_syntax);
 }
 
 static void check_call_stmt(Checker *checker, const MpplCallStmt *syntax)
@@ -266,39 +286,48 @@ static void check_call_stmt(Checker *checker, const MpplCallStmt *syntax)
   MpplToken  *name_syntax = mppl_call_stmt__name(syntax);
   const Type *type        = get_ref_type(checker, (SyntaxTree *) name_syntax);
 
-  if (type && type_kind(type) != TYPE_PROC) {
-    error_call_stmt_non_callable(checker, name_syntax);
-  } else {
-    MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
-    Type             *act_type;
-    {
-      Array *act_param_array = array_new(sizeof(Type *));
+  if (type) {
+    if (type_kind(type) != TYPE_PROC) {
+      error_call_stmt_non_callable(checker, name_syntax);
+    } else {
+      MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
+      Array            *act_param_array       = array_new(sizeof(Type *));
+      Type             *act_type;
+      unsigned long     act_param_count;
+      Type            **act_param_types;
+      int               has_early_error = 0;
       if (act_param_list_syntax) {
         unsigned long i;
         for (i = 0; i < mppl_act_param_list__expr_count(act_param_list_syntax); ++i) {
           AnyMpplExpr *act_param_syntax = mppl_act_param_list__expr(act_param_list_syntax, i);
           const Type  *act_param_type   = get_expr_type(checker, (SyntaxTree *) act_param_syntax);
-          Type        *act_param_clone  = type_clone(act_param_type);
-          array_push(act_param_array, &act_param_clone);
+
+          if (!act_param_type) {
+            has_early_error = 1;
+          } else {
+            Type *act_param_clone = type_clone(act_param_type);
+            array_push(act_param_array, &act_param_clone);
+          }
           mppl_free(act_param_syntax);
         }
       }
-      {
-        unsigned long act_param_count = array_count(act_param_array);
-        Type        **act_param_types = array_steal(act_param_array);
-        act_type                      = type_new_proc(act_param_types, act_param_count);
-      }
-    }
 
-    if (type_proc_param_count((const TypeProc *) type) != type_proc_param_count((const TypeProc *) act_type)) {
-      error_call_stmt_mismatched_param_count(checker,
-        act_param_list_syntax, (const TypeProc *) type, type_proc_param_count((const TypeProc *) act_type));
-    } else if (!type_equal(type, act_type)) {
-      error_call_stmt_mismatched_param_type(checker,
-        syntax, (const TypeProc *) type, (TypeProc *) act_type);
+      act_param_count = array_count(act_param_array);
+      act_param_types = array_steal(act_param_array);
+      act_type        = type_new_proc(act_param_types, act_param_count);
+
+      if (!has_early_error) {
+        if (type_proc_param_count((const TypeProc *) type) != type_proc_param_count((const TypeProc *) act_type)) {
+          error_call_stmt_mismatched_param_count(checker,
+            act_param_list_syntax, (const TypeProc *) type, type_proc_param_count((const TypeProc *) act_type));
+        } else if (!type_equal(type, act_type)) {
+          error_call_stmt_mismatched_param_type(checker,
+            syntax, (const TypeProc *) type, (TypeProc *) act_type);
+        }
+      }
+      mppl_free(act_param_list_syntax);
+      type_free(act_type);
     }
-    mppl_free(act_param_list_syntax);
-    type_free(act_type);
   }
   mppl_free(name_syntax);
 }
@@ -330,16 +359,21 @@ static void check_input_stmt(Checker *checker, const MpplInputStmt *syntax)
   MpplInputList *input_list_syntax = mppl_input_stmt__input_list(syntax);
 
   if (input_list_syntax) {
+    int needs_report = 0;
     for (i = 0; i < mppl_input_list__var_count(input_list_syntax); ++i) {
       AnyMpplVar *var_syntax = mppl_input_list__var(input_list_syntax, i);
       const Type *var_type   = get_expr_type(checker, (SyntaxTree *) var_syntax);
-
+      needs_report |= var_type && type_kind(var_type) != TYPE_INTEGER && type_kind(var_type) != TYPE_CHAR;
       mppl_free(var_syntax);
 
-      if (var_type && type_kind(var_type) != TYPE_INTEGER && type_kind(var_type) != TYPE_CHAR) {
-        error_input_stmt_invalid_operand(checker, input_list_syntax);
+      if (!var_type) {
+        needs_report = 0;
         break;
       }
+    }
+
+    if (needs_report) {
+      error_input_stmt_invalid_operand(checker, input_list_syntax);
     }
   }
   mppl_free(input_list_syntax);
@@ -389,20 +423,26 @@ static void check_output_stmt(Checker *checker, const MpplOutputStmt *syntax)
   MpplOutList  *out_list_syntax = mppl_output_stmt__output_list(syntax);
 
   if (out_list_syntax) {
+    int needs_report = 0;
     for (i = 0; i < mppl_out_list__out_value_count(out_list_syntax); ++i) {
       MpplOutValue *out_value_syntax = mppl_out_list__out_value(out_list_syntax, i);
       MpplToken    *colon_syntax     = mppl_out_value__colon_token(out_value_syntax);
       AnyMpplExpr  *expr_syntax      = mppl_out_value__expr(out_value_syntax);
       const Type   *expr_type        = get_expr_type(checker, (SyntaxTree *) expr_syntax);
+      needs_report |= expr_type && !type_is_std(expr_type) && (type_kind(expr_type) != TYPE_STRING || colon_syntax);
 
       mppl_free(expr_syntax);
       mppl_free(colon_syntax);
       mppl_free(out_value_syntax);
 
-      if (expr_type && !type_is_std(expr_type) && (type_kind(expr_type) != TYPE_STRING || colon_syntax)) {
-        error_output_stmt_invalid_operand(checker, out_list_syntax);
+      if (!expr_type) {
+        needs_report = 0;
         break;
       }
+    }
+
+    if (needs_report) {
+      error_output_stmt_invalid_operand(checker, out_list_syntax);
     }
   }
   mppl_free(out_list_syntax);
@@ -497,8 +537,8 @@ static void error_unary_expr_invalid_operand(
     "unary operation `%s` cannot be applied to `%s`", op_str, rhs_type_str);
   report_annotation(report, op_offset, op_offset + op_length, "unary operation `%s` can be applied to %s", op_str, type_str);
   report_annotation(report, rhs_offset, rhs_offset + rhs_length, "`%s`", rhs_type_str);
-
   array_push(checker->errors, &report);
+
   free(rhs_type_str);
 }
 
@@ -513,11 +553,12 @@ static void error_relational_mismatched_type(
   unsigned long lhs_length      = syntax_tree_text_length(lhs);
   unsigned long rhs_offset      = syntax_tree_offset(rhs);
   unsigned long rhs_length      = syntax_tree_text_length(rhs);
-  Report       *report          = report_new(REPORT_KIND_ERROR, syntax_tree_offset(node), "mismatched types");
+
+  Report *report = report_new(REPORT_KIND_ERROR, syntax_tree_offset(node), "mismatched types");
   report_annotation(report, lhs_offset, lhs_offset + lhs_length, "`%s`", lhs_type_string);
   report_annotation(report, rhs_offset, rhs_offset + rhs_length, "`%s`", rhs_type_string);
-
   array_push(checker->errors, &report);
+
   free(lhs_type_string);
   free(rhs_type_string);
 }
@@ -598,19 +639,22 @@ static void check_binary_expr(Checker *checker, const MpplBinaryExpr *syntax)
     }
   } else {
     const Type *rhs_type = get_expr_type(checker, (SyntaxTree *) rhs_syntax);
-    switch (syntax_tree_kind((SyntaxTree *) op_syntax)) {
-    case SYNTAX_PLUS_TOKEN:
-    case SYNTAX_MINUS_TOKEN:
-      if (type_kind(rhs_type) != TYPE_INTEGER) {
-        error_unary_expr_invalid_operand(checker,
-          (SyntaxTree *) syntax, (SyntaxTree *) op_syntax, (SyntaxTree *) rhs_syntax, rhs_type, "`integer`");
-      } else {
-        Type *infer_type = type_new(TYPE_INTEGER);
-        record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
+    if (rhs_type) {
+      switch (syntax_tree_kind((SyntaxTree *) op_syntax)) {
+      case SYNTAX_PLUS_TOKEN:
+      case SYNTAX_MINUS_TOKEN:
+        if (type_kind(rhs_type) != TYPE_INTEGER) {
+          error_unary_expr_invalid_operand(checker,
+            (SyntaxTree *) syntax, (SyntaxTree *) op_syntax, (SyntaxTree *) rhs_syntax, rhs_type, "`integer`");
+        } else {
+          Type *infer_type = type_new(TYPE_INTEGER);
+          record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
+        }
+        break;
+
+      default:
+        unreachable();
       }
-      break;
-    default:
-      unreachable();
     }
   }
 
@@ -718,8 +762,11 @@ static void check_entire_var(Checker *checker, const MpplEntireVar *syntax)
 {
   MpplToken  *name_syntax = mppl_entire_var__name(syntax);
   const Type *type        = get_ref_type(checker, (SyntaxTree *) name_syntax);
-  Type       *infer_type  = type_clone(type);
-  record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
+
+  if (type) {
+    Type *infer_type = type_clone(type);
+    record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
+  }
   mppl_free(name_syntax);
 }
 
@@ -728,7 +775,8 @@ static void error_non_array_subscript(Checker *checker, const SyntaxTree *node, 
   char         *type_string = type_to_string(type);
   unsigned long offset      = syntax_tree_offset(node);
   unsigned long length      = syntax_tree_text_length(node);
-  Report       *report      = report_new(REPORT_KIND_ERROR, offset, "variable of type `%s` cannot be indexed", type_string);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "variable of type `%s` cannot be indexed", type_string);
   report_annotation(report, offset, offset + length, "variable to be indexed should be an `array`");
   array_push(checker->errors, &report);
   free(type_string);
@@ -739,7 +787,8 @@ static void error_array_non_integer_index(Checker *checker, const SyntaxTree *no
   char         *type_string = type_to_string(type);
   unsigned long offset      = syntax_tree_offset(node);
   unsigned long length      = syntax_tree_text_length(node);
-  Report       *report      = report_new(REPORT_KIND_ERROR, offset, "array index should be an `integer`");
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "array index should be an `integer`");
   report_annotation(report, offset, offset + length, "`%s`", type_string);
   array_push(checker->errors, &report);
   free(type_string);
@@ -752,7 +801,7 @@ static void check_indexed_var(Checker *checker, const MpplIndexedVar *syntax)
   const Type  *def_type     = get_ref_type(checker, (SyntaxTree *) name_syntax);
   const Type  *index_type   = get_expr_type(checker, (SyntaxTree *) index_syntax);
 
-  if (index_type) {
+  if (def_type && index_type) {
     if (type_kind(def_type) != TYPE_ARRAY) {
       error_non_array_subscript(checker, (SyntaxTree *) name_syntax, def_type);
     } else if (type_kind(index_type) != TYPE_INTEGER) {
@@ -767,6 +816,19 @@ static void check_indexed_var(Checker *checker, const MpplIndexedVar *syntax)
   mppl_free(index_syntax);
 }
 
+static void check_array_type(Checker *checker, const MpplArrayType *syntax)
+{
+  MpplLitNumber *size_syntax = mppl_array_type__size(syntax);
+  if (mppl_lit_number__to_long(size_syntax) == 0) {
+    unsigned long offset = syntax_tree_offset((SyntaxTree *) size_syntax);
+    unsigned long length = syntax_tree_text_length((SyntaxTree *) size_syntax);
+    Report       *report = report_new(REPORT_KIND_ERROR, offset, "invalid array size");
+    report_annotation(report, offset, offset + length, "array size should be greater than 0");
+    array_push(checker->errors, &report);
+  }
+  mppl_free(size_syntax);
+}
+
 static void check_number_lit(Checker *checker, const MpplLitNumber *syntax)
 {
   Type *infer_type = type_new(TYPE_INTEGER);
@@ -775,13 +837,8 @@ static void check_number_lit(Checker *checker, const MpplLitNumber *syntax)
 
 static void check_string_lit(Checker *checker, const MpplLitString *syntax)
 {
-  char *text = mppl_lit_string__to_string(syntax);
-  Type *infer_type;
-  if (strlen(text) == 1) {
-    infer_type = type_new(TYPE_CHAR);
-  } else {
-    infer_type = type_new(TYPE_STRING);
-  }
+  char *text       = mppl_lit_string__to_string(syntax);
+  Type *infer_type = type_new(strlen(text) == 1 ? TYPE_CHAR : TYPE_STRING);
   record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
   free(text);
 }
@@ -863,6 +920,10 @@ static int visit_syntax_tree(const SyntaxTree *syntax, void *checker, int enter)
 
     case SYNTAX_STRING_LIT:
       check_string_lit(checker, (const MpplLitString *) syntax);
+      return 1;
+
+    case SYNTAX_ARRAY_TYPE:
+      check_array_type(checker, (const MpplArrayType *) syntax);
       return 1;
 
     case SYNTAX_TRUE_KW:
