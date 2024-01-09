@@ -627,5 +627,5 @@ void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
     /* clang-format on */
   }
 
-  print_program(&printer, (MpplProgram *) syntax_tree_root((const TokenTree *) node));
+  print_program(&printer, (MpplProgram *) syntax_tree_root(node, token_node_trivia_length(node)));
 }
