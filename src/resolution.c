@@ -33,7 +33,7 @@ void res_free(Res *res)
   }
 }
 
-const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *id, const TokenNode *body)
+const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *id, const TokenNode *body, unsigned long offset)
 {
   MapIndex index;
   if (map_find(res->node_to_def, (void *) id, &index)) {
@@ -43,6 +43,7 @@ const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenN
     def->kind    = kind;
     def->id      = id;
     def->body    = body;
+    def->offset  = offset;
     def->binding = *binding;
     map_update(res->node_to_def, &index, (void *) id, def);
     return def;
