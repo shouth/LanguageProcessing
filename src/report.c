@@ -44,6 +44,7 @@ struct Connector {
   ConnectorKind           kind;
   int                     multiline;
   unsigned long           column;
+  unsigned long           depth;
 };
 
 struct Writer {
@@ -483,6 +484,7 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   unsigned long line_offset;
   unsigned long column_offset;
   unsigned long end_line_offset;
+  unsigned long depth;
 
   Array *connectors = array_new(sizeof(Connector));
   for (i = 0; i < array_count(writer->report->annotations); ++i) {
@@ -494,16 +496,19 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       connector.kind      = CONNECTOR_END;
       connector.multiline = 0;
       connector.column    = annotation->start.column;
+      connector.depth     = -1ul;
       array_push(connectors, &connector);
     } else if (annotation->start.line == line_number) {
       connector.kind      = CONNECTOR_BEGIN;
       connector.multiline = 1;
       connector.column    = annotation->start.column;
+      connector.depth     = -1ul;
       array_push(connectors, &connector);
     } else if (annotation->end.line == line_number) {
       connector.kind      = CONNECTOR_END;
       connector.multiline = 1;
       connector.column    = annotation->end.column;
+      connector.depth     = -1ul;
       array_push(connectors, &connector);
     }
 
@@ -516,28 +521,41 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
   }
   qsort(array_data(connectors), array_count(connectors), sizeof(Connector), &compare_connectors);
 
-  for (i = 0; i < 2 * array_count(connectors) - 1; ++i) {
-    Connector *connector = array_at(connectors, i / 2);
-    canvas_style(canvas, TERM_FAINT);
-    canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
-    canvas_style(canvas, TERM_RESET);
-    write_annotation_left(writer, canvas, line_number, connector->column, (i + 1) % 2 ? connector->annotation : NULL, 0);
-    if (i == 0) {
-      line_offset   = canvas_line(canvas);
-      column_offset = canvas_column(canvas);
+  depth = 0;
+  for (i = 0; i < array_count(connectors); ++i) {
+    Connector *connector = array_at(connectors, i);
+    if (connector->multiline || connector->annotation->message) {
+      connector->depth = depth;
+      if (depth > 0) {
+        canvas_next_line(canvas);
+      }
+      canvas_style(canvas, TERM_FAINT);
+      canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
+      canvas_style(canvas, TERM_RESET);
+      write_annotation_left(writer, canvas, line_number, connector->column, connector->annotation, 0);
+      if (depth == 0) {
+        line_offset   = canvas_line(canvas);
+        column_offset = canvas_column(canvas);
+      }
+      canvas_next_line(canvas);
+      canvas_style(canvas, TERM_FAINT);
+      canvas_write(canvas, " %*.s │ ", writer->number_margin, "");
+      canvas_style(canvas, TERM_RESET);
+      write_annotation_left(writer, canvas, line_number, connector->column, NULL, 0);
+      depth += 2;
     }
-    canvas_next_line(canvas);
   }
-  canvas_style(canvas, TERM_RESET);
   end_line_offset = canvas_line(canvas);
 
   for (i = array_count(connectors); i > 0; --i) {
     Connector *connector = array_at(connectors, i - 1);
 
     canvas_style(canvas, TERM_FG_BRIGHT_RED);
-    for (j = 0; j < 2 * i - 2; ++j) {
-      canvas_seek(canvas, line_offset + j, column_offset + connector->column);
-      canvas_write(canvas, "│");
+    if (connector->depth != -1ul) {
+      for (j = 0; j < connector->depth; ++j) {
+        canvas_seek(canvas, line_offset + j, column_offset + connector->column);
+        canvas_write(canvas, "│");
+      }
     }
     canvas_style(canvas, TERM_RESET);
     switch (connector->kind) {
@@ -549,12 +567,12 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
           canvas_write(canvas, "─");
         }
         canvas_write(canvas, connector->annotation->message ? "┴" : "╯");
-      } else if (connector->annotation->message) {
+      } else if (connector->depth != -1ul) {
         canvas_seek(canvas, line_offset + j, column_offset + connector->column);
         canvas_write(canvas, "╰");
       }
 
-      if (connector->annotation->message) {
+      if (connector->depth != -1ul) {
         for (j = connector->column + 1; j < label_offset + 3; ++j) {
           canvas_write(canvas, "─");
         }
