@@ -285,11 +285,12 @@ static void error_call_stmt_mismatched_param_type(
     const Def        *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
     MpplProcDecl     *proc_decl_syntax      = (MpplProcDecl *) syntax_tree_root(def->body, def->offset);
     MpplToken        *id_syntax             = mppl_proc_decl__name(proc_decl_syntax);
+    const Token      *id_token              = (const Token *) syntax_tree_raw((SyntaxTree *) id_syntax);
     MpplFmlParamList *fml_param_list_syntax = mppl_proc_decl__fml_param_list(proc_decl_syntax);
     unsigned long     name_offset           = syntax_tree_offset((SyntaxTree *) id_syntax);
     unsigned long     name_length           = syntax_tree_text_length((SyntaxTree *) id_syntax);
 
-    Report *report = report_new(REPORT_KIND_NOTE, name_offset, "defined here");
+    Report *report = report_new(REPORT_KIND_NOTE, name_offset, "`%s` is defined here", id_token->text);
     report_annotation(report, name_offset, name_offset + name_length, NULL);
     for (i = 0; i < mppl_fml_param_list__sec_count(fml_param_list_syntax); ++i) {
       MpplFmlParamSec *fml_param_sec_syntax = mppl_fml_param_list__sec(fml_param_list_syntax, i);
