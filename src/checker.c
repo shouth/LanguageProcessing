@@ -103,27 +103,29 @@ static void infer_proc(Checker *checker, const MpplProcDecl *syntax)
   int           needs_report = 0;
 
   MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
-  for (i = 0; i < mppl_fml_param_list__sec_count(param_list_syntax); ++i) {
-    MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list_syntax, i);
-    AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
-    Type            *type             = mppl_type__to_type(type_syntax);
+  if (param_list_syntax) {
+    for (i = 0; i < mppl_fml_param_list__sec_count(param_list_syntax); ++i) {
+      MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list_syntax, i);
+      AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
+      Type            *type             = mppl_type__to_type(type_syntax);
 
-    if (!type_is_std(type)) {
-      needs_report = 1;
-    } else {
-      for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
-        MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
-        Type      *param_type  = type_clone(type);
-        Type      *infer_type  = type_clone(type);
-        array_push(params, &param_type);
-        record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
-        mppl_free(name_syntax);
+      if (!type_is_std(type)) {
+        needs_report = 1;
+      } else {
+        for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
+          MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
+          Type      *param_type  = type_clone(type);
+          Type      *infer_type  = type_clone(type);
+          array_push(params, &param_type);
+          record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
+          mppl_free(name_syntax);
+        }
       }
-    }
 
-    type_free(type);
-    mppl_free(type_syntax);
-    mppl_free(param_sec_syntax);
+      type_free(type);
+      mppl_free(type_syntax);
+      mppl_free(param_sec_syntax);
+    }
   }
 
   param_count = array_count(params);
