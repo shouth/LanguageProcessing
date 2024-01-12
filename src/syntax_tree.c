@@ -100,8 +100,9 @@ void syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void 
   }
 }
 
-SyntaxTree *syntax_tree_free(SyntaxTree *tree)
+void syntax_tree_free(SyntaxTree *tree)
 {
-  free(tree);
-  return NULL;
+  if (tree) {
+    free(tree);
+  }
 }

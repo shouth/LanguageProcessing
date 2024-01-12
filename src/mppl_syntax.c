@@ -706,7 +706,7 @@ MpplLitKind mppl_lit__kind(const AnyMpplLit *lit)
 
 /* free ast node */
 
-void *mppl_free(void *ast)
+void mppl_free(void *ast)
 {
-  return syntax_tree_free(ast);
+  syntax_tree_free(ast);
 }

@@ -16,6 +16,6 @@ const SyntaxTree *syntax_tree_parent(const SyntaxTree *tree);
 unsigned long     syntax_tree_child_count(const SyntaxTree *tree);
 SyntaxTree       *syntax_tree_child(const SyntaxTree *tree, unsigned long index);
 void              syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void *data);
-SyntaxTree       *syntax_tree_free(SyntaxTree *tree);
+void              syntax_tree_free(SyntaxTree *tree);
 
 #endif
