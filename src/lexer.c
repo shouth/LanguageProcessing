@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "lexer.h"
 #include "source.h"
@@ -79,7 +80,13 @@ static LexStatus token_integer(Lexer *lexer, LexedToken *lexed)
 {
   if (eat_if(lexer, &is_number)) {
     while (eat_if(lexer, &is_number)) { }
-    return tokenize(lexer, SYNTAX_NUMBER_LIT, lexed);
+
+    if (strtoul(lexer->source->text + lexer->offset, NULL, 10) > 32768) {
+      tokenize(lexer, SYNTAX_BAD_TOKEN, lexed);
+      return LEX_ERROR_TOO_BIG_NUMBER;
+    } else {
+      return tokenize(lexer, SYNTAX_NUMBER_LIT, lexed);
+    }
   } else {
     return token_unexpected(lexer, lexed);
   }
