@@ -97,7 +97,7 @@ static LexStatus token_string(Lexer *lexer, LexedToken *lexed)
         } else {
           return tokenize(lexer, SYNTAX_STRING_LIT, lexed);
         }
-      } else if (is_newline(first(lexer)) || first(lexer) == EOF) {
+      } else if (first(lexer) == '\r' || first(lexer) == '\n' || first(lexer) == EOF) {
         tokenize(lexer, SYNTAX_BAD_TOKEN, lexed);
         return LEX_ERROR_UNTERMINATED_STRING;
       } else if (!eat_if(lexer, &is_graphic)) {
@@ -115,12 +115,6 @@ static int token_whitespace(Lexer *lexer, LexedToken *lexed)
   if (eat_if(lexer, &is_space)) {
     while (eat_if(lexer, &is_space)) { }
     return tokenize(lexer, SYNTAX_SPACE_TRIVIA, lexed);
-  } else if (eat(lexer, '\r')) {
-    eat(lexer, '\n');
-    return tokenize(lexer, SYNTAX_NEWLINE_TRIVIA, lexed);
-  } else if (eat(lexer, '\n')) {
-    eat(lexer, '\r');
-    return tokenize(lexer, SYNTAX_NEWLINE_TRIVIA, lexed);
   } else {
     return token_unexpected(lexer, lexed);
   }
@@ -224,7 +218,7 @@ LexStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *lexed
     return token_integer(&lexer, lexed);
   } else if (first(&lexer) == '\'') {
     return token_string(&lexer, lexed);
-  } else if (is_space(first(&lexer)) || is_newline(first(&lexer))) {
+  } else if (is_space(first(&lexer))) {
     return token_whitespace(&lexer, lexed);
   } else if (first(&lexer) == '{' || first(&lexer) == '/') {
     return token_comment(&lexer, lexed);
