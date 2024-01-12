@@ -38,15 +38,10 @@ int is_number(int c)
 
 int is_space(int c)
 {
-  return !!strchr(" \t", c);
-}
-
-int is_newline(int c)
-{
-  return !!strchr("\r\n", c);
+  return !!strchr(" \t\r\n", c);
 }
 
 int is_graphic(int c)
 {
-  return is_alphabet(c) || is_number(c) || is_space(c) || is_newline(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
+  return is_alphabet(c) || is_number(c) || is_space(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
 }
