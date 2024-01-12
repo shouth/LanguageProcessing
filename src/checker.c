@@ -147,7 +147,9 @@ static void error_assign_impossible(const Checker *checker, const SyntaxTree *lh
   char         *lhs_type_string = type_to_string(lhs_type);
   unsigned long offset          = syntax_tree_offset(lhs);
   unsigned long length          = syntax_tree_text_length(lhs);
-  Report       *report          = report_new(REPORT_KIND_ERROR, offset, "assignment operation cannot be applied to `%s`", lhs_type_string);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset,
+    "assignment operation cannot be applied to `%s`", lhs_type_string);
   report_annotation(report, offset, offset + length,
     "left operand of `:=` should be a variable of standard type", lhs_type_string);
   array_push(checker->errors, &report);
@@ -165,7 +167,8 @@ static void error_assign_type_mismatch(
   unsigned long lhs_length      = syntax_tree_text_length(lhs);
   unsigned long rhs_offset      = syntax_tree_offset(rhs);
   unsigned long rhs_length      = syntax_tree_text_length(rhs);
-  Report       *report          = report_new(REPORT_KIND_ERROR, syntax_tree_offset(node), "mismatched types");
+
+  Report *report = report_new(REPORT_KIND_ERROR, syntax_tree_offset(node), "mismatched types");
   report_annotation(report, lhs_offset, lhs_offset + lhs_length,
     "`%s`", lhs_type_string);
   report_annotation(report, rhs_offset, rhs_offset + rhs_length,
@@ -200,7 +203,8 @@ static void error_conditional_stmt_invalid_condition(Checker *checker, const Syn
   char         *type_string = type_to_string(type);
   unsigned long offset      = syntax_tree_offset(node);
   unsigned long length      = syntax_tree_text_length(node);
-  Report       *report      = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be used as a condition", type_string);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be used as a condition", type_string);
   report_annotation(report, offset, offset + length, "condition should be `boolean`");
   array_push(checker->errors, &report);
   free(type_string);
@@ -233,7 +237,8 @@ static void error_call_stmt_non_callable(Checker *checker, const MpplToken *synt
   const Token  *token  = (const Token *) syntax_tree_raw((SyntaxTree *) syntax);
   unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
   unsigned long length = syntax_tree_text_length((SyntaxTree *) syntax);
-  Report       *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be called", token->text);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be called", token->text);
   report_annotation(report, offset, offset + length, "a called item should be a `procedure`");
   array_push(checker->errors, &report);
 }
@@ -244,8 +249,9 @@ static void error_call_stmt_mismatched_param_count(
 {
   unsigned long offset      = syntax_tree_offset((SyntaxTree *) syntax);
   unsigned long length      = syntax_tree_text_length((SyntaxTree *) syntax);
-  Report       *report      = report_new(REPORT_KIND_ERROR, offset, "mismatched the number of parameter");
   unsigned long param_count = type_proc_param_count(proc_type);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched the number of parameter");
   report_annotation(report, offset, offset + length,
     "expected %lu %s, found %lu", param_count, param_count > 1 ? "parameters" : "parameter", act_param_count);
   array_push(checker->errors, &report);
@@ -261,7 +267,8 @@ static void error_call_stmt_mismatched_param_type(
 
   {
     unsigned long offset = syntax_tree_offset((SyntaxTree *) act_param_list_syntax);
-    Report       *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
+
+    Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
     if (act_param_list_syntax) {
       for (i = 0; i < type_proc_param_count(defined_type); ++i) {
         AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
