@@ -209,18 +209,30 @@ static void error_unexpected(Parser *parser)
       } else {
         report = report_new(REPORT_KIND_ERROR, parser->offset, "stray `\\x%X` in program", (unsigned char) token(parser)->text[0]);
       }
+      report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+      parser->alive = 0;
       break;
     }
     case LEX_ERROR_NONGRAPHIC_CHAR: {
       report = report_new(REPORT_KIND_ERROR, parser->offset, "non-graphic character in string");
+      report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, NULL);
       break;
     }
     case LEX_ERROR_UNTERMINATED_STRING: {
       report = report_new(REPORT_KIND_ERROR, parser->offset, "string is unterminated");
+      report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, NULL);
+      parser->alive = 0;
       break;
     }
     case LEX_ERROR_UNTERMINATED_COMMENT: {
       report = report_new(REPORT_KIND_ERROR, parser->offset, "comment is unterminated");
+      report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, NULL);
+      parser->alive = 0;
+      break;
+    }
+    case LEX_ERROR_TOO_BIG_NUMBER: {
+      report = report_new(REPORT_KIND_ERROR, parser->offset, "number is too big");
+      report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, "value should be less than or equal to 32768");
       break;
     }
     default:
@@ -228,11 +240,11 @@ static void error_unexpected(Parser *parser)
     }
   } else {
     report = report_new(REPORT_KIND_ERROR, parser->offset, "expected %s, found `%s`", expected, token(parser)->text);
+    report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
+    parser->alive = 0;
   }
-  report_annotation(report, parser->offset, parser->offset + token(parser)->text_length, "expected %s", expected);
   array_push(parser->errors, &report);
 
-  parser->alive = 0;
   bump(parser);
 }
 
