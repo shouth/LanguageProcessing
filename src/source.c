@@ -85,21 +85,6 @@ void source_free(Source *source)
   }
 }
 
-const char *source_text(const Source *source)
-{
-  return source->text;
-}
-
-unsigned long source_length(const Source *source)
-{
-  return source->text_length;
-}
-
-const char *source_file_name(const Source *source)
-{
-  return source->file_name;
-}
-
 int source_location(const Source *source, unsigned long offset, SourceLocation *location)
 {
   if (offset >= source->text_length) {
