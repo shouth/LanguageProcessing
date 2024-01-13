@@ -17,6 +17,7 @@ struct Session {
   TokenTree *tree;
   Res       *res;
   Infer     *infer;
+  int        error;
 };
 
 Session *session_new(const char *filename)
@@ -28,6 +29,7 @@ Session *session_new(const char *filename)
   session->tree   = NULL;
   session->res    = NULL;
   session->infer  = NULL;
+  session->error  = 0;
   return session;
 }
 
@@ -46,7 +48,12 @@ void session_free(Session *session)
 const Source *session_load(Session *session)
 {
   if (!session->source) {
-    session->source = source_new(session->filename, strlen(session->filename));
+    if (!session->error) {
+      session->source = source_new(session->filename, strlen(session->filename));
+      if (!session->source) {
+        session->error = 1;
+      }
+    }
   }
   return session->source;
 }
@@ -55,8 +62,10 @@ const TokenTree *session_parse(Session *session)
 {
   if (!session->tree) {
     const Source *source = session_load(session);
-    if (source && mppl_parse(source, &session->tree)) {
+    if (!session->error && mppl_parse(source, &session->tree)) {
       return session->tree;
+    } else {
+      session->error = 1;
     }
   }
   return session->tree;
@@ -67,8 +76,10 @@ const Res *session_resolve(Session *session)
   if (!session->res) {
     const Source    *source = session_load(session);
     const TokenTree *tree   = session_parse(session);
-    if (source && tree && mppl_resolve(source, (const TokenNode *) tree, &session->res)) {
+    if (!session->error && mppl_resolve(source, (const TokenNode *) tree, &session->res)) {
       return session->res;
+    } else {
+      session->error = 1;
     }
   }
   return session->res;
@@ -80,8 +91,10 @@ const Infer *session_check(Session *session)
     const Source    *source = session_load(session);
     const TokenTree *tree   = session_parse(session);
     const Res       *res    = session_resolve(session);
-    if (source && tree && res && mppl_check(source, (const TokenNode *) tree, res, &session->infer)) {
+    if (!session->error && mppl_check(source, (const TokenNode *) tree, res, &session->infer)) {
       return session->infer;
+    } else {
+      session->error = 1;
     }
   }
   return session->infer;
