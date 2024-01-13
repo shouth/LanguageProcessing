@@ -25,6 +25,7 @@ struct Parser {
   BitSet       *expected;
   Array        *errors;
   int           alive;
+  unsigned long breakable;
 };
 
 static unsigned long node_checkpoint(Parser *parser)
@@ -449,19 +450,31 @@ static void parse_if_stmt(Parser *parser)
 
 static void parse_while_stmt(Parser *parser)
 {
+  ++parser->breakable;
   node_start(parser);
   expect(parser, SYNTAX_WHILE_KW);
   parse_expr(parser);
   expect(parser, SYNTAX_DO_KW);
   parse_stmt(parser);
   node_finish(parser, SYNTAX_WHILE_STMT);
+  --parser->breakable;
 }
 
 static void parse_break_stmt(Parser *parser)
 {
   node_start(parser);
-  expect(parser, SYNTAX_BREAK_KW);
-  node_finish(parser, SYNTAX_RETURN_STMT);
+  if (check(parser, SYNTAX_BREAK_KW)) {
+    if (!parser->breakable && parser->alive) {
+      Report *report = report_new(REPORT_KIND_ERROR, parser->offset, "`break` is outside of a loop");
+      report_annotation(report, parser->offset, parser->offset + token(parser)->text_length,
+        "`break` should be enclosed by a loop");
+      array_push(parser->errors, &report);
+    }
+    bump(parser);
+  } else {
+    error_unexpected(parser);
+  }
+  node_finish(parser, SYNTAX_BREAK_STMT);
 }
 
 static void parse_act_param_list(Parser *parser)
@@ -697,9 +710,10 @@ int mppl_parse(const Source *source, TokenTree **tree)
   parser.errors   = array_new(sizeof(Report *));
   parser.expected = bitset_new(SYNTAX_EOF_TOKEN + 1);
   token_cursor_init(&parser.cursor, source);
-  parser.token  = NULL;
-  parser.alive  = 1;
-  parser.offset = 0;
+  parser.token     = NULL;
+  parser.alive     = 1;
+  parser.offset    = 0;
+  parser.breakable = 0;
 
   parse_program(&parser);
   *tree = *(TokenTree **) array_data(parser.children);
