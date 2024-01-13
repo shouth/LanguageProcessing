@@ -110,12 +110,13 @@ static const Def *get_def(Resolver *resolver, const char *name)
   return NULL;
 }
 
-static void try_record_ref(Resolver *resolver, const SyntaxTree *syntax, int is_proc)
+static const Def *try_record_ref(Resolver *resolver, const SyntaxTree *syntax, int is_proc)
 {
   const Token *node = (const Token *) syntax_tree_raw(syntax);
   const Def   *def  = get_def(resolver, node->text);
   if (resolver->scope && def) {
     res_record_ref(resolver->res, (const TokenNode *) node, def);
+    return def;
   } else {
     Binding binding;
     binding.name   = node->text;
@@ -126,7 +127,18 @@ static void try_record_ref(Resolver *resolver, const SyntaxTree *syntax, int is_
     } else {
       error_var_res_failure(resolver, &binding);
     }
+    return NULL;
   }
+}
+
+static void error_call_stmt_recursion(Resolver *resolver, const Def *proc, const SyntaxTree *name_syntax)
+{
+  unsigned long offset = syntax_tree_offset(name_syntax);
+  unsigned long length = syntax_tree_text_length(name_syntax);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "recursion is prohibited");
+  report_annotation(report, offset, offset + length, "recursive call to `%s`", proc->binding.name);
+  array_push(resolver->errors, &report);
 }
 
 static int visit_syntax_tree(const SyntaxTree *tree, void *resolver, int enter)
@@ -191,7 +203,16 @@ static int visit_syntax_tree(const SyntaxTree *tree, void *resolver, int enter)
     case SYNTAX_CALL_STMT: {
       const MpplCallStmt *stmt        = (const MpplCallStmt *) tree;
       MpplToken          *name_syntax = mppl_call_stmt__name(stmt);
-      try_record_ref(resolver, (const SyntaxTree *) name_syntax, 1);
+      const Def          *proc        = try_record_ref(resolver, (const SyntaxTree *) name_syntax, 1);
+      if (proc) {
+        const SyntaxTree *node;
+        for (node = tree; node; node = syntax_tree_parent(node)) {
+          if (syntax_tree_kind(node) == SYNTAX_PROC_DECL && syntax_tree_raw(node) == proc->body) {
+            error_call_stmt_recursion(resolver, proc, (const SyntaxTree *) name_syntax);
+            break;
+          }
+        }
+      }
       mppl_free(name_syntax);
       return 0;
     }
