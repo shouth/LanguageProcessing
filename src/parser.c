@@ -703,7 +703,6 @@ int mppl_parse(const Source *source, TokenTree **tree)
 
   parse_program(&parser);
   *tree = *(TokenTree **) array_data(parser.children);
-
   {
     unsigned long i;
     for (i = 0; i < array_count(parser.errors); ++i) {
@@ -712,6 +711,11 @@ int mppl_parse(const Source *source, TokenTree **tree)
     fflush(stdout);
   }
   result = !array_count(parser.errors);
+
+  if (!result) {
+    token_tree_free(*tree);
+    *tree = NULL;
+  }
 
   bitset_free(parser.expected);
   array_free(parser.errors);

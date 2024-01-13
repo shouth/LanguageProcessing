@@ -55,7 +55,7 @@ const TokenTree *session_parse(Session *session)
 {
   if (!session->tree) {
     const Source *source = session_load(session);
-    if (mppl_parse(source, &session->tree)) {
+    if (source && mppl_parse(source, &session->tree)) {
       return session->tree;
     }
   }
@@ -67,7 +67,7 @@ const Res *session_resolve(Session *session)
   if (!session->res) {
     const Source    *source = session_load(session);
     const TokenTree *tree   = session_parse(session);
-    if (mppl_resolve(source, (const TokenNode *) tree, &session->res)) {
+    if (source && tree && mppl_resolve(source, (const TokenNode *) tree, &session->res)) {
       return session->res;
     }
   }
@@ -80,7 +80,7 @@ const Infer *session_check(Session *session)
     const Source    *source = session_load(session);
     const TokenTree *tree   = session_parse(session);
     const Res       *res    = session_resolve(session);
-    if (mppl_check(source, (const TokenNode *) tree, res, &session->infer)) {
+    if (source && tree && res && mppl_check(source, (const TokenNode *) tree, res, &session->infer)) {
       return session->infer;
     }
   }
