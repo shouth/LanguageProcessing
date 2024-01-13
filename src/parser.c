@@ -282,11 +282,11 @@ static void expect_semi(Parser *parser, const SyntaxKind *next, unsigned long co
   }
 }
 
-static const SyntaxKind FIRST_STANDARD_TYPE[] = { SYNTAX_INTEGER_KW, SYNTAX_BOOLEAN_KW, SYNTAX_CHAR_KW };
+static const SyntaxKind FIRST_STD_TYPE[] = { SYNTAX_INTEGER_KW, SYNTAX_BOOLEAN_KW, SYNTAX_CHAR_KW };
 
 static void parse_std_type(Parser *parser)
 {
-  expect_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind));
+  expect_any(parser, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(SyntaxKind));
 }
 
 static void parse_array_type(Parser *parser)
@@ -303,7 +303,7 @@ static void parse_array_type(Parser *parser)
 
 static void parse_type(Parser *parser)
 {
-  if (check_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind))) {
+  if (check_any(parser, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(SyntaxKind))) {
     parse_std_type(parser);
   } else {
     parse_array_type(parser);
@@ -353,7 +353,7 @@ static void parse_cast_expr(Parser *parser)
   node_finish(parser, SYNTAX_CAST_EXPR);
 }
 
-static const SyntaxKind FIRST_CONSTANT[] = { SYNTAX_NUMBER_LIT, SYNTAX_TRUE_KW, SYNTAX_FALSE_KW, SYNTAX_STRING_LIT };
+static const SyntaxKind FIRST_CONST[] = { SYNTAX_NUMBER_LIT, SYNTAX_TRUE_KW, SYNTAX_FALSE_KW, SYNTAX_STRING_LIT };
 
 static void parse_factor(Parser *parser)
 {
@@ -363,44 +363,44 @@ static void parse_factor(Parser *parser)
     parse_paren_expr(parser);
   } else if (check(parser, SYNTAX_NOT_KW)) {
     parse_not_expr(parser);
-  } else if (check_any(parser, FIRST_STANDARD_TYPE, sizeof(FIRST_STANDARD_TYPE) / sizeof(SyntaxKind))) {
+  } else if (check_any(parser, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(SyntaxKind))) {
     parse_cast_expr(parser);
   } else {
-    expect_any(parser, FIRST_CONSTANT, sizeof(FIRST_CONSTANT) / sizeof(SyntaxKind));
+    expect_any(parser, FIRST_CONST, sizeof(FIRST_CONST) / sizeof(SyntaxKind));
   }
 }
 
-static const SyntaxKind FIRST_MULTIPLICATIVE_OPERATOR[] = { SYNTAX_STAR_TOKEN, SYNTAX_DIV_KW, SYNTAX_AND_KW };
+static const SyntaxKind FIRST_MULTI_OP[] = { SYNTAX_STAR_TOKEN, SYNTAX_DIV_KW, SYNTAX_AND_KW };
 
 static void parse_term(Parser *parser)
 {
   unsigned long checkpoint = node_checkpoint(parser);
   parse_factor(parser);
-  while (eat_any(parser, FIRST_MULTIPLICATIVE_OPERATOR, sizeof(FIRST_MULTIPLICATIVE_OPERATOR) / sizeof(SyntaxKind))) {
+  while (eat_any(parser, FIRST_MULTI_OP, sizeof(FIRST_MULTI_OP) / sizeof(SyntaxKind))) {
     node_start_at(parser, checkpoint);
     parse_factor(parser);
     node_finish(parser, SYNTAX_BINARY_EXPR);
   }
 }
 
-static const SyntaxKind FIRST_ADDITIVE_OPERATOR[] = { SYNTAX_PLUS_TOKEN, SYNTAX_MINUS_TOKEN, SYNTAX_OR_KW };
+static const SyntaxKind FIRST_ADD_OP[] = { SYNTAX_PLUS_TOKEN, SYNTAX_MINUS_TOKEN, SYNTAX_OR_KW };
 
 static void parse_simple_expr(Parser *parser)
 {
   unsigned long checkpoint = node_checkpoint(parser);
-  if (check_any(parser, FIRST_ADDITIVE_OPERATOR, sizeof(FIRST_ADDITIVE_OPERATOR) / sizeof(SyntaxKind))) {
+  if (check_any(parser, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(SyntaxKind))) {
     node_null(parser);
   } else {
     parse_term(parser);
   }
-  while (eat_any(parser, FIRST_ADDITIVE_OPERATOR, sizeof(FIRST_ADDITIVE_OPERATOR) / sizeof(SyntaxKind))) {
+  while (eat_any(parser, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(SyntaxKind))) {
     node_start_at(parser, checkpoint);
     parse_term(parser);
     node_finish(parser, SYNTAX_BINARY_EXPR);
   }
 }
 
-static const SyntaxKind FIRST_RELATIONAL_OPERATOR[] = {
+static const SyntaxKind FIRST_RELAT_OP[] = {
   SYNTAX_EQUAL_TOKEN,
   SYNTAX_NOTEQ_TOKEN,
   SYNTAX_LESS_TOKEN,
@@ -413,7 +413,7 @@ static void parse_expr(Parser *parser)
 {
   unsigned long checkpoint = node_checkpoint(parser);
   parse_simple_expr(parser);
-  while (eat_any(parser, FIRST_RELATIONAL_OPERATOR, sizeof(FIRST_RELATIONAL_OPERATOR) / sizeof(SyntaxKind))) {
+  while (eat_any(parser, FIRST_RELAT_OP, sizeof(FIRST_RELAT_OP) / sizeof(SyntaxKind))) {
     node_start_at(parser, checkpoint);
     parse_simple_expr(parser);
     node_finish(parser, SYNTAX_BINARY_EXPR);
@@ -464,7 +464,7 @@ static void parse_break_stmt(Parser *parser)
   node_finish(parser, SYNTAX_RETURN_STMT);
 }
 
-static void parse_actual_param_list(Parser *parser)
+static void parse_act_param_list(Parser *parser)
 {
   node_start(parser);
   expect(parser, SYNTAX_LPAREN_TOKEN);
@@ -481,7 +481,7 @@ static void parse_call_stmt(Parser *parser)
   expect(parser, SYNTAX_CALL_KW);
   expect(parser, SYNTAX_IDENT_TOKEN);
   if (check(parser, SYNTAX_LPAREN_TOKEN)) {
-    parse_actual_param_list(parser);
+    parse_act_param_list(parser);
   } else {
     node_null(parser);
   }
@@ -558,7 +558,7 @@ static void parse_output_stmt(Parser *parser)
   node_finish(parser, SYNTAX_OUTPUT_STMT);
 }
 
-static void parse_compound_stmt(Parser *parser)
+static void parse_comp_stmt(Parser *parser)
 {
   node_start(parser);
   expect(parser, SYNTAX_BEGIN_KW);
@@ -588,7 +588,7 @@ static void parse_stmt(Parser *parser)
   } else if (check_any(parser, FIRST_OUTPUT_STMT, sizeof(FIRST_OUTPUT_STMT) / sizeof(SyntaxKind))) {
     parse_output_stmt(parser);
   } else if (check(parser, SYNTAX_BEGIN_KW)) {
-    parse_compound_stmt(parser);
+    parse_comp_stmt(parser);
   } else {
     node_null(parser);
   }
@@ -616,7 +616,7 @@ static void parse_var_decl_part(Parser *parser, const SyntaxKind *next, unsigned
   node_finish(parser, SYNTAX_VAR_DECL_PART);
 }
 
-static void parse_formal_param_section(Parser *parser)
+static void parse_fml_param_sec(Parser *parser)
 {
   node_start(parser);
   do {
@@ -627,12 +627,12 @@ static void parse_formal_param_section(Parser *parser)
   node_finish(parser, SYNTAX_FML_PARAM_SECTION);
 }
 
-static void parse_formal_param_list(Parser *parser)
+static void parse_fml_param_list(Parser *parser)
 {
   node_start(parser);
   expect(parser, SYNTAX_LPAREN_TOKEN);
   do {
-    parse_formal_param_section(parser);
+    parse_fml_param_sec(parser);
   } while (eat(parser, SYNTAX_SEMI_TOKEN));
   expect(parser, SYNTAX_RPAREN_TOKEN);
   node_finish(parser, SYNTAX_FML_PARAM_LIST);
@@ -644,7 +644,7 @@ static void parse_proc_decl(Parser *parser, const SyntaxKind *next, unsigned lon
   expect(parser, SYNTAX_PROCEDURE_KW);
   expect(parser, SYNTAX_IDENT_TOKEN);
   if (check(parser, SYNTAX_LPAREN_TOKEN)) {
-    parse_formal_param_list(parser);
+    parse_fml_param_list(parser);
   } else {
     node_null(parser);
   }
@@ -658,7 +658,7 @@ static void parse_proc_decl(Parser *parser, const SyntaxKind *next, unsigned lon
   } else {
     node_null(parser);
   }
-  parse_compound_stmt(parser);
+  parse_comp_stmt(parser);
   expect_semi(parser, next, count);
   node_finish(parser, SYNTAX_PROC_DECL);
 }
@@ -682,7 +682,7 @@ static void parse_program(Parser *parser)
       break;
     }
   }
-  parse_compound_stmt(parser);
+  parse_comp_stmt(parser);
   expect(parser, SYNTAX_DOT_TOKEN);
   expect(parser, SYNTAX_EOF_TOKEN);
   node_finish(parser, SYNTAX_PROGRAM);
