@@ -174,7 +174,7 @@ static int visit_syntax_tree(const SyntaxTree *tree, void *resolver, int enter)
       return 0;
     }
 
-    case SYNTAX_FML_PARAM_SECTION: {
+    case SYNTAX_FML_PARAM_SEC: {
       const MpplFmlParamSec *sec = (const MpplFmlParamSec *) tree;
       for (i = 0; i < mppl_fml_param_sec__name_count(sec); ++i) {
         SyntaxTree *name_syntax = (SyntaxTree *) mppl_fml_param_sec__name(sec, i);

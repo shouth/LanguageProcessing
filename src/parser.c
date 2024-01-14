@@ -485,7 +485,7 @@ static void parse_act_param_list(Parser *parser)
     parse_expr(parser);
   } while (eat(parser, SYNTAX_COMMA_TOKEN));
   expect(parser, SYNTAX_RPAREN_TOKEN);
-  node_finish(parser, SYNTAX_ACTUAL_PARAM_LIST);
+  node_finish(parser, SYNTAX_ACT_PARAM_LIST);
 }
 
 static void parse_call_stmt(Parser *parser)
@@ -637,7 +637,7 @@ static void parse_fml_param_sec(Parser *parser)
   } while (eat(parser, SYNTAX_COMMA_TOKEN));
   expect(parser, SYNTAX_COLON_TOKEN);
   parse_type(parser);
-  node_finish(parser, SYNTAX_FML_PARAM_SECTION);
+  node_finish(parser, SYNTAX_FML_PARAM_SEC);
 }
 
 static void parse_fml_param_list(Parser *parser)
