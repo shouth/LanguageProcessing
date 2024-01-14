@@ -88,15 +88,7 @@ SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
   }
 }
 
-SyntaxTree *syntax_tree_extract(SyntaxTree *tree)
-{
-  if (tree) {
-    tree->parent = NULL;
-  }
-  return tree;
-}
-
-SyntaxTree *syntax_tree_clone(const SyntaxTree *tree)
+SyntaxTree *syntax_tree_subtree(const SyntaxTree *tree)
 {
   if (tree) {
     return syntax_tree_new(NULL, tree->inner, tree->offset, 0);

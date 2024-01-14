@@ -15,8 +15,7 @@ unsigned long     syntax_tree_trivia_length(const SyntaxTree *tree);
 const SyntaxTree *syntax_tree_parent(const SyntaxTree *tree);
 unsigned long     syntax_tree_child_count(const SyntaxTree *tree);
 SyntaxTree       *syntax_tree_child(const SyntaxTree *tree, unsigned long index);
-SyntaxTree       *syntax_tree_extract(SyntaxTree *tree);
-SyntaxTree       *syntax_tree_clone(const SyntaxTree *tree);
+SyntaxTree       *syntax_tree_subtree(const SyntaxTree *tree);
 void              syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void *data);
 void              syntax_tree_free(SyntaxTree *tree);
 

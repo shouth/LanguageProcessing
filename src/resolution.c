@@ -45,8 +45,8 @@ const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const Syntax
   } else {
     Def *def     = xmalloc(sizeof(Def));
     def->kind    = kind;
-    def->id      = syntax_tree_clone(id);
-    def->body    = syntax_tree_clone(body);
+    def->id      = syntax_tree_subtree(id);
+    def->body    = syntax_tree_subtree(body);
     def->offset  = offset;
     def->binding = *binding;
     map_update(res->node_to_def, &index, (void *) syntax_tree_raw(id), def);
