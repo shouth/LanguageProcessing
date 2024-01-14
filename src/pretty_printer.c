@@ -838,10 +838,8 @@ static void print_token_literal(Printer *printer, const MpplToken *token)
   print_token__impl(printer, token, printer->option.color.literal);
 }
 
-void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
+void mppl_pretty_print(const MpplProgram *syntax, const PrinterOption *option)
 {
-  MpplProgram *program = (MpplProgram *) syntax_tree_root(node, token_node_trivia_length(node));
-
   Printer printer;
   printer.indent = 0;
   if (option) {
@@ -860,7 +858,5 @@ void mppl_pretty_print(const TokenNode *node, const PrinterOption *option)
     /* clang-format on */
   }
 
-  print_program(&printer, program);
-
-  mppl_free(program);
+  print_program(&printer, syntax);
 }

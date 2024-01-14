@@ -7,17 +7,24 @@
 
 struct SyntaxTree {
   const SyntaxTree *parent;
-  const TokenNode  *inner;
+  TokenNode        *inner;
   unsigned long     offset;
+  unsigned long     flags;
 };
 
-SyntaxTree *syntax_tree_root(const TokenNode *node, unsigned long offset)
+static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, TokenNode *inner, unsigned long offset, unsigned long flags)
 {
-  SyntaxTree *root = xmalloc(sizeof(SyntaxTree));
-  root->parent     = NULL;
-  root->inner      = node;
-  root->offset     = offset;
-  return root;
+  SyntaxTree *tree = xmalloc(sizeof(SyntaxTree));
+  tree->parent     = parent;
+  tree->inner      = inner;
+  tree->offset     = offset;
+  tree->flags      = flags;
+  return tree;
+}
+
+SyntaxTree *syntax_tree_root(TokenNode *node)
+{
+  return syntax_tree_new(NULL, node, token_node_trivia_length(node), 1);
 }
 
 const TokenNode *syntax_tree_raw(const SyntaxTree *tree)
@@ -66,27 +73,42 @@ SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
   if (syntax_kind_is_token(inner->kind) || index >= inner->children_count || !inner->children[index]) {
     return NULL;
   } else {
+    unsigned long offset = tree->offset;
     unsigned long i;
-    SyntaxTree   *child = xmalloc(sizeof(SyntaxTree));
-    child->parent       = tree;
-    child->inner        = inner->children[index];
-    child->offset       = tree->offset;
+
     for (i = 0; i <= index; ++i) {
       if (i > 0) {
-        child->offset += token_node_trivia_length(inner->children[i]);
+        offset += token_node_trivia_length(inner->children[i]);
       }
       if (i < index) {
-        child->offset += token_node_text_length(inner->children[i]);
+        offset += token_node_text_length(inner->children[i]);
       }
     }
-    return child;
+    return syntax_tree_new(tree, inner->children[index], offset, 0);
+  }
+}
+
+SyntaxTree *syntax_tree_extract(SyntaxTree *tree)
+{
+  if (tree) {
+    tree->parent = NULL;
+  }
+  return tree;
+}
+
+SyntaxTree *syntax_tree_clone(const SyntaxTree *tree)
+{
+  if (tree) {
+    return syntax_tree_new(NULL, tree->inner, tree->offset, 0);
+  } else {
+    return NULL;
   }
 }
 
 void syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void *data)
 {
   if (tree) {
-    const TokenTree *inner = (TokenTree *) tree->inner;
+    const TokenTree *inner = (const TokenTree *) tree->inner;
     visitor(tree, data, 1);
     if (!syntax_kind_is_token(inner->kind)) {
       unsigned long i;
@@ -103,6 +125,9 @@ void syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void 
 void syntax_tree_free(SyntaxTree *tree)
 {
   if (tree) {
+    if (tree->flags & 1) {
+      token_node_free(tree->inner);
+    }
     free(tree);
   }
 }

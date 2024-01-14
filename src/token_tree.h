@@ -44,5 +44,6 @@ Token *token_new(SyntaxKind kind, char *text, unsigned long text_length, Trivial
 void   token_free(Token *token);
 
 void token_node_print(TokenNode *node);
+void token_node_free(TokenNode *node);
 
 #endif

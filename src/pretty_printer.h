@@ -1,7 +1,7 @@
 #ifndef PRETTY_PRINTER_H
 #define PRETTY_PRINTER_H
 
-#include "token_tree.h"
+#include "mppl_syntax.h"
 
 typedef struct PrinterOption PrinterOption;
 
@@ -19,6 +19,6 @@ struct PrinterOption {
   } color;
 };
 
-void mppl_pretty_print(const TokenNode *node, const PrinterOption *option);
+void mppl_pretty_print(const MpplProgram *syntax, const PrinterOption *option);
 
 #endif

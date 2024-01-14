@@ -291,13 +291,13 @@ static void error_call_stmt_mismatched_param_type(
   }
 
   {
-    const Def        *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
-    MpplProcDecl     *proc_decl_syntax      = (MpplProcDecl *) syntax_tree_root(def->body, def->offset);
-    MpplToken        *id_syntax             = mppl_proc_decl__name(proc_decl_syntax);
-    const Token      *id_token              = (const Token *) syntax_tree_raw((SyntaxTree *) id_syntax);
-    MpplFmlParamList *fml_param_list_syntax = mppl_proc_decl__fml_param_list(proc_decl_syntax);
-    unsigned long     name_offset           = syntax_tree_offset((SyntaxTree *) id_syntax);
-    unsigned long     name_length           = syntax_tree_text_length((SyntaxTree *) id_syntax);
+    const Def          *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
+    const MpplProcDecl *proc_decl_syntax      = (const MpplProcDecl *) def->body;
+    MpplToken          *id_syntax             = mppl_proc_decl__name(proc_decl_syntax);
+    const Token        *id_token              = (const Token *) syntax_tree_raw((SyntaxTree *) id_syntax);
+    MpplFmlParamList   *fml_param_list_syntax = mppl_proc_decl__fml_param_list(proc_decl_syntax);
+    unsigned long       name_offset           = syntax_tree_offset((SyntaxTree *) id_syntax);
+    unsigned long       name_length           = syntax_tree_text_length((SyntaxTree *) id_syntax);
 
     Report *report = report_new(REPORT_KIND_NOTE, name_offset, "`%s` is defined here", id_token->text);
     report_annotation(report, name_offset, name_offset + name_length, NULL);
@@ -313,7 +313,6 @@ static void error_call_stmt_mismatched_param_type(
     array_push(checker->errors, &report);
     mppl_free(fml_param_list_syntax);
     mppl_free(id_syntax);
-    mppl_free(proc_decl_syntax);
   }
   mppl_free(act_param_list_syntax);
   mppl_free(name_syntax);
@@ -975,17 +974,14 @@ static int visit_syntax_tree(const SyntaxTree *syntax, void *checker, int enter)
   }
 }
 
-int mppl_check(const Source *source, const TokenNode *tree, const Res *resolution, Infer **inference)
+int mppl_check(const Source *source, const MpplProgram *syntax, const Res *resolution, Infer **inference)
 {
-  SyntaxTree *syntax;
-  Checker     checker;
+  Checker checker;
   checker.res       = resolution;
   checker.inference = infer_new();
   checker.errors    = array_new(sizeof(Report *));
 
-  syntax = syntax_tree_root(tree, 0);
-  syntax_tree_visit(syntax, &visit_syntax_tree, &checker);
-  syntax_tree_free(syntax);
+  syntax_tree_visit((const SyntaxTree *) syntax, &visit_syntax_tree, &checker);
 
   if (array_count(checker.errors)) {
     unsigned long i;

@@ -4,6 +4,7 @@
 
 #include "map.h"
 #include "resolution.h"
+#include "syntax_tree.h"
 #include "token_tree.h"
 #include "utility.h"
 
@@ -25,7 +26,10 @@ void res_free(Res *res)
   if (res) {
     MapIndex index;
     for (map_index(res->node_to_def, &index); map_next(res->node_to_def, &index);) {
-      free(map_value(res->node_to_def, &index));
+      Def *def = map_value(res->node_to_def, &index);
+      syntax_tree_free((SyntaxTree *) def->id);
+      syntax_tree_free((SyntaxTree *) def->body);
+      free(def);
     }
     map_free(res->node_to_def);
     map_free(res->ref_to_def);
@@ -33,19 +37,19 @@ void res_free(Res *res)
   }
 }
 
-const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const TokenNode *id, const TokenNode *body, unsigned long offset)
+const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const SyntaxTree *id, const SyntaxTree *body, unsigned long offset)
 {
   MapIndex index;
-  if (map_find(res->node_to_def, (void *) id, &index)) {
+  if (map_find(res->node_to_def, (void *) syntax_tree_raw(id), &index)) {
     unreachable();
   } else {
     Def *def     = xmalloc(sizeof(Def));
     def->kind    = kind;
-    def->id      = id;
-    def->body    = body;
+    def->id      = syntax_tree_clone(id);
+    def->body    = syntax_tree_clone(body);
     def->offset  = offset;
     def->binding = *binding;
-    map_update(res->node_to_def, &index, (void *) id, def);
+    map_update(res->node_to_def, &index, (void *) syntax_tree_raw(id), def);
     return def;
   }
 }

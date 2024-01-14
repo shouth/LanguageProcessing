@@ -4,12 +4,11 @@
 
 #include "pretty_printer.h"
 #include "session.h"
-#include "token_tree.h"
 
 int run_compiler(Session *session)
 {
   if (session_check(session)) {
-    mppl_pretty_print((const TokenNode *) session_parse(session), NULL);
+    mppl_pretty_print(session_parse(session), NULL);
     return EXIT_SUCCESS;
   }
   return EXIT_FAILURE;

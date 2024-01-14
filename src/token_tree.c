@@ -136,3 +136,14 @@ void token_node_print(TokenNode *node)
 {
   token_node_print_impl(node, 0, 0);
 }
+
+void token_node_free(TokenNode *node)
+{
+  if (node) {
+    if (syntax_kind_is_token(node->kind)) {
+      token_free((Token *) node);
+    } else {
+      token_tree_free((TokenTree *) node);
+    }
+  }
+}

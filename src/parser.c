@@ -5,10 +5,12 @@
 #include "array.h"
 #include "bitset.h"
 #include "lexer.h"
+#include "mppl_syntax.h"
 #include "parser.h"
 #include "report.h"
 #include "source.h"
 #include "syntax_kind.h"
+#include "syntax_tree.h"
 #include "token_cursor.h"
 #include "token_tree.h"
 #include "utility.h"
@@ -701,7 +703,7 @@ static void parse_program(Parser *parser)
   node_finish(parser, SYNTAX_PROGRAM);
 }
 
-int mppl_parse(const Source *source, TokenTree **tree)
+int mppl_parse(const Source *source, MpplProgram **syntax)
 {
   Parser parser;
   int    result;
@@ -716,7 +718,7 @@ int mppl_parse(const Source *source, TokenTree **tree)
   parser.breakable = 0;
 
   parse_program(&parser);
-  *tree = *(TokenTree **) array_data(parser.children);
+  *syntax = (MpplProgram *) syntax_tree_root(*(TokenNode **) array_back(parser.children));
   {
     unsigned long i;
     for (i = 0; i < array_count(parser.errors); ++i) {
@@ -727,8 +729,8 @@ int mppl_parse(const Source *source, TokenTree **tree)
   result = !array_count(parser.errors);
 
   if (!result) {
-    token_tree_free(*tree);
-    *tree = NULL;
+    mppl_free(*syntax);
+    *syntax = NULL;
   }
 
   bitset_free(parser.expected);

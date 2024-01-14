@@ -89,9 +89,8 @@ static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *i
     const Def *previous = map_value(resolver->scope->defs, &index);
     error_def_conflict(resolver, &previous->binding, &binding);
   } else {
-    const TokenNode *raw_syntax = (const TokenNode *) syntax_tree_raw(item_syntax);
-    unsigned long    offset     = syntax_tree_offset(item_syntax);
-    const Def       *def        = res_create_def(resolver->res, kind, &binding, (const TokenNode *) name_token, raw_syntax, offset);
+    unsigned long offset = syntax_tree_offset(item_syntax);
+    const Def    *def    = res_create_def(resolver->res, kind, &binding, name_syntax, item_syntax, offset);
     if (resolver->scope) {
       map_update(resolver->scope->defs, &index, (void *) binding.name, (void *) def);
     }
@@ -207,7 +206,7 @@ static int visit_syntax_tree(const SyntaxTree *tree, void *resolver, int enter)
       if (proc) {
         const SyntaxTree *node;
         for (node = tree; node; node = syntax_tree_parent(node)) {
-          if (syntax_tree_kind(node) == SYNTAX_PROC_DECL && syntax_tree_raw(node) == proc->body) {
+          if (syntax_tree_kind(node) == SYNTAX_PROC_DECL && node == proc->body) {
             error_call_stmt_recursion(resolver, proc, (const SyntaxTree *) name_syntax);
             break;
           }
@@ -236,18 +235,14 @@ static int visit_syntax_tree(const SyntaxTree *tree, void *resolver, int enter)
   }
 }
 
-int mppl_resolve(const Source *source, const TokenNode *tree, Res **resolution)
+int mppl_resolve(const Source *source, const MpplProgram *syntax, Res **resolution)
 {
-  SyntaxTree *syntax;
-
   Resolver resolver;
   resolver.scope  = NULL;
   resolver.res    = res_new();
   resolver.errors = array_new(sizeof(Report *));
 
-  syntax = syntax_tree_root(tree, token_node_trivia_length(tree));
-  syntax_tree_visit(syntax, &visit_syntax_tree, &resolver);
-  syntax_tree_free(syntax);
+  syntax_tree_visit((const SyntaxTree *) syntax, &visit_syntax_tree, &resolver);
 
   if (array_count(resolver.errors)) {
     unsigned long i;
