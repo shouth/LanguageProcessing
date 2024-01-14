@@ -14,5 +14,6 @@ const Source    *session_load(Session *session);
 const TokenTree *session_parse(Session *session);
 const Res       *session_resolve(Session *session);
 const Infer     *session_check(Session *session);
+void             session_codegen(Session *session);
 
 #endif
