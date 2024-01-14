@@ -46,9 +46,9 @@ static void print_indexed_var(Printer *printer, const MpplIndexedVar *syntax);
 static void print_type(Printer *printer, const AnyMpplType *syntax);
 static void print_std_type(Printer *printer, const AnyMpplStdType *syntax);
 static void print_array_type(Printer *printer, const MpplArrayType *syntax);
-static void print_output_list(Printer *printer, const MpplOutList *syntax);
-static void print_output_value(Printer *printer, const MpplOutValue *syntax);
-static void print_literal(Printer *printer, const AnyMpplLit *syntax);
+static void print_out_list(Printer *printer, const MpplOutList *syntax);
+static void print_out_value(Printer *printer, const MpplOutValue *syntax);
+static void print_lit(Printer *printer, const AnyMpplLit *syntax);
 static void print_token(Printer *printer, const MpplToken *syntax);
 static void print_token_program(Printer *printer, const MpplToken *syntax);
 static void print_token_keyword(Printer *printer, const MpplToken *syntax);
@@ -56,7 +56,7 @@ static void print_token_operator(Printer *printer, const MpplToken *syntax);
 static void print_token_proc(Printer *printer, const MpplToken *syntax);
 static void print_token_param(Printer *printer, const MpplToken *syntax);
 static void print_token_string(Printer *printer, const MpplToken *syntax);
-static void print_token_literal(Printer *printer, const MpplToken *syntax);
+static void print_token_lit(Printer *printer, const MpplToken *syntax);
 
 static void print_space(void)
 {
@@ -448,7 +448,7 @@ static void print_output_stmt(Printer *printer, const MpplOutputStmt *syntax)
 
   print_token_keyword(printer, write_token);
   if (list) {
-    print_output_list(printer, list);
+    print_out_list(printer, list);
   }
 
   mppl_free(write_token);
@@ -567,7 +567,7 @@ static void print_expr(Printer *printer, const AnyMpplExpr *syntax)
     print_var(printer, (const AnyMpplVar *) syntax);
     break;
   case MPPL_EXPR_LIT:
-    print_literal(printer, (const AnyMpplLit *) syntax);
+    print_lit(printer, (const AnyMpplLit *) syntax);
     break;
   }
 }
@@ -707,7 +707,7 @@ static void print_array_type(Printer *printer, const MpplArrayType *syntax)
 
   print_token_keyword(printer, array_token);
   print_token(printer, lbracket_token);
-  print_literal(printer, (AnyMpplLit *) size);
+  print_lit(printer, (AnyMpplLit *) size);
   print_token(printer, rbracket_token);
   print_space();
   print_token(printer, of_token);
@@ -722,7 +722,7 @@ static void print_array_type(Printer *printer, const MpplArrayType *syntax)
   mppl_free(type);
 }
 
-static void print_output_list(Printer *printer, const MpplOutList *syntax)
+static void print_out_list(Printer *printer, const MpplOutList *syntax)
 {
   MpplToken    *lparen_token = mppl_out_list__lparen_token(syntax);
   MpplToken    *rparen_token = mppl_out_list__rparen_token(syntax);
@@ -732,7 +732,7 @@ static void print_output_list(Printer *printer, const MpplOutList *syntax)
   for (i = 0; i < mppl_out_list__out_value_count(syntax); ++i) {
     MpplOutValue *value = mppl_out_list__out_value(syntax, i);
 
-    print_output_value(printer, value);
+    print_out_value(printer, value);
     if (i + 1 < mppl_out_list__out_value_count(syntax)) {
       MpplToken *comma_token = mppl_out_list__comma_token(syntax, i);
 
@@ -750,7 +750,7 @@ static void print_output_list(Printer *printer, const MpplOutList *syntax)
   mppl_free(rparen_token);
 }
 
-static void print_output_value(Printer *printer, const MpplOutValue *syntax)
+static void print_out_value(Printer *printer, const MpplOutValue *syntax)
 {
   AnyMpplExpr   *expr  = mppl_out_value__expr(syntax);
   MpplToken     *token = mppl_out_value__colon_token(syntax);
@@ -761,7 +761,7 @@ static void print_output_value(Printer *printer, const MpplOutValue *syntax)
     print_space();
     print_token(printer, token);
     print_space();
-    print_literal(printer, (AnyMpplLit *) width);
+    print_lit(printer, (AnyMpplLit *) width);
   }
 
   mppl_free(expr);
@@ -769,17 +769,17 @@ static void print_output_value(Printer *printer, const MpplOutValue *syntax)
   mppl_free(width);
 }
 
-static void print_literal(Printer *printer, const AnyMpplLit *syntax)
+static void print_lit(Printer *printer, const AnyMpplLit *syntax)
 {
   switch (mppl_lit__kind(syntax)) {
   case MPPL_LIT_STRING:
     print_token_string(printer, (const MpplToken *) syntax);
     break;
   case MPPL_LIT_NUMBER:
-    print_token_literal(printer, (const MpplToken *) syntax);
+    print_token_lit(printer, (const MpplToken *) syntax);
     break;
   case MPPL_LIT_BOOLEAN:
-    print_token_literal(printer, (const MpplToken *) syntax);
+    print_token_lit(printer, (const MpplToken *) syntax);
     break;
   }
 }
@@ -833,7 +833,7 @@ static void print_token_string(Printer *printer, const MpplToken *token)
   print_token__impl(printer, token, printer->option.color.string);
 }
 
-static void print_token_literal(Printer *printer, const MpplToken *token)
+static void print_token_lit(Printer *printer, const MpplToken *token)
 {
   print_token__impl(printer, token, printer->option.color.literal);
 }
