@@ -269,19 +269,15 @@ static int expect(Parser *parser, SyntaxKind kind)
   return expect_any(parser, &kind, 1);
 }
 
-static void expect_semi(Parser *parser, const SyntaxKind *next, unsigned long count)
+static void expect_semi(Parser *parser)
 {
   unsigned long offset = parser->offset;
   if (!eat(parser, SYNTAX_SEMI_TOKEN) && parser->alive) {
-    if (check_any(parser, next, count)) {
-      Report *report = report_new(REPORT_KIND_ERROR, offset, "semicolon is missing");
-      report_annotation(report, offset, offset + 1, "insert `;` here");
-      array_push(parser->errors, &report);
-      parser->alive = 0;
-      bump(parser);
-    } else {
-      error_unexpected(parser);
-    }
+    Report *report = report_new(REPORT_KIND_ERROR, offset, "semicolon is missing");
+    report_annotation(report, offset, offset + 1, "insert `;` here");
+    array_push(parser->errors, &report);
+    parser->alive = 0;
+    bump(parser);
   }
 }
 
@@ -620,13 +616,13 @@ static void parse_var_decl(Parser *parser)
   node_finish(parser, SYNTAX_VAR_DECL);
 }
 
-static void parse_var_decl_part(Parser *parser, const SyntaxKind *next, unsigned long count)
+static void parse_var_decl_part(Parser *parser)
 {
   node_start(parser);
   expect(parser, SYNTAX_VAR_KW);
   do {
     parse_var_decl(parser);
-    expect_semi(parser, next, count);
+    expect_semi(parser);
   } while (check(parser, SYNTAX_IDENT_TOKEN));
   node_finish(parser, SYNTAX_VAR_DECL_PART);
 }
@@ -653,7 +649,7 @@ static void parse_fml_param_list(Parser *parser)
   node_finish(parser, SYNTAX_FML_PARAM_LIST);
 }
 
-static void parse_proc_decl(Parser *parser, const SyntaxKind *next, unsigned long count)
+static void parse_proc_decl(Parser *parser)
 {
   node_start(parser);
   expect(parser, SYNTAX_PROCEDURE_KW);
@@ -663,18 +659,14 @@ static void parse_proc_decl(Parser *parser, const SyntaxKind *next, unsigned lon
   } else {
     node_null(parser);
   }
-  {
-    SyntaxKind next[] = { SYNTAX_VAR_KW, SYNTAX_BEGIN_KW };
-    expect_semi(parser, next, sizeof(next) / sizeof(SyntaxKind));
-  }
+  expect_semi(parser);
   if (check(parser, SYNTAX_VAR_KW)) {
-    SyntaxKind next[] = { SYNTAX_BEGIN_KW };
-    parse_var_decl_part(parser, next, sizeof(next) / sizeof(SyntaxKind));
+    parse_var_decl_part(parser);
   } else {
     node_null(parser);
   }
   parse_comp_stmt(parser);
-  expect_semi(parser, next, count);
+  expect_semi(parser);
   node_finish(parser, SYNTAX_PROC_DECL);
 }
 
@@ -683,16 +675,13 @@ static void parse_program(Parser *parser)
   node_start(parser);
   expect(parser, SYNTAX_PROGRAM_KW);
   expect(parser, SYNTAX_IDENT_TOKEN);
-  {
-    SyntaxKind next[] = { SYNTAX_VAR_KW, SYNTAX_PROCEDURE_KW, SYNTAX_BEGIN_KW };
-    expect_semi(parser, next, sizeof(next) / sizeof(SyntaxKind));
-  }
+  expect_semi(parser);
+
   while (1) {
-    SyntaxKind next[] = { SYNTAX_VAR_KW, SYNTAX_PROCEDURE_KW, SYNTAX_BEGIN_KW };
     if (check(parser, SYNTAX_VAR_KW)) {
-      parse_var_decl_part(parser, next, sizeof(next) / sizeof(SyntaxKind));
+      parse_var_decl_part(parser);
     } else if (check(parser, SYNTAX_PROCEDURE_KW)) {
-      parse_proc_decl(parser, next, sizeof(next) / sizeof(SyntaxKind));
+      parse_proc_decl(parser);
     } else {
       break;
     }
