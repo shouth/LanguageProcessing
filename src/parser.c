@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "array.h"
 #include "bitset.h"
@@ -11,15 +12,14 @@
 #include "source.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
-#include "token_cursor.h"
 #include "token_tree.h"
 #include "utility.h"
 
 typedef struct Parser Parser;
 
 struct Parser {
-  TokenCursor   cursor;
   unsigned long offset;
+  const Source *source;
   Token        *token;
   LexStatus     status;
   Array        *parents;
@@ -66,15 +66,31 @@ static void node_null(Parser *parser)
 
 static Token *token(Parser *parser)
 {
-  unsigned long i;
+  if (!parser->token) {
+    Array *trivia = array_new(sizeof(TrivialToken));
+    while (1) {
+      LexedToken lexed;
+      LexStatus  status = mppl_lex(parser->source, parser->offset, &lexed);
+      char      *text   = malloc(lexed.length + 1);
+      memcpy(text, parser->source->text + lexed.offset, lexed.length);
+      text[lexed.length] = '\0';
 
-  if (parser->token) {
-    return parser->token;
-  }
+      if (syntax_kind_is_token(lexed.kind) || status != LEX_OK) {
+        unsigned long trivia_count = array_count(trivia);
+        TrivialToken *trivia_data  = array_steal(trivia);
 
-  parser->status = token_cursor_next(&parser->cursor, &parser->token);
-  for (i = 0; i < parser->token->trivia_count; ++i) {
-    parser->offset += parser->token->trivia[i].text_length;
+        parser->status = status;
+        parser->token  = token_new(lexed.kind, text, lexed.length, trivia_data, trivia_count);
+        break;
+      } else {
+        TrivialToken trivial;
+        trivial.kind        = lexed.kind;
+        trivial.text        = text;
+        trivial.text_length = lexed.length;
+        array_push(trivia, &trivial);
+        parser->offset += lexed.length;
+      }
+    }
   }
   return parser->token;
 }
@@ -696,11 +712,11 @@ int mppl_parse(const Source *source, MpplProgram **syntax)
 {
   Parser parser;
   int    result;
-  parser.parents  = array_new(sizeof(unsigned long));
-  parser.children = array_new(sizeof(TokenNode *));
-  parser.errors   = array_new(sizeof(Report *));
-  parser.expected = bitset_new(SYNTAX_EOF_TOKEN + 1);
-  token_cursor_init(&parser.cursor, source);
+  parser.source    = source;
+  parser.parents   = array_new(sizeof(unsigned long));
+  parser.children  = array_new(sizeof(TokenNode *));
+  parser.errors    = array_new(sizeof(Report *));
+  parser.expected  = bitset_new(SYNTAX_EOF_TOKEN + 1);
   parser.token     = NULL;
   parser.alive     = 1;
   parser.offset    = 0;
