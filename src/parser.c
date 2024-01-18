@@ -8,26 +8,26 @@
 #include "lexer.h"
 #include "mppl_syntax.h"
 #include "parser.h"
+#include "raw_syntax_tree.h"
 #include "report.h"
 #include "source.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 #include "utility.h"
 
 typedef struct Parser Parser;
 
 struct Parser {
-  unsigned long offset;
-  const Source *source;
-  Token        *token;
-  LexStatus     status;
-  Array        *parents;
-  Array        *children;
-  BitSet       *expected;
-  Array        *errors;
-  int           alive;
-  unsigned long breakable;
+  unsigned long   offset;
+  const Source   *source;
+  RawSyntaxToken *token;
+  LexStatus       status;
+  Array          *parents;
+  Array          *children;
+  BitSet         *expected;
+  Array          *errors;
+  int             alive;
+  unsigned long   breakable;
 };
 
 static unsigned long node_checkpoint(Parser *parser)
@@ -47,9 +47,9 @@ static void node_start(Parser *parser)
 
 static void node_finish(Parser *parser, SyntaxKind kind)
 {
-  unsigned long checkpoint = *(unsigned long *) array_back(parser->parents);
-  TokenTree    *tree
-    = token_tree_new(kind, array_at(parser->children, checkpoint), array_count(parser->children) - checkpoint);
+  unsigned long  checkpoint = *(unsigned long *) array_back(parser->parents);
+  RawSyntaxTree *tree
+    = raw_syntax_tree_new(kind, array_at(parser->children, checkpoint), array_count(parser->children) - checkpoint);
 
   array_pop(parser->parents);
   while (array_count(parser->children) > checkpoint) {
@@ -60,14 +60,14 @@ static void node_finish(Parser *parser, SyntaxKind kind)
 
 static void node_null(Parser *parser)
 {
-  TokenNode *node = NULL;
+  RawSyntaxNode *node = NULL;
   array_push(parser->children, &node);
 }
 
-static Token *token(Parser *parser)
+static RawSyntaxToken *token(Parser *parser)
 {
   if (!parser->token) {
-    Array *trivia = array_new(sizeof(TrivialToken));
+    Array *trivia = array_new(sizeof(RawSyntaxTrivial));
     while (1) {
       LexedToken lexed;
       LexStatus  status = mppl_lex(parser->source, parser->offset, &lexed);
@@ -76,14 +76,14 @@ static Token *token(Parser *parser)
       text[lexed.length] = '\0';
 
       if (syntax_kind_is_token(lexed.kind) || status != LEX_OK) {
-        unsigned long trivia_count = array_count(trivia);
-        TrivialToken *trivia_data  = array_steal(trivia);
+        unsigned long     trivia_count = array_count(trivia);
+        RawSyntaxTrivial *trivia_data  = array_steal(trivia);
 
         parser->status = status;
-        parser->token  = token_new(lexed.kind, text, lexed.length, trivia_data, trivia_count);
+        parser->token  = raw_syntax_token_new(lexed.kind, text, lexed.length, trivia_data, trivia_count);
         break;
       } else {
-        TrivialToken trivial;
+        RawSyntaxTrivial trivial;
         trivial.kind        = lexed.kind;
         trivial.text        = text;
         trivial.text_length = lexed.length;
@@ -714,7 +714,7 @@ int mppl_parse(const Source *source, MpplProgram **syntax)
   int    result;
   parser.source    = source;
   parser.parents   = array_new(sizeof(unsigned long));
-  parser.children  = array_new(sizeof(TokenNode *));
+  parser.children  = array_new(sizeof(RawSyntaxNode *));
   parser.errors    = array_new(sizeof(Report *));
   parser.expected  = bitset_new(SYNTAX_EOF_TOKEN + 1);
   parser.token     = NULL;
@@ -723,7 +723,7 @@ int mppl_parse(const Source *source, MpplProgram **syntax)
   parser.breakable = 0;
 
   parse_program(&parser);
-  *syntax = (MpplProgram *) syntax_tree_root(*(TokenNode **) array_back(parser.children));
+  *syntax = (MpplProgram *) syntax_tree_root(*(RawSyntaxNode **) array_back(parser.children));
   {
     unsigned long i;
     for (i = 0; i < array_count(parser.errors); ++i) {

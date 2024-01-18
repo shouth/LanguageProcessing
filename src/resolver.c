@@ -3,13 +3,13 @@
 #include "array.h"
 #include "map.h"
 #include "mppl_syntax.h"
+#include "raw_syntax_tree.h"
 #include "report.h"
 #include "resolution.h"
 #include "resolver.h"
 #include "source.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 #include "utility.h"
 
 typedef struct Scope    Scope;
@@ -79,9 +79,9 @@ static void pop_scope(Resolver *resolver)
 
 static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *item_syntax, const SyntaxTree *name_syntax)
 {
-  MapIndex     index;
-  const Token *name_token = (const Token *) syntax_tree_raw(name_syntax);
-  Binding      binding;
+  MapIndex              index;
+  const RawSyntaxToken *name_token = (const RawSyntaxToken *) syntax_tree_raw(name_syntax);
+  Binding               binding;
   binding.name   = name_token->text;
   binding.offset = syntax_tree_offset(name_syntax);
   binding.length = name_token->text_length;
@@ -111,10 +111,10 @@ static const Def *get_def(Resolver *resolver, const char *name)
 
 static const Def *try_record_ref(Resolver *resolver, const SyntaxTree *syntax, int is_proc)
 {
-  const Token *node = (const Token *) syntax_tree_raw(syntax);
-  const Def   *def  = get_def(resolver, node->text);
+  const RawSyntaxToken *node = (const RawSyntaxToken *) syntax_tree_raw(syntax);
+  const Def            *def  = get_def(resolver, node->text);
   if (resolver->scope && def) {
-    res_record_ref(resolver->res, (const TokenNode *) node, def);
+    res_record_ref(resolver->res, (const RawSyntaxNode *) node, def);
     return def;
   } else {
     Binding binding;

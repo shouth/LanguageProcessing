@@ -3,9 +3,9 @@
 #include <string.h>
 
 #include "map.h"
+#include "raw_syntax_tree.h"
 #include "resolution.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 #include "utility.h"
 
 struct Res {
@@ -54,7 +54,7 @@ const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const Syntax
   }
 }
 
-const Def *res_get_def(const Res *res, const TokenNode *node)
+const Def *res_get_def(const Res *res, const RawSyntaxNode *node)
 {
   MapIndex index;
   if (map_find(res->node_to_def, (void *) node, &index)) {
@@ -64,7 +64,7 @@ const Def *res_get_def(const Res *res, const TokenNode *node)
   }
 }
 
-const Def *res_get_ref(const Res *res, const TokenNode *node)
+const Def *res_get_ref(const Res *res, const RawSyntaxNode *node)
 {
   MapIndex index;
   if (map_find(res->ref_to_def, (void *) node, &index)) {
@@ -74,7 +74,7 @@ const Def *res_get_ref(const Res *res, const TokenNode *node)
   }
 }
 
-void res_record_ref(Res *res, const TokenNode *node, const Def *def)
+void res_record_ref(Res *res, const RawSyntaxNode *node, const Def *def)
 {
   MapIndex index;
   map_find(res->ref_to_def, (void *) node, &index);

@@ -41,7 +41,7 @@ Type *infer_get_def_type(const Infer *infer, const Def *def)
   }
 }
 
-Type *infer_get_expr_type(const Infer *infer, const TokenNode *node)
+Type *infer_get_expr_type(const Infer *infer, const RawSyntaxNode *node)
 {
   MapIndex index;
   if (map_find(infer->expr_types, (void *) node, &index)) {
@@ -61,7 +61,7 @@ void infer_record_def_type(Infer *infer, const Def *def, Type *type)
   }
 }
 
-void infer_record_expr_type(Infer *infer, const TokenNode *node, Type *type)
+void infer_record_expr_type(Infer *infer, const RawSyntaxNode *node, Type *type)
 {
   MapIndex index;
   map_find(infer->expr_types, (void *) node, &index);

@@ -9,7 +9,6 @@
 #include "source.h"
 #include "syntax_kind.h"
 #include "tasks.h"
-#include "token_tree.h"
 #include "utility.h"
 
 typedef struct CounterToken CounterToken;

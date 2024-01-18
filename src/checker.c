@@ -7,11 +7,11 @@
 #include "inference.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
+#include "raw_syntax_tree.h"
 #include "report.h"
 #include "resolution.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 #include "type.h"
 #include "utility.h"
 
@@ -234,9 +234,9 @@ static void check_while_stmt(Checker *checker, const MpplWhileStmt *syntax)
 
 static void error_call_stmt_non_callable(Checker *checker, const MpplToken *syntax)
 {
-  const Token  *token  = (const Token *) syntax_tree_raw((SyntaxTree *) syntax);
-  unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
-  unsigned long length = syntax_tree_text_length((SyntaxTree *) syntax);
+  const RawSyntaxToken *token  = (const RawSyntaxToken *) syntax_tree_raw((SyntaxTree *) syntax);
+  unsigned long         offset = syntax_tree_offset((SyntaxTree *) syntax);
+  unsigned long         length = syntax_tree_text_length((SyntaxTree *) syntax);
 
   Report *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be called", token->text);
   report_annotation(report, offset, offset + length, "a called item should be a `procedure`");
@@ -291,13 +291,13 @@ static void error_call_stmt_mismatched_param_type(
   }
 
   {
-    const Def          *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
-    const MpplProcDecl *proc_decl_syntax      = (const MpplProcDecl *) def->body;
-    MpplToken          *id_syntax             = mppl_proc_decl__name(proc_decl_syntax);
-    const Token        *id_token              = (const Token *) syntax_tree_raw((SyntaxTree *) id_syntax);
-    MpplFmlParamList   *fml_param_list_syntax = mppl_proc_decl__fml_param_list(proc_decl_syntax);
-    unsigned long       name_offset           = syntax_tree_offset((SyntaxTree *) id_syntax);
-    unsigned long       name_length           = syntax_tree_text_length((SyntaxTree *) id_syntax);
+    const Def            *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
+    const MpplProcDecl   *proc_decl_syntax      = (const MpplProcDecl *) def->body;
+    MpplToken            *id_syntax             = mppl_proc_decl__name(proc_decl_syntax);
+    const RawSyntaxToken *id_token              = (const RawSyntaxToken *) syntax_tree_raw((SyntaxTree *) id_syntax);
+    MpplFmlParamList     *fml_param_list_syntax = mppl_proc_decl__fml_param_list(proc_decl_syntax);
+    unsigned long         name_offset           = syntax_tree_offset((SyntaxTree *) id_syntax);
+    unsigned long         name_length           = syntax_tree_text_length((SyntaxTree *) id_syntax);
 
     Report *report = report_new(REPORT_KIND_NOTE, name_offset, "`%s` is defined here", id_token->text);
     report_annotation(report, name_offset, name_offset + name_length, NULL);

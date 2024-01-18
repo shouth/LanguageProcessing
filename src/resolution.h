@@ -1,8 +1,8 @@
 #ifndef RESOLUTION_H
 #define RESOLUTION_H
 
+#include "raw_syntax_tree.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 
 typedef struct Binding Binding;
 typedef struct Def     Def;
@@ -32,8 +32,8 @@ struct Def {
 Res       *res_new(void);
 void       res_free(Res *res);
 const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const SyntaxTree *id, const SyntaxTree *body, unsigned long offset);
-const Def *res_get_def(const Res *res, const TokenNode *node);
-const Def *res_get_ref(const Res *res, const TokenNode *node);
-void       res_record_ref(Res *res, const TokenNode *node, const Def *def);
+const Def *res_get_def(const Res *res, const RawSyntaxNode *node);
+const Def *res_get_ref(const Res *res, const RawSyntaxNode *node);
+void       res_record_ref(Res *res, const RawSyntaxNode *node, const Def *def);
 
 #endif

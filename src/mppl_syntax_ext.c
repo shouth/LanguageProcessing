@@ -3,8 +3,8 @@
 
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
+#include "raw_syntax_tree.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 #include "type.h"
 #include "utility.h"
 
@@ -50,15 +50,15 @@ Type *mppl_type__to_type(const AnyMpplType *syntax)
 
 long mppl_lit_number__to_long(const MpplLitNumber *syntax)
 {
-  const Token *token = (const Token *) syntax_tree_raw((const SyntaxTree *) syntax);
+  const RawSyntaxToken *token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) syntax);
   return atol(token->text);
 }
 
 char *mppl_lit_string__to_string(const MpplLitString *syntax)
 {
-  const Token  *token  = (const Token *) syntax_tree_raw((const SyntaxTree *) syntax);
-  char         *result = xmalloc(token->text_length + 1);
-  unsigned long i, j;
+  const RawSyntaxToken *token  = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) syntax);
+  char                 *result = xmalloc(token->text_length + 1);
+  unsigned long         i, j;
   for (i = 0, j = 0; i < token->text_length; ++i, ++j) {
     if (token->text[i] == '\'') {
       ++i;
@@ -71,6 +71,6 @@ char *mppl_lit_string__to_string(const MpplLitString *syntax)
 
 int mppl_lit_boolean__to_int(const MpplLitBoolean *syntax)
 {
-  const Token *token = (const Token *) syntax_tree_raw((const SyntaxTree *) syntax);
+  const RawSyntaxToken *token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) syntax);
   return !strcmp(token->text, "true");
 }

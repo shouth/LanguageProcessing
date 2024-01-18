@@ -1,18 +1,18 @@
 #include <stddef.h>
 
+#include "raw_syntax_tree.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
-#include "token_tree.h"
 #include "utility.h"
 
 struct SyntaxTree {
   const SyntaxTree *parent;
-  TokenNode        *inner;
+  RawSyntaxNode    *inner;
   unsigned long     offset;
   unsigned long     flags;
 };
 
-static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, TokenNode *inner, unsigned long offset, unsigned long flags)
+static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, RawSyntaxNode *inner, unsigned long offset, unsigned long flags)
 {
   SyntaxTree *tree = xmalloc(sizeof(SyntaxTree));
   tree->parent     = parent;
@@ -22,12 +22,12 @@ static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, TokenNode *inner, u
   return tree;
 }
 
-SyntaxTree *syntax_tree_root(TokenNode *node)
+SyntaxTree *syntax_tree_root(RawSyntaxNode *node)
 {
-  return syntax_tree_new(NULL, node, token_node_trivia_length(node), 1);
+  return syntax_tree_new(NULL, node, raw_syntax_node_trivia_length(node), 1);
 }
 
-const TokenNode *syntax_tree_raw(const SyntaxTree *tree)
+const RawSyntaxNode *syntax_tree_raw(const SyntaxTree *tree)
 {
   return tree->inner;
 }
@@ -44,12 +44,12 @@ unsigned long syntax_tree_offset(const SyntaxTree *tree)
 
 unsigned long syntax_tree_text_length(const SyntaxTree *tree)
 {
-  return token_node_text_length(syntax_tree_raw(tree));
+  return raw_syntax_node_text_length(syntax_tree_raw(tree));
 }
 
 unsigned long syntax_tree_trivia_length(const SyntaxTree *tree)
 {
-  return token_node_trivia_length(syntax_tree_raw(tree));
+  return raw_syntax_node_trivia_length(syntax_tree_raw(tree));
 }
 
 const SyntaxTree *syntax_tree_parent(const SyntaxTree *tree)
@@ -59,7 +59,7 @@ const SyntaxTree *syntax_tree_parent(const SyntaxTree *tree)
 
 unsigned long syntax_tree_child_count(const SyntaxTree *tree)
 {
-  const TokenTree *inner = (TokenTree *) tree->inner;
+  const RawSyntaxTree *inner = (RawSyntaxTree *) tree->inner;
   if (syntax_kind_is_token(inner->kind)) {
     return 0;
   } else {
@@ -69,7 +69,7 @@ unsigned long syntax_tree_child_count(const SyntaxTree *tree)
 
 SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
 {
-  const TokenTree *inner = (TokenTree *) tree->inner;
+  const RawSyntaxTree *inner = (RawSyntaxTree *) tree->inner;
   if (syntax_kind_is_token(inner->kind) || index >= inner->children_count || !inner->children[index]) {
     return NULL;
   } else {
@@ -78,10 +78,10 @@ SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
 
     for (i = 0; i <= index; ++i) {
       if (i > 0) {
-        offset += token_node_trivia_length(inner->children[i]);
+        offset += raw_syntax_node_trivia_length(inner->children[i]);
       }
       if (i < index) {
-        offset += token_node_text_length(inner->children[i]);
+        offset += raw_syntax_node_text_length(inner->children[i]);
       }
     }
     return syntax_tree_new(tree, inner->children[index], offset, 0);
@@ -100,17 +100,18 @@ SyntaxTree *syntax_tree_subtree(const SyntaxTree *tree)
 void syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void *data)
 {
   if (tree) {
-    const TokenTree *inner = (const TokenTree *) tree->inner;
-    visitor(tree, data, 1);
-    if (!syntax_kind_is_token(inner->kind)) {
-      unsigned long i;
-      for (i = 0; i < inner->children_count; ++i) {
-        SyntaxTree *child = syntax_tree_child(tree, i);
-        syntax_tree_visit(child, visitor, data);
-        syntax_tree_free(child);
+    const RawSyntaxTree *inner = (const RawSyntaxTree *) tree->inner;
+    if (visitor(tree, data, 1)) {
+      if (!syntax_kind_is_token(inner->kind)) {
+        unsigned long i;
+        for (i = 0; i < inner->children_count; ++i) {
+          SyntaxTree *child = syntax_tree_child(tree, i);
+          syntax_tree_visit(child, visitor, data);
+          syntax_tree_free(child);
+        }
       }
+      visitor(tree, data, 0);
     }
-    visitor(tree, data, 0);
   }
 }
 
@@ -118,7 +119,7 @@ void syntax_tree_free(SyntaxTree *tree)
 {
   if (tree) {
     if (tree->flags & 1) {
-      token_node_free(tree->inner);
+      raw_syntax_node_free(tree->inner);
     }
     free(tree);
   }
