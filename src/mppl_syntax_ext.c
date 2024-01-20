@@ -1,9 +1,9 @@
 #include <stdlib.h>
-#include <string.h>
 
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
 #include "raw_syntax_tree.h"
+#include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "type.h"
 #include "utility.h"
@@ -72,5 +72,5 @@ char *mppl_lit_string__to_string(const MpplLitString *syntax)
 int mppl_lit_boolean__to_int(const MpplLitBoolean *syntax)
 {
   const RawSyntaxToken *token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) syntax);
-  return !strcmp(token->text, "true");
+  return token->kind == SYNTAX_TRUE_KW;
 }
