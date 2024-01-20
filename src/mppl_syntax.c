@@ -622,9 +622,9 @@ MpplToken *mppl_array_type__lbracket_token(const MpplArrayType *type)
   return (MpplToken *) syntax_tree_child(syntax(type), 1);
 }
 
-MpplLitNumber *mppl_array_type__size(const MpplArrayType *type)
+MpplNumberLit *mppl_array_type__size(const MpplArrayType *type)
 {
-  return (MpplLitNumber *) syntax_tree_child(syntax(type), 2);
+  return (MpplNumberLit *) syntax_tree_child(syntax(type), 2);
 }
 
 MpplToken *mppl_array_type__rbracket_token(const MpplArrayType *type)
@@ -681,9 +681,9 @@ MpplToken *mppl_out_value__colon_token(const MpplOutValue *value)
   return (MpplToken *) syntax_tree_child(syntax(value), 1);
 }
 
-MpplLitNumber *mppl_out_value__width(const MpplOutValue *value)
+MpplNumberLit *mppl_out_value__width(const MpplOutValue *value)
 {
-  return (MpplLitNumber *) syntax_tree_child(syntax(value), 2);
+  return (MpplNumberLit *) syntax_tree_child(syntax(value), 2);
 }
 
 /* literal */

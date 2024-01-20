@@ -425,7 +425,7 @@ static void error_output_stmt_invalid_operand(Checker *checker, const MpplOutLis
   for (i = 0; i < mppl_out_list__out_value_count(syntax); ++i) {
     MpplOutValue  *out_value_syntax = mppl_out_list__out_value(syntax, i);
     MpplToken     *colon_syntax     = mppl_out_value__colon_token(out_value_syntax);
-    MpplLitNumber *width_syntax     = mppl_out_value__width(out_value_syntax);
+    MpplNumberLit *width_syntax     = mppl_out_value__width(out_value_syntax);
     AnyMpplExpr   *expr_syntax      = mppl_out_value__expr(out_value_syntax);
     const Type    *expr_type        = get_expr_type(checker, (SyntaxTree *) expr_syntax);
 
@@ -855,7 +855,7 @@ static void check_indexed_var(Checker *checker, const MpplIndexedVar *syntax)
 
 static void check_array_type(Checker *checker, const MpplArrayType *syntax)
 {
-  MpplLitNumber *size_syntax = mppl_array_type__size(syntax);
+  MpplNumberLit *size_syntax = mppl_array_type__size(syntax);
   if (mppl_lit_number__to_long(size_syntax) == 0) {
     unsigned long offset = syntax_tree_offset((SyntaxTree *) size_syntax);
     unsigned long length = syntax_tree_text_length((SyntaxTree *) size_syntax);
@@ -866,13 +866,13 @@ static void check_array_type(Checker *checker, const MpplArrayType *syntax)
   mppl_free(size_syntax);
 }
 
-static void check_number_lit(Checker *checker, const MpplLitNumber *syntax)
+static void check_number_lit(Checker *checker, const MpplNumberLit *syntax)
 {
   Type *infer_type = type_new(TYPE_INTEGER);
   record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
 }
 
-static void check_string_lit(Checker *checker, const MpplLitString *syntax)
+static void check_string_lit(Checker *checker, const MpplStringLit *syntax)
 {
   char *text       = mppl_lit_string__to_string(syntax);
   Type *infer_type = type_new(strlen(text) == 1 ? TYPE_CHAR : TYPE_STRING);
@@ -880,7 +880,7 @@ static void check_string_lit(Checker *checker, const MpplLitString *syntax)
   free(text);
 }
 
-static void check_boolean_lit(Checker *checker, const MpplLitBoolean *syntax)
+static void check_boolean_lit(Checker *checker, const MpplBooleanLit *syntax)
 {
   Type *infer_type = type_new(TYPE_BOOLEAN);
   record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
@@ -952,11 +952,11 @@ static int visit_syntax_tree(const SyntaxTree *syntax, void *checker, int enter)
       return 1;
 
     case SYNTAX_NUMBER_LIT:
-      check_number_lit(checker, (const MpplLitNumber *) syntax);
+      check_number_lit(checker, (const MpplNumberLit *) syntax);
       return 1;
 
     case SYNTAX_STRING_LIT:
-      check_string_lit(checker, (const MpplLitString *) syntax);
+      check_string_lit(checker, (const MpplStringLit *) syntax);
       return 1;
 
     case SYNTAX_ARRAY_TYPE:
@@ -965,7 +965,7 @@ static int visit_syntax_tree(const SyntaxTree *syntax, void *checker, int enter)
 
     case SYNTAX_TRUE_KW:
     case SYNTAX_FALSE_KW:
-      check_boolean_lit(checker, (const MpplLitBoolean *) syntax);
+      check_boolean_lit(checker, (const MpplBooleanLit *) syntax);
       return 1;
 
     default:

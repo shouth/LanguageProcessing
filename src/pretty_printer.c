@@ -700,7 +700,7 @@ static void print_array_type(Printer *printer, const MpplArrayType *syntax)
 {
   MpplToken      *array_token    = mppl_array_type__array_token(syntax);
   MpplToken      *lbracket_token = mppl_array_type__lbracket_token(syntax);
-  MpplLitNumber  *size           = mppl_array_type__size(syntax);
+  MpplNumberLit  *size           = mppl_array_type__size(syntax);
   MpplToken      *rbracket_token = mppl_array_type__rbracket_token(syntax);
   MpplToken      *of_token       = mppl_array_type__of_token(syntax);
   AnyMpplStdType *type           = mppl_array_type__type(syntax);
@@ -754,7 +754,7 @@ static void print_out_value(Printer *printer, const MpplOutValue *syntax)
 {
   AnyMpplExpr   *expr  = mppl_out_value__expr(syntax);
   MpplToken     *token = mppl_out_value__colon_token(syntax);
-  MpplLitNumber *width = mppl_out_value__width(syntax);
+  MpplNumberLit *width = mppl_out_value__width(syntax);
 
   print_expr(printer, expr);
   if (token) {

@@ -8,10 +8,10 @@ typedef enum {
   MPPL_DECL_PART_PROC
 } MpplDeclPartKind;
 
-typedef struct AnyMpplDeclPart   AnyMpplDeclPart;
-typedef struct MpplVarDeclPart   MpplVarDeclPart;
-typedef struct MpplVarDecl       MpplVarDecl;
-typedef struct MpplProcedureDecl MpplProcDecl;
+typedef struct AnyMpplDeclPart AnyMpplDeclPart;
+typedef struct MpplVarDeclPart MpplVarDeclPart;
+typedef struct MpplVarDecl     MpplVarDecl;
+typedef struct MpplProcDecl    MpplProcDecl;
 
 typedef struct MpplFmlParamList MpplFmlParamList;
 typedef struct MpplFmlParamSec  MpplFmlParamSec;
@@ -94,9 +94,9 @@ typedef enum {
 } MpplLitKind;
 
 typedef struct AnyMpplLit     AnyMpplLit;
-typedef struct MpplLitNumber  MpplLitNumber;
-typedef struct MpplLitBoolean MpplLitBoolean;
-typedef struct MpplLitString  MpplLitString;
+typedef struct MpplNumberLit  MpplNumberLit;
+typedef struct MpplBooleanLit MpplBooleanLit;
+typedef struct MpplStringLit  MpplStringLit;
 
 typedef struct MpplToken MpplToken;
 
@@ -225,7 +225,7 @@ MpplStdTypeKind mppl_std_type__kind(const AnyMpplStdType *type);
 
 MpplToken      *mppl_array_type__array_token(const MpplArrayType *type);
 MpplToken      *mppl_array_type__lbracket_token(const MpplArrayType *type);
-MpplLitNumber  *mppl_array_type__size(const MpplArrayType *type);
+MpplNumberLit  *mppl_array_type__size(const MpplArrayType *type);
 MpplToken      *mppl_array_type__rbracket_token(const MpplArrayType *type);
 MpplToken      *mppl_array_type__of_token(const MpplArrayType *type);
 AnyMpplStdType *mppl_array_type__type(const MpplArrayType *type);
@@ -238,7 +238,7 @@ MpplToken    *mppl_out_list__rparen_token(const MpplOutList *list);
 
 AnyMpplExpr   *mppl_out_value__expr(const MpplOutValue *value);
 MpplToken     *mppl_out_value__colon_token(const MpplOutValue *value);
-MpplLitNumber *mppl_out_value__width(const MpplOutValue *value);
+MpplNumberLit *mppl_out_value__width(const MpplOutValue *value);
 
 MpplLitKind mppl_lit__kind(const AnyMpplLit *lit);
 
