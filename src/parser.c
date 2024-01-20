@@ -8,7 +8,6 @@
 #include "lexer.h"
 #include "mppl_syntax.h"
 #include "parser.h"
-#include "raw_syntax_tree.h"
 #include "report.h"
 #include "source.h"
 #include "syntax_kind.h"

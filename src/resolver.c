@@ -3,7 +3,6 @@
 #include "array.h"
 #include "map.h"
 #include "mppl_syntax.h"
-#include "raw_syntax_tree.h"
 #include "report.h"
 #include "resolution.h"
 #include "resolver.h"

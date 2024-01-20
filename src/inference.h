@@ -1,7 +1,6 @@
 #ifndef INFERENCE_H
 #define INFERENCE_H
 
-#include "raw_syntax_tree.h"
 #include "resolution.h"
 #include "type.h"
 

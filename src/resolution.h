@@ -1,7 +1,6 @@
 #ifndef RESOLUTION_H
 #define RESOLUTION_H
 
-#include "raw_syntax_tree.h"
 #include "syntax_tree.h"
 
 typedef struct Binding Binding;

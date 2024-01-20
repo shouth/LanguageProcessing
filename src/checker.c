@@ -7,7 +7,6 @@
 #include "inference.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
-#include "raw_syntax_tree.h"
 #include "report.h"
 #include "resolution.h"
 #include "syntax_kind.h"

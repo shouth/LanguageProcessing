@@ -3,7 +3,6 @@
 
 #include "mppl_syntax.h"
 #include "pretty_printer.h"
-#include "raw_syntax_tree.h"
 #include "syntax_tree.h"
 
 typedef struct Printer Printer;

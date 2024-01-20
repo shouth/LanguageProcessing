@@ -2,7 +2,6 @@
 
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
-#include "raw_syntax_tree.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "type.h"

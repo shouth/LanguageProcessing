@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "map.h"
-#include "raw_syntax_tree.h"
 #include "resolution.h"
 #include "syntax_tree.h"
 #include "utility.h"
