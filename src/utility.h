@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 void *xmalloc(unsigned long size);
+void *dup(const void *ptr, unsigned long size, unsigned long count);
 
 #define FNV1A_INIT 0x811C9DC5ul
 

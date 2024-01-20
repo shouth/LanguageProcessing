@@ -14,6 +14,17 @@ void *xmalloc(unsigned long size)
   return result;
 }
 
+void *dup(const void *ptr, unsigned long size, unsigned long count)
+{
+  if (count == 0) {
+    return NULL;
+  } else {
+    void *result = xmalloc(size * count);
+    memcpy(result, ptr, size * count);
+    return result;
+  }
+}
+
 unsigned long fnv1a(unsigned long hash, const void *ptr, unsigned long len)
 {
   const unsigned char *data  = ptr;
