@@ -710,7 +710,7 @@ static void print_array_type(Printer *printer, const MpplArrayType *syntax)
   print_lit(printer, (AnyMpplLit *) size);
   print_token(printer, rbracket_token);
   print_space();
-  print_token(printer, of_token);
+  print_token_keyword(printer, of_token);
   print_space();
   print_std_type(printer, type);
 
