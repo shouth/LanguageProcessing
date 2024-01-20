@@ -1,6 +1,9 @@
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
+#include "array.h"
+#include "string.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
@@ -12,6 +15,99 @@ struct SyntaxTree {
   unsigned long     flags;
 };
 
+struct SyntaxBuilder {
+  Array *parents;
+  Array *children;
+  Array *leading_trivia;
+  Array *trailing_trivia;
+};
+
+unsigned long raw_syntax_node_text_length(const RawSyntaxNode *node)
+{
+  if (!node) {
+    return 0;
+  } else if (syntax_kind_is_token(node->kind)) {
+    RawSyntaxToken *token = (RawSyntaxToken *) node;
+    return string_length(token->string);
+  } else {
+    RawSyntaxTree *tree = (RawSyntaxTree *) node;
+    return tree->text_length;
+  }
+}
+
+unsigned long raw_syntax_node_trivia_length(const RawSyntaxNode *node)
+{
+  if (!node) {
+    return 0;
+  } else if (syntax_kind_is_token(node->kind)) {
+    RawSyntaxToken *token = (RawSyntaxToken *) node;
+    unsigned long   i;
+    unsigned long   result = 0;
+    for (i = 0; i < token->leading_trivia_count; ++i) {
+      result += token->leading_trivia[i].text_length;
+    }
+    return result;
+  } else {
+    RawSyntaxTree *tree = (RawSyntaxTree *) node;
+    return tree->children_count ? raw_syntax_node_trivia_length(tree->children[0]) : 0;
+  }
+}
+
+static void raw_syntax_node_print_impl(const RawSyntaxNode *node, unsigned long depth, unsigned long offset)
+{
+  printf("%*.s", (int) depth * 2, "");
+  if (!node) {
+    printf("(NULL)\n");
+  } else if (syntax_kind_is_token(node->kind)) {
+    RawSyntaxToken *token = (RawSyntaxToken *) node;
+    offset += raw_syntax_node_trivia_length(node);
+    printf("%s @ %lu..%lu \"%s\"\n", syntax_kind_to_string(token->kind), offset, offset + string_length(token->string), string_data(token->string));
+  } else {
+    unsigned long  i;
+    RawSyntaxTree *tree        = (RawSyntaxTree *) node;
+    unsigned long  tree_offset = offset + raw_syntax_node_trivia_length(node);
+    printf("%s @ %lu..%lu\n", syntax_kind_to_string(tree->kind), tree_offset, tree_offset + tree->text_length);
+    for (i = 0; i < tree->children_count; ++i) {
+      raw_syntax_node_print_impl(tree->children[i], depth + 1, offset);
+      offset += raw_syntax_node_trivia_length(tree->children[i]);
+      offset += raw_syntax_node_text_length(tree->children[i]);
+    }
+  }
+}
+
+void raw_syntax_node_print(const RawSyntaxNode *node)
+{
+  raw_syntax_node_print_impl(node, 0, 0);
+}
+
+void raw_syntax_node_free(RawSyntaxNode *node)
+{
+  if (node) {
+    if (syntax_kind_is_token(node->kind)) {
+      RawSyntaxToken *token = (RawSyntaxToken *) node;
+      unsigned long   i;
+      for (i = 0; i < token->leading_trivia_count; ++i) {
+        free(token->leading_trivia[i].text);
+      }
+      free(token->leading_trivia);
+      for (i = 0; i < token->trailing_trivia_count; ++i) {
+        free(token->trailing_trivia[i].text);
+      }
+      free(token->trailing_trivia);
+      free(token->text);
+      free(token);
+    } else {
+      RawSyntaxTree *tree = (RawSyntaxTree *) node;
+      unsigned long  i;
+      for (i = 0; i < tree->children_count; ++i) {
+        raw_syntax_node_free(tree->children[i]);
+      }
+      free(tree->children);
+      free(tree);
+    }
+  }
+}
+
 static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, RawSyntaxNode *inner, unsigned long offset, unsigned long flags)
 {
   SyntaxTree *tree = xmalloc(sizeof(SyntaxTree));
@@ -20,11 +116,6 @@ static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, RawSyntaxNode *inne
   tree->offset     = offset;
   tree->flags      = flags;
   return tree;
-}
-
-SyntaxTree *syntax_tree_root(RawSyntaxNode *node)
-{
-  return syntax_tree_new(NULL, node, raw_syntax_node_trivia_length(node), 1);
 }
 
 const RawSyntaxNode *syntax_tree_raw(const SyntaxTree *tree)
@@ -125,143 +216,112 @@ void syntax_tree_free(SyntaxTree *tree)
   }
 }
 
-unsigned long raw_syntax_node_text_length(const RawSyntaxNode *node)
+SyntaxBuilder *syntax_builder_new(void)
 {
-  return node ? node->text_length : 0;
+  SyntaxBuilder *builder   = xmalloc(sizeof(SyntaxBuilder));
+  builder->parents         = array_new(sizeof(unsigned long));
+  builder->children        = array_new(sizeof(RawSyntaxNode *));
+  builder->leading_trivia  = array_new(sizeof(RawSyntaxTrivia));
+  builder->trailing_trivia = array_new(sizeof(RawSyntaxTrivia));
+  return builder;
 }
 
-unsigned long raw_syntax_node_trivia_length(const RawSyntaxNode *node)
+void syntax_builder_free(SyntaxBuilder *builder)
 {
-  if (!node) {
-    return 0;
-  } else if (syntax_kind_is_token(node->kind)) {
-    RawSyntaxToken *token = (RawSyntaxToken *) node;
-    unsigned long   i;
-    unsigned long   result = 0;
-    for (i = 0; i < token->trivia_count; ++i) {
-      result += token->trivia[i].text_length;
-    }
-    return result;
-  } else {
-    RawSyntaxTree *tree = (RawSyntaxTree *) node;
-    return tree->children_count ? raw_syntax_node_trivia_length(tree->children[0]) : 0;
+  if (builder) {
+    array_free(builder->parents);
+    array_free(builder->children);
+    array_free(builder->leading_trivia);
+    array_free(builder->trailing_trivia);
+    free(builder);
   }
 }
 
-RawSyntaxTree *raw_syntax_tree_new(SyntaxKind kind, const RawSyntaxNode **children, unsigned long children_count)
+unsigned long syntax_builder_checkpoint(SyntaxBuilder *builder)
 {
-  RawSyntaxTree *tree = xmalloc(sizeof(RawSyntaxTree));
-  unsigned long  i;
-  tree->kind = kind;
+  return array_count(builder->children);
+}
 
-  tree->text_length = 0;
-  for (i = 0; i < children_count; ++i) {
+void syntax_builder_start_tree(SyntaxBuilder *builder)
+{
+  syntax_builder_start_tree_at(builder, syntax_builder_checkpoint(builder));
+}
+
+void syntax_builder_start_tree_at(SyntaxBuilder *builder, unsigned long checkpoint)
+{
+  array_push(builder->parents, &checkpoint);
+}
+
+void syntax_builder_end_tree(SyntaxBuilder *builder, SyntaxKind kind)
+{
+  unsigned long   i;
+  unsigned long   checkpoint = *(unsigned long *) array_back(builder->parents);
+  RawSyntaxNode **children   = (RawSyntaxNode **) array_at(builder->children, checkpoint);
+  unsigned long   count      = array_count(builder->children) - checkpoint;
+
+  RawSyntaxTree *tree = xmalloc(sizeof(RawSyntaxTree));
+  tree->kind          = kind;
+  tree->text_length   = 0;
+  for (i = 0; i < count; ++i) {
     if (i > 0) {
       tree->text_length += raw_syntax_node_trivia_length(children[i]);
     }
     tree->text_length += raw_syntax_node_text_length(children[i]);
   }
 
-  tree->children_count = children_count;
-  if (tree->children_count) {
-    tree->children = xmalloc(sizeof(RawSyntaxNode *) * children_count);
-    memcpy(tree->children, children, sizeof(RawSyntaxNode *) * children_count);
+  tree->children_count = count;
+  tree->children       = dup(children, sizeof(RawSyntaxNode *), count);
+
+  array_pop(builder->parents);
+  array_pop_count(builder->children, count);
+  array_push(builder->children, &tree);
+}
+
+void syntax_builder_null(SyntaxBuilder *builder)
+{
+  RawSyntaxNode *node = NULL;
+  array_push(builder->children, &node);
+}
+
+void syntax_builder_trivia(SyntaxBuilder *builder, SyntaxKind kind, const String *text, int leading)
+{
+  RawSyntaxTrivia trivia;
+  trivia.kind   = kind;
+  trivia.string = text;
+
+  trivia.text_length = string_length(text);
+  trivia.text        = dup(string_data(text), sizeof(char), trivia.text_length + 1);
+
+  if (leading) {
+    array_push(builder->leading_trivia, &trivia);
   } else {
-    tree->children = NULL;
-  }
-  return tree;
-}
-
-void raw_syntax_tree_free(RawSyntaxTree *tree)
-{
-  if (tree) {
-    unsigned long i;
-    for (i = 0; i < tree->children_count; ++i) {
-      if (tree->children[i]) {
-        if (syntax_kind_is_token(tree->children[i]->kind)) {
-          raw_syntax_token_free((RawSyntaxToken *) tree->children[i]);
-        } else {
-          raw_syntax_tree_free((RawSyntaxTree *) tree->children[i]);
-        }
-      }
-    }
-    free(tree->children);
-    free(tree);
+    array_push(builder->trailing_trivia, &trivia);
   }
 }
 
-void token_info_init(RawSyntaxTrivial *info, SyntaxKind kind, const char *token, unsigned long text_length)
-{
-  info->kind        = kind;
-  info->text_length = text_length;
-  info->text        = xmalloc(sizeof(char) * (text_length + 1));
-  strncpy(info->text, token, text_length);
-  info->text[text_length] = '\0';
-}
-
-void token_info_deinit(RawSyntaxTrivial *info)
-{
-  free(info->text);
-}
-
-RawSyntaxToken *raw_syntax_token_new(SyntaxKind kind, char *text, unsigned long text_length, RawSyntaxTrivial *trivia, unsigned long trivia_count)
+void syntax_builder_token(SyntaxBuilder *builder, SyntaxKind kind, const String *text)
 {
   RawSyntaxToken *token = xmalloc(sizeof(RawSyntaxToken));
   token->kind           = kind;
-  token->text           = text;
-  token->text_length    = text_length;
-  token->trivia         = trivia;
-  token->trivia_count   = trivia_count;
-  return token;
+  token->string         = text;
+
+  token->text_length = string_length(text);
+  token->text        = dup(string_data(text), sizeof(char), token->text_length + 1);
+
+  token->leading_trivia_count  = array_count(builder->leading_trivia);
+  token->leading_trivia        = dup(array_data(builder->leading_trivia), sizeof(RawSyntaxTrivia), token->leading_trivia_count);
+  token->trailing_trivia_count = array_count(builder->trailing_trivia);
+  token->trailing_trivia       = dup(array_data(builder->trailing_trivia), sizeof(RawSyntaxTrivia), token->trailing_trivia_count);
+  array_push(builder->children, &token);
+
+  array_clear(builder->leading_trivia);
+  array_clear(builder->trailing_trivia);
 }
 
-void raw_syntax_token_free(RawSyntaxToken *token)
+SyntaxTree *syntax_builder_build(SyntaxBuilder *builder)
 {
-  if (token) {
-    unsigned long i;
-    token_info_deinit((RawSyntaxTrivial *) token);
-    for (i = 0; i < token->trivia_count; ++i) {
-      token_info_deinit(token->trivia + i);
-    }
-    free(token->trivia);
-    free(token);
-  }
-}
-
-static void token_node_print_impl(RawSyntaxNode *node, unsigned long depth, unsigned long offset)
-{
-  printf("%*.s", (int) depth * 2, "");
-  if (!node) {
-    printf("(NULL)\n");
-  } else if (syntax_kind_is_token(node->kind)) {
-    RawSyntaxToken *token = (RawSyntaxToken *) node;
-    offset += raw_syntax_node_trivia_length(node);
-    printf("%s @ %lu..%lu \"%s\"\n", syntax_kind_to_string(token->kind), offset, offset + token->text_length, token->text);
-  } else {
-    unsigned long  i;
-    RawSyntaxTree *tree        = (RawSyntaxTree *) node;
-    unsigned long  tree_offset = offset + raw_syntax_node_trivia_length(node);
-    printf("%s @ %lu..%lu\n", syntax_kind_to_string(tree->kind), tree_offset, tree_offset + tree->text_length);
-    for (i = 0; i < tree->children_count; ++i) {
-      token_node_print_impl(tree->children[i], depth + 1, offset);
-      offset += raw_syntax_node_trivia_length(tree->children[i]);
-      offset += raw_syntax_node_text_length(tree->children[i]);
-    }
-  }
-}
-
-void raw_syntax_node_print(RawSyntaxNode *node)
-{
-  token_node_print_impl(node, 0, 0);
-}
-
-void raw_syntax_node_free(RawSyntaxNode *node)
-{
-  if (node) {
-    if (syntax_kind_is_token(node->kind)) {
-      raw_syntax_token_free((RawSyntaxToken *) node);
-    } else {
-      raw_syntax_tree_free((RawSyntaxTree *) node);
-    }
-  }
+  RawSyntaxNode **root = (RawSyntaxNode **) array_front(builder->children);
+  SyntaxTree     *tree = syntax_tree_new(NULL, *root, raw_syntax_node_trivia_length(*root), 1);
+  syntax_builder_free(builder);
+  return tree;
 }

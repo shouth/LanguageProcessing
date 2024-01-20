@@ -1,27 +1,36 @@
 #ifndef SYNTAX_TREE_H
 #define SYNTAX_TREE_H
 
+#include "string.h"
 #include "syntax_kind.h"
-typedef struct RawSyntaxTrivial RawSyntaxTrivial;
-typedef struct RawSyntaxToken   RawSyntaxToken;
-typedef struct RawSyntaxTree    RawSyntaxTree;
-typedef struct RawSyntaxNode    RawSyntaxNode;
+typedef struct RawSyntaxTrivia RawSyntaxTrivia;
+typedef struct RawSyntaxToken  RawSyntaxToken;
+typedef struct RawSyntaxTree   RawSyntaxTree;
+typedef struct RawSyntaxNode   RawSyntaxNode;
 
 typedef struct SyntaxTree SyntaxTree;
 typedef int               SyntaxTreeVisitor(const SyntaxTree *tree, void *data, int enter);
 
-struct RawSyntaxTrivial {
+typedef struct SyntaxBuilder SyntaxBuilder;
+
+struct RawSyntaxTrivia {
   SyntaxKind    kind;
   unsigned long text_length;
   char         *text;
+
+  const String *string;
 };
 
 struct RawSyntaxToken {
-  SyntaxKind        kind;
-  unsigned long     text_length;
-  char             *text;
-  unsigned long     trivia_count;
-  RawSyntaxTrivial *trivia;
+  SyntaxKind    kind;
+  unsigned long text_length;
+  char         *text;
+
+  const String    *string;
+  unsigned long    leading_trivia_count;
+  RawSyntaxTrivia *leading_trivia;
+  unsigned long    trailing_trivia_count;
+  RawSyntaxTrivia *trailing_trivia;
 };
 
 struct RawSyntaxTree {
@@ -39,13 +48,7 @@ struct RawSyntaxNode {
 unsigned long raw_syntax_node_text_length(const RawSyntaxNode *node);
 unsigned long raw_syntax_node_trivia_length(const RawSyntaxNode *node);
 
-RawSyntaxTree *raw_syntax_tree_new(SyntaxKind kind, const RawSyntaxNode **children, unsigned long children_count);
-void           raw_syntax_tree_free(RawSyntaxTree *tree);
-
-RawSyntaxToken *raw_syntax_token_new(SyntaxKind kind, char *text, unsigned long text_length, RawSyntaxTrivial *trivia, unsigned long trivia_count);
-void            raw_syntax_token_free(RawSyntaxToken *token);
-
-void raw_syntax_node_print(RawSyntaxNode *node);
+void raw_syntax_node_print(const RawSyntaxNode *node);
 void raw_syntax_node_free(RawSyntaxNode *node);
 
 SyntaxTree          *syntax_tree_root(RawSyntaxNode *tree);
@@ -60,5 +63,16 @@ SyntaxTree          *syntax_tree_child(const SyntaxTree *tree, unsigned long ind
 SyntaxTree          *syntax_tree_subtree(const SyntaxTree *tree);
 void                 syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void *data);
 void                 syntax_tree_free(SyntaxTree *tree);
+
+SyntaxBuilder *syntax_builder_new(void);
+void           syntax_builder_free(SyntaxBuilder *builder);
+unsigned long  syntax_builder_checkpoint(SyntaxBuilder *builder);
+void           syntax_builder_start_tree(SyntaxBuilder *builder);
+void           syntax_builder_start_tree_at(SyntaxBuilder *builder, unsigned long checkpoint);
+void           syntax_builder_end_tree(SyntaxBuilder *builder, SyntaxKind kind);
+void           syntax_builder_null(SyntaxBuilder *builder);
+void           syntax_builder_trivia(SyntaxBuilder *builder, SyntaxKind kind, const String *text, int leading);
+void           syntax_builder_token(SyntaxBuilder *builder, SyntaxKind kind, const String *text);
+SyntaxTree    *syntax_builder_build(SyntaxBuilder *builder);
 
 #endif
