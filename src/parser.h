@@ -3,7 +3,8 @@
 
 #include "mppl_syntax.h"
 #include "source.h"
+#include "string.h"
 
-int mppl_parse(const Source *source, MpplProgram **syntax);
+int mppl_parse(const Source *source, StringContext *strings, MpplProgram **syntax);
 
 #endif
