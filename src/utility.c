@@ -4,7 +4,7 @@
 
 #include "utility.h"
 
-void *xmalloc(size_t size)
+void *xmalloc(unsigned long size)
 {
   void *result = malloc(size);
   if (!result) {
