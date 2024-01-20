@@ -9,15 +9,17 @@
 #include "resolver.h"
 #include "session.h"
 #include "source.h"
+#include "string.h"
 #include "utility.h"
 
 struct Session {
-  char        *filename;
-  Source      *source;
-  MpplProgram *syntax;
-  Res         *res;
-  Infer       *infer;
-  int          error;
+  char          *filename;
+  Source        *source;
+  MpplProgram   *syntax;
+  Res           *res;
+  Infer         *infer;
+  int            error;
+  StringContext *strings;
 };
 
 Session *session_new(const char *filename)
@@ -25,11 +27,12 @@ Session *session_new(const char *filename)
   Session *session  = xmalloc(sizeof(Session));
   session->filename = xmalloc(strlen(filename) + 1);
   strcpy(session->filename, filename);
-  session->source = NULL;
-  session->syntax = NULL;
-  session->res    = NULL;
-  session->infer  = NULL;
-  session->error  = 0;
+  session->source  = NULL;
+  session->syntax  = NULL;
+  session->res     = NULL;
+  session->infer   = NULL;
+  session->error   = 0;
+  session->strings = string_context_new();
   return session;
 }
 
@@ -41,6 +44,7 @@ void session_free(Session *session)
     mppl_free(session->syntax);
     res_free(session->res);
     infer_free(session->infer);
+    string_context_free(session->strings);
     free(session);
   }
 }
@@ -62,7 +66,7 @@ const MpplProgram *session_parse(Session *session)
 {
   if (!session->syntax) {
     const Source *source = session_load(session);
-    if (!session->error && mppl_parse(source, &session->syntax)) {
+    if (!session->error && mppl_parse(source, session->strings, &session->syntax)) {
       return session->syntax;
     } else {
       session->error = 1;
