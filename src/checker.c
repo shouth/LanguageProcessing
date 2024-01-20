@@ -719,37 +719,32 @@ static void error_call_stmt_mismatched_param_count(
 }
 
 static void error_call_stmt_mismatched_param_type(
-  Checker *checker, const MpplCallStmt *syntax,
+  Checker *checker, const MpplToken *name_syntax, const MpplActParamList *act_param_list_syntax,
   const TypeProc *defined_type, const TypeProc *act_type)
 {
-  unsigned long     i;
-  MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
-  MpplToken        *name_syntax           = mppl_call_stmt__name(syntax);
+  unsigned long i;
+  unsigned long offset = syntax_tree_offset((SyntaxTree *) act_param_list_syntax);
 
-  {
-    unsigned long offset = syntax_tree_offset((SyntaxTree *) act_param_list_syntax);
-
-    Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
-    if (act_param_list_syntax) {
-      for (i = 0; i < type_proc_param_count(defined_type); ++i) {
-        AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
-        const Type  *defined_param_type = type_proc_param(defined_type, i);
-        const Type  *act_param_type     = type_proc_param(act_type, i);
-        if (!type_equal(defined_param_type, act_param_type)) {
-          unsigned long act_param_offset          = syntax_tree_offset((SyntaxTree *) act_param_syntax);
-          unsigned long act_param_length          = syntax_tree_text_length((SyntaxTree *) act_param_syntax);
-          char         *defined_param_type_string = type_to_string(defined_param_type);
-          char         *act_param_type_string     = type_to_string(act_param_type);
-          report_annotation(report, act_param_offset, act_param_offset + act_param_length,
-            "expected `%s`, found `%s`", defined_param_type_string, act_param_type_string);
-          free(defined_param_type_string);
-          free(act_param_type_string);
-        }
-        mppl_free(act_param_syntax);
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
+  if (act_param_list_syntax) {
+    for (i = 0; i < type_proc_param_count(defined_type); ++i) {
+      AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
+      const Type  *defined_param_type = type_proc_param(defined_type, i);
+      const Type  *act_param_type     = type_proc_param(act_type, i);
+      if (!type_equal(defined_param_type, act_param_type)) {
+        unsigned long act_param_offset          = syntax_tree_offset((SyntaxTree *) act_param_syntax);
+        unsigned long act_param_length          = syntax_tree_text_length((SyntaxTree *) act_param_syntax);
+        char         *defined_param_type_string = type_to_string(defined_param_type);
+        char         *act_param_type_string     = type_to_string(act_param_type);
+        report_annotation(report, act_param_offset, act_param_offset + act_param_length,
+          "expected `%s`, found `%s`", defined_param_type_string, act_param_type_string);
+        free(defined_param_type_string);
+        free(act_param_type_string);
       }
+      mppl_free(act_param_syntax);
     }
-    array_push(checker->errors, &report);
   }
+  array_push(checker->errors, &report);
 
   {
     const Def            *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
@@ -775,8 +770,39 @@ static void error_call_stmt_mismatched_param_type(
     mppl_free(fml_param_list_syntax);
     mppl_free(id_syntax);
   }
-  mppl_free(act_param_list_syntax);
-  mppl_free(name_syntax);
+}
+
+static void maybe_error_call_stmt_wrong_param(
+  Checker *checker, const MpplToken *name, const MpplActParamList *param_list, const TypeProc *type)
+{
+  Array *act_param_array = array_new(sizeof(Type *));
+  int    expr_error      = 0;
+
+  if (param_list) {
+    unsigned long i;
+    for (i = 0; i < mppl_act_param_list__expr_count(param_list); ++i) {
+      AnyMpplExpr *act_param_syntax = mppl_act_param_list__expr(param_list, i);
+      const Type  *act_param_type   = check_expr(checker, act_param_syntax);
+
+      if (!act_param_type) {
+        expr_error = 1;
+      } else {
+        Type *act_param_clone = type_clone(act_param_type);
+        array_push(act_param_array, &act_param_clone);
+      }
+      mppl_free(act_param_syntax);
+    }
+  }
+
+  if (!expr_error) {
+    unsigned long act_param_count = array_count(act_param_array);
+    Type        **act_param_types = array_steal(act_param_array);
+    Type         *act_type        = type_new_proc(act_param_types, act_param_count);
+    if (!type_equal((const Type *) type, act_type)) {
+      error_call_stmt_mismatched_param_type(checker, name, param_list, type, (const TypeProc *) act_type);
+    }
+    type_free(act_type);
+  }
 }
 
 static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syntax, void *checker)
@@ -785,47 +811,19 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
   const Type *type        = get_ref_type(checker, (SyntaxTree *) name_syntax);
 
   if (type) {
+    MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
+    unsigned long     param_count           = act_param_list_syntax ? mppl_act_param_list__expr_count(act_param_list_syntax) : 0;
+    const TypeProc   *type_proc             = (const TypeProc *) type;
+
     if (type_kind(type) != TYPE_PROC) {
       error_call_stmt_non_callable(checker, name_syntax);
+    } else if (param_count != type_proc_param_count(type_proc)) {
+      error_call_stmt_mismatched_param_count(checker, act_param_list_syntax, type_proc, param_count);
     } else {
-      MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
-      Array            *act_param_array       = array_new(sizeof(Type *));
-      Type             *act_type;
-      unsigned long     act_param_count;
-      Type            **act_param_types;
-      int               has_early_error = 0;
-      if (act_param_list_syntax) {
-        unsigned long i;
-        for (i = 0; i < mppl_act_param_list__expr_count(act_param_list_syntax); ++i) {
-          AnyMpplExpr *act_param_syntax = mppl_act_param_list__expr(act_param_list_syntax, i);
-          const Type  *act_param_type   = check_expr(checker, act_param_syntax);
-
-          if (!act_param_type) {
-            has_early_error = 1;
-          } else {
-            Type *act_param_clone = type_clone(act_param_type);
-            array_push(act_param_array, &act_param_clone);
-          }
-          mppl_free(act_param_syntax);
-        }
-      }
-
-      act_param_count = array_count(act_param_array);
-      act_param_types = array_steal(act_param_array);
-      act_type        = type_new_proc(act_param_types, act_param_count);
-
-      if (!has_early_error) {
-        if (type_proc_param_count((const TypeProc *) type) != type_proc_param_count((const TypeProc *) act_type)) {
-          error_call_stmt_mismatched_param_count(checker,
-            act_param_list_syntax, (const TypeProc *) type, type_proc_param_count((const TypeProc *) act_type));
-        } else if (!type_equal(type, act_type)) {
-          error_call_stmt_mismatched_param_type(checker,
-            syntax, (const TypeProc *) type, (TypeProc *) act_type);
-        }
-      }
-      mppl_free(act_param_list_syntax);
-      type_free(act_type);
+      maybe_error_call_stmt_wrong_param(checker, name_syntax, act_param_list_syntax, type_proc);
     }
+
+    mppl_free(act_param_list_syntax);
   }
 
   mppl_free(name_syntax);
