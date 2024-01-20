@@ -585,7 +585,7 @@ static void print_binary_expr(Printer *printer, const MpplBinaryExpr *syntax)
     print_expr(printer, rhs_expr);
   } else {
     print_token_operator(printer, op_token);
-    print_space();
+    print_expr(printer, rhs_expr);
   }
 
   mppl_free(lhs_expr);
