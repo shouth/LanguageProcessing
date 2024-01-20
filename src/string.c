@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <string.h>
 
 #include "map.h"
@@ -29,7 +28,6 @@ const String *string_from(const char *string, unsigned long length, StringContex
     instance->length = length;
     instance->data   = str;
     map_update(context->strings, &index, instance, instance);
-  } else {
   }
   return map_value(context->strings, &index);
 }
@@ -52,14 +50,10 @@ static unsigned long string_hash(const void *string)
 
 static int string_equal(const void *left, const void *right)
 {
-  const String *left_string  = left;
-  const String *right_string = right;
+  const String *l = left;
+  const String *r = right;
 
-  if (left_string->length != right_string->length) {
-    return left_string->length < right_string->length ? -1 : 1;
-  } else {
-    return !memcmp(left_string->data, right_string->data, left_string->length);
-  }
+  return l->length == r->length && !memcmp(l->data, r->data, l->length);
 }
 
 StringContext *string_context_new(void)
