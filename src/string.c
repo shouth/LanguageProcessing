@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include "map.h"
@@ -21,13 +22,14 @@ const String *string_from(const char *string, unsigned long length, StringContex
   key.data   = string;
 
   if (!map_find(context->strings, &key, &index)) {
-    String *string = xmalloc(sizeof(String));
-    char   *str    = xmalloc(length + 1);
+    String *instance = xmalloc(sizeof(String));
+    char   *str      = xmalloc(length + 1);
     memcpy(str, string, length);
-    str[length]    = '\0';
-    string->length = length;
-    string->data   = str;
-    map_update(context->strings, &index, string, string);
+    str[length]      = '\0';
+    instance->length = length;
+    instance->data   = str;
+    map_update(context->strings, &index, instance, instance);
+  } else {
   }
   return map_value(context->strings, &index);
 }
@@ -69,10 +71,14 @@ StringContext *string_context_new(void)
 
 void string_context_free(StringContext *context)
 {
-  MapIndex index;
-  for (map_index(context->strings, &index); map_next(context->strings, &index);) {
-    String *string = map_value(context->strings, &index);
-    free((char *) string->data);
-    free(string);
+  if (context) {
+    MapIndex index;
+    for (map_index(context->strings, &index); map_next(context->strings, &index);) {
+      String *string = map_value(context->strings, &index);
+      free((char *) string->data);
+      free(string);
+    }
+    map_free(context->strings);
+    free(context);
   }
 }
