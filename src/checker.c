@@ -9,6 +9,7 @@
 #include "mppl_syntax_ext.h"
 #include "report.h"
 #include "resolution.h"
+#include "string.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "type.h"
@@ -237,7 +238,7 @@ static void error_call_stmt_non_callable(Checker *checker, const MpplToken *synt
   unsigned long         offset = syntax_tree_offset((SyntaxTree *) syntax);
   unsigned long         length = syntax_tree_text_length((SyntaxTree *) syntax);
 
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be called", token->text);
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "`%s` cannot be called", string_data(token->string));
   report_annotation(report, offset, offset + length, "a called item should be a `procedure`");
   array_push(checker->errors, &report);
 }
@@ -298,7 +299,7 @@ static void error_call_stmt_mismatched_param_type(
     unsigned long         name_offset           = syntax_tree_offset((SyntaxTree *) id_syntax);
     unsigned long         name_length           = syntax_tree_text_length((SyntaxTree *) id_syntax);
 
-    Report *report = report_new(REPORT_KIND_NOTE, name_offset, "`%s` is defined here", id_token->text);
+    Report *report = report_new(REPORT_KIND_NOTE, name_offset, "`%s` is defined here", string_data(id_token->string));
     report_annotation(report, name_offset, name_offset + name_length, NULL);
     for (i = 0; i < mppl_fml_param_list__sec_count(fml_param_list_syntax); ++i) {
       MpplFmlParamSec *fml_param_sec_syntax = mppl_fml_param_list__sec(fml_param_list_syntax, i);

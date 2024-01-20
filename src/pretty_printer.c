@@ -3,6 +3,7 @@
 
 #include "mppl_syntax.h"
 #include "pretty_printer.h"
+#include "string.h"
 #include "syntax_tree.h"
 
 typedef struct Printer Printer;
@@ -790,7 +791,7 @@ static void print_token__impl(Printer *printer, const MpplToken *token, unsigned
   if (printer->option.color.enabled) {
     printf("\033[38;2;%lu;%lu;%lum", color >> 16, (color >> 8) & 0xFF, color & 0xFF);
   }
-  printf("%s", raw_token->text);
+  printf("%s", string_data(raw_token->string));
   if (printer->option.color.enabled) {
     printf("\033[0m");
   }

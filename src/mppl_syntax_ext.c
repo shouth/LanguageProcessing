@@ -2,6 +2,7 @@
 
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
+#include "string.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "type.h"
@@ -50,19 +51,19 @@ Type *mppl_type__to_type(const AnyMpplType *syntax)
 long mppl_lit_number__to_long(const MpplLitNumber *syntax)
 {
   const RawSyntaxToken *token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) syntax);
-  return atol(token->text);
+  return atol(string_data(token->string));
 }
 
 char *mppl_lit_string__to_string(const MpplLitString *syntax)
 {
   const RawSyntaxToken *token  = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) syntax);
-  char                 *result = xmalloc(token->text_length + 1);
+  char                 *result = xmalloc(string_length(token->string) + 1);
   unsigned long         i, j;
-  for (i = 0, j = 0; i < token->text_length; ++i, ++j) {
-    if (token->text[i] == '\'') {
+  for (i = 0, j = 0; i < string_length(token->string); ++i, ++j) {
+    if (string_data(token->string)[i] == '\'') {
       ++i;
     }
-    result[j] = token->text[i];
+    result[j] = string_data(token->string)[i];
   }
   result[j] = '\0';
   return result;

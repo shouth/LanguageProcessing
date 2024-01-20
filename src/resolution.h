@@ -1,6 +1,7 @@
 #ifndef RESOLUTION_H
 #define RESOLUTION_H
 
+#include "string.h"
 #include "syntax_tree.h"
 
 typedef struct Binding Binding;
@@ -15,9 +16,8 @@ typedef enum {
 } DefKind;
 
 struct Binding {
-  const char   *name;
+  const String *name;
   unsigned long offset;
-  unsigned long length;
 };
 
 struct Def {

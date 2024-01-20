@@ -3,6 +3,7 @@
 
 #include "string.h"
 #include "syntax_kind.h"
+
 typedef struct RawSyntaxTrivia RawSyntaxTrivia;
 typedef struct RawSyntaxToken  RawSyntaxToken;
 typedef struct RawSyntaxTree   RawSyntaxTree;
@@ -15,17 +16,11 @@ typedef struct SyntaxBuilder SyntaxBuilder;
 
 struct RawSyntaxTrivia {
   SyntaxKind    kind;
-  unsigned long text_length;
-  char         *text;
-
   const String *string;
 };
 
 struct RawSyntaxToken {
-  SyntaxKind    kind;
-  unsigned long text_length;
-  char         *text;
-
+  SyntaxKind       kind;
   const String    *string;
   unsigned long    leading_trivia_count;
   RawSyntaxTrivia *leading_trivia;

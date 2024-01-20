@@ -7,6 +7,7 @@
 #include "resolution.h"
 #include "resolver.h"
 #include "source.h"
+#include "string.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
@@ -28,16 +29,16 @@ struct Resolver {
 static void error_def_conflict(Resolver *resolver, const Binding *previous, const Binding *conflict)
 {
   Report *report = report_new(REPORT_KIND_ERROR, conflict->offset, "conflicting definition of `%s`", previous->name);
-  report_annotation(report, previous->offset, previous->offset + previous->length,
+  report_annotation(report, previous->offset, previous->offset + string_length(previous->name),
     "previous definition of `%s`", previous->name);
-  report_annotation(report, conflict->offset, conflict->offset + conflict->length, "redefinition of `%s`", previous->name);
+  report_annotation(report, conflict->offset, conflict->offset + string_length(conflict->name), "redefinition of `%s`", previous->name);
   array_push(resolver->errors, &report);
 }
 
 static void error_var_res_failure(Resolver *resolver, const Binding *missing)
 {
   Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", missing->name);
-  report_annotation(report, missing->offset, missing->offset + missing->length,
+  report_annotation(report, missing->offset, missing->offset + string_length(missing->name),
     "use of undeclared variable or parameter `%s`", missing->name);
   array_push(resolver->errors, &report);
 }
@@ -45,25 +46,15 @@ static void error_var_res_failure(Resolver *resolver, const Binding *missing)
 static void error_proc_res_failure(Resolver *resolver, const Binding *missing)
 {
   Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", missing->name);
-  report_annotation(report, missing->offset, missing->offset + missing->length,
+  report_annotation(report, missing->offset, missing->offset + string_length(missing->name),
     "use of undeclared procedure `%s`", missing->name);
   array_push(resolver->errors, &report);
-}
-
-static unsigned long def_key_hasher(const void *key)
-{
-  return fnv1a(FNV1A_INIT, key, strlen(key));
-}
-
-static int def_key_compare(const void *left, const void *right)
-{
-  return !strcmp(left, right);
 }
 
 static void push_scope(Resolver *resolver)
 {
   Scope *scope    = xmalloc(sizeof(Scope));
-  scope->defs     = map_new(&def_key_hasher, &def_key_compare);
+  scope->defs     = map_new(NULL, NULL);
   scope->parent   = resolver->scope;
   resolver->scope = scope;
 }
@@ -81,13 +72,9 @@ static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *i
   MapIndex              index;
   const RawSyntaxToken *name_token = (const RawSyntaxToken *) syntax_tree_raw(name_syntax);
   Binding               binding;
-  binding.name   = name_token->text;
+  binding.name   = name_token->string;
   binding.offset = syntax_tree_offset(name_syntax);
-  binding.length = name_token->text_length;
 
-  {
-    printf("creating def `%s` at %ld\n", binding.name, binding.offset);
-  }
   if (resolver->scope && map_find(resolver->scope->defs, (void *) binding.name, &index)) {
     const Def *previous = map_value(resolver->scope->defs, &index);
     error_def_conflict(resolver, &previous->binding, &binding);
@@ -100,7 +87,7 @@ static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *i
   }
 }
 
-static const Def *get_def(Resolver *resolver, const char *name)
+static const Def *get_def(Resolver *resolver, const String *name)
 {
   Scope *scope;
   for (scope = resolver->scope; scope; scope = scope->parent) {
@@ -115,21 +102,14 @@ static const Def *get_def(Resolver *resolver, const char *name)
 static const Def *try_record_ref(Resolver *resolver, const SyntaxTree *syntax, int is_proc)
 {
   const RawSyntaxToken *node = (const RawSyntaxToken *) syntax_tree_raw(syntax);
-  const Def            *def  = get_def(resolver, node->text);
-  {
-    printf("resolving `%s` at %ld\n", node->text, syntax_tree_offset(syntax));
-  }
+  const Def            *def  = get_def(resolver, node->string);
   if (resolver->scope && def) {
-    {
-      printf("  resolved `%s` at %ld\n", def->binding.name, def->offset);
-    }
     res_record_ref(resolver->res, (const RawSyntaxNode *) node, def);
     return def;
   } else {
     Binding binding;
-    binding.name   = node->text;
+    binding.name   = node->string;
     binding.offset = syntax_tree_offset(syntax);
-    binding.length = node->text_length;
     if (is_proc) {
       error_proc_res_failure(resolver, &binding);
     } else {

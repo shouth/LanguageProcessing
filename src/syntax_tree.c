@@ -44,7 +44,7 @@ unsigned long raw_syntax_node_trivia_length(const RawSyntaxNode *node)
     unsigned long   i;
     unsigned long   result = 0;
     for (i = 0; i < token->leading_trivia_count; ++i) {
-      result += token->leading_trivia[i].text_length;
+      result += string_length(token->leading_trivia[i].string);
     }
     return result;
   } else {
@@ -85,16 +85,8 @@ void raw_syntax_node_free(RawSyntaxNode *node)
   if (node) {
     if (syntax_kind_is_token(node->kind)) {
       RawSyntaxToken *token = (RawSyntaxToken *) node;
-      unsigned long   i;
-      for (i = 0; i < token->leading_trivia_count; ++i) {
-        free(token->leading_trivia[i].text);
-      }
       free(token->leading_trivia);
-      for (i = 0; i < token->trailing_trivia_count; ++i) {
-        free(token->trailing_trivia[i].text);
-      }
       free(token->trailing_trivia);
-      free(token->text);
       free(token);
     } else {
       RawSyntaxTree *tree = (RawSyntaxTree *) node;
@@ -289,9 +281,6 @@ void syntax_builder_trivia(SyntaxBuilder *builder, SyntaxKind kind, const String
   trivia.kind   = kind;
   trivia.string = text;
 
-  trivia.text_length = string_length(text);
-  trivia.text        = dup(string_data(text), sizeof(char), trivia.text_length + 1);
-
   if (leading) {
     array_push(builder->leading_trivia, &trivia);
   } else {
@@ -304,9 +293,6 @@ void syntax_builder_token(SyntaxBuilder *builder, SyntaxKind kind, const String 
   RawSyntaxToken *token = xmalloc(sizeof(RawSyntaxToken));
   token->kind           = kind;
   token->string         = text;
-
-  token->text_length = string_length(text);
-  token->text        = dup(string_data(text), sizeof(char), token->text_length + 1);
 
   token->leading_trivia_count  = array_count(builder->leading_trivia);
   token->leading_trivia        = dup(array_data(builder->leading_trivia), sizeof(RawSyntaxTrivia), token->leading_trivia_count);
