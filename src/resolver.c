@@ -84,6 +84,10 @@ static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *i
   binding.name   = name_token->text;
   binding.offset = syntax_tree_offset(name_syntax);
   binding.length = name_token->text_length;
+
+  {
+    printf("creating def `%s` at %ld\n", binding.name, binding.offset);
+  }
   if (resolver->scope && map_find(resolver->scope->defs, (void *) binding.name, &index)) {
     const Def *previous = map_value(resolver->scope->defs, &index);
     error_def_conflict(resolver, &previous->binding, &binding);
@@ -112,7 +116,13 @@ static const Def *try_record_ref(Resolver *resolver, const SyntaxTree *syntax, i
 {
   const RawSyntaxToken *node = (const RawSyntaxToken *) syntax_tree_raw(syntax);
   const Def            *def  = get_def(resolver, node->text);
+  {
+    printf("resolving `%s` at %ld\n", node->text, syntax_tree_offset(syntax));
+  }
   if (resolver->scope && def) {
+    {
+      printf("  resolved `%s` at %ld\n", def->binding.name, def->offset);
+    }
     res_record_ref(resolver->res, (const RawSyntaxNode *) node, def);
     return def;
   } else {
@@ -212,7 +222,7 @@ static int visit_syntax_tree(const SyntaxTree *tree, void *resolver, int enter)
         }
       }
       mppl_free(name_syntax);
-      return 0;
+      return 1;
     }
 
     default:
