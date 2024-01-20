@@ -7,7 +7,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/mpplc",
       "args": [
-        "./mpl/task2/sample11pp.mpl"
+        "./mpl/task1/sample19p.mpl"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
