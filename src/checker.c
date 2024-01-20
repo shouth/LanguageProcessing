@@ -516,6 +516,7 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
   }
 
   mppl_free(type_syntax);
+  mppl_ast__walk_var_decl(walker, syntax, checker);
   (void) walker;
 }
 
@@ -594,6 +595,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   }
 
   mppl_free(param_list_syntax);
+  mppl_ast__walk_proc_decl(walker, syntax, checker);
   (void) walker;
 }
 
