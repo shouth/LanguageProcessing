@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 
 #include "mppl_syntax.h"
 #include "syntax_kind.h"
@@ -166,12 +167,12 @@ unsigned long mppl_fml_param_list__sec_count(const MpplFmlParamList *list)
 
 MpplFmlParamSec *mppl_fml_param_list__sec(const MpplFmlParamList *list, unsigned long index)
 {
-  return (MpplFmlParamSec *) syntax_tree_child(syntax(list), 1 + index);
+  return (MpplFmlParamSec *) syntax_tree_child(syntax(list), 1 + index * 2);
 }
 
 MpplToken *mppl_fml_param_list__semi_token(const MpplFmlParamList *list, unsigned long index)
 {
-  return (MpplToken *) syntax_tree_child(syntax(list), 2 + index);
+  return (MpplToken *) syntax_tree_child(syntax(list), 2 + index * 2);
 }
 
 MpplToken *mppl_fml_param_list__rparen_token(const MpplFmlParamList *list)
