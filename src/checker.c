@@ -826,49 +826,66 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
   (void) walker;
 }
 
-static void error_input_stmt_invalid_operand(Checker *checker, const MpplInputList *syntax)
+static void maybe_error_input_stmt_invalid_operand(Checker *checker, const MpplInputList *syntax, const TypeList *arg_types)
 {
   unsigned long i;
   unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
 
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid operand");
+  Report *report = NULL;
   for (i = 0; i < mppl_input_list__var_count(syntax); ++i) {
-    AnyMpplVar *var_syntax = mppl_input_list__var(syntax, i);
-    const Type *var_type   = check_var(checker, var_syntax);
-
-    if (type_kind(var_type) != TYPE_INTEGER && type_kind(var_type) != TYPE_CHAR) {
+    if (type_kind(type_list_at(arg_types, i)) != TYPE_INTEGER && type_kind(type_list_at(arg_types, i)) != TYPE_CHAR) {
+      AnyMpplVar   *var_syntax      = mppl_input_list__var(syntax, i);
       unsigned long var_offset      = syntax_tree_offset((SyntaxTree *) var_syntax);
       unsigned long var_length      = syntax_tree_text_length((SyntaxTree *) var_syntax);
-      char         *var_type_string = type_to_string(var_type);
+      char         *var_type_string = type_to_string(type_list_at(arg_types, i));
+      if (!report) {
+        report = report_new(REPORT_KIND_ERROR, offset, "argument is not of standard type");
+        array_push(checker->errors, &report);
+      }
+
       report_annotation(report, var_offset, var_offset + var_length,
         "expected one of `integer`, or `char`, found `%s`", var_type_string);
+      mppl_free(var_syntax);
       free(var_type_string);
     }
   }
 }
 
+static TypeList *check_input_list(Checker *checker, const MpplInputList *syntax)
+{
+  unsigned long    i;
+  TypeListBuilder *builder    = type_list_builder_new();
+  int              expr_error = 0;
+
+  if (syntax) {
+    for (i = 0; i < mppl_input_list__var_count(syntax); ++i) {
+      AnyMpplVar *var_syntax = mppl_input_list__var(syntax, i);
+      const Type *var_type   = check_var(checker, var_syntax);
+
+      expr_error |= !var_type;
+      type_list_builder_add(builder, type_clone(var_type));
+      mppl_free(var_syntax);
+    }
+  }
+
+  if (expr_error) {
+    type_list_free(type_list_builder_finish(builder));
+    return NULL;
+  } else {
+    return type_list_builder_finish(builder);
+  }
+}
+
 static void visit_input_stmt(const MpplAstWalker *walker, const MpplInputStmt *syntax, void *checker)
 {
-  unsigned long  i;
   MpplInputList *input_list_syntax = mppl_input_stmt__input_list(syntax);
 
   if (input_list_syntax) {
-    int needs_report = 0;
-    for (i = 0; i < mppl_input_list__var_count(input_list_syntax); ++i) {
-      AnyMpplVar *var_syntax = mppl_input_list__var(input_list_syntax, i);
-      const Type *var_type   = check_var(checker, var_syntax);
-      needs_report |= var_type && type_kind(var_type) != TYPE_INTEGER && type_kind(var_type) != TYPE_CHAR;
-      mppl_free(var_syntax);
-
-      if (!var_type) {
-        needs_report = 0;
-        break;
-      }
+    TypeList *input_types = check_input_list(checker, input_list_syntax);
+    if (input_types) {
+      maybe_error_input_stmt_invalid_operand(checker, input_list_syntax, input_types);
     }
-
-    if (needs_report) {
-      error_input_stmt_invalid_operand(checker, input_list_syntax);
-    }
+    type_list_free(input_types);
   }
 
   mppl_free(input_list_syntax);
