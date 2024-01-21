@@ -892,71 +892,87 @@ static void visit_input_stmt(const MpplAstWalker *walker, const MpplInputStmt *s
   (void) walker;
 }
 
-static void error_output_stmt_invalid_operand(Checker *checker, const MpplOutList *syntax)
+static void maybe_error_output_stmt_invalid_operand(Checker *checker, const MpplOutList *syntax, const TypeList *arg_types)
 {
   unsigned long i;
   unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
 
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid operand");
+  Report *report = NULL;
   for (i = 0; i < mppl_out_list__out_value_count(syntax); ++i) {
-    MpplOutValue  *out_value_syntax = mppl_out_list__out_value(syntax, i);
-    MpplToken     *colon_syntax     = mppl_out_value__colon_token(out_value_syntax);
-    MpplNumberLit *width_syntax     = mppl_out_value__width(out_value_syntax);
-    AnyMpplExpr   *expr_syntax      = mppl_out_value__expr(out_value_syntax);
-    const Type    *expr_type        = check_expr(checker, expr_syntax);
+    MpplOutValue *out_value_syntax = mppl_out_list__out_value(syntax, i);
+    SyntaxTree   *colon_syntax     = (SyntaxTree *) mppl_out_value__colon_token(out_value_syntax);
+    AnyMpplExpr  *expr_syntax      = mppl_out_value__expr(out_value_syntax);
 
-    if (!type_is_std(expr_type)) {
-      if (type_kind(expr_type) != TYPE_STRING) {
+    if (!type_is_std(type_list_at(arg_types, i))) {
+      if (type_kind(type_list_at(arg_types, i)) != TYPE_STRING) {
         unsigned long expr_offset      = syntax_tree_offset((SyntaxTree *) expr_syntax);
         unsigned long expr_length      = syntax_tree_text_length((SyntaxTree *) expr_syntax);
-        char         *expr_type_string = type_to_string(expr_type);
+        char         *expr_type_string = type_to_string(type_list_at(arg_types, i));
+        if (!report) {
+          report = report_new(REPORT_KIND_ERROR, offset, "wrong output value");
+          array_push(checker->errors, &report);
+        }
+
         report_annotation(report, expr_offset, expr_offset + expr_length,
           "expected one of `integer`, `char`, or `boolean`, found `%s`", expr_type_string);
         free(expr_type_string);
       } else if (colon_syntax) {
-        unsigned long start
-          = syntax_tree_offset((SyntaxTree *) colon_syntax);
-        unsigned long end
-          = syntax_tree_offset((SyntaxTree *) width_syntax) + syntax_tree_text_length((SyntaxTree *) width_syntax);
+        SyntaxTree   *width_syntax = (SyntaxTree *) mppl_out_value__width(out_value_syntax);
+        unsigned long start        = syntax_tree_offset(colon_syntax);
+        unsigned long end          = syntax_tree_offset(width_syntax) + syntax_tree_text_length(width_syntax);
+        if (!report) {
+          report = report_new(REPORT_KIND_ERROR, offset, "wrong output value");
+          array_push(checker->errors, &report);
+        }
+
         report_annotation(report, start, end,
           "field width cannot be applied to `string`");
         mppl_free(width_syntax);
       }
     }
-    mppl_free(expr_syntax);
-    mppl_free(colon_syntax);
     mppl_free(out_value_syntax);
+    mppl_free(colon_syntax);
+    mppl_free(expr_syntax);
   }
-  array_push(checker->errors, &report);
+}
+
+static TypeList *check_output_list(Checker *checker, const MpplOutList *syntax)
+{
+  unsigned long    i;
+  TypeListBuilder *builder    = type_list_builder_new();
+  int              expr_error = 0;
+
+  if (syntax) {
+    for (i = 0; i < mppl_out_list__out_value_count(syntax); ++i) {
+      MpplOutValue *out_value_syntax = mppl_out_list__out_value(syntax, i);
+      AnyMpplExpr  *expr_syntax      = mppl_out_value__expr(out_value_syntax);
+      const Type   *expr_type        = check_expr(checker, expr_syntax);
+
+      expr_error |= !expr_type;
+      type_list_builder_add(builder, type_clone(expr_type));
+      mppl_free(expr_syntax);
+      mppl_free(out_value_syntax);
+    }
+  }
+
+  if (expr_error) {
+    type_list_free(type_list_builder_finish(builder));
+    return NULL;
+  } else {
+    return type_list_builder_finish(builder);
+  }
 }
 
 static void visit_output_stmt(const MpplAstWalker *walker, const MpplOutputStmt *syntax, void *checker)
 {
-  unsigned long i;
-  MpplOutList  *out_list_syntax = mppl_output_stmt__output_list(syntax);
+  MpplOutList *out_list_syntax = mppl_output_stmt__output_list(syntax);
 
   if (out_list_syntax) {
-    int needs_report = 0;
-    for (i = 0; i < mppl_out_list__out_value_count(out_list_syntax); ++i) {
-      MpplOutValue *out_value_syntax = mppl_out_list__out_value(out_list_syntax, i);
-      MpplToken    *colon_syntax     = mppl_out_value__colon_token(out_value_syntax);
-      AnyMpplExpr  *expr_syntax      = mppl_out_value__expr(out_value_syntax);
-      const Type   *expr_type        = check_expr(checker, expr_syntax);
-      needs_report |= expr_type && !type_is_std(expr_type) && (type_kind(expr_type) != TYPE_STRING || colon_syntax);
-
-      mppl_free(expr_syntax);
-      mppl_free(colon_syntax);
-      mppl_free(out_value_syntax);
-
-      if (!expr_type) {
-        needs_report = 0;
-        break;
-      }
+    TypeList *out_types = check_output_list(checker, out_list_syntax);
+    if (out_types) {
+      maybe_error_output_stmt_invalid_operand(checker, out_list_syntax, out_types);
     }
-
-    if (needs_report) {
-      error_output_stmt_invalid_operand(checker, out_list_syntax);
-    }
+    type_list_free(out_types);
   }
 
   mppl_free(out_list_syntax);
