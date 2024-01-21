@@ -7,13 +7,13 @@ struct Type {
   TypeKind kind;
 };
 
-struct TypeArray {
+struct ArrayType {
   TypeKind      kind;
   Type         *elem;
   unsigned long size;
 };
 
-struct TypeProc {
+struct ProcType {
   TypeKind      kind;
   Type        **param;
   unsigned long param_count;
@@ -28,7 +28,7 @@ Type *type_new(TypeKind kind)
 
 Type *type_new_proc(Type **param, unsigned long param_count)
 {
-  TypeProc *type    = xmalloc(sizeof(TypeProc));
+  ProcType *type    = xmalloc(sizeof(ProcType));
   type->kind        = TYPE_PROC;
   type->param       = param;
   type->param_count = param_count;
@@ -37,7 +37,7 @@ Type *type_new_proc(Type **param, unsigned long param_count)
 
 Type *type_new_array(Type *elem, unsigned long size)
 {
-  TypeArray *type = xmalloc(sizeof(TypeArray));
+  ArrayType *type = xmalloc(sizeof(ArrayType));
   type->kind      = TYPE_ARRAY;
   type->elem      = elem;
   type->size      = size;
@@ -48,7 +48,7 @@ Type *type_clone(const Type *type)
 {
   switch (type_kind(type)) {
   case TYPE_PROC: {
-    TypeProc     *proc = (TypeProc *) type;
+    ProcType     *proc = (ProcType *) type;
     Type        **param;
     unsigned long i;
     param = xmalloc(sizeof(Type *) * proc->param_count);
@@ -58,7 +58,7 @@ Type *type_clone(const Type *type)
     return type_new_proc(param, proc->param_count);
   }
   case TYPE_ARRAY: {
-    TypeArray *array = (TypeArray *) type;
+    ArrayType *array = (ArrayType *) type;
     return type_new_array(type_clone(array->elem), array->size);
   }
   default:
@@ -71,7 +71,7 @@ void type_free(Type *type)
   if (type) {
     switch (type_kind(type)) {
     case TYPE_PROC: {
-      TypeProc     *proc = (TypeProc *) type;
+      ProcType     *proc = (ProcType *) type;
       unsigned long i;
       for (i = 0; i < proc->param_count; ++i) {
         type_free(proc->param[i]);
@@ -81,7 +81,7 @@ void type_free(Type *type)
       break;
     }
     case TYPE_ARRAY: {
-      TypeArray *array = (TypeArray *) type;
+      ArrayType *array = (ArrayType *) type;
       type_free(array->elem);
       free(array);
       break;
@@ -103,8 +103,8 @@ int type_equal(const Type *left, const Type *right)
   } else {
     switch (left_kind) {
     case TYPE_PROC: {
-      TypeProc *left_proc  = (TypeProc *) left;
-      TypeProc *right_proc = (TypeProc *) right;
+      ProcType *left_proc  = (ProcType *) left;
+      ProcType *right_proc = (ProcType *) right;
       if (left_proc->param_count != right_proc->param_count) {
         return 0;
       } else {
@@ -118,8 +118,8 @@ int type_equal(const Type *left, const Type *right)
       }
     }
     case TYPE_ARRAY: {
-      TypeArray *left_array  = (TypeArray *) left;
-      TypeArray *right_array = (TypeArray *) right;
+      ArrayType *left_array  = (ArrayType *) left;
+      ArrayType *right_array = (ArrayType *) right;
       return type_equal(left_array->elem, right_array->elem);
     }
     default:
@@ -150,7 +150,7 @@ static unsigned long type_to_string__impl(FILE *stream, const Type *type)
   switch (type_kind(type)) {
   case TYPE_PROC: {
     unsigned long length = 0;
-    TypeProc     *proc   = (TypeProc *) type;
+    ProcType     *proc   = (ProcType *) type;
     unsigned long i;
     length += fprintf(stream, "procedure");
     if (proc->param_count > 0) {
@@ -168,7 +168,7 @@ static unsigned long type_to_string__impl(FILE *stream, const Type *type)
 
   case TYPE_ARRAY: {
     unsigned long length = 0;
-    TypeArray    *array  = (TypeArray *) type;
+    ArrayType    *array  = (ArrayType *) type;
     length += fprintf(stream, "array[%lu] of ", array->size);
     length += type_to_string__impl(stream, array->elem);
     return length;
@@ -203,22 +203,22 @@ char *type_to_string(const Type *type)
   return string;
 }
 
-const Type *type_array_elem(const TypeArray *type)
+const Type *type_array_elem(const ArrayType *type)
 {
   return type->elem;
 }
 
-unsigned long type_array_size(const TypeArray *type)
+unsigned long type_array_size(const ArrayType *type)
 {
   return type->size;
 }
 
-unsigned long type_proc_param_count(const TypeProc *type)
+unsigned long type_proc_param_count(const ProcType *type)
 {
   return type->param_count;
 }
 
-const Type *type_proc_param(const TypeProc *type, unsigned long index)
+const Type *type_proc_param(const ProcType *type, unsigned long index)
 {
   return type->param[index];
 }

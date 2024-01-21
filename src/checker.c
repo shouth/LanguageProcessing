@@ -424,7 +424,7 @@ static const Type *check_indexed_var(Checker *checker, const MpplIndexedVar *syn
     } else if (type_kind(index_type) != TYPE_INTEGER) {
       error_array_non_integer_index(checker, (SyntaxTree *) index_syntax, index_type);
     } else {
-      result = type_clone(type_array_elem((const TypeArray *) def_type));
+      result = type_clone(type_array_elem((const ArrayType *) def_type));
       record_expr_type(checker, (SyntaxTree *) syntax, result);
     }
   }
@@ -708,7 +708,7 @@ static void error_call_stmt_non_callable(Checker *checker, const MpplToken *synt
 
 static void error_call_stmt_mismatched_param_count(
   Checker *checker, const MpplActParamList *syntax,
-  const TypeProc *proc_type, unsigned long act_param_count)
+  const ProcType *proc_type, unsigned long act_param_count)
 {
   unsigned long offset      = syntax_tree_offset((SyntaxTree *) syntax);
   unsigned long length      = syntax_tree_text_length((SyntaxTree *) syntax);
@@ -722,7 +722,7 @@ static void error_call_stmt_mismatched_param_count(
 
 static void error_call_stmt_mismatched_param_type(
   Checker *checker, const MpplToken *name_syntax, const MpplActParamList *act_param_list_syntax,
-  const TypeProc *defined_type, const TypeProc *act_type)
+  const ProcType *defined_type, const ProcType *act_type)
 {
   unsigned long i;
   unsigned long offset = syntax_tree_offset((SyntaxTree *) act_param_list_syntax);
@@ -775,7 +775,7 @@ static void error_call_stmt_mismatched_param_type(
 }
 
 static void maybe_error_call_stmt_wrong_param(
-  Checker *checker, const MpplToken *name, const MpplActParamList *param_list, const TypeProc *type)
+  Checker *checker, const MpplToken *name, const MpplActParamList *param_list, const ProcType *type)
 {
   Array *act_param_array = array_new(sizeof(Type *));
   int    expr_error      = 0;
@@ -801,7 +801,7 @@ static void maybe_error_call_stmt_wrong_param(
     Type        **act_param_types = array_steal(act_param_array);
     Type         *act_type        = type_new_proc(act_param_types, act_param_count);
     if (!type_equal((const Type *) type, act_type)) {
-      error_call_stmt_mismatched_param_type(checker, name, param_list, type, (const TypeProc *) act_type);
+      error_call_stmt_mismatched_param_type(checker, name, param_list, type, (const ProcType *) act_type);
     }
     type_free(act_type);
   }
@@ -815,7 +815,7 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
   if (type) {
     MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
     unsigned long     param_count           = act_param_list_syntax ? mppl_act_param_list__expr_count(act_param_list_syntax) : 0;
-    const TypeProc   *type_proc             = (const TypeProc *) type;
+    const ProcType   *type_proc             = (const ProcType *) type;
 
     if (type_kind(type) != TYPE_PROC) {
       error_call_stmt_non_callable(checker, name_syntax);
