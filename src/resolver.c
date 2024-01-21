@@ -39,17 +39,17 @@ static void error_def_conflict(Resolver *resolver, const Binding *previous, cons
 
 static void error_var_res_failure(Resolver *resolver, const Binding *missing)
 {
-  Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", missing->name);
+  Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", string_data(missing->name));
   report_annotation(report, missing->offset, missing->offset + string_length(missing->name),
-    "use of undeclared variable or parameter `%s`", missing->name);
+    "use of undeclared variable or parameter `%s`", string_data(missing->name));
   array_push(resolver->errors, &report);
 }
 
 static void error_proc_res_failure(Resolver *resolver, const Binding *missing)
 {
-  Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", missing->name);
+  Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", string_data(missing->name));
   report_annotation(report, missing->offset, missing->offset + string_length(missing->name),
-    "use of undeclared procedure `%s`", missing->name);
+    "use of undeclared procedure `%s`", string_data(missing->name));
   array_push(resolver->errors, &report);
 }
 
