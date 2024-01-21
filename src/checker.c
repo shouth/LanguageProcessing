@@ -550,10 +550,7 @@ static void error_proc_param_type(Checker *checker, const MpplFmlParamList *synt
 static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syntax, void *checker)
 {
   unsigned long i, j;
-  Array        *params = array_new(sizeof(Type *));
-  unsigned long param_count;
-  Type        **param_types;
-  Type         *infer_type;
+  Array        *params       = array_new(sizeof(Type *));
   int           needs_report = 0;
 
   MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
@@ -582,14 +579,14 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
     }
   }
 
-  param_count = array_count(params);
-  param_types = array_steal(params);
-  infer_type  = type_new_proc(param_types, param_count);
   if (needs_report) {
-    type_free(infer_type);
+    array_free(params);
     error_proc_param_type(checker, param_list_syntax);
   } else {
-    MpplToken *name_syntax = mppl_proc_decl__name(syntax);
+    unsigned long param_count = array_count(params);
+    Type        **param_types = array_steal(params);
+    Type         *infer_type  = type_new_proc(param_types, param_count);
+    MpplToken    *name_syntax = mppl_proc_decl__name(syntax);
     record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
     mppl_free(name_syntax);
   }
