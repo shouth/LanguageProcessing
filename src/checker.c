@@ -683,7 +683,7 @@ static void visit_if_stmt(const MpplAstWalker *walker, const MpplIfStmt *syntax,
   }
 
   mppl_free(cond_syntax);
-  (void) walker;
+  mppl_ast__walk_if_stmt(walker, syntax, checker);
 }
 
 static void visit_while_stmt(const MpplAstWalker *walker, const MpplWhileStmt *syntax, void *checker)
@@ -696,7 +696,7 @@ static void visit_while_stmt(const MpplAstWalker *walker, const MpplWhileStmt *s
   }
 
   mppl_free(cond_syntax);
-  (void) walker;
+  mppl_ast__walk_while_stmt(walker, syntax, checker);
 }
 
 static void error_call_stmt_non_callable(Checker *checker, const MpplToken *syntax)
