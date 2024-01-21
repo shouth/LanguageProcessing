@@ -520,28 +520,31 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
   (void) walker;
 }
 
-int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax, const TypeList *param_types)
+int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax)
 {
   unsigned long i;
   unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
 
   Report *report = NULL;
   for (i = 0; i < mppl_fml_param_list__sec_count(syntax); ++i) {
-    if (!type_is_std(type_list_at(param_types, i))) {
-      MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(syntax, i);
-      AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
-      unsigned long    type_offset      = syntax_tree_offset((SyntaxTree *) type_syntax);
-      unsigned long    type_length      = syntax_tree_text_length((SyntaxTree *) type_syntax);
+    MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(syntax, i);
+    AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
+    Type            *type             = mppl_type__to_type(type_syntax);
 
+    if (!type_is_std(type)) {
+      unsigned long type_offset = syntax_tree_offset((SyntaxTree *) type_syntax);
+      unsigned long type_length = syntax_tree_text_length((SyntaxTree *) type_syntax);
       if (!report) {
         report = report_new(REPORT_KIND_ERROR, offset, "parameter type is not standard");
       }
 
       report_annotation(report, type_offset, type_offset + type_length,
         "parameter type should be one of `integer`, `boolean`, or `char`");
-      mppl_free(type_syntax);
-      mppl_free(param_sec_syntax);
     }
+
+    type_free(type);
+    mppl_free(type_syntax);
+    mppl_free(param_sec_syntax);
   }
 
   if (report) {
@@ -553,27 +556,34 @@ int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax
 
 static TypeList *check_fml_param_list(Checker *checker, const MpplFmlParamList *param_list)
 {
-  unsigned long    i;
-  TypeListBuilder *builder = type_list_builder_new();
-  TypeList        *result;
+  unsigned long i, j;
 
   if (param_list) {
-    for (i = 0; i < mppl_fml_param_list__sec_count(param_list); ++i) {
-      MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list, i);
-      AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
-      type_list_builder_add(builder, mppl_type__to_type(type_syntax));
+    if (maybe_error_proc_param_type(checker, param_list)) {
+      return NULL;
+    } else {
+      TypeListBuilder *builder = type_list_builder_new();
+      for (i = 0; i < mppl_fml_param_list__sec_count(param_list); ++i) {
+        MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list, i);
+        AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
+        Type            *type             = mppl_type__to_type(type_syntax);
 
-      mppl_free(type_syntax);
-      mppl_free(param_sec_syntax);
+        for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
+          MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
+          record_def_type(checker, (SyntaxTree *) name_syntax, type_clone(type));
+          mppl_free(name_syntax);
+          type_list_builder_add(builder, type_clone(type));
+        }
+
+        type_free(type);
+        mppl_free(type_syntax);
+        mppl_free(param_sec_syntax);
+      }
+      return type_list_builder_finish(builder);
     }
-  }
-
-  result = type_list_builder_finish(builder);
-  if (maybe_error_proc_param_type(checker, param_list, result)) {
-    type_list_free(result);
-    return NULL;
   } else {
-    return result;
+    TypeListBuilder *builder = type_list_builder_new();
+    return type_list_builder_finish(builder);
   }
 }
 
@@ -796,6 +806,28 @@ static void maybe_error_call_stmt_wrong_param(
     }
     type_free(act_type);
   }
+}
+
+static TypeList *check_act_param_list(Checker *checker, const MpplActParamList *syntax)
+{
+  unsigned long    i;
+  TypeListBuilder *builder = type_list_builder_new();
+  TypeList        *result;
+
+  if (syntax) {
+    for (i = 0; i < mppl_act_param_list__expr_count(syntax); ++i) {
+      AnyMpplExpr *expr_syntax = mppl_act_param_list__expr(syntax, i);
+      const Type  *expr_type   = check_expr(checker, expr_syntax);
+
+      if (expr_type) {
+        type_list_builder_add(builder, type_clone(expr_type));
+      }
+      mppl_free(expr_syntax);
+    }
+  }
+
+  result = type_list_builder_finish(builder);
+  return result;
 }
 
 static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syntax, void *checker)
