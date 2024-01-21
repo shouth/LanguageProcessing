@@ -536,6 +536,7 @@ int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax
       unsigned long type_length = syntax_tree_text_length((SyntaxTree *) type_syntax);
       if (!report) {
         report = report_new(REPORT_KIND_ERROR, offset, "parameter type is not standard");
+        array_push(checker->errors, &report);
       }
 
       report_annotation(report, type_offset, type_offset + type_length,
@@ -546,11 +547,6 @@ int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax
     mppl_free(type_syntax);
     mppl_free(param_sec_syntax);
   }
-
-  if (report) {
-    array_push(checker->errors, &report);
-  }
-
   return !!report;
 }
 
