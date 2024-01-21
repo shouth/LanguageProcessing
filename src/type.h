@@ -16,19 +16,18 @@ typedef enum {
   TYPE_INTEGER
 } TypeKind;
 
-Type         *type_new(TypeKind kind);
-Type         *type_new_proc(TypeList *param);
-Type         *type_new_array(Type *elem, unsigned long size);
-Type         *type_clone(const Type *type);
-void          type_free(Type *type);
-int           type_equal(const Type *left, const Type *right);
-TypeKind      type_kind(const Type *type);
-int           type_is_std(const Type *type);
-char         *type_to_string(const Type *type);
-const Type   *type_array_elem(const ArrayType *type);
-unsigned long type_array_size(const ArrayType *type);
-unsigned long type_proc_param_count(const ProcType *type);
-const Type   *type_proc_param(const ProcType *type, unsigned long index);
+Type           *type_new(TypeKind kind);
+Type           *type_new_proc(TypeList *param);
+Type           *type_new_array(Type *elem, unsigned long size);
+Type           *type_clone(const Type *type);
+void            type_free(Type *type);
+int             type_equal(const Type *left, const Type *right);
+TypeKind        type_kind(const Type *type);
+int             type_is_std(const Type *type);
+char           *type_to_string(const Type *type);
+const Type     *type_array_elem(const ArrayType *type);
+unsigned long   type_array_size(const ArrayType *type);
+const TypeList *type_proc_param(const ProcType *type);
 
 TypeListBuilder *type_list_builder_new(void);
 void             type_list_builder_add(TypeListBuilder *builder, Type *type);

@@ -201,14 +201,9 @@ unsigned long type_array_size(const ArrayType *type)
   return type->size;
 }
 
-unsigned long type_proc_param_count(const ProcType *type)
+const TypeList *type_proc_param(const ProcType *type)
 {
-  return type_list_count(type->param);
-}
-
-const Type *type_proc_param(const ProcType *type, unsigned long index)
-{
-  return type_list_at(type->param, index);
+  return type->param;
 }
 
 TypeListBuilder *type_list_builder_new(void)
