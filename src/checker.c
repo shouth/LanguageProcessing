@@ -580,6 +580,9 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   }
 
   if (needs_report) {
+    for (i = 0; i < array_count(params); ++i) {
+      type_free(*(Type **) array_at(params, i));
+    }
     array_free(params);
     error_proc_param_type(checker, param_list_syntax);
   } else {
