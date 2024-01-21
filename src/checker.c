@@ -550,9 +550,9 @@ static void error_proc_param_type(Checker *checker, const MpplFmlParamList *synt
 static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syntax, void *checker)
 {
   unsigned long i, j;
-  Array        *params       = array_new(sizeof(Type *));
   int           needs_report = 0;
 
+  TypeListBuilder  *params            = type_list_builder_new();
   MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
   if (param_list_syntax) {
     for (i = 0; i < mppl_fml_param_list__sec_count(param_list_syntax); ++i) {
@@ -565,10 +565,8 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
       } else {
         for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
           MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
-          Type      *param_type  = type_clone(type);
-          Type      *infer_type  = type_clone(type);
-          array_push(params, &param_type);
-          record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
+          type_list_builder_add(params, type_clone(type));
+          record_def_type(checker, (SyntaxTree *) name_syntax, type_clone(type));
           mppl_free(name_syntax);
         }
       }
@@ -580,16 +578,11 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   }
 
   if (needs_report) {
-    for (i = 0; i < array_count(params); ++i) {
-      type_free(*(Type **) array_at(params, i));
-    }
-    array_free(params);
+    type_list_free(type_list_builder_finish(params));
     error_proc_param_type(checker, param_list_syntax);
   } else {
-    unsigned long param_count = array_count(params);
-    Type        **param_types = array_steal(params);
-    Type         *infer_type  = type_new_proc(param_types, param_count);
-    MpplToken    *name_syntax = mppl_proc_decl__name(syntax);
+    Type      *infer_type  = type_new_proc(type_list_builder_finish(params));
+    MpplToken *name_syntax = mppl_proc_decl__name(syntax);
     record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
     mppl_free(name_syntax);
   }
@@ -777,8 +770,8 @@ static void error_call_stmt_mismatched_param_type(
 static void maybe_error_call_stmt_wrong_param(
   Checker *checker, const MpplToken *name, const MpplActParamList *param_list, const ProcType *type)
 {
-  Array *act_param_array = array_new(sizeof(Type *));
-  int    expr_error      = 0;
+  TypeListBuilder *act_params = type_list_builder_new();
+  int              expr_error = 0;
 
   if (param_list) {
     unsigned long i;
@@ -789,17 +782,14 @@ static void maybe_error_call_stmt_wrong_param(
       if (!act_param_type) {
         expr_error = 1;
       } else {
-        Type *act_param_clone = type_clone(act_param_type);
-        array_push(act_param_array, &act_param_clone);
+        type_list_builder_add(act_params, type_clone(act_param_type));
       }
       mppl_free(act_param_syntax);
     }
   }
 
   if (!expr_error) {
-    unsigned long act_param_count = array_count(act_param_array);
-    Type        **act_param_types = array_steal(act_param_array);
-    Type         *act_type        = type_new_proc(act_param_types, act_param_count);
+    Type *act_type = type_new_proc(type_list_builder_finish(act_params));
     if (!type_equal((const Type *) type, act_type)) {
       error_call_stmt_mismatched_param_type(checker, name, param_list, type, (const ProcType *) act_type);
     }
