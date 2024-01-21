@@ -520,70 +520,71 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
   (void) walker;
 }
 
-static void error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax)
+int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax, const TypeList *param_types)
 {
   unsigned long i;
   unsigned long offset = syntax_tree_offset((SyntaxTree *) syntax);
-  Report       *report = report_new(REPORT_KIND_ERROR, offset, "invalid parameter type");
 
+  Report *report = NULL;
   for (i = 0; i < mppl_fml_param_list__sec_count(syntax); ++i) {
-    MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(syntax, i);
-    AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
-    Type            *type             = mppl_type__to_type(type_syntax);
-
-    if (!type_is_std(type)) {
-      unsigned long type_offset = syntax_tree_offset((SyntaxTree *) type_syntax);
-      unsigned long type_length = syntax_tree_text_length((SyntaxTree *) type_syntax);
-      char         *type_string = type_to_string(type);
-      report_annotation(report, type_offset, type_offset + type_length,
-        "parameter type should be one of `integer`, `boolean`, or `char`", type_string);
-      free(type_string);
-    }
-
-    type_free(type);
-    mppl_free(type_syntax);
-    mppl_free(param_sec_syntax);
-  }
-  array_push(checker->errors, &report);
-}
-
-static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syntax, void *checker)
-{
-  unsigned long i, j;
-  int           needs_report = 0;
-
-  TypeListBuilder  *params            = type_list_builder_new();
-  MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
-  if (param_list_syntax) {
-    for (i = 0; i < mppl_fml_param_list__sec_count(param_list_syntax); ++i) {
-      MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list_syntax, i);
+    if (!type_is_std(type_list_at(param_types, i))) {
+      MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(syntax, i);
       AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
-      Type            *type             = mppl_type__to_type(type_syntax);
+      unsigned long    type_offset      = syntax_tree_offset((SyntaxTree *) type_syntax);
+      unsigned long    type_length      = syntax_tree_text_length((SyntaxTree *) type_syntax);
 
-      if (!type_is_std(type)) {
-        needs_report = 1;
-      } else {
-        for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
-          MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
-          type_list_builder_add(params, type_clone(type));
-          record_def_type(checker, (SyntaxTree *) name_syntax, type_clone(type));
-          mppl_free(name_syntax);
-        }
+      if (!report) {
+        report = report_new(REPORT_KIND_ERROR, offset, "parameter type is not standard");
       }
 
-      type_free(type);
+      report_annotation(report, type_offset, type_offset + type_length,
+        "parameter type should be one of `integer`, `boolean`, or `char`");
       mppl_free(type_syntax);
       mppl_free(param_sec_syntax);
     }
   }
 
-  if (needs_report) {
-    type_list_free(type_list_builder_finish(params));
-    error_proc_param_type(checker, param_list_syntax);
+  if (report) {
+    array_push(checker->errors, &report);
+  }
+
+  return !!report;
+}
+
+static TypeList *check_fml_param_list(Checker *checker, const MpplFmlParamList *param_list)
+{
+  unsigned long    i;
+  TypeListBuilder *builder = type_list_builder_new();
+  TypeList        *result;
+
+  if (param_list) {
+    for (i = 0; i < mppl_fml_param_list__sec_count(param_list); ++i) {
+      MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list, i);
+      AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
+      type_list_builder_add(builder, mppl_type__to_type(type_syntax));
+
+      mppl_free(type_syntax);
+      mppl_free(param_sec_syntax);
+    }
+  }
+
+  result = type_list_builder_finish(builder);
+  if (maybe_error_proc_param_type(checker, param_list, result)) {
+    type_list_free(result);
+    return NULL;
   } else {
-    Type      *infer_type  = type_new_proc(type_list_builder_finish(params));
+    return result;
+  }
+}
+
+static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syntax, void *checker)
+{
+  MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
+  TypeList         *param_types       = check_fml_param_list(checker, param_list_syntax);
+
+  if (param_types) {
     MpplToken *name_syntax = mppl_proc_decl__name(syntax);
-    record_def_type(checker, (SyntaxTree *) name_syntax, infer_type);
+    record_def_type(checker, (SyntaxTree *) name_syntax, type_new_proc(param_types));
     mppl_free(name_syntax);
   }
 
