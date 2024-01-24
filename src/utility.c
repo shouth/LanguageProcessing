@@ -56,3 +56,18 @@ int is_graphic(int c)
 {
   return is_alphabet(c) || is_number(c) || is_space(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
 }
+
+long utf8_len(const char *str, long len)
+{
+  if ((str[0] & 0x80) == 0x00) {
+    return 1;
+  } else if ((str[0] & 0xE0) == 0xC0) {
+    return len >= 2 && (str[1] & 0xC0) == 0x80 ? 2 : -1;
+  } else if ((str[0] & 0xF0) == 0xE0) {
+    return len >= 3 && (str[1] & 0xC0) == 0x80 && (str[2] & 0xC0) == 0x80 ? 3 : -1;
+  } else if ((str[0] & 0xF8) == 0xF0) {
+    return len >= 4 && (str[1] & 0xC0) == 0x80 && (str[2] & 0xC0) == 0x80 && (str[3] & 0xC0) == 0x80 ? 4 : -1;
+  } else {
+    return -1;
+  }
+}

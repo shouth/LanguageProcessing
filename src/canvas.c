@@ -1,4 +1,3 @@
-#include <locale.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +6,7 @@
 #include "array.h"
 #include "canvas.h"
 #include "terminal.h"
+#include "utility.h"
 
 typedef struct CanvasStyle CanvasStyle;
 
@@ -189,15 +189,13 @@ void canvas_write(Canvas *canvas, const char *format, ...)
   long    index = 0;
   char    buffer[BUFFER_SIZE + 1];
 
-  setlocale(LC_ALL, "C.UTF-8");
   va_start(args, format);
   vfprintf(file, format, args);
   va_end(args);
   rewind(file);
-  mblen(NULL, 0);
   while (fgets(buffer + index, BUFFER_SIZE - index, file)) {
     while (buffer[index]) {
-      int size = mblen(buffer + index, BUFFER_SIZE - index);
+      long size = utf8_len(buffer + index, BUFFER_SIZE - index);
       if (size < 0) {
         int remain = strlen(buffer + index);
         memmove(buffer, buffer + index, remain);
