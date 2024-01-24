@@ -709,5 +709,5 @@ MpplLitKind mppl_lit__kind(const AnyMpplLit *lit)
 
 void mppl_free(void *ast)
 {
-  syntax_tree_free(ast);
+  syntax_tree_unref(ast);
 }

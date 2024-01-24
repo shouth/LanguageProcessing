@@ -26,8 +26,8 @@ void res_free(Res *res)
     MapIndex index;
     for (map_index(res->node_to_def, &index); map_next(res->node_to_def, &index);) {
       Def *def = map_value(res->node_to_def, &index);
-      syntax_tree_free((SyntaxTree *) def->id);
-      syntax_tree_free((SyntaxTree *) def->body);
+      syntax_tree_unref(def->id);
+      syntax_tree_unref(def->body);
       free(def);
     }
     map_free(res->node_to_def);
@@ -44,8 +44,8 @@ const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const Syntax
   } else {
     Def *def     = xmalloc(sizeof(Def));
     def->kind    = kind;
-    def->id      = syntax_tree_subtree(id);
-    def->body    = syntax_tree_subtree(body);
+    def->id      = syntax_tree_ref(id);
+    def->body    = syntax_tree_ref(body);
     def->offset  = offset;
     def->binding = *binding;
     map_update(res->node_to_def, &index, (void *) syntax_tree_raw(id), def);

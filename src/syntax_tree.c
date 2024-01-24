@@ -12,7 +12,7 @@ struct SyntaxTree {
   const SyntaxTree *parent;
   RawSyntaxNode    *inner;
   unsigned long     offset;
-  unsigned long     flags;
+  unsigned long     ref;
 };
 
 struct SyntaxBuilder {
@@ -100,14 +100,36 @@ void raw_syntax_node_free(RawSyntaxNode *node)
   }
 }
 
-static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, RawSyntaxNode *inner, unsigned long offset, unsigned long flags)
+static SyntaxTree *syntax_tree_new(const SyntaxTree *parent, RawSyntaxNode *inner, unsigned long offset)
 {
   SyntaxTree *tree = xmalloc(sizeof(SyntaxTree));
-  tree->parent     = parent;
+  tree->parent     = syntax_tree_ref(parent);
   tree->inner      = inner;
   tree->offset     = offset;
-  tree->flags      = flags;
+  tree->ref        = 1;
   return tree;
+}
+
+const SyntaxTree *syntax_tree_ref(const SyntaxTree *tree)
+{
+  SyntaxTree *mutable_tree = (SyntaxTree *) tree;
+  if (tree) {
+    ++mutable_tree->ref;
+  }
+  return tree;
+}
+
+void syntax_tree_unref(const SyntaxTree *tree)
+{
+  SyntaxTree *mutable_tree = (SyntaxTree *) tree;
+  if (tree && --mutable_tree->ref == 0) {
+    if (tree->parent) {
+      syntax_tree_unref(tree->parent);
+    } else {
+      raw_syntax_node_free(tree->inner);
+    }
+    free(mutable_tree);
+  }
 }
 
 const RawSyntaxNode *syntax_tree_raw(const SyntaxTree *tree)
@@ -167,16 +189,7 @@ SyntaxTree *syntax_tree_child(const SyntaxTree *tree, unsigned long index)
         offset += raw_syntax_node_text_length(inner->children[i]);
       }
     }
-    return syntax_tree_new(tree, inner->children[index], offset, 0);
-  }
-}
-
-SyntaxTree *syntax_tree_subtree(const SyntaxTree *tree)
-{
-  if (tree) {
-    return syntax_tree_new(NULL, tree->inner, tree->offset, 0);
-  } else {
-    return NULL;
+    return syntax_tree_new(tree, inner->children[index], offset);
   }
 }
 
@@ -190,21 +203,11 @@ void syntax_tree_visit(const SyntaxTree *tree, SyntaxTreeVisitor *visitor, void 
         for (i = 0; i < inner->children_count; ++i) {
           SyntaxTree *child = syntax_tree_child(tree, i);
           syntax_tree_visit(child, visitor, data);
-          syntax_tree_free(child);
+          syntax_tree_unref(child);
         }
       }
       visitor(tree, data, 0);
     }
-  }
-}
-
-void syntax_tree_free(SyntaxTree *tree)
-{
-  if (tree) {
-    if (tree->flags & 1) {
-      raw_syntax_node_free(tree->inner);
-    }
-    free(tree);
   }
 }
 
@@ -307,7 +310,7 @@ void syntax_builder_token(SyntaxBuilder *builder, SyntaxKind kind, const String 
 SyntaxTree *syntax_builder_build(SyntaxBuilder *builder)
 {
   RawSyntaxNode **root = (RawSyntaxNode **) array_front(builder->children);
-  SyntaxTree     *tree = syntax_tree_new(NULL, *root, raw_syntax_node_trivia_length(*root), 1);
+  SyntaxTree     *tree = syntax_tree_new(NULL, *root, raw_syntax_node_trivia_length(*root));
   syntax_builder_free(builder);
   return tree;
 }
