@@ -17,8 +17,8 @@ Map          *map_new_with_capacity(unsigned long capacity, MapHasher *hasher, M
 void          map_free(Map *map);
 unsigned long map_count(Map *map);
 void          map_reserve(Map *map, unsigned long capacity);
-int           map_find(Map *map, void *key, MapIndex *index);
-void          map_index(Map *map, MapIndex *index);
+int           map_entry(Map *map, void *key, MapIndex *index);
+void          map_iterator(Map *map, MapIndex *index);
 int           map_next(Map *map, MapIndex *index);
 void         *map_key(Map *map, MapIndex *index);
 void         *map_value(Map *map, MapIndex *index);

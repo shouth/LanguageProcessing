@@ -55,7 +55,7 @@ static void increment_token(Map *counts, SyntaxKind kind, const char *text, unsi
 {
   CounterEntry *counter = counter_entry_new(kind, text, text_length);
   MapIndex      index;
-  if (map_find(counts, &counter->token, &index)) {
+  if (map_entry(counts, &counter->token, &index)) {
     counter_entry_free(counter);
     counter = map_value(counts, &index);
   } else {
@@ -97,7 +97,7 @@ static Array *list_token(Map *counts)
 {
   Array   *list = array_new_with_capacity(sizeof(CounterEntry *), map_count(counts));
   MapIndex entry;
-  for (map_index(counts, &entry); map_next(counts, &entry);) {
+  for (map_iterator(counts, &entry); map_next(counts, &entry);) {
     CounterEntry *value = map_value(counts, &entry);
     array_push(list, &value);
   }

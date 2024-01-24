@@ -24,7 +24,7 @@ void res_free(Res *res)
 {
   if (res) {
     MapIndex index;
-    for (map_index(res->node_to_def, &index); map_next(res->node_to_def, &index);) {
+    for (map_iterator(res->node_to_def, &index); map_next(res->node_to_def, &index);) {
       Def *def = map_value(res->node_to_def, &index);
       syntax_tree_unref(def->id);
       syntax_tree_unref(def->body);
@@ -39,7 +39,7 @@ void res_free(Res *res)
 const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const SyntaxTree *id, const SyntaxTree *body, unsigned long offset)
 {
   MapIndex index;
-  if (map_find(res->node_to_def, (void *) syntax_tree_raw(id), &index)) {
+  if (map_entry(res->node_to_def, (void *) syntax_tree_raw(id), &index)) {
     unreachable();
   } else {
     Def *def     = xmalloc(sizeof(Def));
@@ -56,7 +56,7 @@ const Def *res_create_def(Res *res, DefKind kind, Binding *binding, const Syntax
 const Def *res_get_def(const Res *res, const RawSyntaxNode *node)
 {
   MapIndex index;
-  if (map_find(res->node_to_def, (void *) node, &index)) {
+  if (map_entry(res->node_to_def, (void *) node, &index)) {
     return map_value(res->node_to_def, &index);
   } else {
     return NULL;
@@ -66,7 +66,7 @@ const Def *res_get_def(const Res *res, const RawSyntaxNode *node)
 const Def *res_get_ref(const Res *res, const RawSyntaxNode *node)
 {
   MapIndex index;
-  if (map_find(res->ref_to_def, (void *) node, &index)) {
+  if (map_entry(res->ref_to_def, (void *) node, &index)) {
     return map_value(res->ref_to_def, &index);
   } else {
     return NULL;
@@ -76,6 +76,6 @@ const Def *res_get_ref(const Res *res, const RawSyntaxNode *node)
 void res_record_ref(Res *res, const RawSyntaxNode *node, const Def *def)
 {
   MapIndex index;
-  map_find(res->ref_to_def, (void *) node, &index);
+  map_entry(res->ref_to_def, (void *) node, &index);
   map_update(res->ref_to_def, &index, (void *) node, (void *) def);
 }

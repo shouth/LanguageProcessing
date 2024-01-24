@@ -77,7 +77,7 @@ static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *i
   binding.name   = name_token->string;
   binding.offset = syntax_tree_offset(name_syntax);
 
-  if (resolver->scope && map_find(resolver->scope->defs, (void *) binding.name, &index)) {
+  if (resolver->scope && map_entry(resolver->scope->defs, (void *) binding.name, &index)) {
     const Def *previous = map_value(resolver->scope->defs, &index);
     error_def_conflict(resolver, &previous->binding, &binding);
   } else {
@@ -94,7 +94,7 @@ static const Def *get_def(Resolver *resolver, const String *name)
   Scope *scope;
   for (scope = resolver->scope; scope; scope = scope->parent) {
     MapIndex index;
-    if (map_find(scope->defs, (void *) name, &index)) {
+    if (map_entry(scope->defs, (void *) name, &index)) {
       return map_value(scope->defs, &index);
     }
   }

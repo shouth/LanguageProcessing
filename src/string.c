@@ -20,7 +20,7 @@ const String *string_from(const char *string, unsigned long length, StringContex
   key.length = length;
   key.data   = string;
 
-  if (!map_find(context->strings, &key, &index)) {
+  if (!map_entry(context->strings, &key, &index)) {
     String *instance = xmalloc(sizeof(String));
     char   *str      = xmalloc(length + 1);
     memcpy(str, string, length);
@@ -67,7 +67,7 @@ void string_context_free(StringContext *context)
 {
   if (context) {
     MapIndex index;
-    for (map_index(context->strings, &index); map_next(context->strings, &index);) {
+    for (map_iterator(context->strings, &index); map_next(context->strings, &index);) {
       String *string = map_value(context->strings, &index);
       free((char *) string->data);
       free(string);

@@ -103,7 +103,7 @@ void map_reserve(Map *map, unsigned long capacity)
   }
 }
 
-int map_find(Map *map, void *key, MapIndex *index)
+int map_entry(Map *map, void *key, MapIndex *index)
 {
   unsigned long i;
   map_index_init(index, map, key);
@@ -116,7 +116,7 @@ int map_find(Map *map, void *key, MapIndex *index)
   return !!index->_slot;
 }
 
-void map_index(Map *map, MapIndex *index)
+void map_iterator(Map *map, MapIndex *index)
 {
   index->_bucket = map->buckets;
   index->_slot   = NULL;
