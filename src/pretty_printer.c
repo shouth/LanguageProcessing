@@ -94,7 +94,7 @@ static void print_program(Printer *printer, const MpplProgram *syntax)
     print_indent(printer);
     print_decl_part(printer, part);
 
-    mppl_free(part);
+    mppl_unref(part);
   }
   --printer->indent;
   print_indent(printer);
@@ -102,11 +102,11 @@ static void print_program(Printer *printer, const MpplProgram *syntax)
   print_token(printer, dot_token);
   print_newline();
 
-  mppl_free(program_token);
-  mppl_free(name_token);
-  mppl_free(semi_token);
-  mppl_free(stmt);
-  mppl_free(dot_token);
+  mppl_unref(program_token);
+  mppl_unref(name_token);
+  mppl_unref(semi_token);
+  mppl_unref(stmt);
+  mppl_unref(dot_token);
 }
 
 static void print_decl_part(Printer *printer, const AnyMpplDeclPart *syntax)
@@ -138,12 +138,12 @@ static void print_var_decl_part(Printer *printer, const MpplVarDeclPart *syntax)
     print_token(printer, semi_token);
     print_newline();
 
-    mppl_free(decl);
-    mppl_free(semi_token);
+    mppl_unref(decl);
+    mppl_unref(semi_token);
   }
   --printer->indent;
 
-  mppl_free(var_token);
+  mppl_unref(var_token);
 }
 
 static void print_var_decl(Printer *printer, const MpplVarDecl *syntax)
@@ -162,18 +162,18 @@ static void print_var_decl(Printer *printer, const MpplVarDecl *syntax)
       print_token(printer, comma_token);
       print_space();
 
-      mppl_free(comma_token);
+      mppl_unref(comma_token);
     }
 
-    mppl_free(name_token);
+    mppl_unref(name_token);
   }
   print_space();
   print_token(printer, colon_token);
   print_space();
   print_type(printer, type);
 
-  mppl_free(colon_token);
-  mppl_free(type);
+  mppl_unref(colon_token);
+  mppl_unref(type);
 }
 
 static void print_proc_decl(Printer *printer, const MpplProcDecl *syntax)
@@ -203,13 +203,13 @@ static void print_proc_decl(Printer *printer, const MpplProcDecl *syntax)
   print_token(printer, semi_token_1);
   print_newline();
 
-  mppl_free(proc_token);
-  mppl_free(name_token);
-  mppl_free(list);
-  mppl_free(semi_token_0);
-  mppl_free(part);
-  mppl_free(stmt);
-  mppl_free(semi_token_1);
+  mppl_unref(proc_token);
+  mppl_unref(name_token);
+  mppl_unref(list);
+  mppl_unref(semi_token_0);
+  mppl_unref(part);
+  mppl_unref(stmt);
+  mppl_unref(semi_token_1);
 }
 
 static void print_fml_param_list(Printer *printer, const MpplFmlParamList *syntax)
@@ -229,15 +229,15 @@ static void print_fml_param_list(Printer *printer, const MpplFmlParamList *synta
       print_token(printer, semi_token);
       print_space();
 
-      mppl_free(semi_token);
+      mppl_unref(semi_token);
     }
 
-    mppl_free(sec);
+    mppl_unref(sec);
   }
   print_token(printer, rparen_token);
 
-  mppl_free(lparen_token);
-  mppl_free(rparen_token);
+  mppl_unref(lparen_token);
+  mppl_unref(rparen_token);
 }
 
 static void print_fml_param_sec(Printer *printer, const MpplFmlParamSec *syntax)
@@ -256,18 +256,18 @@ static void print_fml_param_sec(Printer *printer, const MpplFmlParamSec *syntax)
       print_token(printer, comma_token);
       print_space();
 
-      mppl_free(comma_token);
+      mppl_unref(comma_token);
     }
 
-    mppl_free(name_token);
+    mppl_unref(name_token);
   }
   print_space();
   print_token(printer, colon_token);
   print_space();
   print_type(printer, type);
 
-  mppl_free(colon_token);
-  mppl_free(type);
+  mppl_unref(colon_token);
+  mppl_unref(type);
 }
 
 static void print_stmt(Printer *printer, const AnyMpplStmt *syntax)
@@ -331,9 +331,9 @@ static void print_assign_stmt(Printer *printer, const MpplAssignStmt *syntax)
   print_space();
   print_expr(printer, rhs);
 
-  mppl_free(var);
-  mppl_free(assign_token);
-  mppl_free(rhs);
+  mppl_unref(var);
+  mppl_unref(assign_token);
+  mppl_unref(rhs);
 }
 
 static void print_if_stmt(Printer *printer, const MpplIfStmt *syntax)
@@ -363,12 +363,12 @@ static void print_if_stmt(Printer *printer, const MpplIfStmt *syntax)
     }
   }
 
-  mppl_free(if_token);
-  mppl_free(cond);
-  mppl_free(then_token);
-  mppl_free(then_stmt);
-  mppl_free(else_token);
-  mppl_free(else_stmt);
+  mppl_unref(if_token);
+  mppl_unref(cond);
+  mppl_unref(then_token);
+  mppl_unref(then_stmt);
+  mppl_unref(else_token);
+  mppl_unref(else_stmt);
 }
 
 static void print_while_stmt(Printer *printer, const MpplWhileStmt *syntax)
@@ -385,10 +385,10 @@ static void print_while_stmt(Printer *printer, const MpplWhileStmt *syntax)
   print_token_keyword(printer, do_token);
   print_stmt__conditional(printer, do_stmt);
 
-  mppl_free(while_token);
-  mppl_free(cond);
-  mppl_free(do_token);
-  mppl_free(do_stmt);
+  mppl_unref(while_token);
+  mppl_unref(cond);
+  mppl_unref(do_token);
+  mppl_unref(do_stmt);
 }
 
 static void print_break_stmt(Printer *printer, const MpplBreakStmt *syntax)
@@ -397,7 +397,7 @@ static void print_break_stmt(Printer *printer, const MpplBreakStmt *syntax)
 
   print_token_keyword(printer, break_token);
 
-  mppl_free(break_token);
+  mppl_unref(break_token);
 }
 
 static void print_call_stmt(Printer *printer, const MpplCallStmt *syntax)
@@ -413,9 +413,9 @@ static void print_call_stmt(Printer *printer, const MpplCallStmt *syntax)
     print_act_param_list(printer, list);
   }
 
-  mppl_free(call_token);
-  mppl_free(name_token);
-  mppl_free(list);
+  mppl_unref(call_token);
+  mppl_unref(name_token);
+  mppl_unref(list);
 }
 
 static void print_return_stmt(Printer *printer, const MpplReturnStmt *syntax)
@@ -424,7 +424,7 @@ static void print_return_stmt(Printer *printer, const MpplReturnStmt *syntax)
 
   print_token_keyword(printer, return_token);
 
-  mppl_free(return_token);
+  mppl_unref(return_token);
 }
 
 static void print_input_stmt(Printer *printer, const MpplInputStmt *syntax)
@@ -437,8 +437,8 @@ static void print_input_stmt(Printer *printer, const MpplInputStmt *syntax)
     print_input_list(printer, list);
   }
 
-  mppl_free(read_token);
-  mppl_free(list);
+  mppl_unref(read_token);
+  mppl_unref(list);
 }
 
 static void print_output_stmt(Printer *printer, const MpplOutputStmt *syntax)
@@ -451,8 +451,8 @@ static void print_output_stmt(Printer *printer, const MpplOutputStmt *syntax)
     print_out_list(printer, list);
   }
 
-  mppl_free(write_token);
-  mppl_free(list);
+  mppl_unref(write_token);
+  mppl_unref(list);
 }
 
 static void print_comp_stmt(Printer *printer, const MpplCompStmt *syntax)
@@ -474,22 +474,22 @@ static void print_comp_stmt(Printer *printer, const MpplCompStmt *syntax)
       print_stmt(printer, inner_stmt);
       print_token(printer, semi_token);
 
-      mppl_free(semi_token);
+      mppl_unref(semi_token);
     } else if (inner_stmt) {
       print_newline();
       print_indent(printer);
       print_stmt(printer, inner_stmt);
     }
 
-    mppl_free(inner_stmt);
+    mppl_unref(inner_stmt);
   }
   --printer->indent;
   print_newline();
   print_indent(printer);
   print_token_keyword(printer, end_token);
 
-  mppl_free(begin_token);
-  mppl_free(end_token);
+  mppl_unref(begin_token);
+  mppl_unref(end_token);
 }
 
 static void print_act_param_list(Printer *printer, const MpplActParamList *syntax)
@@ -509,15 +509,15 @@ static void print_act_param_list(Printer *printer, const MpplActParamList *synta
       print_token(printer, comma_token);
       print_space();
 
-      mppl_free(comma_token);
+      mppl_unref(comma_token);
     }
 
-    mppl_free(expr);
+    mppl_unref(expr);
   }
   print_token(printer, rparen_token);
 
-  mppl_free(lparen_token);
-  mppl_free(rparen_token);
+  mppl_unref(lparen_token);
+  mppl_unref(rparen_token);
 }
 
 static void print_input_list(Printer *printer, const MpplInputList *syntax)
@@ -537,15 +537,15 @@ static void print_input_list(Printer *printer, const MpplInputList *syntax)
       print_token(printer, comma_token);
       print_space();
 
-      mppl_free(comma_token);
+      mppl_unref(comma_token);
     }
 
-    mppl_free(var);
+    mppl_unref(var);
   }
   print_token(printer, rparen_token);
 
-  mppl_free(lparen_token);
-  mppl_free(rparen_token);
+  mppl_unref(lparen_token);
+  mppl_unref(rparen_token);
 }
 
 static void print_expr(Printer *printer, const AnyMpplExpr *syntax)
@@ -589,9 +589,9 @@ static void print_binary_expr(Printer *printer, const MpplBinaryExpr *syntax)
     print_expr(printer, rhs_expr);
   }
 
-  mppl_free(lhs_expr);
-  mppl_free(op_token);
-  mppl_free(rhs_expr);
+  mppl_unref(lhs_expr);
+  mppl_unref(op_token);
+  mppl_unref(rhs_expr);
 }
 
 static void print_paren_expr(Printer *printer, const MpplParenExpr *syntax)
@@ -604,9 +604,9 @@ static void print_paren_expr(Printer *printer, const MpplParenExpr *syntax)
   print_expr(printer, expr);
   print_token(printer, rparen_token);
 
-  mppl_free(lparen_token);
-  mppl_free(expr);
-  mppl_free(rparen_token);
+  mppl_unref(lparen_token);
+  mppl_unref(expr);
+  mppl_unref(rparen_token);
 }
 
 static void print_not_expr(Printer *printer, const MpplNotExpr *syntax)
@@ -618,8 +618,8 @@ static void print_not_expr(Printer *printer, const MpplNotExpr *syntax)
   print_space();
   print_expr(printer, expr);
 
-  mppl_free(not_token);
-  mppl_free(expr);
+  mppl_unref(not_token);
+  mppl_unref(expr);
 }
 
 static void print_cast_expr(Printer *printer, const MpplCastExpr *syntax)
@@ -634,10 +634,10 @@ static void print_cast_expr(Printer *printer, const MpplCastExpr *syntax)
   print_expr(printer, expr_expr);
   print_token(printer, rparen_token);
 
-  mppl_free(type);
-  mppl_free(lparen_token);
-  mppl_free(expr_expr);
-  mppl_free(rparen_token);
+  mppl_unref(type);
+  mppl_unref(lparen_token);
+  mppl_unref(expr_expr);
+  mppl_unref(rparen_token);
 }
 
 static void print_var(Printer *printer, const AnyMpplVar *syntax)
@@ -658,7 +658,7 @@ static void print_entire_var(Printer *printer, const MpplEntireVar *syntax)
 
   print_token(printer, name_token);
 
-  mppl_free(name_token);
+  mppl_unref(name_token);
 }
 
 static void print_indexed_var(Printer *printer, const MpplIndexedVar *syntax)
@@ -673,10 +673,10 @@ static void print_indexed_var(Printer *printer, const MpplIndexedVar *syntax)
   print_expr(printer, expr_expr);
   print_token(printer, rbracket_token);
 
-  mppl_free(name_token);
-  mppl_free(lbracket_token);
-  mppl_free(expr_expr);
-  mppl_free(rbracket_token);
+  mppl_unref(name_token);
+  mppl_unref(lbracket_token);
+  mppl_unref(expr_expr);
+  mppl_unref(rbracket_token);
 }
 
 static void print_type(Printer *printer, const AnyMpplType *syntax)
@@ -714,12 +714,12 @@ static void print_array_type(Printer *printer, const MpplArrayType *syntax)
   print_space();
   print_std_type(printer, type);
 
-  mppl_free(array_token);
-  mppl_free(lbracket_token);
-  mppl_free(size);
-  mppl_free(rbracket_token);
-  mppl_free(of_token);
-  mppl_free(type);
+  mppl_unref(array_token);
+  mppl_unref(lbracket_token);
+  mppl_unref(size);
+  mppl_unref(rbracket_token);
+  mppl_unref(of_token);
+  mppl_unref(type);
 }
 
 static void print_out_list(Printer *printer, const MpplOutList *syntax)
@@ -739,15 +739,15 @@ static void print_out_list(Printer *printer, const MpplOutList *syntax)
       print_token(printer, comma_token);
       print_space();
 
-      mppl_free(comma_token);
+      mppl_unref(comma_token);
     }
 
-    mppl_free(value);
+    mppl_unref(value);
   }
   print_token(printer, rparen_token);
 
-  mppl_free(lparen_token);
-  mppl_free(rparen_token);
+  mppl_unref(lparen_token);
+  mppl_unref(rparen_token);
 }
 
 static void print_out_value(Printer *printer, const MpplOutValue *syntax)
@@ -764,9 +764,9 @@ static void print_out_value(Printer *printer, const MpplOutValue *syntax)
     print_lit(printer, (AnyMpplLit *) width);
   }
 
-  mppl_free(expr);
-  mppl_free(token);
-  mppl_free(width);
+  mppl_unref(expr);
+  mppl_unref(token);
+  mppl_unref(width);
 }
 
 static void print_lit(Printer *printer, const AnyMpplLit *syntax)

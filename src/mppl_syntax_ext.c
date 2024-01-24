@@ -38,8 +38,8 @@ Type *mppl_type__to_type(const AnyMpplType *syntax)
     Type                *elem_type    = mppl_std_type__to_type(elem_syntax);
     long                 size         = mppl_lit_number__to_long(size_syntax);
 
-    mppl_free(size_syntax);
-    mppl_free(elem_syntax);
+    mppl_unref(size_syntax);
+    mppl_unref(elem_syntax);
     return type_new_array(elem_type, size);
   }
 

@@ -135,7 +135,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
 {
   MpplToken *name_syntax = mppl_program__name(syntax);
   try_create_def(resolver, DEF_PROGRAM, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
-  mppl_free(name_syntax);
+  mppl_unref(name_syntax);
   push_scope(resolver);
   mppl_ast__walk_program(walker, syntax, resolver);
   pop_scope(resolver);
@@ -145,7 +145,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
 {
   MpplToken *name_syntax = mppl_proc_decl__name(syntax);
   try_create_def(resolver, DEF_PROC, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
-  mppl_free(name_syntax);
+  mppl_unref(name_syntax);
   push_scope(resolver);
   mppl_ast__walk_proc_decl(walker, syntax, resolver);
   pop_scope(resolver);
@@ -157,7 +157,7 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
   for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
     MpplToken *name_syntax = mppl_var_decl__name(syntax, i);
     try_create_def(resolver, DEF_VAR, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
-    mppl_free(name_syntax);
+    mppl_unref(name_syntax);
   }
   (void) walker;
 }
@@ -168,7 +168,7 @@ static void visit_fml_param_sec(const MpplAstWalker *walker, const MpplFmlParamS
   for (i = 0; i < mppl_fml_param_sec__name_count(syntax); ++i) {
     SyntaxTree *name_syntax = (SyntaxTree *) mppl_fml_param_sec__name(syntax, i);
     try_create_def(resolver, DEF_PARAM, (const SyntaxTree *) syntax, name_syntax);
-    mppl_free(name_syntax);
+    mppl_unref(name_syntax);
   }
   (void) walker;
 }
@@ -177,7 +177,7 @@ static void visit_entire_var(const MpplAstWalker *walker, const MpplEntireVar *s
 {
   MpplToken *name_syntax = mppl_entire_var__name(syntax);
   try_record_ref(resolver, (const SyntaxTree *) name_syntax, 0);
-  mppl_free(name_syntax);
+  mppl_unref(name_syntax);
   (void) walker;
 }
 
@@ -185,7 +185,7 @@ static void visit_indexed_var(const MpplAstWalker *walker, const MpplIndexedVar 
 {
   MpplToken *name_syntax = mppl_indexed_var__name(syntax);
   try_record_ref(resolver, (const SyntaxTree *) name_syntax, 0);
-  mppl_free(name_syntax);
+  mppl_unref(name_syntax);
   (void) walker;
 }
 
@@ -202,7 +202,7 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
       }
     }
   }
-  mppl_free(name_syntax);
+  mppl_unref(name_syntax);
   mppl_ast__walk_call_stmt(walker, syntax, resolver);
 }
 

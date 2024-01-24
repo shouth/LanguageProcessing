@@ -718,7 +718,7 @@ int mppl_parse(const Source *source, StringContext *strings, MpplProgram **synta
   result = !array_count(parser.errors);
 
   if (!result) {
-    mppl_free(*syntax);
+    mppl_unref(*syntax);
     *syntax = NULL;
   }
 

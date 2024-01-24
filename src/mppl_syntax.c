@@ -707,7 +707,7 @@ MpplLitKind mppl_lit__kind(const AnyMpplLit *lit)
 
 /* free ast node */
 
-void mppl_free(void *ast)
+void mppl_unref(void *ast)
 {
   syntax_tree_unref(ast);
 }

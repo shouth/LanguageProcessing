@@ -261,9 +261,9 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
     }
   }
 
-  mppl_free(op_syntax);
-  mppl_free(lhs_syntax);
-  mppl_free(rhs_syntax);
+  mppl_unref(op_syntax);
+  mppl_unref(lhs_syntax);
+  mppl_unref(rhs_syntax);
   return result;
 }
 
@@ -278,7 +278,7 @@ static const Type *check_paren_expr(Checker *checker, const MpplParenExpr *synta
     record_expr_type(checker, (SyntaxTree *) syntax, result);
   }
 
-  mppl_free(expr_syntax);
+  mppl_unref(expr_syntax);
   return result;
 }
 
@@ -311,14 +311,14 @@ static const Type *check_not_expr(Checker *checker, const MpplNotExpr *syntax)
       MpplToken *not_token = mppl_not_expr__not_token(syntax);
       error_not_expr_invalid_operand(checker,
         (SyntaxTree *) syntax, (SyntaxTree *) not_token, (SyntaxTree *) expr_syntax, type);
-      mppl_free(not_token);
+      mppl_unref(not_token);
     } else {
       result = type_new(TYPE_BOOLEAN);
       record_expr_type(checker, (SyntaxTree *) syntax, result);
     }
   }
 
-  mppl_free(expr_syntax);
+  mppl_unref(expr_syntax);
   return result;
 }
 
@@ -367,8 +367,8 @@ static const Type *check_cast_expr(Checker *checker, const MpplCastExpr *syntax)
     }
   }
 
-  mppl_free(expr_syntax);
-  mppl_free(type_syntax);
+  mppl_unref(expr_syntax);
+  mppl_unref(type_syntax);
   return result;
 }
 
@@ -382,7 +382,7 @@ static const Type *check_entire_var(Checker *checker, const MpplEntireVar *synta
     record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
   }
 
-  mppl_free(name_syntax);
+  mppl_unref(name_syntax);
   return type;
 }
 
@@ -429,8 +429,8 @@ static const Type *check_indexed_var(Checker *checker, const MpplIndexedVar *syn
     }
   }
 
-  mppl_free(name_syntax);
-  mppl_free(index_syntax);
+  mppl_unref(name_syntax);
+  mppl_unref(index_syntax);
   return result;
 }
 
@@ -512,10 +512,10 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
     Type      *type        = mppl_type__to_type(type_syntax);
     MpplToken *name_syntax = mppl_var_decl__name(syntax, i);
     record_def_type(checker, (const SyntaxTree *) name_syntax, type);
-    mppl_free(name_syntax);
+    mppl_unref(name_syntax);
   }
 
-  mppl_free(type_syntax);
+  mppl_unref(type_syntax);
   mppl_ast__walk_var_decl(walker, syntax, checker);
   (void) walker;
 }
@@ -544,8 +544,8 @@ int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax
     }
 
     type_free(type);
-    mppl_free(type_syntax);
-    mppl_free(param_sec_syntax);
+    mppl_unref(type_syntax);
+    mppl_unref(param_sec_syntax);
   }
   return !!report;
 }
@@ -567,13 +567,13 @@ static TypeList *check_fml_param_list(Checker *checker, const MpplFmlParamList *
         for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
           MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
           record_def_type(checker, (SyntaxTree *) name_syntax, type_clone(type));
-          mppl_free(name_syntax);
+          mppl_unref(name_syntax);
           type_list_builder_add(builder, type_clone(type));
         }
 
         type_free(type);
-        mppl_free(type_syntax);
-        mppl_free(param_sec_syntax);
+        mppl_unref(type_syntax);
+        mppl_unref(param_sec_syntax);
       }
       return type_list_builder_finish(builder);
     }
@@ -591,10 +591,10 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   if (param_types) {
     MpplToken *name_syntax = mppl_proc_decl__name(syntax);
     record_def_type(checker, (SyntaxTree *) name_syntax, type_new_proc(param_types));
-    mppl_free(name_syntax);
+    mppl_unref(name_syntax);
   }
 
-  mppl_free(param_list_syntax);
+  mppl_unref(param_list_syntax);
   mppl_ast__walk_proc_decl(walker, syntax, checker);
   (void) walker;
 }
@@ -652,8 +652,8 @@ static void visit_assign_stmt(const MpplAstWalker *walker, const MpplAssignStmt 
     }
   }
 
-  mppl_free(lhs_syntax);
-  mppl_free(rhs_syntax);
+  mppl_unref(lhs_syntax);
+  mppl_unref(rhs_syntax);
   (void) walker;
 }
 
@@ -678,7 +678,7 @@ static void visit_if_stmt(const MpplAstWalker *walker, const MpplIfStmt *syntax,
     error_conditional_stmt_invalid_condition(checker, (SyntaxTree *) cond_syntax, cond_type);
   }
 
-  mppl_free(cond_syntax);
+  mppl_unref(cond_syntax);
   mppl_ast__walk_if_stmt(walker, syntax, checker);
 }
 
@@ -691,7 +691,7 @@ static void visit_while_stmt(const MpplAstWalker *walker, const MpplWhileStmt *s
     error_conditional_stmt_invalid_condition(checker, (SyntaxTree *) cond_syntax, cond_type);
   }
 
-  mppl_free(cond_syntax);
+  mppl_unref(cond_syntax);
   mppl_ast__walk_while_stmt(walker, syntax, checker);
 }
 
@@ -743,7 +743,7 @@ static void error_call_stmt_wrong_param(
         free(defined_param_type_string);
         free(act_param_type_string);
       }
-      mppl_free(act_param_syntax);
+      mppl_unref(act_param_syntax);
     }
   }
   array_push(checker->errors, &report);
@@ -765,12 +765,12 @@ static void error_call_stmt_wrong_param(
       unsigned long    type_offset          = syntax_tree_offset((SyntaxTree *) type_syntax);
       unsigned long    type_length          = syntax_tree_text_length((SyntaxTree *) type_syntax);
       report_annotation(report, type_offset, type_offset + type_length, NULL);
-      mppl_free(type_syntax);
-      mppl_free(fml_param_sec_syntax);
+      mppl_unref(type_syntax);
+      mppl_unref(fml_param_sec_syntax);
     }
     array_push(checker->errors, &report);
-    mppl_free(fml_param_list_syntax);
-    mppl_free(id_syntax);
+    mppl_unref(fml_param_list_syntax);
+    mppl_unref(id_syntax);
   }
 }
 
@@ -787,7 +787,7 @@ static TypeList *check_act_param_list(Checker *checker, const MpplActParamList *
 
       expr_error |= !expr_type;
       type_list_builder_add(builder, type_clone(expr_type));
-      mppl_free(expr_syntax);
+      mppl_unref(expr_syntax);
     }
   }
 
@@ -818,11 +818,11 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
       error_call_stmt_wrong_param(checker, name_syntax, act_param_list_syntax, type_proc, act_param_types);
     }
 
-    mppl_free(act_param_list_syntax);
+    mppl_unref(act_param_list_syntax);
     type_list_free(act_param_types);
   }
 
-  mppl_free(name_syntax);
+  mppl_unref(name_syntax);
   (void) walker;
 }
 
@@ -845,7 +845,7 @@ static void maybe_error_input_stmt_invalid_operand(Checker *checker, const MpplI
 
       report_annotation(report, var_offset, var_offset + var_length,
         "expected one of `integer`, or `char`, found `%s`", var_type_string);
-      mppl_free(var_syntax);
+      mppl_unref(var_syntax);
       free(var_type_string);
     }
   }
@@ -864,7 +864,7 @@ static TypeList *check_input_list(Checker *checker, const MpplInputList *syntax)
 
       expr_error |= !var_type;
       type_list_builder_add(builder, type_clone(var_type));
-      mppl_free(var_syntax);
+      mppl_unref(var_syntax);
     }
   }
 
@@ -888,7 +888,7 @@ static void visit_input_stmt(const MpplAstWalker *walker, const MpplInputStmt *s
     type_list_free(input_types);
   }
 
-  mppl_free(input_list_syntax);
+  mppl_unref(input_list_syntax);
   (void) walker;
 }
 
@@ -927,12 +927,12 @@ static void maybe_error_output_stmt_invalid_operand(Checker *checker, const Mppl
 
         report_annotation(report, start, end,
           "field width cannot be applied to `string`");
-        mppl_free(width_syntax);
+        mppl_unref(width_syntax);
       }
     }
-    mppl_free(out_value_syntax);
-    mppl_free(colon_syntax);
-    mppl_free(expr_syntax);
+    mppl_unref(out_value_syntax);
+    mppl_unref(colon_syntax);
+    mppl_unref(expr_syntax);
   }
 }
 
@@ -950,8 +950,8 @@ static TypeList *check_output_list(Checker *checker, const MpplOutList *syntax)
 
       expr_error |= !expr_type;
       type_list_builder_add(builder, type_clone(expr_type));
-      mppl_free(expr_syntax);
-      mppl_free(out_value_syntax);
+      mppl_unref(expr_syntax);
+      mppl_unref(out_value_syntax);
     }
   }
 
@@ -975,7 +975,7 @@ static void visit_output_stmt(const MpplAstWalker *walker, const MpplOutputStmt 
     type_list_free(out_types);
   }
 
-  mppl_free(out_list_syntax);
+  mppl_unref(out_list_syntax);
   (void) walker;
 }
 
@@ -995,7 +995,7 @@ static void visit_array_type(const MpplAstWalker *walker, const MpplArrayType *s
   if (mppl_lit_number__to_long(size_syntax) == 0) {
     error_array_type_invalid_size(checker, size_syntax);
   }
-  mppl_free(size_syntax);
+  mppl_unref(size_syntax);
   (void) walker;
 }
 

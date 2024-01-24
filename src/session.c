@@ -41,7 +41,7 @@ void session_free(Session *session)
   if (session) {
     free(session->filename);
     source_free(session->source);
-    mppl_free(session->syntax);
+    mppl_unref(session->syntax);
     res_free(session->res);
     infer_free(session->infer);
     string_context_free(session->strings);
