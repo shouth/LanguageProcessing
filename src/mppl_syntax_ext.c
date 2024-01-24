@@ -130,7 +130,7 @@ void mppl_ast_walker__setup(MpplAstWalker *walker)
   static void consume_##name(const MpplAstWalker *walker, type *syntax, void *data)     \
   {                                                                                     \
     visit_##name(walker, syntax, data);                                                 \
-    mppl_free(syntax);                                                                  \
+    mppl_unref(syntax);                                                                 \
   }
 
 DEFINE(program, MpplProgram)
