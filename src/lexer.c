@@ -117,7 +117,7 @@ static LexStatus token_string(Lexer *lexer, LexedToken *lexed)
   }
 }
 
-static int token_whitespace(Lexer *lexer, LexedToken *lexed)
+static LexStatus token_whitespace(Lexer *lexer, LexedToken *lexed)
 {
   if (eat_if(lexer, &is_space)) {
     while (eat_if(lexer, &is_space)) { }
@@ -127,7 +127,7 @@ static int token_whitespace(Lexer *lexer, LexedToken *lexed)
   }
 }
 
-static int token_comment(Lexer *lexer, LexedToken *lexed)
+static LexStatus token_comment(Lexer *lexer, LexedToken *lexed)
 {
   if (eat(lexer, '{')) {
     while (1) {
@@ -160,7 +160,7 @@ static int token_comment(Lexer *lexer, LexedToken *lexed)
   }
 }
 
-static int token_symbol(Lexer *lexer, LexedToken *lexed)
+static LexStatus token_symbol(Lexer *lexer, LexedToken *lexed)
 {
   if (eat(lexer, '+')) {
     return tokenize(lexer, SYNTAX_PLUS_TOKEN, lexed);
