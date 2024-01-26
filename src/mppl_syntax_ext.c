@@ -120,64 +120,62 @@ void mppl_ast_walker__setup(MpplAstWalker *walker)
   walker->visit_string_lit       = &mppl_ast__walk_string_lit;
 }
 
-#define DEFINE(name, type)                                                              \
-  static void visit_##name(const MpplAstWalker *walker, const type *syntax, void *data) \
-  {                                                                                     \
-    if (walker->visit_##name && syntax) {                                               \
-      walker->visit_##name(walker, syntax, data);                                       \
-    }                                                                                   \
-  }                                                                                     \
-  static void consume_##name(const MpplAstWalker *walker, type *syntax, void *data)     \
-  {                                                                                     \
-    visit_##name(walker, syntax, data);                                                 \
-    mppl_unref(syntax);                                                                 \
+#define VISITOR_MpplProgram        visit_program
+#define VISITOR_AnyMpplDeclPart    visit_decl_part
+#define VISITOR_MpplVarDeclPart    visit_var_decl_part
+#define VISITOR_MpplVarDecl        visit_var_decl
+#define VISITOR_MpplProcDecl       visit_proc_decl
+#define VISITOR_MpplFmlParamList   visit_fml_param_list
+#define VISITOR_MpplFmlParamSec    visit_fml_param_sec
+#define VISITOR_AnyMpplStmt        visit_stmt
+#define VISITOR_MpplAssignStmt     visit_assign_stmt
+#define VISITOR_MpplIfStmt         visit_if_stmt
+#define VISITOR_MpplWhileStmt      visit_while_stmt
+#define VISITOR_MpplBreakStmt      visit_break_stmt
+#define VISITOR_MpplCallStmt       visit_call_stmt
+#define VISITOR_MpplReturnStmt     visit_return_stmt
+#define VISITOR_MpplInputStmt      visit_input_stmt
+#define VISITOR_MpplOutputStmt     visit_output_stmt
+#define VISITOR_MpplCompStmt       visit_comp_stmt
+#define VISITOR_MpplActParamList   visit_act_param_list
+#define VISITOR_AnyMpplExpr        visit_expr
+#define VISITOR_MpplBinaryExpr     visit_binary_expr
+#define VISITOR_MpplParenExpr      visit_paren_expr
+#define VISITOR_MpplNotExpr        visit_not_expr
+#define VISITOR_MpplCastExpr       visit_cast_expr
+#define VISITOR_AnyMpplVar         visit_var
+#define VISITOR_MpplEntireVar      visit_entire_var
+#define VISITOR_MpplIndexedVar     visit_indexed_var
+#define VISITOR_AnyMpplType        visit_type
+#define VISITOR_MpplArrayType      visit_array_type
+#define VISITOR_AnyMpplStdType     visit_std_type
+#define VISITOR_MpplStdTypeBoolean visit_std_type_boolean
+#define VISITOR_MpplStdTypeChar    visit_std_type_char
+#define VISITOR_MpplStdTypeInteger visit_std_type_integer
+#define VISITOR_MpplInputList      visit_input_list
+#define VISITOR_MpplOutList        visit_output_list
+#define VISITOR_MpplOutValue       visit_output_value
+#define VISITOR_AnyMpplLit         visit_lit
+#define VISITOR_MpplNumberLit      visit_number_lit
+#define VISITOR_MpplBooleanLit     visit_boolean_lit
+#define VISITOR_MpplStringLit      visit_string_lit
+
+#define VISIT(walker, type, syntax, data)               \
+  if (walker->VISITOR_##type) {                         \
+    const type *visit_syntax = syntax;                  \
+    walker->VISITOR_##type(walker, visit_syntax, data); \
   }
 
-DEFINE(program, MpplProgram)
-DEFINE(decl_part, AnyMpplDeclPart)
-DEFINE(var_decl_part, MpplVarDeclPart)
-DEFINE(var_decl, MpplVarDecl)
-DEFINE(proc_decl, MpplProcDecl)
-DEFINE(fml_param_list, MpplFmlParamList)
-DEFINE(fml_param_sec, MpplFmlParamSec)
-DEFINE(stmt, AnyMpplStmt)
-DEFINE(assign_stmt, MpplAssignStmt)
-DEFINE(if_stmt, MpplIfStmt)
-DEFINE(while_stmt, MpplWhileStmt)
-DEFINE(break_stmt, MpplBreakStmt)
-DEFINE(call_stmt, MpplCallStmt)
-DEFINE(return_stmt, MpplReturnStmt)
-DEFINE(input_stmt, MpplInputStmt)
-DEFINE(output_stmt, MpplOutputStmt)
-DEFINE(comp_stmt, MpplCompStmt)
-DEFINE(act_param_list, MpplActParamList)
-DEFINE(expr, AnyMpplExpr)
-DEFINE(binary_expr, MpplBinaryExpr)
-DEFINE(paren_expr, MpplParenExpr)
-DEFINE(not_expr, MpplNotExpr)
-DEFINE(cast_expr, MpplCastExpr)
-DEFINE(var, AnyMpplVar)
-DEFINE(entire_var, MpplEntireVar)
-DEFINE(indexed_var, MpplIndexedVar)
-DEFINE(type, AnyMpplType)
-DEFINE(array_type, MpplArrayType)
-DEFINE(std_type, AnyMpplStdType)
-DEFINE(std_type_integer, MpplStdTypeInteger)
-DEFINE(std_type_boolean, MpplStdTypeBoolean)
-DEFINE(std_type_char, MpplStdTypeChar)
-DEFINE(input_list, MpplInputList)
-DEFINE(output_list, MpplOutList)
-DEFINE(output_value, MpplOutValue)
-DEFINE(lit, AnyMpplLit)
-DEFINE(number_lit, MpplNumberLit)
-DEFINE(boolean_lit, MpplBooleanLit)
-DEFINE(string_lit, MpplStringLit)
-
-#undef DEFINE
+#define CONSUME(walker, type, syntax, data)    \
+  {                                            \
+    type *consume_syntax = syntax;             \
+    VISIT(walker, type, consume_syntax, data); \
+    mppl_unref(consume_syntax);                \
+  }
 
 void mppl_ast_walker__travel(MpplAstWalker *walker, const MpplProgram *syntax, void *data)
 {
-  visit_program(walker, syntax, data);
+  VISIT(walker, MpplProgram, syntax, data);
 }
 
 void mppl_ast__walk_program(const MpplAstWalker *walker, const MpplProgram *syntax, void *data)
@@ -185,9 +183,9 @@ void mppl_ast__walk_program(const MpplAstWalker *walker, const MpplProgram *synt
   if (syntax) {
     unsigned long i;
     for (i = 0; i < mppl_program__decl_part_count(syntax); ++i) {
-      consume_decl_part(walker, mppl_program__decl_part(syntax, i), data);
+      CONSUME(walker, AnyMpplDeclPart, mppl_program__decl_part(syntax, i), data);
     }
-    consume_comp_stmt(walker, mppl_program__stmt(syntax), data);
+    CONSUME(walker, MpplCompStmt, mppl_program__stmt(syntax), data);
   }
 }
 
@@ -196,11 +194,11 @@ void mppl_ast__walk_decl_part(const MpplAstWalker *walker, const AnyMpplDeclPart
   if (syntax) {
     switch (mppl_decl_part__kind(syntax)) {
     case MPPL_DECL_PART_VAR:
-      visit_var_decl_part(walker, (const MpplVarDeclPart *) syntax, data);
+      VISIT(walker, MpplVarDeclPart, (const MpplVarDeclPart *) syntax, data);
       break;
 
     case MPPL_DECL_PART_PROC:
-      visit_proc_decl(walker, (const MpplProcDecl *) syntax, data);
+      VISIT(walker, MpplProcDecl, (const MpplProcDecl *) syntax, data);
       break;
     }
   }
@@ -211,7 +209,7 @@ void mppl_ast__walk_var_decl_part(const MpplAstWalker *walker, const MpplVarDecl
   if (syntax) {
     unsigned long i;
     for (i = 0; i < mppl_var_decl_part__var_decl_count(syntax); ++i) {
-      consume_var_decl(walker, mppl_var_decl_part__var_decl(syntax, i), data);
+      CONSUME(walker, MpplVarDecl, mppl_var_decl_part__var_decl(syntax, i), data);
     }
   }
 }
@@ -219,16 +217,16 @@ void mppl_ast__walk_var_decl_part(const MpplAstWalker *walker, const MpplVarDecl
 void mppl_ast__walk_var_decl(const MpplAstWalker *walker, const MpplVarDecl *syntax, void *data)
 {
   if (syntax) {
-    consume_type(walker, mppl_var_decl__type(syntax), data);
+    CONSUME(walker, AnyMpplType, mppl_var_decl__type(syntax), data);
   }
 }
 
 void mppl_ast__walk_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syntax, void *data)
 {
   if (syntax) {
-    consume_fml_param_list(walker, mppl_proc_decl__fml_param_list(syntax), data);
-    consume_var_decl_part(walker, mppl_proc_decl__var_decl_part(syntax), data);
-    consume_comp_stmt(walker, mppl_proc_decl__comp_stmt(syntax), data);
+    CONSUME(walker, MpplFmlParamList, mppl_proc_decl__fml_param_list(syntax), data);
+    CONSUME(walker, MpplVarDeclPart, mppl_proc_decl__var_decl_part(syntax), data);
+    CONSUME(walker, MpplCompStmt, mppl_proc_decl__comp_stmt(syntax), data);
   }
 }
 
@@ -237,7 +235,7 @@ void mppl_ast__walk_fml_param_list(const MpplAstWalker *walker, const MpplFmlPar
   if (syntax) {
     unsigned long i;
     for (i = 0; i < mppl_fml_param_list__sec_count(syntax); ++i) {
-      consume_fml_param_sec(walker, mppl_fml_param_list__sec(syntax, i), data);
+      CONSUME(walker, MpplFmlParamSec, mppl_fml_param_list__sec(syntax, i), data);
     }
   }
 }
@@ -245,7 +243,7 @@ void mppl_ast__walk_fml_param_list(const MpplAstWalker *walker, const MpplFmlPar
 void mppl_ast__walk_fml_param_sec(const MpplAstWalker *walker, const MpplFmlParamSec *syntax, void *data)
 {
   if (syntax) {
-    consume_type(walker, mppl_fml_param_sec__type(syntax), data);
+    CONSUME(walker, AnyMpplType, mppl_fml_param_sec__type(syntax), data);
   }
 }
 
@@ -254,39 +252,39 @@ void mppl_ast__walk_stmt(const MpplAstWalker *walker, const AnyMpplStmt *syntax,
   if (syntax) {
     switch (mppl_stmt__kind(syntax)) {
     case MPPL_STMT_ASSIGN:
-      visit_assign_stmt(walker, (const MpplAssignStmt *) syntax, data);
+      VISIT(walker, MpplAssignStmt, (const MpplAssignStmt *) syntax, data);
       break;
 
     case MPPL_STMT_IF:
-      visit_if_stmt(walker, (const MpplIfStmt *) syntax, data);
+      VISIT(walker, MpplIfStmt, (const MpplIfStmt *) syntax, data);
       break;
 
     case MPPL_STMT_WHILE:
-      visit_while_stmt(walker, (const MpplWhileStmt *) syntax, data);
+      VISIT(walker, MpplWhileStmt, (const MpplWhileStmt *) syntax, data);
       break;
 
     case MPPL_STMT_BREAK:
-      visit_break_stmt(walker, (const MpplBreakStmt *) syntax, data);
+      VISIT(walker, MpplBreakStmt, (const MpplBreakStmt *) syntax, data);
       break;
 
     case MPPL_STMT_CALL:
-      visit_call_stmt(walker, (const MpplCallStmt *) syntax, data);
+      VISIT(walker, MpplCallStmt, (const MpplCallStmt *) syntax, data);
       break;
 
     case MPPL_STMT_RETURN:
-      visit_return_stmt(walker, (const MpplReturnStmt *) syntax, data);
+      VISIT(walker, MpplReturnStmt, (const MpplReturnStmt *) syntax, data);
       break;
 
     case MPPL_STMT_INPUT:
-      visit_input_stmt(walker, (const MpplInputStmt *) syntax, data);
+      VISIT(walker, MpplInputStmt, (const MpplInputStmt *) syntax, data);
       break;
 
     case MPPL_STMT_OUTPUT:
-      visit_output_stmt(walker, (const MpplOutputStmt *) syntax, data);
+      VISIT(walker, MpplOutputStmt, (const MpplOutputStmt *) syntax, data);
       break;
 
     case MPPL_STMT_COMP:
-      visit_comp_stmt(walker, (const MpplCompStmt *) syntax, data);
+      VISIT(walker, MpplCompStmt, (const MpplCompStmt *) syntax, data);
       break;
     }
   }
@@ -295,25 +293,25 @@ void mppl_ast__walk_stmt(const MpplAstWalker *walker, const AnyMpplStmt *syntax,
 void mppl_ast__walk_assign_stmt(const MpplAstWalker *walker, const MpplAssignStmt *syntax, void *data)
 {
   if (syntax) {
-    consume_var(walker, mppl_assign_stmt__lhs(syntax), data);
-    consume_expr(walker, mppl_assign_stmt__rhs(syntax), data);
+    CONSUME(walker, AnyMpplVar, mppl_assign_stmt__lhs(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_assign_stmt__rhs(syntax), data);
   }
 }
 
 void mppl_ast__walk_if_stmt(const MpplAstWalker *walker, const MpplIfStmt *syntax, void *data)
 {
   if (syntax) {
-    consume_expr(walker, mppl_if_stmt__cond(syntax), data);
-    consume_stmt(walker, mppl_if_stmt__then_stmt(syntax), data);
-    consume_stmt(walker, mppl_if_stmt__else_stmt(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_if_stmt__cond(syntax), data);
+    CONSUME(walker, AnyMpplStmt, mppl_if_stmt__then_stmt(syntax), data);
+    CONSUME(walker, AnyMpplStmt, mppl_if_stmt__else_stmt(syntax), data);
   }
 }
 
 void mppl_ast__walk_while_stmt(const MpplAstWalker *walker, const MpplWhileStmt *syntax, void *data)
 {
   if (syntax) {
-    consume_expr(walker, mppl_while_stmt__cond(syntax), data);
-    consume_stmt(walker, mppl_while_stmt__do_stmt(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_while_stmt__cond(syntax), data);
+    CONSUME(walker, AnyMpplStmt, mppl_while_stmt__do_stmt(syntax), data);
   }
 }
 
@@ -327,7 +325,7 @@ void mppl_ast__walk_break_stmt(const MpplAstWalker *walker, const MpplBreakStmt 
 void mppl_ast__walk_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syntax, void *data)
 {
   if (syntax) {
-    consume_act_param_list(walker, mppl_call_stmt__act_param_list(syntax), data);
+    CONSUME(walker, MpplActParamList, mppl_call_stmt__act_param_list(syntax), data);
   }
 }
 
@@ -341,14 +339,14 @@ void mppl_ast__walk_return_stmt(const MpplAstWalker *walker, const MpplReturnStm
 void mppl_ast__walk_input_stmt(const MpplAstWalker *walker, const MpplInputStmt *syntax, void *data)
 {
   if (syntax) {
-    consume_input_list(walker, mppl_input_stmt__input_list(syntax), data);
+    CONSUME(walker, MpplInputList, mppl_input_stmt__input_list(syntax), data);
   }
 }
 
 void mppl_ast__walk_output_stmt(const MpplAstWalker *walker, const MpplOutputStmt *syntax, void *data)
 {
   if (syntax) {
-    consume_output_list(walker, mppl_output_stmt__output_list(syntax), data);
+    CONSUME(walker, MpplOutList, mppl_output_stmt__output_list(syntax), data);
   }
 }
 
@@ -357,7 +355,7 @@ void mppl_ast__walk_comp_stmt(const MpplAstWalker *walker, const MpplCompStmt *s
   if (syntax) {
     unsigned long i;
     for (i = 0; i < mppl_comp_stmt__stmt_count(syntax); ++i) {
-      consume_stmt(walker, mppl_comp_stmt__stmt(syntax, i), data);
+      CONSUME(walker, AnyMpplStmt, mppl_comp_stmt__stmt(syntax, i), data);
     }
   }
 }
@@ -367,7 +365,7 @@ void mppl_ast__walk_act_param_list(const MpplAstWalker *walker, const MpplActPar
   if (syntax) {
     unsigned long i;
     for (i = 0; i < mppl_act_param_list__expr_count(syntax); ++i) {
-      consume_expr(walker, mppl_act_param_list__expr(syntax, i), data);
+      CONSUME(walker, AnyMpplExpr, mppl_act_param_list__expr(syntax, i), data);
     }
   }
 }
@@ -377,27 +375,27 @@ void mppl_ast__walk_expr(const MpplAstWalker *walker, const AnyMpplExpr *syntax,
   if (syntax) {
     switch (mppl_expr__kind(syntax)) {
     case MPPL_EXPR_BINARY:
-      visit_binary_expr(walker, (const MpplBinaryExpr *) syntax, data);
+      VISIT(walker, MpplBinaryExpr, (const MpplBinaryExpr *) syntax, data);
       break;
 
     case MPPL_EXPR_PAREN:
-      visit_paren_expr(walker, (const MpplParenExpr *) syntax, data);
+      VISIT(walker, MpplParenExpr, (const MpplParenExpr *) syntax, data);
       break;
 
     case MPPL_EXPR_NOT:
-      visit_not_expr(walker, (const MpplNotExpr *) syntax, data);
+      VISIT(walker, MpplNotExpr, (const MpplNotExpr *) syntax, data);
       break;
 
     case MPPL_EXPR_CAST:
-      visit_cast_expr(walker, (const MpplCastExpr *) syntax, data);
+      VISIT(walker, MpplCastExpr, (const MpplCastExpr *) syntax, data);
       break;
 
     case MPPL_EXPR_VAR:
-      visit_var(walker, (const AnyMpplVar *) syntax, data);
+      VISIT(walker, AnyMpplVar, (const AnyMpplVar *) syntax, data);
       break;
 
     case MPPL_EXPR_LIT:
-      visit_lit(walker, (const AnyMpplLit *) syntax, data);
+      VISIT(walker, AnyMpplLit, (const AnyMpplLit *) syntax, data);
       break;
     }
   }
@@ -406,30 +404,30 @@ void mppl_ast__walk_expr(const MpplAstWalker *walker, const AnyMpplExpr *syntax,
 void mppl_ast__walk_binary_expr(const MpplAstWalker *walker, const MpplBinaryExpr *syntax, void *data)
 {
   if (syntax) {
-    consume_expr(walker, mppl_binary_expr__lhs(syntax), data);
-    consume_expr(walker, mppl_binary_expr__rhs(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_binary_expr__lhs(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_binary_expr__rhs(syntax), data);
   }
 }
 
 void mppl_ast__walk_paren_expr(const MpplAstWalker *walker, const MpplParenExpr *syntax, void *data)
 {
   if (syntax) {
-    consume_expr(walker, mppl_paren_expr__expr(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_paren_expr__expr(syntax), data);
   }
 }
 
 void mppl_ast__walk_not_expr(const MpplAstWalker *walker, const MpplNotExpr *syntax, void *data)
 {
   if (syntax) {
-    consume_expr(walker, mppl_not_expr__expr(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_not_expr__expr(syntax), data);
   }
 }
 
 void mppl_ast__walk_cast_expr(const MpplAstWalker *walker, const MpplCastExpr *syntax, void *data)
 {
   if (syntax) {
-    consume_std_type(walker, mppl_cast_expr__type(syntax), data);
-    consume_expr(walker, mppl_cast_expr__expr(syntax), data);
+    CONSUME(walker, AnyMpplStdType, mppl_cast_expr__type(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_cast_expr__expr(syntax), data);
   }
 }
 
@@ -438,11 +436,11 @@ void mppl_ast__walk_var(const MpplAstWalker *walker, const AnyMpplVar *syntax, v
   if (syntax) {
     switch (mppl_var__kind(syntax)) {
     case MPPL_VAR_ENTIRE:
-      visit_entire_var(walker, (const MpplEntireVar *) syntax, data);
+      VISIT(walker, MpplEntireVar, (const MpplEntireVar *) syntax, data);
       break;
 
     case MPPL_VAR_INDEXED:
-      visit_indexed_var(walker, (const MpplIndexedVar *) syntax, data);
+      VISIT(walker, MpplIndexedVar, (const MpplIndexedVar *) syntax, data);
       break;
     }
   }
@@ -458,7 +456,7 @@ void mppl_ast__walk_entire_var(const MpplAstWalker *walker, const MpplEntireVar 
 void mppl_ast__walk_indexed_var(const MpplAstWalker *walker, const MpplIndexedVar *syntax, void *data)
 {
   if (syntax) {
-    consume_expr(walker, mppl_indexed_var__expr(syntax), data);
+    CONSUME(walker, AnyMpplExpr, mppl_indexed_var__expr(syntax), data);
   }
 }
 
@@ -467,11 +465,11 @@ void mppl_ast__walk_type(const MpplAstWalker *walker, const AnyMpplType *syntax,
   if (syntax) {
     switch (mppl_type__kind(syntax)) {
     case MPPL_TYPE_ARRAY:
-      visit_array_type(walker, (const MpplArrayType *) syntax, data);
+      VISIT(walker, MpplArrayType, (const MpplArrayType *) syntax, data);
       break;
 
     case MPPL_TYPE_STD:
-      visit_std_type(walker, (const AnyMpplStdType *) syntax, data);
+      VISIT(walker, AnyMpplStdType, (const AnyMpplStdType *) syntax, data);
       break;
     }
   }
@@ -480,8 +478,8 @@ void mppl_ast__walk_type(const MpplAstWalker *walker, const AnyMpplType *syntax,
 void mppl_ast__walk_array_type(const MpplAstWalker *walker, const MpplArrayType *syntax, void *data)
 {
   if (syntax) {
-    consume_number_lit(walker, mppl_array_type__size(syntax), data);
-    consume_std_type(walker, mppl_array_type__type(syntax), data);
+    CONSUME(walker, AnyMpplStdType, mppl_array_type__type(syntax), data);
+    CONSUME(walker, MpplNumberLit, mppl_array_type__size(syntax), data);
   }
 }
 
@@ -490,15 +488,15 @@ void mppl_ast__walk_std_type(const MpplAstWalker *walker, const AnyMpplStdType *
   if (type) {
     switch (mppl_std_type__kind(type)) {
     case MPPL_STD_TYPE_BOOLEAN:
-      visit_std_type_boolean(walker, (const MpplStdTypeBoolean *) type, data);
+      VISIT(walker, MpplStdTypeBoolean, (const MpplStdTypeBoolean *) type, data);
       break;
 
     case MPPL_STD_TYPE_CHAR:
-      visit_std_type_char(walker, (const MpplStdTypeChar *) type, data);
+      VISIT(walker, MpplStdTypeChar, (const MpplStdTypeChar *) type, data);
       break;
 
     case MPPL_STD_TYPE_INTEGER:
-      visit_std_type_integer(walker, (const MpplStdTypeInteger *) type, data);
+      VISIT(walker, MpplStdTypeInteger, (const MpplStdTypeInteger *) type, data);
       break;
     }
   }
@@ -530,7 +528,7 @@ void mppl_ast__walk_input_list(const MpplAstWalker *walker, const MpplInputList 
   if (list) {
     unsigned long i;
     for (i = 0; i < mppl_input_list__var_count(list); ++i) {
-      consume_var(walker, mppl_input_list__var(list, i), data);
+      CONSUME(walker, AnyMpplVar, mppl_input_list__var(list, i), data);
     }
   }
 }
@@ -540,7 +538,7 @@ void mppl_ast__walk_output_list(const MpplAstWalker *walker, const MpplOutList *
   if (list) {
     unsigned long i;
     for (i = 0; i < mppl_out_list__out_value_count(list); ++i) {
-      consume_output_value(walker, mppl_out_list__out_value(list, i), data);
+      CONSUME(walker, MpplOutValue, mppl_out_list__out_value(list, i), data);
     }
   }
 }
@@ -548,8 +546,8 @@ void mppl_ast__walk_output_list(const MpplAstWalker *walker, const MpplOutList *
 void mppl_ast__walk_output_value(const MpplAstWalker *walker, const MpplOutValue *value, void *data)
 {
   if (value) {
-    consume_expr(walker, mppl_out_value__expr(value), data);
-    consume_number_lit(walker, mppl_out_value__width(value), data);
+    CONSUME(walker, AnyMpplExpr, mppl_out_value__expr(value), data);
+    CONSUME(walker, MpplNumberLit, mppl_out_value__width(value), data);
   }
 }
 
@@ -558,15 +556,15 @@ void mppl_ast__walk_lit(const MpplAstWalker *walker, const AnyMpplLit *syntax, v
   if (syntax) {
     switch (mppl_lit__kind(syntax)) {
     case MPPL_LIT_NUMBER:
-      visit_number_lit(walker, (const MpplNumberLit *) syntax, data);
+      VISIT(walker, MpplNumberLit, (const MpplNumberLit *) syntax, data);
       break;
 
     case MPPL_LIT_BOOLEAN:
-      visit_boolean_lit(walker, (const MpplBooleanLit *) syntax, data);
+      VISIT(walker, MpplBooleanLit, (const MpplBooleanLit *) syntax, data);
       break;
 
     case MPPL_LIT_STRING:
-      visit_string_lit(walker, (const MpplStringLit *) syntax, data);
+      VISIT(walker, MpplStringLit, (const MpplStringLit *) syntax, data);
       break;
     }
   }
