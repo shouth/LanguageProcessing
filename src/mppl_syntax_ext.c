@@ -173,6 +173,11 @@ void mppl_ast_walker__setup(MpplAstWalker *walker)
     mppl_unref(consume_syntax);                \
   }
 
+#define IGNORE(walker, syntax, data) \
+  (void) walker;                     \
+  (void) syntax;                     \
+  (void) data;
+
 void mppl_ast_walker__travel(MpplAstWalker *walker, const MpplProgram *syntax, void *data)
 {
   VISIT(walker, MpplProgram, syntax, data);
@@ -317,9 +322,7 @@ void mppl_ast__walk_while_stmt(const MpplAstWalker *walker, const MpplWhileStmt 
 
 void mppl_ast__walk_break_stmt(const MpplAstWalker *walker, const MpplBreakStmt *syntax, void *data)
 {
-  (void) walker;
-  (void) syntax;
-  (void) data;
+  IGNORE(walker, syntax, data);
 }
 
 void mppl_ast__walk_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syntax, void *data)
@@ -331,9 +334,7 @@ void mppl_ast__walk_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *s
 
 void mppl_ast__walk_return_stmt(const MpplAstWalker *walker, const MpplReturnStmt *syntax, void *data)
 {
-  (void) walker;
-  (void) syntax;
-  (void) data;
+  IGNORE(walker, syntax, data);
 }
 
 void mppl_ast__walk_input_stmt(const MpplAstWalker *walker, const MpplInputStmt *syntax, void *data)
@@ -448,9 +449,7 @@ void mppl_ast__walk_var(const MpplAstWalker *walker, const AnyMpplVar *syntax, v
 
 void mppl_ast__walk_entire_var(const MpplAstWalker *walker, const MpplEntireVar *syntax, void *data)
 {
-  (void) walker;
-  (void) syntax;
-  (void) data;
+  IGNORE(walker, syntax, data);
 }
 
 void mppl_ast__walk_indexed_var(const MpplAstWalker *walker, const MpplIndexedVar *syntax, void *data)
@@ -504,23 +503,17 @@ void mppl_ast__walk_std_type(const MpplAstWalker *walker, const AnyMpplStdType *
 
 void mppl_ast__walk_std_type_boolean(const MpplAstWalker *walker, const MpplStdTypeBoolean *type, void *data)
 {
-  (void) walker;
-  (void) type;
-  (void) data;
+  IGNORE(walker, type, data);
 }
 
 void mppl_ast__walk_std_type_char(const MpplAstWalker *walker, const MpplStdTypeChar *type, void *data)
 {
-  (void) walker;
-  (void) type;
-  (void) data;
+  IGNORE(walker, type, data);
 }
 
 void mppl_ast__walk_std_type_integer(const MpplAstWalker *walker, const MpplStdTypeInteger *type, void *data)
 {
-  (void) walker;
-  (void) type;
-  (void) data;
+  IGNORE(walker, type, data);
 }
 
 void mppl_ast__walk_input_list(const MpplAstWalker *walker, const MpplInputList *list, void *data)
@@ -572,21 +565,15 @@ void mppl_ast__walk_lit(const MpplAstWalker *walker, const AnyMpplLit *syntax, v
 
 void mppl_ast__walk_number_lit(const MpplAstWalker *walker, const MpplNumberLit *syntax, void *data)
 {
-  (void) walker;
-  (void) syntax;
-  (void) data;
+  IGNORE(walker, syntax, data);
 }
 
 void mppl_ast__walk_boolean_lit(const MpplAstWalker *walker, const MpplBooleanLit *syntax, void *data)
 {
-  (void) walker;
-  (void) syntax;
-  (void) data;
+  IGNORE(walker, syntax, data);
 }
 
 void mppl_ast__walk_string_lit(const MpplAstWalker *walker, const MpplStringLit *syntax, void *data)
 {
-  (void) walker;
-  (void) syntax;
-  (void) data;
+  IGNORE(walker, syntax, data);
 }
