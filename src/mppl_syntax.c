@@ -1,5 +1,4 @@
 #include <stddef.h>
-#include <stdio.h>
 
 #include "mppl_syntax.h"
 #include "syntax_kind.h"
