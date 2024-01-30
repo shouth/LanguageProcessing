@@ -1,9 +1,9 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "context.h"
 #include "mppl_syntax.h"
 #include "pretty_printer.h"
-#include "string.h"
 #include "syntax_tree.h"
 
 typedef struct Printer Printer;

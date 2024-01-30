@@ -5,6 +5,8 @@
 
 #include "array.h"
 #include "bitset.h"
+#include "context.h"
+#include "context_fwd.h"
 #include "lexer.h"
 #include "mppl_syntax.h"
 #include "parser.h"
@@ -20,9 +22,9 @@ typedef struct Parser Parser;
 struct Parser {
   unsigned long  offset;
   const Source  *source;
+  Ctx           *ctx;
   LexStatus      status;
   SyntaxBuilder *builder;
-  StringContext *strings;
   const String  *token;
   SyntaxKind     token_kind;
   BitSet        *expected;
@@ -62,7 +64,7 @@ static const String *token(Parser *parser)
     while (1) {
       LexedToken    lexed;
       LexStatus     status = mppl_lex(parser->source, parser->offset, &lexed);
-      const String *token  = string_from(parser->source->text + lexed.offset, lexed.length, parser->strings);
+      const String *token  = ctx_string(parser->ctx, parser->source->text + lexed.offset, lexed.length);
 
       if (syntax_kind_is_token(lexed.kind)) {
         parser->status     = status;
@@ -691,15 +693,15 @@ static void parse_program(Parser *parser)
   end_node(parser, SYNTAX_PROGRAM);
 }
 
-int mppl_parse(const Source *source, StringContext *strings, MpplProgram **syntax)
+int mppl_parse(const Source *source, Ctx *ctx, MpplProgram **syntax)
 {
   Parser parser;
   int    result;
   parser.source     = source;
+  parser.ctx        = ctx;
   parser.errors     = array_new(sizeof(Report *));
   parser.expected   = bitset_new(SYNTAX_EOF_TOKEN + 1);
   parser.builder    = syntax_builder_new();
-  parser.strings    = strings;
   parser.token      = NULL;
   parser.token_kind = SYNTAX_BAD_TOKEN;
   parser.alive      = 1;

@@ -2,11 +2,12 @@
 #include <string.h>
 
 #include "array.h"
+#include "context.h"
+#include "context_fwd.h"
 #include "map.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
 #include "report.h"
-#include "resolution.h"
 #include "resolver.h"
 #include "source.h"
 #include "string.h"
@@ -24,32 +25,39 @@ struct Scope {
 
 struct Resolver {
   Scope *scope;
-  Res   *res;
+  Ctx   *ctx;
   Array *errors;
 };
 
-static void error_def_conflict(Resolver *resolver, const Binding *previous, const Binding *conflict)
+static void error_def_conflict(Resolver *resolver, const String *name, const SyntaxTree *previous, const SyntaxTree *conflict)
 {
-  Report *report = report_new(REPORT_KIND_ERROR, conflict->offset, "conflicting definition of `%s`", previous->name);
-  report_annotation(report, previous->offset, previous->offset + string_length(previous->name),
-    "previous definition of `%s`", previous->name);
-  report_annotation(report, conflict->offset, conflict->offset + string_length(conflict->name), "redefinition of `%s`", previous->name);
+  unsigned long previous_offset = syntax_tree_offset(previous);
+  unsigned long conflict_offset = syntax_tree_offset(conflict);
+
+  Report *report = report_new(REPORT_KIND_ERROR, conflict_offset, "conflicting definition of `%s`", string_data(name));
+  report_annotation(report, previous_offset, previous_offset + string_length(name),
+    "previous definition of `%s`", string_data(name));
+  report_annotation(report, conflict_offset, conflict_offset + string_length(name), "redefinition of `%s`", string_data(name));
   array_push(resolver->errors, &report);
 }
 
-static void error_var_res_failure(Resolver *resolver, const Binding *missing)
+static void error_var_res_failure(Resolver *resolver, const String *name, const SyntaxTree *use)
 {
-  Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", string_data(missing->name));
-  report_annotation(report, missing->offset, missing->offset + string_length(missing->name),
-    "use of undeclared variable or parameter `%s`", string_data(missing->name));
+  unsigned long offset = syntax_tree_offset(use);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "failed to resolve `%s`", string_data(name));
+  report_annotation(report, offset, offset + string_length(name),
+    "use of undeclared variable or parameter `%s`", string_data(name));
   array_push(resolver->errors, &report);
 }
 
-static void error_proc_res_failure(Resolver *resolver, const Binding *missing)
+static void error_proc_res_failure(Resolver *resolver, const String *name, const SyntaxTree *use)
 {
-  Report *report = report_new(REPORT_KIND_ERROR, missing->offset, "failed to resolve `%s`", string_data(missing->name));
-  report_annotation(report, missing->offset, missing->offset + string_length(missing->name),
-    "use of undeclared procedure `%s`", string_data(missing->name));
+  unsigned long offset = syntax_tree_offset(use);
+
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "failed to resolve `%s`", string_data(name));
+  report_annotation(report, offset, offset + string_length(name),
+    "use of undeclared procedure `%s`", string_data(name));
   array_push(resolver->errors, &report);
 }
 
@@ -69,22 +77,18 @@ static void pop_scope(Resolver *resolver)
   free(scope);
 }
 
-static void try_create_def(Resolver *resolver, DefKind kind, const SyntaxTree *item_syntax, const SyntaxTree *name_syntax)
+static void try_define(Resolver *resolver, DefKind kind, const SyntaxTree *item_syntax, const SyntaxTree *name_syntax)
 {
   MapIndex              index;
   const RawSyntaxToken *name_token = (const RawSyntaxToken *) syntax_tree_raw(name_syntax);
-  Binding               binding;
-  binding.name   = name_token->string;
-  binding.offset = syntax_tree_offset(name_syntax);
 
-  if (resolver->scope && map_entry(resolver->scope->defs, (void *) binding.name, &index)) {
+  if (resolver->scope && map_entry(resolver->scope->defs, (void *) name_token->string, &index)) {
     const Def *previous = map_value(resolver->scope->defs, &index);
-    error_def_conflict(resolver, &previous->binding, &binding);
+    error_def_conflict(resolver, def_name(previous), def_syntax(previous), item_syntax);
   } else {
-    unsigned long offset = syntax_tree_offset(item_syntax);
-    const Def    *def    = res_create_def(resolver->res, kind, &binding, name_syntax, item_syntax, offset);
+    const Def *def = ctx_define(resolver->ctx, kind, name_token->string, item_syntax);
     if (resolver->scope) {
-      map_update(resolver->scope->defs, &index, (void *) binding.name, (void *) def);
+      map_update(resolver->scope->defs, &index, (void *) name_token->string, (void *) def);
     }
   }
 }
@@ -101,21 +105,18 @@ static const Def *get_def(Resolver *resolver, const String *name)
   return NULL;
 }
 
-static const Def *try_record_ref(Resolver *resolver, const SyntaxTree *syntax, int is_proc)
+static const Def *try_resolve(Resolver *resolver, const SyntaxTree *syntax, int is_proc)
 {
   const RawSyntaxToken *node = (const RawSyntaxToken *) syntax_tree_raw(syntax);
   const Def            *def  = get_def(resolver, node->string);
   if (resolver->scope && def) {
-    res_record_ref(resolver->res, (const RawSyntaxNode *) node, def);
+    ctx_resolve(resolver->ctx, syntax, def);
     return def;
   } else {
-    Binding binding;
-    binding.name   = node->string;
-    binding.offset = syntax_tree_offset(syntax);
     if (is_proc) {
-      error_proc_res_failure(resolver, &binding);
+      error_proc_res_failure(resolver, node->string, syntax);
     } else {
-      error_var_res_failure(resolver, &binding);
+      error_var_res_failure(resolver, node->string, syntax);
     }
     return NULL;
   }
@@ -127,14 +128,14 @@ static void error_call_stmt_recursion(Resolver *resolver, const Def *proc, const
   unsigned long length = syntax_tree_text_length(name_syntax);
 
   Report *report = report_new(REPORT_KIND_ERROR, offset, "recursion is prohibited");
-  report_annotation(report, offset, offset + length, "recursive call to `%s`", proc->binding.name);
+  report_annotation(report, offset, offset + length, "recursive call to `%s`", string_data(def_name(proc)));
   array_push(resolver->errors, &report);
 }
 
 static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax, void *resolver)
 {
   MpplToken *name_syntax = mppl_program__name(syntax);
-  try_create_def(resolver, DEF_PROGRAM, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
+  try_define(resolver, DEF_PROGRAM, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
   mppl_unref(name_syntax);
   push_scope(resolver);
   mppl_ast__walk_program(walker, syntax, resolver);
@@ -144,7 +145,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
 static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syntax, void *resolver)
 {
   MpplToken *name_syntax = mppl_proc_decl__name(syntax);
-  try_create_def(resolver, DEF_PROC, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
+  try_define(resolver, DEF_PROC, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
   mppl_unref(name_syntax);
   push_scope(resolver);
   mppl_ast__walk_proc_decl(walker, syntax, resolver);
@@ -156,7 +157,7 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
   unsigned long i;
   for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
     MpplToken *name_syntax = mppl_var_decl__name(syntax, i);
-    try_create_def(resolver, DEF_VAR, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
+    try_define(resolver, DEF_VAR, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
     mppl_unref(name_syntax);
   }
   (void) walker;
@@ -167,7 +168,7 @@ static void visit_fml_param_sec(const MpplAstWalker *walker, const MpplFmlParamS
   unsigned long i;
   for (i = 0; i < mppl_fml_param_sec__name_count(syntax); ++i) {
     SyntaxTree *name_syntax = (SyntaxTree *) mppl_fml_param_sec__name(syntax, i);
-    try_create_def(resolver, DEF_PARAM, (const SyntaxTree *) syntax, name_syntax);
+    try_define(resolver, DEF_PARAM, (const SyntaxTree *) syntax, name_syntax);
     mppl_unref(name_syntax);
   }
   (void) walker;
@@ -176,7 +177,7 @@ static void visit_fml_param_sec(const MpplAstWalker *walker, const MpplFmlParamS
 static void visit_entire_var(const MpplAstWalker *walker, const MpplEntireVar *syntax, void *resolver)
 {
   MpplToken *name_syntax = mppl_entire_var__name(syntax);
-  try_record_ref(resolver, (const SyntaxTree *) name_syntax, 0);
+  try_resolve(resolver, (const SyntaxTree *) name_syntax, 0);
   mppl_unref(name_syntax);
   (void) walker;
 }
@@ -184,7 +185,7 @@ static void visit_entire_var(const MpplAstWalker *walker, const MpplEntireVar *s
 static void visit_indexed_var(const MpplAstWalker *walker, const MpplIndexedVar *syntax, void *resolver)
 {
   MpplToken *name_syntax = mppl_indexed_var__name(syntax);
-  try_record_ref(resolver, (const SyntaxTree *) name_syntax, 0);
+  try_resolve(resolver, (const SyntaxTree *) name_syntax, 0);
   mppl_unref(name_syntax);
   (void) walker;
 }
@@ -192,11 +193,11 @@ static void visit_indexed_var(const MpplAstWalker *walker, const MpplIndexedVar 
 static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syntax, void *resolver)
 {
   MpplToken *name_syntax = mppl_call_stmt__name(syntax);
-  const Def *proc        = try_record_ref(resolver, (const SyntaxTree *) name_syntax, 1);
+  const Def *proc        = try_resolve(resolver, (const SyntaxTree *) name_syntax, 1);
   if (proc) {
     const SyntaxTree *node;
     for (node = (const SyntaxTree *) syntax; node; node = syntax_tree_parent(node)) {
-      if (syntax_tree_kind(node) == SYNTAX_PROC_DECL && node == proc->body) {
+      if (syntax_tree_kind(node) == SYNTAX_PROC_DECL && syntax_tree_raw(node) == syntax_tree_raw(def_syntax(proc))) {
         error_call_stmt_recursion(resolver, proc, (const SyntaxTree *) name_syntax);
         break;
       }
@@ -206,13 +207,14 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
   mppl_ast__walk_call_stmt(walker, syntax, resolver);
 }
 
-int mppl_resolve(const Source *source, const MpplProgram *syntax, Res **resolution)
+int mppl_resolve(const Source *source, const MpplProgram *syntax, Ctx *ctx)
 {
   MpplAstWalker walker;
   Resolver      resolver;
-  resolver.scope  = NULL;
-  resolver.res    = res_new();
-  resolver.errors = array_new(sizeof(Report *));
+  int           result = 1;
+  resolver.scope       = NULL;
+  resolver.ctx         = ctx;
+  resolver.errors      = array_new(sizeof(Report *));
 
   mppl_ast_walker__setup(&walker);
   walker.visit_program       = &visit_program;
@@ -229,11 +231,8 @@ int mppl_resolve(const Source *source, const MpplProgram *syntax, Res **resoluti
     for (i = 0; i < array_count(resolver.errors); ++i) {
       report_emit(*(Report **) array_at(resolver.errors, i), source);
     }
-    *resolution = NULL;
-    res_free(resolver.res);
-  } else {
-    *resolution = resolver.res;
+    result = 0;
   }
   array_free(resolver.errors);
-  return !!*resolution;
+  return result;
 }

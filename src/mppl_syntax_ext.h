@@ -1,8 +1,8 @@
 #ifndef MPPL_SYNTAX_EXT_H
 #define MPPL_SYNTAX_EXT_H
 
+#include "context_fwd.h"
 #include "mppl_syntax.h"
-#include "type.h"
 
 typedef struct MpplAstWalker MpplAstWalker;
 
@@ -48,9 +48,9 @@ struct MpplAstWalker {
   void (*visit_string_lit)(const MpplAstWalker *walker, const MpplStringLit *lit, void *data);
 };
 
-Type *mppl_std_type__to_type(const AnyMpplStdType *syntax);
+const Type *mppl_std_type__to_type(const AnyMpplStdType *syntax);
 
-Type *mppl_type__to_type(const AnyMpplType *syntax);
+const Type *mppl_type__to_type(const AnyMpplType *syntax, Ctx *ctx);
 
 long mppl_lit_number__to_long(const MpplNumberLit *syntax);
 

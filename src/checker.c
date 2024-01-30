@@ -4,49 +4,22 @@
 
 #include "array.h"
 #include "checker.h"
-#include "inference.h"
+#include "context.h"
+#include "context_fwd.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
 #include "report.h"
-#include "resolution.h"
 #include "string.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
-#include "type.h"
 #include "utility.h"
 
 typedef struct Checker Checker;
 
 struct Checker {
-  const Res *res;
-  Infer     *inference;
-  Array     *errors;
+  Ctx   *ctx;
+  Array *errors;
 };
-
-static const Type *get_ref_type(const Checker *checker, const SyntaxTree *tree)
-{
-  const Def *def = res_get_ref(checker->res, syntax_tree_raw(tree));
-  if (def) {
-    return infer_get_def_type(checker->inference, def);
-  } else {
-    unreachable();
-  }
-}
-
-static void record_def_type(Checker *checker, const SyntaxTree *name_syntax, Type *type)
-{
-  const Def *def = res_get_def(checker->res, syntax_tree_raw(name_syntax));
-  if (def) {
-    infer_record_def_type(checker->inference, def, type);
-  } else {
-    unreachable();
-  }
-}
-
-static void record_expr_type(Checker *checker, const SyntaxTree *tree, Type *type)
-{
-  infer_record_expr_type(checker->inference, syntax_tree_raw(tree), type);
-}
 
 static const char *op_to_str(SyntaxKind kind)
 {
@@ -170,7 +143,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
   AnyMpplExpr *lhs_syntax = mppl_binary_expr__lhs(syntax);
   AnyMpplExpr *rhs_syntax = mppl_binary_expr__rhs(syntax);
   MpplToken   *op_syntax  = mppl_binary_expr__op_token(syntax);
-  Type        *result     = NULL;
+  const Type  *result     = NULL;
 
   if (lhs_syntax) {
     const Type *lhs_type = check_expr(checker, lhs_syntax);
@@ -193,12 +166,11 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
             lhs_invalid, (SyntaxTree *) lhs_syntax, lhs_type,
             rhs_invalid, (SyntaxTree *) rhs_syntax, rhs_type,
             "one of `integer`, `char`, or `boolean`");
-        } else if (!type_equal(lhs_type, rhs_type)) {
+        } else if (lhs_type != rhs_type) {
           error_relational_mismatched_type(checker,
             (SyntaxTree *) syntax, (SyntaxTree *) lhs_syntax, lhs_type, (SyntaxTree *) rhs_syntax, rhs_type);
         } else {
-          result = type_new(TYPE_BOOLEAN);
-          record_expr_type(checker, (SyntaxTree *) syntax, result);
+          result = CTX_TYPE_BOOLEAN;
         }
         break;
 
@@ -215,8 +187,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
             rhs_invalid, (SyntaxTree *) rhs_syntax, rhs_type,
             "`integer`");
         } else {
-          result = type_new(TYPE_INTEGER);
-          record_expr_type(checker, (SyntaxTree *) syntax, result);
+          result = CTX_TYPE_INTEGER;
         }
         break;
 
@@ -231,8 +202,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
             rhs_invalid, (SyntaxTree *) rhs_syntax, rhs_type,
             "`boolean`");
         } else {
-          result = type_new(TYPE_BOOLEAN);
-          record_expr_type(checker, (SyntaxTree *) syntax, result);
+          result = CTX_TYPE_BOOLEAN;
         }
         break;
 
@@ -250,8 +220,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
           error_unary_expr_invalid_operand(checker,
             (SyntaxTree *) syntax, (SyntaxTree *) op_syntax, (SyntaxTree *) rhs_syntax, rhs_type, "`integer`");
         } else {
-          result = type_new(TYPE_INTEGER);
-          record_expr_type(checker, (SyntaxTree *) syntax, result);
+          result = CTX_TYPE_INTEGER;
         }
         break;
 
@@ -264,22 +233,16 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
   mppl_unref(op_syntax);
   mppl_unref(lhs_syntax);
   mppl_unref(rhs_syntax);
-  return result;
+  return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, result);
 }
 
 static const Type *check_paren_expr(Checker *checker, const MpplParenExpr *syntax)
 {
   AnyMpplExpr *expr_syntax = mppl_paren_expr__expr(syntax);
   const Type  *type        = check_expr(checker, expr_syntax);
-  Type        *result      = NULL;
-
-  if (type) {
-    result = type_clone(type);
-    record_expr_type(checker, (SyntaxTree *) syntax, result);
-  }
 
   mppl_unref(expr_syntax);
-  return result;
+  return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, type);
 }
 
 static void error_not_expr_invalid_operand(
@@ -304,7 +267,7 @@ static const Type *check_not_expr(Checker *checker, const MpplNotExpr *syntax)
 {
   AnyMpplExpr *expr_syntax = mppl_not_expr__expr(syntax);
   const Type  *type        = check_expr(checker, expr_syntax);
-  Type        *result      = NULL;
+  const Type  *result      = NULL;
 
   if (type) {
     if (type_kind(type) != TYPE_BOOLEAN) {
@@ -313,13 +276,12 @@ static const Type *check_not_expr(Checker *checker, const MpplNotExpr *syntax)
         (SyntaxTree *) syntax, (SyntaxTree *) not_token, (SyntaxTree *) expr_syntax, type);
       mppl_unref(not_token);
     } else {
-      result = type_new(TYPE_BOOLEAN);
-      record_expr_type(checker, (SyntaxTree *) syntax, result);
+      result = CTX_TYPE_BOOLEAN;
     }
   }
 
   mppl_unref(expr_syntax);
-  return result;
+  return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, result);
 }
 
 static void error_cast_expr_invalid_operand(
@@ -353,37 +315,31 @@ static const Type *check_cast_expr(Checker *checker, const MpplCastExpr *syntax)
   AnyMpplExpr    *expr_syntax = mppl_cast_expr__expr(syntax);
   AnyMpplStdType *type_syntax = mppl_cast_expr__type(syntax);
   const Type     *type        = check_expr(checker, expr_syntax);
-  Type           *cast_type   = mppl_std_type__to_type(type_syntax);
-  Type           *result      = NULL;
+  const Type     *cast_type   = mppl_std_type__to_type(type_syntax);
+  const Type     *result      = NULL;
 
   if (type) {
     if (!type_is_std(type)) {
       error_cast_expr_invalid_operand(checker,
         (SyntaxTree *) syntax, (SyntaxTree *) type_syntax, cast_type, (SyntaxTree *) expr_syntax, type);
-      type_free(cast_type);
     } else {
       result = cast_type;
-      record_expr_type(checker, (SyntaxTree *) syntax, result);
     }
   }
 
   mppl_unref(expr_syntax);
   mppl_unref(type_syntax);
-  return result;
+  return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, result);
 }
 
 static const Type *check_entire_var(Checker *checker, const MpplEntireVar *syntax)
 {
   MpplToken  *name_syntax = mppl_entire_var__name(syntax);
-  const Type *type        = get_ref_type(checker, (SyntaxTree *) name_syntax);
-
-  if (type) {
-    Type *infer_type = type_clone(type);
-    record_expr_type(checker, (SyntaxTree *) syntax, infer_type);
-  }
+  const Def  *def         = ctx_resolve(checker->ctx, (const SyntaxTree *) name_syntax, NULL);
+  const Type *type        = ctx_type_of(checker->ctx, def_syntax(def), NULL);
 
   mppl_unref(name_syntax);
-  return type;
+  return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, type);
 }
 
 static void error_non_array_subscript(Checker *checker, const SyntaxTree *node, const Type *type)
@@ -414,9 +370,10 @@ static const Type *check_indexed_var(Checker *checker, const MpplIndexedVar *syn
 {
   MpplToken   *name_syntax  = mppl_indexed_var__name(syntax);
   AnyMpplExpr *index_syntax = mppl_indexed_var__expr(syntax);
-  const Type  *def_type     = get_ref_type(checker, (SyntaxTree *) name_syntax);
+  const Def   *def          = ctx_resolve(checker->ctx, (const SyntaxTree *) name_syntax, NULL);
+  const Type  *def_type     = ctx_type_of(checker->ctx, def_syntax(def), NULL);
   const Type  *index_type   = check_expr(checker, index_syntax);
-  Type        *result       = NULL;
+  const Type  *result       = NULL;
 
   if (def_type && index_type) {
     if (type_kind(def_type) != TYPE_ARRAY) {
@@ -424,14 +381,13 @@ static const Type *check_indexed_var(Checker *checker, const MpplIndexedVar *syn
     } else if (type_kind(index_type) != TYPE_INTEGER) {
       error_array_non_integer_index(checker, (SyntaxTree *) index_syntax, index_type);
     } else {
-      result = type_clone(type_array_elem((const ArrayType *) def_type));
-      record_expr_type(checker, (SyntaxTree *) syntax, result);
+      result = array_type_base((ArrayType *) def_type);
     }
   }
 
   mppl_unref(name_syntax);
   mppl_unref(index_syntax);
-  return result;
+  return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, result);
 }
 
 static const Type *check_var(Checker *checker, const AnyMpplVar *syntax)
@@ -452,24 +408,18 @@ static const Type *check_literal(Checker *checker, const AnyMpplLit *syntax)
 {
   switch (mppl_lit__kind(syntax)) {
   case MPPL_LIT_NUMBER: {
-    Type *result = type_new(TYPE_INTEGER);
-    record_expr_type(checker, (SyntaxTree *) syntax, result);
-    return result;
+    return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, CTX_TYPE_INTEGER);
   }
 
   case MPPL_LIT_STRING: {
-    char *text   = mppl_lit_string__to_string((const MpplStringLit *) syntax);
-    Type *result = type_new(strlen(text) == 1 ? TYPE_CHAR : TYPE_STRING);
-    record_expr_type(checker, (SyntaxTree *) syntax, result);
+    char       *text   = mppl_lit_string__to_string((const MpplStringLit *) syntax);
+    const Type *result = strlen(text) == 1 ? CTX_TYPE_CHAR : CTX_TYPE_STRING;
     free(text);
-    record_expr_type(checker, (SyntaxTree *) syntax, result);
-    return result;
+    return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, result);
   }
 
   case MPPL_LIT_BOOLEAN: {
-    Type *result = type_new(TYPE_BOOLEAN);
-    record_expr_type(checker, (SyntaxTree *) syntax, result);
-    return result;
+    return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, CTX_TYPE_BOOLEAN);
   }
 
   default:
@@ -506,12 +456,13 @@ static const Type *check_expr(Checker *checker, const AnyMpplExpr *syntax)
 static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *syntax, void *checker)
 {
   unsigned long i;
+  Checker      *self        = checker;
   AnyMpplType  *type_syntax = mppl_var_decl__type(syntax);
 
   for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
-    Type      *type        = mppl_type__to_type(type_syntax);
-    MpplToken *name_syntax = mppl_var_decl__name(syntax, i);
-    record_def_type(checker, (const SyntaxTree *) name_syntax, type);
+    const Type *type        = mppl_type__to_type(type_syntax, self->ctx);
+    MpplToken  *name_syntax = mppl_var_decl__name(syntax, i);
+    ctx_type_of(self->ctx, (const SyntaxTree *) name_syntax, type);
     mppl_unref(name_syntax);
   }
 
@@ -529,7 +480,7 @@ int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax
   for (i = 0; i < mppl_fml_param_list__sec_count(syntax); ++i) {
     MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(syntax, i);
     AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
-    Type            *type             = mppl_type__to_type(type_syntax);
+    const Type      *type             = mppl_type__to_type(type_syntax, checker->ctx);
 
     if (!type_is_std(type)) {
       unsigned long type_offset = syntax_tree_offset((SyntaxTree *) type_syntax);
@@ -543,14 +494,13 @@ int maybe_error_proc_param_type(Checker *checker, const MpplFmlParamList *syntax
         "parameter type should be one of `integer`, `boolean`, or `char`");
     }
 
-    type_free(type);
     mppl_unref(type_syntax);
     mppl_unref(param_sec_syntax);
   }
   return !!report;
 }
 
-static TypeList *check_fml_param_list(Checker *checker, const MpplFmlParamList *param_list)
+static const TypeList *check_fml_param_list(Checker *checker, const MpplFmlParamList *param_list)
 {
   unsigned long i, j;
 
@@ -558,39 +508,43 @@ static TypeList *check_fml_param_list(Checker *checker, const MpplFmlParamList *
     if (maybe_error_proc_param_type(checker, param_list)) {
       return NULL;
     } else {
-      TypeListBuilder *builder = type_list_builder_new();
+      Array *types = array_new(sizeof(Type *));
       for (i = 0; i < mppl_fml_param_list__sec_count(param_list); ++i) {
         MpplFmlParamSec *param_sec_syntax = mppl_fml_param_list__sec(param_list, i);
         AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
-        Type            *type             = mppl_type__to_type(type_syntax);
+        const Type      *type             = mppl_type__to_type(type_syntax, checker->ctx);
 
         for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
           MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
-          record_def_type(checker, (SyntaxTree *) name_syntax, type_clone(type));
+          ctx_type_of(checker->ctx, (const SyntaxTree *) name_syntax, type);
+          array_push(types, &type);
           mppl_unref(name_syntax);
-          type_list_builder_add(builder, type_clone(type));
         }
 
-        type_free(type);
         mppl_unref(type_syntax);
         mppl_unref(param_sec_syntax);
       }
-      return type_list_builder_finish(builder);
+
+      {
+        unsigned long type_count = array_count(types);
+        const Type  **type_array = array_steal(types);
+        return ctx_take_type_list(checker->ctx, type_array, type_count);
+      }
     }
   } else {
-    TypeListBuilder *builder = type_list_builder_new();
-    return type_list_builder_finish(builder);
+    return CTX_TYPE_LIST_EMPTY;
   }
 }
 
 static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syntax, void *checker)
 {
+  Checker          *self              = checker;
   MpplFmlParamList *param_list_syntax = mppl_proc_decl__fml_param_list(syntax);
-  TypeList         *param_types       = check_fml_param_list(checker, param_list_syntax);
+  const TypeList   *param_types       = check_fml_param_list(checker, param_list_syntax);
 
   if (param_types) {
     MpplToken *name_syntax = mppl_proc_decl__name(syntax);
-    record_def_type(checker, (SyntaxTree *) name_syntax, type_new_proc(param_types));
+    ctx_type_of(self->ctx, (const SyntaxTree *) name_syntax, ctx_proc_type(self->ctx, param_types));
     mppl_unref(name_syntax);
   }
 
@@ -646,7 +600,7 @@ static void visit_assign_stmt(const MpplAstWalker *walker, const MpplAssignStmt 
   if (lhs_type && rhs_type) {
     if (!type_is_std(lhs_type)) {
       error_assign_impossible(checker, (SyntaxTree *) lhs_syntax, lhs_type);
-    } else if (!type_equal(lhs_type, rhs_type)) {
+    } else if (lhs_type != rhs_type) {
       error_assign_type_mismatch(checker,
         (SyntaxTree *) syntax, (SyntaxTree *) lhs_syntax, lhs_type, (SyntaxTree *) rhs_syntax, rhs_type);
     }
@@ -712,7 +666,7 @@ static void error_call_stmt_mismatched_param_count(
 {
   unsigned long offset      = syntax_tree_offset((SyntaxTree *) syntax);
   unsigned long length      = syntax_tree_text_length((SyntaxTree *) syntax);
-  unsigned long param_count = type_list_count(type_proc_param(proc_type));
+  unsigned long param_count = type_list_count(proc_type_params(proc_type));
 
   Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched the number of parameter");
   report_annotation(report, offset, offset + length,
@@ -729,11 +683,11 @@ static void error_call_stmt_wrong_param(
 
   Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched parameter type");
   if (act_param_list_syntax) {
-    for (i = 0; i < type_list_count(type_proc_param(type)); ++i) {
+    for (i = 0; i < type_list_count(proc_type_params(type)); ++i) {
       AnyMpplExpr *act_param_syntax   = mppl_act_param_list__expr(act_param_list_syntax, i);
-      const Type  *defined_param_type = type_list_at(type_proc_param(type), i);
+      const Type  *defined_param_type = type_list_at(proc_type_params(type), i);
       const Type  *act_param_type     = type_list_at(act_param_types, i);
-      if (!type_equal(defined_param_type, act_param_type)) {
+      if (defined_param_type != act_param_type) {
         unsigned long act_param_offset          = syntax_tree_offset((SyntaxTree *) act_param_syntax);
         unsigned long act_param_length          = syntax_tree_text_length((SyntaxTree *) act_param_syntax);
         char         *defined_param_type_string = type_to_string(defined_param_type);
@@ -749,8 +703,8 @@ static void error_call_stmt_wrong_param(
   array_push(checker->errors, &report);
 
   {
-    const Def            *def                   = res_get_ref(checker->res, syntax_tree_raw((const SyntaxTree *) name_syntax));
-    const MpplProcDecl   *proc_decl_syntax      = (const MpplProcDecl *) def->body;
+    const Def            *def                   = ctx_resolve(checker->ctx, (const SyntaxTree *) name_syntax, NULL);
+    const MpplProcDecl   *proc_decl_syntax      = (const MpplProcDecl *) def_syntax(def);
     MpplToken            *id_syntax             = mppl_proc_decl__name(proc_decl_syntax);
     const RawSyntaxToken *id_token              = (const RawSyntaxToken *) syntax_tree_raw((SyntaxTree *) id_syntax);
     MpplFmlParamList     *fml_param_list_syntax = mppl_proc_decl__fml_param_list(proc_decl_syntax);
@@ -774,11 +728,11 @@ static void error_call_stmt_wrong_param(
   }
 }
 
-static TypeList *check_act_param_list(Checker *checker, const MpplActParamList *syntax)
+static const TypeList *check_act_param_list(Checker *checker, const MpplActParamList *syntax)
 {
-  unsigned long    i;
-  TypeListBuilder *builder    = type_list_builder_new();
-  int              expr_error = 0;
+  unsigned long i;
+  Array        *types      = array_new(sizeof(Type *));
+  int           expr_error = 0;
 
   if (syntax) {
     for (i = 0; i < mppl_act_param_list__expr_count(syntax); ++i) {
@@ -786,40 +740,42 @@ static TypeList *check_act_param_list(Checker *checker, const MpplActParamList *
       const Type  *expr_type   = check_expr(checker, expr_syntax);
 
       expr_error |= !expr_type;
-      type_list_builder_add(builder, type_clone(expr_type));
+      array_push(types, &expr_type);
       mppl_unref(expr_syntax);
     }
   }
 
   if (expr_error) {
-    type_list_free(type_list_builder_finish(builder));
+    array_free(types);
     return NULL;
   } else {
-    return type_list_builder_finish(builder);
+    unsigned long type_count = array_count(types);
+    const Type  **type_array = array_steal(types);
+    return ctx_take_type_list(checker->ctx, type_array, type_count);
   }
 }
 
 static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syntax, void *checker)
 {
+  Checker    *self        = checker;
   MpplToken  *name_syntax = mppl_call_stmt__name(syntax);
-  const Type *type        = get_ref_type(checker, (SyntaxTree *) name_syntax);
+  const Type *type        = ctx_type_of(self->ctx, (SyntaxTree *) name_syntax, NULL);
 
   if (type) {
     MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
     unsigned long     param_count           = act_param_list_syntax ? mppl_act_param_list__expr_count(act_param_list_syntax) : 0;
     const ProcType   *type_proc             = (const ProcType *) type;
-    TypeList         *act_param_types       = check_act_param_list(checker, act_param_list_syntax);
+    const TypeList   *act_param_types       = check_act_param_list(checker, act_param_list_syntax);
 
     if (type_kind(type) != TYPE_PROC) {
       error_call_stmt_non_callable(checker, name_syntax);
-    } else if (param_count != type_list_count(type_proc_param(type_proc))) {
+    } else if (param_count != type_list_count(proc_type_params(type_proc))) {
       error_call_stmt_mismatched_param_count(checker, act_param_list_syntax, type_proc, param_count);
-    } else if (act_param_types && !type_list_equal(type_proc_param(type_proc), act_param_types)) {
+    } else if (act_param_types != proc_type_params(type_proc)) {
       error_call_stmt_wrong_param(checker, name_syntax, act_param_list_syntax, type_proc, act_param_types);
     }
 
     mppl_unref(act_param_list_syntax);
-    type_list_free(act_param_types);
   }
 
   mppl_unref(name_syntax);
@@ -851,11 +807,11 @@ static void maybe_error_input_stmt_invalid_operand(Checker *checker, const MpplI
   }
 }
 
-static TypeList *check_input_list(Checker *checker, const MpplInputList *syntax)
+static const TypeList *check_input_list(Checker *checker, const MpplInputList *syntax)
 {
-  unsigned long    i;
-  TypeListBuilder *builder    = type_list_builder_new();
-  int              expr_error = 0;
+  unsigned long i;
+  Array        *types      = array_new(sizeof(Type *));
+  int           expr_error = 0;
 
   if (syntax) {
     for (i = 0; i < mppl_input_list__var_count(syntax); ++i) {
@@ -863,16 +819,18 @@ static TypeList *check_input_list(Checker *checker, const MpplInputList *syntax)
       const Type *var_type   = check_var(checker, var_syntax);
 
       expr_error |= !var_type;
-      type_list_builder_add(builder, type_clone(var_type));
+      array_push(types, &var_type);
       mppl_unref(var_syntax);
     }
   }
 
   if (expr_error) {
-    type_list_free(type_list_builder_finish(builder));
+    array_free(types);
     return NULL;
   } else {
-    return type_list_builder_finish(builder);
+    unsigned long type_count = array_count(types);
+    const Type  **type_array = array_steal(types);
+    return ctx_take_type_list(checker->ctx, type_array, type_count);
   }
 }
 
@@ -881,11 +839,10 @@ static void visit_input_stmt(const MpplAstWalker *walker, const MpplInputStmt *s
   MpplInputList *input_list_syntax = mppl_input_stmt__input_list(syntax);
 
   if (input_list_syntax) {
-    TypeList *input_types = check_input_list(checker, input_list_syntax);
+    const TypeList *input_types = check_input_list(checker, input_list_syntax);
     if (input_types) {
       maybe_error_input_stmt_invalid_operand(checker, input_list_syntax, input_types);
     }
-    type_list_free(input_types);
   }
 
   mppl_unref(input_list_syntax);
@@ -936,11 +893,11 @@ static void maybe_error_output_stmt_invalid_operand(Checker *checker, const Mppl
   }
 }
 
-static TypeList *check_output_list(Checker *checker, const MpplOutList *syntax)
+static const TypeList *check_output_list(Checker *checker, const MpplOutList *syntax)
 {
-  unsigned long    i;
-  TypeListBuilder *builder    = type_list_builder_new();
-  int              expr_error = 0;
+  unsigned long i;
+  Array        *types      = array_new(sizeof(Type *));
+  int           expr_error = 0;
 
   if (syntax) {
     for (i = 0; i < mppl_out_list__out_value_count(syntax); ++i) {
@@ -949,17 +906,19 @@ static TypeList *check_output_list(Checker *checker, const MpplOutList *syntax)
       const Type   *expr_type        = check_expr(checker, expr_syntax);
 
       expr_error |= !expr_type;
-      type_list_builder_add(builder, type_clone(expr_type));
+      array_push(types, &expr_type);
       mppl_unref(expr_syntax);
       mppl_unref(out_value_syntax);
     }
   }
 
   if (expr_error) {
-    type_list_free(type_list_builder_finish(builder));
+    array_free(types);
     return NULL;
   } else {
-    return type_list_builder_finish(builder);
+    unsigned long type_count = array_count(types);
+    const Type  **type_array = array_steal(types);
+    return ctx_take_type_list(checker->ctx, type_array, type_count);
   }
 }
 
@@ -968,11 +927,10 @@ static void visit_output_stmt(const MpplAstWalker *walker, const MpplOutputStmt 
   MpplOutList *out_list_syntax = mppl_output_stmt__output_list(syntax);
 
   if (out_list_syntax) {
-    TypeList *out_types = check_output_list(checker, out_list_syntax);
+    const TypeList *out_types = check_output_list(checker, out_list_syntax);
     if (out_types) {
       maybe_error_output_stmt_invalid_operand(checker, out_list_syntax, out_types);
     }
-    type_list_free(out_types);
   }
 
   mppl_unref(out_list_syntax);
@@ -999,13 +957,13 @@ static void visit_array_type(const MpplAstWalker *walker, const MpplArrayType *s
   (void) walker;
 }
 
-int mppl_check(const Source *source, const MpplProgram *syntax, const Res *resolution, Infer **inference)
+int mppl_check(const Source *source, const MpplProgram *syntax, Ctx *ctx)
 {
   MpplAstWalker walker;
   Checker       checker;
-  checker.res       = resolution;
-  checker.inference = infer_new();
-  checker.errors    = array_new(sizeof(Report *));
+  int           result = 1;
+  checker.ctx          = ctx;
+  checker.errors       = array_new(sizeof(Report *));
 
   mppl_ast_walker__setup(&walker);
   walker.visit_var_decl    = &visit_var_decl;
@@ -1024,11 +982,8 @@ int mppl_check(const Source *source, const MpplProgram *syntax, const Res *resol
     for (i = 0; i < array_count(checker.errors); ++i) {
       report_emit(*(Report **) array_at(checker.errors, i), source);
     }
-    infer_free(checker.inference);
-    *inference = NULL;
-  } else {
-    *inference = checker.inference;
+    result = 0;
   }
   array_free(checker.errors);
-  return !!*inference;
+  return result;
 }

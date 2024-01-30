@@ -1,7 +1,7 @@
 #ifndef SYNTAX_TREE_H
 #define SYNTAX_TREE_H
 
-#include "string.h"
+#include "context_fwd.h"
 #include "syntax_kind.h"
 
 typedef struct RawSyntaxTrivia RawSyntaxTrivia;
