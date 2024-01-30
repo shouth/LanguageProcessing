@@ -18,9 +18,11 @@ int run_compiler(const char *filename)
   MpplProgram *syntax;
   int          result = EXIT_FAILURE;
 
-  if (mppl_parse(source, ctx, &syntax) && mppl_resolve(source, syntax, ctx) && mppl_check(source, syntax, ctx)) {
-    mppl_pretty_print(syntax, NULL);
-    result = EXIT_SUCCESS;
+  if (mppl_parse(source, ctx, &syntax)) {
+    if (mppl_resolve(source, syntax, ctx) && mppl_check(source, syntax, ctx)) {
+      mppl_pretty_print(syntax, NULL);
+      result = EXIT_SUCCESS;
+    }
     mppl_unref(syntax);
   }
 
