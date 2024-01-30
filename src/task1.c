@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "array.h"
-#include "lexer.h"
+#include "compiler.h"
 #include "map.h"
 #include "source.h"
 #include "syntax_kind.h"
@@ -118,7 +118,7 @@ static LexStatus token_count_init(Counter *count, const Source *source)
   token_counts      = map_new(&counter_token_hash, &counter_token_compare);
   identifier_counts = map_new(&counter_token_hash, &counter_token_compare);
   while (1) {
-    status = mppl_lex(source, offset, &token);
+    status = mpplc_lex(source, offset, &token);
     if (status != LEX_OK) {
       break;
     }

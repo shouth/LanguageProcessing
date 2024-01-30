@@ -2,13 +2,13 @@
 #include <string.h>
 
 #include "array.h"
+#include "compiler.h"
 #include "context.h"
 #include "context_fwd.h"
 #include "map.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
 #include "report.h"
-#include "resolver.h"
 #include "source.h"
 #include "string.h"
 #include "syntax_kind.h"
@@ -207,7 +207,7 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
   mppl_ast__walk_call_stmt(walker, syntax, resolver);
 }
 
-int mppl_resolve(const Source *source, const MpplProgram *syntax, Ctx *ctx)
+int mpplc_resolve(const Source *source, const MpplProgram *syntax, Ctx *ctx)
 {
   MpplAstWalker walker;
   Resolver      resolver;

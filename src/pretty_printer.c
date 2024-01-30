@@ -1,9 +1,9 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "compiler.h"
 #include "context.h"
 #include "mppl_syntax.h"
-#include "pretty_printer.h"
 #include "syntax_tree.h"
 
 typedef struct Printer Printer;
@@ -838,7 +838,7 @@ static void print_token_lit(Printer *printer, const MpplToken *token)
   print_token__impl(printer, token, printer->option.color.literal);
 }
 
-void mppl_pretty_print(const MpplProgram *syntax, const PrinterOption *option)
+void mpplc_pretty_print(const MpplProgram *syntax, const PrinterOption *option)
 {
   Printer printer;
   printer.indent = 0;

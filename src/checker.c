@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "array.h"
-#include "checker.h"
+#include "compiler.h"
 #include "context.h"
 #include "context_fwd.h"
 #include "mppl_syntax.h"
@@ -957,7 +957,7 @@ static void visit_array_type(const MpplAstWalker *walker, const MpplArrayType *s
   (void) walker;
 }
 
-int mppl_check(const Source *source, const MpplProgram *syntax, Ctx *ctx)
+int mpplc_check(const Source *source, const MpplProgram *syntax, Ctx *ctx)
 {
   MpplAstWalker walker;
   Checker       checker;

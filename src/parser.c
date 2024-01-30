@@ -5,11 +5,10 @@
 
 #include "array.h"
 #include "bitset.h"
+#include "compiler.h"
 #include "context.h"
 #include "context_fwd.h"
-#include "lexer.h"
 #include "mppl_syntax.h"
-#include "parser.h"
 #include "report.h"
 #include "source.h"
 #include "string.h"
@@ -63,7 +62,7 @@ static const String *token(Parser *parser)
   if (!parser->token) {
     while (1) {
       LexedToken    lexed;
-      LexStatus     status = mppl_lex(parser->source, parser->offset, &lexed);
+      LexStatus     status = mpplc_lex(parser->source, parser->offset, &lexed);
       const String *token  = ctx_string(parser->ctx, parser->source->text + lexed.offset, lexed.length);
 
       if (syntax_kind_is_token(lexed.kind)) {
@@ -693,7 +692,7 @@ static void parse_program(Parser *parser)
   end_node(parser, SYNTAX_PROGRAM);
 }
 
-int mppl_parse(const Source *source, Ctx *ctx, MpplProgram **syntax)
+int mpplc_parse(const Source *source, Ctx *ctx, MpplProgram **syntax)
 {
   Parser parser;
   int    result;

@@ -3,12 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "checker.h"
+#include "compiler.h"
 #include "context.h"
 #include "mppl_syntax.h"
-#include "parser.h"
-#include "pretty_printer.h"
-#include "resolver.h"
 #include "source.h"
 
 int run_compiler(const char *filename)
@@ -18,9 +15,9 @@ int run_compiler(const char *filename)
   MpplProgram *syntax;
   int          result = EXIT_FAILURE;
 
-  if (mppl_parse(source, ctx, &syntax)) {
-    if (mppl_resolve(source, syntax, ctx) && mppl_check(source, syntax, ctx)) {
-      mppl_pretty_print(syntax, NULL);
+  if (mpplc_parse(source, ctx, &syntax)) {
+    if (mpplc_resolve(source, syntax, ctx) && mpplc_check(source, syntax, ctx)) {
+      mpplc_pretty_print(syntax, NULL);
       result = EXIT_SUCCESS;
     }
     mppl_unref(syntax);

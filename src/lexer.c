@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lexer.h"
+#include "compiler.h"
 #include "source.h"
 #include "syntax_kind.h"
 #include "utility.h"
@@ -209,7 +209,7 @@ static LexStatus token_symbol(Lexer *lexer, LexedToken *lexed)
   }
 }
 
-LexStatus mppl_lex(const Source *source, unsigned long offset, LexedToken *lexed)
+LexStatus mpplc_lex(const Source *source, unsigned long offset, LexedToken *lexed)
 {
   Lexer lexer;
   lexer.source = source;
