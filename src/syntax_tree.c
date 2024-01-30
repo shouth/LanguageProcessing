@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "array.h"
+#include "context.h"
 #include "string.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
