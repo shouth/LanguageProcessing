@@ -188,22 +188,28 @@ void ctx_free(Ctx *ctx)
     MapIndex      index;
 
     for (map_iterator(ctx->strings, &index); map_next(ctx->strings, &index);) {
-      String *string = map_key(ctx->strings, &index);
-      free((void *) string->data);
-      free(string);
+      if (map_value(ctx->strings, &index)) {
+        String *string = map_key(ctx->strings, &index);
+        free((void *) string->data);
+        free(string);
+      }
     }
     map_free(ctx->strings);
 
     for (map_iterator(ctx->type_lists, &index); map_next(ctx->type_lists, &index);) {
-      TypeList *list = map_key(ctx->type_lists, &index);
-      free(list->types);
-      free(list);
+      if (map_value(ctx->type_lists, &index)) {
+        TypeList *list = map_key(ctx->type_lists, &index);
+        free(list->types);
+        free(list);
+      }
     }
     map_free(ctx->type_lists);
 
     for (map_iterator(ctx->types, &index); map_next(ctx->types, &index);) {
-      Type *type = map_key(ctx->types, &index);
-      free(type);
+      if (map_value(ctx->types, &index)) {
+        Type *type = map_key(ctx->types, &index);
+        free(type);
+      }
     }
     map_free(ctx->types);
 
@@ -239,7 +245,7 @@ const String *ctx_string(Ctx *ctx, const char *data, unsigned long length)
 
     instance->length = length;
     instance->data   = ndata;
-    map_update(ctx->strings, &index, instance, NULL);
+    map_update(ctx->strings, &index, instance, instance);
     return instance;
   }
 }
@@ -257,7 +263,7 @@ const Type *ctx_array_type(Ctx *ctx, const Type *base, unsigned long length)
     return map_key(ctx->types, &index);
   } else {
     ArrayType *instance = dup(&type, sizeof(ArrayType), 1);
-    map_update(ctx->types, &index, instance, NULL);
+    map_update(ctx->types, &index, instance, instance);
     return (Type *) instance;
   }
 }
@@ -274,7 +280,7 @@ const Type *ctx_proc_type(Ctx *ctx, const TypeList *params)
     return map_key(ctx->types, &index);
   } else {
     ProcType *instance = dup(&type, sizeof(ProcType), 1);
-    map_update(ctx->types, &index, instance, NULL);
+    map_update(ctx->types, &index, instance, instance);
     return (Type *) instance;
   }
 }
@@ -299,7 +305,7 @@ const TypeList *ctx_take_type_list(Ctx *ctx, const Type **types, unsigned long l
     return map_key(ctx->type_lists, &index);
   } else {
     TypeList *instance = dup(&list, sizeof(TypeList), 1);
-    map_update(ctx->type_lists, &index, instance, NULL);
+    map_update(ctx->type_lists, &index, instance, instance);
     return instance;
   }
 }
