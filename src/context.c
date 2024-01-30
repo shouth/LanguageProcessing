@@ -287,8 +287,7 @@ const Type *ctx_proc_type(Ctx *ctx, const TypeList *params)
 
 const TypeList *ctx_type_list(Ctx *ctx, const Type **types, unsigned long length)
 {
-  const Type **copy = xmalloc(sizeof(Type *) * length);
-  memcpy(copy, types, sizeof(Type *) * length);
+  const Type **copy = dup(types, sizeof(Type *), length);
   return ctx_take_type_list(ctx, copy, length);
 }
 
