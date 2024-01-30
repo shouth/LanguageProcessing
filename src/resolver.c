@@ -87,6 +87,7 @@ static void try_define(Resolver *resolver, DefKind kind, const SyntaxTree *item_
     error_def_conflict(resolver, def_name(previous), def_syntax(previous), item_syntax);
   } else {
     const Def *def = ctx_define(resolver->ctx, kind, name_token->string, item_syntax);
+    ctx_resolve(resolver->ctx, item_syntax, def);
     if (resolver->scope) {
       map_update(resolver->scope->defs, &index, (void *) name_token->string, (void *) def);
     }
