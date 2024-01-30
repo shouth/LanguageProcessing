@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "array.h"
@@ -50,17 +51,17 @@ struct Ctx {
   Map   *syntax_type;
 };
 
-const TypeList  CTX_TYPE_LIST_EMPTY_INSTANCE = { NULL, 0 };
-const TypeList *CTX_TYPE_LIST_EMPTY          = &CTX_TYPE_LIST_EMPTY_INSTANCE;
+static const TypeList CTX_TYPE_LIST_EMPTY_INSTANCE = { NULL, 0 };
+const TypeList       *CTX_TYPE_LIST_EMPTY          = &CTX_TYPE_LIST_EMPTY_INSTANCE;
 
-const Type  CTX_TYPE_BOOLEAN_INSTANCE = { TYPE_BOOLEAN };
-const Type  CTX_TYPE_CHAR_INSTANCE    = { TYPE_CHAR };
-const Type  CTX_TYPE_INTEGER_INSTANCE = { TYPE_INTEGER };
-const Type  CTX_TYPE_STRING_INSTANCE  = { TYPE_STRING };
-const Type *CTX_TYPE_BOOLEAN          = &CTX_TYPE_BOOLEAN_INSTANCE;
-const Type *CTX_TYPE_CHAR             = &CTX_TYPE_CHAR_INSTANCE;
-const Type *CTX_TYPE_INTEGER          = &CTX_TYPE_INTEGER_INSTANCE;
-const Type *CTX_TYPE_STRING           = &CTX_TYPE_STRING_INSTANCE;
+static const Type CTX_TYPE_BOOLEAN_INSTANCE = { TYPE_BOOLEAN };
+static const Type CTX_TYPE_CHAR_INSTANCE    = { TYPE_CHAR };
+static const Type CTX_TYPE_INTEGER_INSTANCE = { TYPE_INTEGER };
+static const Type CTX_TYPE_STRING_INSTANCE  = { TYPE_STRING };
+const Type       *CTX_TYPE_BOOLEAN          = &CTX_TYPE_BOOLEAN_INSTANCE;
+const Type       *CTX_TYPE_CHAR             = &CTX_TYPE_CHAR_INSTANCE;
+const Type       *CTX_TYPE_INTEGER          = &CTX_TYPE_INTEGER_INSTANCE;
+const Type       *CTX_TYPE_STRING           = &CTX_TYPE_STRING_INSTANCE;
 
 static unsigned long string_hash(const void *value)
 {
@@ -148,24 +149,6 @@ static int type_equal(const void *left, const void *right)
   }
 }
 
-static const void *intern(Map *interner, const void *value, unsigned long size, void *(*clone)(const void *) )
-{
-  MapIndex index;
-  if (map_entry(interner, (void *) value, &index)) {
-    return map_value(interner, &index);
-  } else {
-    void *instance;
-    if (clone) {
-      instance = clone(value);
-    } else {
-      instance = xmalloc(size);
-      memcpy(instance, value, size);
-    }
-    map_update(interner, &index, instance, instance);
-    return instance;
-  }
-}
-
 Ctx *ctx_new(void)
 {
   Ctx *ctx         = xmalloc(sizeof(Ctx));
@@ -176,12 +159,24 @@ Ctx *ctx_new(void)
   ctx->resolved    = map_new(NULL, NULL);
   ctx->syntax_type = map_new(NULL, NULL);
 
-  intern(ctx->type_lists, CTX_TYPE_LIST_EMPTY, sizeof(TypeList), NULL);
+  {
+    MapIndex index;
 
-  intern(ctx->types, CTX_TYPE_BOOLEAN, sizeof(Type), NULL);
-  intern(ctx->types, CTX_TYPE_CHAR, sizeof(Type), NULL);
-  intern(ctx->types, CTX_TYPE_INTEGER, sizeof(Type), NULL);
-  intern(ctx->types, CTX_TYPE_STRING, sizeof(Type), NULL);
+    map_entry(ctx->type_lists, (void *) CTX_TYPE_LIST_EMPTY, &index);
+    map_update(ctx->type_lists, &index, (void *) CTX_TYPE_LIST_EMPTY, NULL);
+
+    map_entry(ctx->types, (void *) CTX_TYPE_BOOLEAN, &index);
+    map_update(ctx->types, &index, (void *) CTX_TYPE_BOOLEAN, NULL);
+
+    map_entry(ctx->types, (void *) CTX_TYPE_CHAR, &index);
+    map_update(ctx->types, &index, (void *) CTX_TYPE_CHAR, NULL);
+
+    map_entry(ctx->types, (void *) CTX_TYPE_INTEGER, &index);
+    map_update(ctx->types, &index, (void *) CTX_TYPE_INTEGER, NULL);
+
+    map_entry(ctx->types, (void *) CTX_TYPE_STRING, &index);
+    map_update(ctx->types, &index, (void *) CTX_TYPE_STRING, NULL);
+  }
 
   return ctx;
 }
@@ -193,22 +188,22 @@ void ctx_free(Ctx *ctx)
     MapIndex      index;
 
     for (map_iterator(ctx->strings, &index); map_next(ctx->strings, &index);) {
-      const String *string = map_value(ctx->strings, &index);
+      String *string = map_key(ctx->strings, &index);
       free((void *) string->data);
-      free((void *) string);
+      free(string);
     }
     map_free(ctx->strings);
 
     for (map_iterator(ctx->type_lists, &index); map_next(ctx->type_lists, &index);) {
-      const TypeList *list = map_value(ctx->type_lists, &index);
-      free((void *) list->types);
-      free((void *) list);
+      TypeList *list = map_key(ctx->type_lists, &index);
+      free(list->types);
+      free(list);
     }
     map_free(ctx->type_lists);
 
     for (map_iterator(ctx->types, &index); map_next(ctx->types, &index);) {
-      const Type *type = map_value(ctx->types, &index);
-      free((void *) type);
+      Type *type = map_key(ctx->types, &index);
+      free(type);
     }
     map_free(ctx->types);
 
@@ -225,43 +220,63 @@ void ctx_free(Ctx *ctx)
   }
 }
 
-static void *clone_string(const void *value)
-{
-  const String *string = value;
-  char         *data   = xmalloc(string->length + 1);
-  String       *clone  = xmalloc(sizeof(String));
-
-  memcpy(data, string->data, string->length);
-  data[string->length] = '\0';
-
-  clone->length = string->length;
-  clone->data   = data;
-  return clone;
-}
-
 const String *ctx_string(Ctx *ctx, const char *data, unsigned long length)
 {
+  MapIndex index;
+
   String string;
   string.data   = data;
   string.length = length;
-  return intern(ctx->strings, &string, sizeof(String), &clone_string);
+
+  if (map_entry(ctx->strings, &string, &index)) {
+    return map_key(ctx->strings, &index);
+  } else {
+    String *instance = xmalloc(sizeof(String));
+    char   *ndata    = xmalloc(length + 1);
+
+    memcpy(ndata, data, length);
+    ndata[length] = '\0';
+
+    instance->length = length;
+    instance->data   = ndata;
+    map_update(ctx->strings, &index, instance, NULL);
+    return instance;
+  }
 }
 
 const Type *ctx_array_type(Ctx *ctx, const Type *base, unsigned long length)
 {
+  MapIndex index;
+
   ArrayType type;
   type.kind   = TYPE_ARRAY;
   type.base   = base;
   type.length = length;
-  return intern(ctx->types, &type, sizeof(ArrayType), NULL);
+
+  if (map_entry(ctx->types, &type, &index)) {
+    return map_key(ctx->types, &index);
+  } else {
+    ArrayType *instance = dup(&type, sizeof(ArrayType), 1);
+    map_update(ctx->types, &index, instance, NULL);
+    return (Type *) instance;
+  }
 }
 
 const Type *ctx_proc_type(Ctx *ctx, const TypeList *params)
 {
+  MapIndex index;
+
   ProcType type;
   type.kind   = TYPE_PROC;
   type.params = params;
-  return intern(ctx->types, &type, sizeof(ProcType), NULL);
+
+  if (map_entry(ctx->types, &type, &index)) {
+    return map_key(ctx->types, &index);
+  } else {
+    ProcType *instance = dup(&type, sizeof(ProcType), 1);
+    map_update(ctx->types, &index, instance, NULL);
+    return (Type *) instance;
+  }
 }
 
 const TypeList *ctx_type_list(Ctx *ctx, const Type **types, unsigned long length)
@@ -273,10 +288,20 @@ const TypeList *ctx_type_list(Ctx *ctx, const Type **types, unsigned long length
 
 const TypeList *ctx_take_type_list(Ctx *ctx, const Type **types, unsigned long length)
 {
+  MapIndex index;
+
   TypeList list;
   list.types  = types;
   list.length = length;
-  return intern(ctx->type_lists, &list, sizeof(TypeList), NULL);
+
+  if (map_entry(ctx->type_lists, &list, &index)) {
+    free(types);
+    return map_key(ctx->type_lists, &index);
+  } else {
+    TypeList *instance = dup(&list, sizeof(TypeList), 1);
+    map_update(ctx->type_lists, &index, instance, NULL);
+    return instance;
+  }
 }
 
 const Def *ctx_define(Ctx *ctx, DefKind kind, const String *name, const SyntaxTree *syntax)
