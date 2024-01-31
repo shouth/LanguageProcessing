@@ -143,12 +143,17 @@ static void write_inst(Generator *generator, const char *inst, const char *args[
 {
   int i;
 
-  fprintf(generator->file, "%-10s%-6s", label(generator->current_label), inst);
-  for (i = 0; i < count; ++i) {
-    if (i) {
-      fprintf(generator->file, ", ");
+  fprintf(generator->file, "%-10s", label(generator->current_label));
+  if (count) {
+    fprintf(generator->file, "%-6s", inst);
+    for (i = 0; i < count; ++i) {
+      if (i) {
+        fprintf(generator->file, ", ");
+      }
+      fprintf(generator->file, "%s", args[i]);
     }
-    fprintf(generator->file, "%s", args[i]);
+  } else {
+    fprintf(generator->file, "%s", inst);
   }
   fprintf(generator->file, "\n");
 
@@ -296,6 +301,7 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   Generator generator;
   generator.ctx              = ctx;
   generator.symbols          = map_new(NULL, NULL);
+  generator.current_label    = 0;
   generator.label_count      = (unsigned long) ADR_NORMAL << ADR_KIND_OFFSET;
   generator.var_label_count  = (unsigned long) ADR_VAR << ADR_KIND_OFFSET;
   generator.proc_label_count = (unsigned long) ADR_PROC << ADR_KIND_OFFSET;
