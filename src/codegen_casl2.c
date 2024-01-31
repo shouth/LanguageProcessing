@@ -184,6 +184,34 @@ static void write_inst3(Generator *generator, const char *inst, const char *arg1
   write_inst(generator, inst, args, 3);
 }
 
+static Adr write_label(Generator *generator, AdrKind kind)
+{
+  AdrKind current_kind = generator->current_label >> ADR_KIND_OFFSET;
+  if (current_kind != kind) {
+    if (current_kind != ADR_NULL && kind != ADR_NULL) {
+      write_inst0(generator, "NOP");
+    }
+    switch (kind) {
+    case ADR_NULL:
+      /* do nothing */
+      break;
+
+    case ADR_NORMAL:
+      generator->current_label = generator->label_count++;
+      break;
+
+    case ADR_VAR:
+      generator->current_label = generator->var_label_count++;
+      break;
+
+    case ADR_PROC:
+      generator->current_label = generator->proc_label_count++;
+      break;
+    }
+  }
+  return generator->current_label;
+}
+
 static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *syntax, void *generator)
 {
   Generator    *self = generator;
@@ -193,7 +221,8 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
     MpplToken *name = mppl_var_decl__name(syntax, i);
     const Def *def  = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
 
-    self->current_label = place(self, def, self->var_label_count++);
+    Adr adr = write_label(self, ADR_VAR);
+    place(self, def, adr);
     write_inst1(self, "DC", "1");
     mppl_unref(name);
   }
@@ -210,7 +239,8 @@ static void visit_fml_param_sec(const MpplAstWalker *walker, const MpplFmlParamS
     MpplToken *name = mppl_fml_param_sec__name(syntax, i);
     const Def *def  = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
 
-    self->current_label = place(self, def, self->var_label_count++);
+    Adr adr = write_label(self, ADR_VAR);
+    place(self, def, adr);
     write_inst1(self, "DC", "1");
     mppl_unref(name);
   }
@@ -229,14 +259,22 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   mppl_ast__walk_fml_param_list(walker, params, generator);
   mppl_ast__walk_var_decl_part(walker, vars, generator);
 
-  self->current_label = place(self, NULL, self->proc_label_count++);
+  {
+    MpplToken *name = mppl_proc_decl__name(syntax);
+    const Def *def  = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
+
+    Adr label = write_label(self, ADR_PROC);
+    place(self, def, label);
+    mppl_unref(name);
+  }
+
   for (i = 0; i < mppl_fml_param_list__sec_count(params); ++i) {
     MpplFmlParamSec *sec = mppl_fml_param_list__sec(params, i);
     for (j = 0; j < mppl_fml_param_sec__name_count(sec); ++j) {
-      MpplToken *name  = mppl_fml_param_sec__name(sec, j);
-      const Def *def   = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
-      Adr        label = place(self, def, ADR_NULL);
+      MpplToken *name = mppl_fml_param_sec__name(sec, j);
+      const Def *def  = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
 
+      Adr label = place(self, def, ADR_NULL);
       write_inst1(self, "POP", r(GR1));
       write_inst2(self, "ST", r(GR1), adr(label));
       mppl_unref(name);
