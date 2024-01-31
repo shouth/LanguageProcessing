@@ -1,10 +1,11 @@
+#include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
 
 #include "map.h"
 #include "utility.h"
 
-#define NEIGHBORHOOD ((long) sizeof(unsigned long) * 8)
+#define NEIGHBORHOOD ((long) sizeof(unsigned long) * CHAR_BIT)
 
 struct MapBucket {
   unsigned long hop;
