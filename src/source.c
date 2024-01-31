@@ -15,6 +15,7 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
     source->file_name = xmalloc(file_name_length + 1);
     strncpy(source->file_name, file_name, file_name_length);
     source->file_name[file_name_length] = '\0';
+    source->file_name_length            = file_name_length;
   }
 
   {
