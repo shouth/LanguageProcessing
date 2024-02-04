@@ -255,7 +255,7 @@ static Reg write_var(Generator *self, const AnyMpplVar *syntax)
     Adr            label         = locate(self, def, ADR_NULL);
     Reg            reg           = alloc_reg(self, NULL);
 
-    write_inst2(self, "LD", adr(label), r(reg));
+    write_inst2(self, "LD", r(reg), adr(label));
     mppl_unref(name);
     return reg;
   }
