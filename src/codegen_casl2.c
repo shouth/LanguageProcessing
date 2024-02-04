@@ -58,10 +58,6 @@ static void fmt_adr(char *buf, Adr a)
   AdrKind kind = a >> ADR_KIND_OFFSET;
   a &= (1ul << ADR_KIND_OFFSET) - 1ul;
   switch (kind) {
-  case ADR_NULL:
-    buf[0] = '\0';
-    break;
-
   case ADR_NORMAL:
     sprintf(buf, "L%lu", a);
     break;
@@ -145,7 +141,7 @@ static void write_inst(Generator *generator, const char *inst, const char *args[
 {
   int i;
 
-  fprintf(generator->file, "%-10s", label(generator->current_label));
+  fprintf(generator->file, "%-10s", generator->current_label ? label(generator->current_label) : "");
   if (count) {
     fprintf(generator->file, "%-6s", inst);
     for (i = 0; i < count; ++i) {
