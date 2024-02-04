@@ -23,16 +23,17 @@ typedef enum {
   GR7
 } Reg;
 
-#define ADR_KIND_OFFSET (sizeof(unsigned long) * CHAR_BIT - 2)
+typedef unsigned long Adr;
+
+#define ADR_KIND_OFFSET (sizeof(Adr) * CHAR_BIT - 2)
+#define ADR_NULL        ((Adr) 0)
+#define ADR_CALL        ((Adr) 0 - 1)
 
 typedef enum {
-  ADR_NULL,
-  ADR_NORMAL,
+  ADR_NORMAL = 1,
   ADR_VAR,
   ADR_PROC
 } AdrKind;
-
-typedef unsigned long Adr;
 
 typedef struct Generator Generator;
 
@@ -44,6 +45,7 @@ struct Generator {
   Adr   label_count;
   Adr   var_label_count;
   Adr   proc_label_count;
+  Adr   break_label;
 };
 
 static void fmt_reg(char *buf, Reg reg)
@@ -191,13 +193,156 @@ static void write_inst3(Generator *generator, const char *inst, const char *arg1
 
 static void write_label(Generator *generator, Adr a)
 {
-  AdrKind kind         = a >> ADR_KIND_OFFSET;
-  AdrKind current_kind = generator->current_label >> ADR_KIND_OFFSET;
-  if (current_kind != kind && kind != ADR_NULL) {
-    if (current_kind != ADR_NULL) {
-      write_inst0(generator, "NOP");
-    }
-    generator->current_label = a;
+  if (generator->current_label >> ADR_KIND_OFFSET != ADR_NULL) {
+    write_inst0(generator, "NOP");
+  }
+  generator->current_label = a;
+}
+
+static Reg write_expr(Generator *self, const AnyMpplExpr *syntax)
+{
+  write_inst0(self, "NOP");
+  return GR0;
+}
+
+static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Adr sink);
+
+static Adr write_if_stmt(Generator *self, const MpplIfStmt *syntax, Adr sink)
+{
+  AnyMpplExpr *cond_syntax = mppl_if_stmt__cond(syntax);
+  AnyMpplStmt *then_syntax = mppl_if_stmt__then_stmt(syntax);
+  AnyMpplStmt *else_syntax = mppl_if_stmt__else_stmt(syntax);
+  Adr          next_block  = sink ? sink : self->label_count++;
+  Adr          false_block = else_syntax ? self->label_count++ : next_block;
+  Reg          reg;
+
+  reg = write_expr(self, cond_syntax);
+  write_inst2(self, "CPA", r(reg), "#0");
+  write_inst1(self, "JZE", adr(false_block));
+  write_stmt(self, then_syntax, ADR_NULL, ADR_NULL);
+
+  if (else_syntax) {
+    write_inst1(self, "JUMP", adr(next_block));
+    write_label(self, false_block);
+    write_stmt(self, else_syntax, false_block, next_block);
+  }
+
+  if (!sink) {
+    write_label(self, next_block);
+  }
+
+  mppl_unref(cond_syntax);
+  mppl_unref(then_syntax);
+  mppl_unref(else_syntax);
+
+  return next_block;
+}
+
+static Adr write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Adr source, Adr sink)
+{
+  AnyMpplExpr *cond_syntax          = mppl_while_stmt__cond(syntax);
+  AnyMpplStmt *do_syntax            = mppl_while_stmt__do_stmt(syntax);
+  Adr          cond_block           = source ? source : self->label_count++;
+  Adr          next_block           = sink ? sink : self->label_count++;
+  Adr          previous_break_label = self->break_label;
+
+  self->break_label = next_block;
+
+  write_label(self, cond_block);
+  write_expr(self, cond_syntax);
+  write_inst2(self, "CPA", r(GR1), "#0");
+  write_inst1(self, "JZE", adr(next_block));
+  write_stmt(self, do_syntax, ADR_NULL, ADR_NULL);
+  write_inst1(self, "JUMP", adr(cond_block));
+
+  if (!sink) {
+    write_label(self, next_block);
+  }
+
+  self->break_label = previous_break_label;
+
+  mppl_unref(cond_syntax);
+  mppl_unref(do_syntax);
+
+  return next_block;
+}
+
+static Adr write_comp_stmt(Generator *self, const MpplCompStmt *syntax, Adr source, Adr sink)
+{
+  unsigned long i;
+
+  Adr current = source;
+
+  for (i = 0; i < mppl_comp_stmt__stmt_count(syntax); ++i) {
+    AnyMpplStmt *stmt = mppl_comp_stmt__stmt(syntax, i);
+
+    Adr next = i + 1 < mppl_comp_stmt__stmt_count(syntax) ? ADR_NULL : sink;
+    current  = write_stmt(self, stmt, current, next);
+    mppl_unref(stmt);
+  }
+
+  return current;
+}
+
+static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
+{
+  MpplToken *name  = mppl_call_stmt__name(syntax);
+  const Def *def   = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
+  Adr        label = place(self, def, ADR_NULL);
+
+  write_inst1(self, "CALL", adr(label));
+
+  mppl_unref(name);
+  return ADR_CALL;
+}
+
+static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
+{
+  write_inst0(self, "NOP");
+  return ADR_NULL;
+}
+
+static Adr write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
+{
+  write_inst0(self, "NOP");
+  return ADR_NULL;
+}
+
+static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Adr sink)
+{
+  switch (mppl_stmt__kind(syntax)) {
+  case MPPL_STMT_ASSIGN:
+    write_inst0(self, "NOP");
+    return ADR_NULL;
+
+  case MPPL_STMT_IF:
+    return write_if_stmt(self, (const MpplIfStmt *) syntax, sink);
+
+  case MPPL_STMT_WHILE:
+    return write_while_stmt(self, (const MpplWhileStmt *) syntax, source, sink);
+
+  case MPPL_STMT_BREAK:
+    write_inst1(self, "JUMP", adr(self->break_label));
+    return ADR_NULL;
+
+  case MPPL_STMT_CALL:
+    return write_call_stmt(self, (const MpplCallStmt *) syntax);
+
+  case MPPL_STMT_RETURN:
+    write_inst0(self, "RET");
+    return ADR_NULL;
+
+  case MPPL_STMT_INPUT:
+    return write_input_stmt(self, (const MpplInputStmt *) syntax);
+
+  case MPPL_STMT_OUTPUT:
+    return write_output_stmt(self, (const MpplOutputStmt *) syntax);
+
+  case MPPL_STMT_COMP:
+    return write_comp_stmt(self, (const MpplCompStmt *) syntax, source, sink);
+
+  default:
+    unreachable();
   }
 }
 
@@ -259,19 +404,38 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
       const Def *def  = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
 
       Adr label = place(self, def, ADR_NULL);
-      write_inst1(self, "POP", r(GR1));
-      write_inst2(self, "ST", r(GR1), adr(label));
+      write_inst1(self, "POP", r(GR0));
+      write_inst2(self, "ST", r(GR0), adr(label));
       mppl_unref(name);
     }
     mppl_unref(sec);
   }
-  mppl_ast__walk_comp_stmt(walker, body, generator);
-  write_inst0(self, "RET");
+
+  if (write_stmt(self, (const AnyMpplStmt *) body, ADR_NULL, ADR_NULL) != ADR_CALL) {
+    write_inst0(self, "RET");
+  }
 
   mppl_unref(params);
   mppl_unref(vars);
   mppl_unref(body);
   mppl_unref(name);
+}
+
+static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax, void *generator)
+{
+  unsigned long i;
+  Generator    *self = generator;
+  MpplCompStmt *body = mppl_program__stmt(syntax);
+
+  for (i = 0; i < mppl_program__decl_part_count(syntax); ++i) {
+    AnyMpplDeclPart *decl_part_syntax = mppl_program__decl_part(syntax, i);
+    mppl_ast__walk_decl_part(walker, decl_part_syntax, generator);
+    mppl_unref(decl_part_syntax);
+  }
+
+  write_stmt(self, (const AnyMpplStmt *) body, ADR_NULL, ADR_NULL);
+
+  mppl_unref(body);
 }
 
 int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ctx)
@@ -285,6 +449,7 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   generator.label_count      = (unsigned long) ADR_NORMAL << ADR_KIND_OFFSET;
   generator.var_label_count  = (unsigned long) ADR_VAR << ADR_KIND_OFFSET;
   generator.proc_label_count = (unsigned long) ADR_PROC << ADR_KIND_OFFSET;
+  generator.break_label      = ADR_NULL;
   {
     char *output_filename = xmalloc(sizeof(char) * (source->file_name_length + 1));
     sprintf(output_filename, "%.*s.csl", (int) source->file_name_length - 4, source->file_name);
@@ -299,6 +464,7 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   }
 
   mppl_ast_walker__setup(&walker);
+  walker.visit_program       = &visit_program;
   walker.visit_proc_decl     = &visit_proc_decl;
   walker.visit_fml_param_sec = &visit_fml_param_sec;
   walker.visit_var_decl      = &visit_var_decl;
