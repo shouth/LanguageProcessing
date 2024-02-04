@@ -35,6 +35,8 @@ typedef enum {
   ADR_PROC
 } AdrKind;
 
+typedef unsigned long Value;
+
 typedef struct Generator Generator;
 
 struct Generator {
@@ -117,7 +119,7 @@ static const char *adr(Adr a)
   return buf;
 }
 
-static Adr place(Generator *generator, const Def *def, Adr label)
+static Adr locate(Generator *generator, const Def *def, Adr label)
 {
   MapIndex index;
   if (label) {
@@ -135,6 +137,16 @@ static Adr place(Generator *generator, const Def *def, Adr label)
       unreachable();
     }
   }
+}
+
+static Reg alloc_reg(Generator *self, Value *value)
+{
+  return GR0;
+}
+
+static Reg get_value(Generator *self, Value value)
+{
+
 }
 
 static void write_inst(Generator *generator, const char *inst, const char *args[], int count)
@@ -195,10 +207,140 @@ static void write_label(Generator *generator, Adr a)
   generator->current_label = a;
 }
 
+static Reg write_expr(Generator *self, const AnyMpplExpr *syntax);
+
+static Reg write_binary_expr(Generator *self, const MpplBinaryExpr *syntax)
+{
+  AnyMpplExpr *lhs_syntax = mppl_binary_expr__lhs(syntax);
+
+  write_inst0(self, "NOP");
+  if (lhs_syntax) {
+  } else {
+  }
+  return GR0;
+}
+
+static Reg write_paren_expr(Generator *self, const MpplParenExpr *syntax)
+{
+  AnyMpplExpr *expr_syntax = mppl_paren_expr__expr(syntax);
+  Reg          reg         = write_expr(self, expr_syntax);
+  mppl_unref(expr_syntax);
+  return reg;
+}
+
+static Reg write_not_expr(Generator *self, const MpplNotExpr *syntax)
+{
+  AnyMpplExpr *expr_syntax = mppl_not_expr__expr(syntax);
+  Reg          reg         = write_expr(self, expr_syntax);
+  write_inst2(self, "XOR", r(reg), "#1");
+  mppl_unref(expr_syntax);
+  return reg;
+}
+
+static Reg write_cast_expr(Generator *self, const MpplCastExpr *syntax)
+{
+  AnyMpplExpr *expr_syntax = mppl_cast_expr__expr(syntax);
+  Reg          reg         = write_expr(self, expr_syntax);
+  mppl_unref(expr_syntax);
+  return reg;
+}
+
+static Reg write_var(Generator *self, const AnyMpplVar *syntax)
+{
+  switch (mppl_var__kind(syntax)) {
+  case MPPL_VAR_ENTIRE: {
+    MpplEntireVar *entire_syntax = (MpplEntireVar *) syntax;
+    MpplToken     *name          = mppl_entire_var__name(entire_syntax);
+    const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
+    Adr            label         = locate(self, def, ADR_NULL);
+    Reg            reg           = alloc_reg(self, NULL);
+
+    write_inst2(self, "LD", adr(label), r(reg));
+    mppl_unref(name);
+    return reg;
+  }
+
+  case MPPL_VAR_INDEXED: {
+    MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) syntax;
+    MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
+    AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
+    const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+    Adr             label          = locate(self, def, ADR_NULL);
+    Reg             reg            = write_expr(self, index_syntax);
+
+    write_inst3(self, "LD", r(reg), adr(label), x(reg));
+    mppl_unref(name_syntax);
+    mppl_unref(index_syntax);
+    return reg;
+  }
+
+  default:
+    unreachable();
+  }
+}
+
+static Reg write_lit(Generator *self, const AnyMpplLit *syntax)
+{
+  switch (mppl_lit__kind(syntax)) {
+  case MPPL_LIT_BOOLEAN: {
+    Reg  reg   = alloc_reg(self, NULL);
+    int  value = mppl_lit_boolean__to_int((const MpplBooleanLit *) syntax);
+    char buf[16];
+    sprintf(buf, "%d", value);
+
+    write_inst2(self, "LAD", r(reg), buf);
+    return reg;
+  }
+
+  case MPPL_LIT_NUMBER: {
+    Reg  reg   = alloc_reg(self, NULL);
+    long value = mppl_lit_number__to_long((const MpplNumberLit *) syntax);
+    char buf[16];
+    sprintf(buf, "%ld", value);
+
+    write_inst2(self, "LAD", r(reg), buf);
+    return reg;
+  }
+
+  case MPPL_LIT_STRING: {
+    Reg   reg   = alloc_reg(self, NULL);
+    char *value = mppl_lit_string__to_string((const MpplStringLit *) syntax);
+    value[1]    = '\0';
+
+    write_inst2(self, "LAD", r(reg), value);
+    free(value);
+    return reg;
+  }
+
+  default:
+    unreachable();
+  }
+}
+
 static Reg write_expr(Generator *self, const AnyMpplExpr *syntax)
 {
-  write_inst0(self, "NOP");
-  return GR0;
+  switch (mppl_expr__kind(syntax)) {
+  case MPPL_EXPR_BINARY:
+    return write_binary_expr(self, (const MpplBinaryExpr *) syntax);
+
+  case MPPL_EXPR_PAREN:
+    return write_paren_expr(self, (const MpplParenExpr *) syntax);
+
+  case MPPL_EXPR_NOT:
+    return write_not_expr(self, (const MpplNotExpr *) syntax);
+
+  case MPPL_EXPR_CAST:
+    return write_cast_expr(self, (const MpplCastExpr *) syntax);
+
+  case MPPL_EXPR_VAR:
+    return write_var(self, (const AnyMpplVar *) syntax);
+
+  case MPPL_EXPR_LIT:
+    return write_lit(self, (const AnyMpplLit *) syntax);
+
+  default:
+    unreachable();
+  }
 }
 
 static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Adr sink);
@@ -241,12 +383,13 @@ static Adr write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Adr so
   Adr          cond_block           = source ? source : self->label_count++;
   Adr          next_block           = sink ? sink : self->label_count++;
   Adr          previous_break_label = self->break_label;
+  Reg          reg;
 
   self->break_label = next_block;
 
   write_label(self, cond_block);
-  write_expr(self, cond_syntax);
-  write_inst2(self, "CPA", r(GR1), "#0");
+  reg = write_expr(self, cond_syntax);
+  write_inst2(self, "CPA", r(reg), "#0");
   write_inst1(self, "JZE", adr(next_block));
   write_stmt(self, do_syntax, ADR_NULL, ADR_NULL);
   write_inst1(self, "JUMP", adr(cond_block));
@@ -284,7 +427,7 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
 {
   MpplToken *name  = mppl_call_stmt__name(syntax);
   const Def *def   = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
-  Adr        label = place(self, def, ADR_NULL);
+  Adr        label = locate(self, def, ADR_NULL);
 
   write_inst1(self, "CALL", adr(label));
 
@@ -350,7 +493,7 @@ static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *synta
   for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
     MpplToken *name  = mppl_var_decl__name(syntax, i);
     const Def *def   = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
-    Adr        label = place(self, def, self->var_label_count++);
+    Adr        label = locate(self, def, self->var_label_count++);
 
     write_label(self, label);
     write_inst1(self, "DC", "1");
@@ -368,7 +511,7 @@ static void visit_fml_param_sec(const MpplAstWalker *walker, const MpplFmlParamS
   for (i = 0; i < mppl_fml_param_sec__name_count(syntax); ++i) {
     MpplToken *name  = mppl_fml_param_sec__name(syntax, i);
     const Def *def   = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
-    Adr        label = place(self, def, self->var_label_count++);
+    Adr        label = locate(self, def, self->var_label_count++);
 
     write_label(self, label);
     write_inst1(self, "DC", "1");
@@ -387,7 +530,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   MpplCompStmt     *body   = mppl_proc_decl__comp_stmt(syntax);
   MpplToken        *name   = mppl_proc_decl__name(syntax);
   const Def        *def    = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
-  Adr               label  = place(self, def, self->proc_label_count++);
+  Adr               label  = locate(self, def, self->proc_label_count++);
 
   mppl_ast__walk_fml_param_list(walker, params, generator);
   mppl_ast__walk_var_decl_part(walker, vars, generator);
@@ -399,7 +542,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
       MpplToken *name = mppl_fml_param_sec__name(sec, j);
       const Def *def  = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
 
-      Adr label = place(self, def, ADR_NULL);
+      Adr label = locate(self, def, ADR_NULL);
       write_inst1(self, "POP", r(GR0));
       write_inst2(self, "ST", r(GR0), adr(label));
       mppl_unref(name);
