@@ -18,6 +18,7 @@ int run_compiler(const char *filename)
   if (mpplc_parse(source, ctx, &syntax)) {
     if (mpplc_resolve(source, syntax, ctx) && mpplc_check(source, syntax, ctx)) {
       mpplc_pretty_print(syntax, NULL);
+      mpplc_codegen_casl2(source, syntax, ctx);
       result = EXIT_SUCCESS;
     }
     mppl_unref(syntax);
