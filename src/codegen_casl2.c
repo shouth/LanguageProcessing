@@ -218,14 +218,13 @@ static void write_relational_expr(Generator *self, Reg reg, const char *inst, co
   write_expr(self, reg, lhs_syntax);
   write_expr(self, rhs_reg, rhs_syntax);
   write_inst2(self, "CPA", r1(reg), r2(rhs_reg));
+  reg_release(self, rhs_reg);
   write_inst1(self, inst, adr(false_block));
   write_inst2(self, "LAD", r(reg), "1");
   write_inst1(self, "JUMP", adr(next_block));
   write_label(self, false_block);
   write_inst2(self, "LAD", r(reg), "0");
   write_label(self, next_block);
-
-  reg_release(self, rhs_reg);
 }
 
 static void write_arithmetic_expr(Generator *self, Reg reg, const char *inst, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
@@ -235,7 +234,6 @@ static void write_arithmetic_expr(Generator *self, Reg reg, const char *inst, co
   write_expr(self, reg, lhs_syntax);
   write_expr(self, rhs_reg, rhs_syntax);
   write_inst2(self, inst, r1(reg), r2(rhs_reg));
-
   reg_release(self, rhs_reg);
 }
 
@@ -261,7 +259,6 @@ static void write_binary_expr(Generator *self, Reg reg, const MpplBinaryExpr *sy
   AnyMpplExpr *rhs_syntax = mppl_binary_expr__rhs(syntax);
   SyntaxKind   op_kind    = syntax_tree_kind((const SyntaxTree *) op_syntax);
 
-  write_inst0(self, "NOP");
   if (lhs_syntax) {
     switch (op_kind) {
     case SYNTAX_EQUAL_TOKEN:
