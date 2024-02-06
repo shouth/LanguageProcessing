@@ -118,93 +118,93 @@ static const char *adr(Adr a)
   return buf;
 }
 
-static Adr locate(Generator *generator, const Def *def, Adr label)
+static Adr locate(Generator *self, const Def *def, Adr label)
 {
   MapIndex index;
   if (label) {
-    if (map_entry(generator->symbols, (void *) def, &index)) {
-      return *(Adr *) map_value(generator->symbols, &index) = label;
+    if (map_entry(self->symbols, (void *) def, &index)) {
+      return *(Adr *) map_value(self->symbols, &index) = label;
     } else {
       Adr *p = dup(&label, sizeof(Adr), 1);
-      map_update(generator->symbols, &index, (void *) def, p);
+      map_update(self->symbols, &index, (void *) def, p);
       return label;
     }
   } else {
-    if (map_entry(generator->symbols, (void *) def, &index)) {
-      return *(Adr *) map_value(generator->symbols, &index);
+    if (map_entry(self->symbols, (void *) def, &index)) {
+      return *(Adr *) map_value(self->symbols, &index);
     } else {
       unreachable();
     }
   }
 }
 
-static Reg reg_reserve(Generator *generator)
+static Reg reg_reserve(Generator *self)
 {
   return GR0;
 }
 
-static void reg_release(Generator *generator, Reg reg)
+static void reg_release(Generator *self, Reg reg)
 {
-  (void) generator;
+  (void) self;
   (void) reg;
 }
 
-static void write_inst(Generator *generator, const char *inst, const char *args[], int count)
+static void write_inst(Generator *self, const char *inst, const char *args[], int count)
 {
   int i;
 
-  fprintf(generator->file, "%-10s", generator->current_label ? label(generator->current_label) : "");
+  fprintf(self->file, "%-10s", self->current_label ? label(self->current_label) : "");
   if (count) {
-    fprintf(generator->file, "%-6s", inst);
+    fprintf(self->file, "%-6s", inst);
     for (i = 0; i < count; ++i) {
       if (i) {
-        fprintf(generator->file, ", ");
+        fprintf(self->file, ", ");
       }
-      fprintf(generator->file, "%s", args[i]);
+      fprintf(self->file, "%s", args[i]);
     }
   } else {
-    fprintf(generator->file, "%s", inst);
+    fprintf(self->file, "%s", inst);
   }
-  fprintf(generator->file, "\n");
+  fprintf(self->file, "\n");
 
-  generator->current_label = ADR_NULL;
+  self->current_label = ADR_NULL;
 }
 
-static void write_inst0(Generator *generator, const char *inst)
+static void write_inst0(Generator *self, const char *inst)
 {
-  write_inst(generator, inst, NULL, 0);
+  write_inst(self, inst, NULL, 0);
 }
 
-static void write_inst1(Generator *generator, const char *inst, const char *arg1)
+static void write_inst1(Generator *self, const char *inst, const char *arg1)
 {
   const char *args[1];
   args[0] = arg1;
-  write_inst(generator, inst, args, 1);
+  write_inst(self, inst, args, 1);
 }
 
-static void write_inst2(Generator *generator, const char *inst, const char *arg1, const char *arg2)
+static void write_inst2(Generator *self, const char *inst, const char *arg1, const char *arg2)
 {
   const char *args[2];
   args[0] = arg1;
   args[1] = arg2;
-  write_inst(generator, inst, args, 2);
+  write_inst(self, inst, args, 2);
 }
 
-static void write_inst3(Generator *generator, const char *inst, const char *arg1, const char *arg2, const char *arg3)
+static void write_inst3(Generator *self, const char *inst, const char *arg1, const char *arg2, const char *arg3)
 {
   const char *args[3];
   args[0] = arg1;
   args[1] = arg2;
   args[2] = arg3;
-  write_inst(generator, inst, args, 3);
+  write_inst(self, inst, args, 3);
 }
 
-static void write_label(Generator *generator, Adr a)
+static void write_label(Generator *self, Adr a)
 {
-  if (generator->current_label >> ADR_KIND_OFFSET != ADR_NULL) {
-    write_inst0(generator, "NOP");
+  if (self->current_label >> ADR_KIND_OFFSET != ADR_NULL) {
+    write_inst0(self, "NOP");
   }
-  generator->current_label = a;
+  self->current_label = a;
 }
 
 static void write_expr(Generator *self, Reg reg, const AnyMpplExpr *syntax);
