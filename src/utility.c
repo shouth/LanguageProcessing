@@ -37,6 +37,23 @@ unsigned long fnv1a(unsigned long hash, const void *ptr, unsigned long len)
   return 0xFFFFFFFFul & hash;
 }
 
+unsigned long popcount(void *data, unsigned long count)
+{
+  static const unsigned char table[] = {
+#define B2(n) n, n + 1, n + 1, n + 2
+#define B4(n) B2(n), B2(n + 1), B2(n + 1), B2(n + 2)
+#define B6(n) B4(n), B4(n + 1), B4(n + 1), B4(n + 2)
+    B6(0), B6(1), B6(1), B6(2)
+  };
+
+  unsigned long result = 0;
+  unsigned long i;
+  for (i = 0; i < count; ++i) {
+    result += table[((unsigned char *) data)[i]];
+  }
+  return result;
+}
+
 int is_alphabet(int c)
 {
   return !!strchr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", c);
