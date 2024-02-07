@@ -25,7 +25,7 @@ struct Parser {
   SyntaxBuilder *builder;
   const String  *token;
   SyntaxKind     token_kind;
-  bitset(expected, SYNTAX_EOF_TOKEN);
+  BITSET(expected, SYNTAX_CAST_EXPR);
   Array        *errors;
   int           alive;
   unsigned long breakable;

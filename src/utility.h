@@ -16,10 +16,11 @@ unsigned long popcount(void *data, unsigned long size);
 
 #define ULONG_BIT (sizeof(unsigned long) * CHAR_BIT)
 
-#define bitset(name, bits)        unsigned long name[(bits + ULONG_BIT - 1) / ULONG_BIT]
+#define BITSET(name, bits) unsigned long name[(bits + ULONG_BIT - 1) / ULONG_BIT]
+
 #define bitset_set(self, index)   (self[(index) / ULONG_BIT] |= 1ul << ((index) % ULONG_BIT))
 #define bitset_reset(self, index) (self[(index) / ULONG_BIT] &= ~(1ul << ((index) % ULONG_BIT)))
-#define bitset_get(self, bit)     ((self[(bit) / ULONG_BIT] >> ((bit) % ULONG_BIT)) & 1ul)
+#define bitset_get(self, index)   ((self[(index) / ULONG_BIT] >> ((index) % ULONG_BIT)) & 1ul)
 #define bitset_clear(self)        memset(self, 0, sizeof(self))
 #define bitset_count(self)        popcount(self, sizeof(self))
 
