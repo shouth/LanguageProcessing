@@ -24,8 +24,6 @@ typedef enum {
   GR7
 } Reg;
 
-typedef unsigned long Adr;
-
 #define ADR_KIND_OFFSET (sizeof(Adr) * CHAR_BIT - 2)
 #define ADR_NULL        ((Adr) 0)
 #define ADR_CALL        ((Adr) 0 - 1)
@@ -36,7 +34,19 @@ typedef enum {
   ADR_PROC
 } AdrKind;
 
-typedef struct Generator Generator;
+typedef unsigned long     Adr;
+typedef struct Expr       Expr;
+typedef struct ExprWriter ExprWriter;
+typedef struct Generator  Generator;
+
+struct Expr {
+  const AnyMpplExpr *syntax;
+  Expr              *child[2];
+  unsigned long      id;
+  unsigned long      priority;
+  Reg                reg;
+  int                spill;
+};
 
 struct Generator {
   FILE *file;
@@ -116,6 +126,260 @@ static const char *adr(Adr a)
   static char buf[16];
   fmt_adr(buf, a);
   return buf;
+}
+
+static Expr *expr_create_tree(const AnyMpplExpr *syntax)
+{
+  Expr *self     = xmalloc(sizeof(Expr));
+  self->syntax   = syntax;
+  self->child[0] = NULL;
+  self->child[1] = NULL;
+
+  switch (mppl_expr__kind(syntax)) {
+  case MPPL_EXPR_BINARY: {
+    const MpplBinaryExpr *binary_syntax = (const MpplBinaryExpr *) syntax;
+    self->child[0]                      = expr_create_tree(mppl_binary_expr__lhs(binary_syntax));
+    self->child[1]                      = expr_create_tree(mppl_binary_expr__rhs(binary_syntax));
+    break;
+  }
+
+  case MPPL_EXPR_PAREN: {
+    const MpplParenExpr *paren_syntax = (const MpplParenExpr *) syntax;
+    self->child[0]                    = expr_create_tree(mppl_paren_expr__expr(paren_syntax));
+    break;
+  }
+
+  case MPPL_EXPR_NOT: {
+    const MpplNotExpr *not_syntax = (const MpplNotExpr *) syntax;
+    self->child[0]                = expr_create_tree(mppl_not_expr__expr(not_syntax));
+    break;
+  }
+
+  case MPPL_EXPR_CAST: {
+    const MpplCastExpr *cast_syntax = (const MpplCastExpr *) syntax;
+    self->child[0]                  = expr_create_tree(mppl_cast_expr__expr(cast_syntax));
+    break;
+  }
+
+  case MPPL_EXPR_VAR: {
+    const AnyMpplVar *var_syntax = (const AnyMpplVar *) syntax;
+    switch (mppl_var__kind(var_syntax)) {
+    case MPPL_VAR_ENTIRE:
+      /* do nothing */
+      break;
+
+    case MPPL_VAR_INDEXED: {
+      const MpplIndexedVar *indexed_syntax = (const MpplIndexedVar *) var_syntax;
+      self->child[0]                       = expr_create_tree(mppl_indexed_var__expr(indexed_syntax));
+      break;
+    }
+    }
+    break;
+  }
+
+  case MPPL_EXPR_LIT:
+    /* do nothing */
+    break;
+  }
+
+  return self;
+}
+
+static unsigned long expr_assign_id(Expr *self, unsigned long id)
+{
+  if (self) {
+    id       = expr_assign_id(self->child[0], id);
+    id       = expr_assign_id(self->child[1], id);
+    self->id = id++;
+  }
+  return id;
+}
+
+static unsigned long expr_assign_priority(Expr *self)
+{
+  switch (mppl_expr__kind(self->syntax)) {
+  case MPPL_EXPR_BINARY: {
+    unsigned long         lhs_priority  = expr_assign_priority(self->child[0]);
+    unsigned long         rhs_priority  = expr_assign_priority(self->child[1]);
+    const MpplBinaryExpr *binary_syntax = (const MpplBinaryExpr *) self->syntax;
+    MpplToken            *op_syntax     = mppl_binary_expr__op_token(binary_syntax);
+    SyntaxKind            op_kind       = syntax_tree_kind((const SyntaxTree *) op_syntax);
+
+    if (lhs_priority != rhs_priority) {
+      self->priority = lhs_priority > rhs_priority ? lhs_priority : rhs_priority;
+    } else if (op_kind == SYNTAX_AND_KW || op_kind == SYNTAX_OR_KW) {
+      self->priority = lhs_priority;
+    } else {
+      self->priority = lhs_priority + 1;
+    }
+
+    mppl_unref(op_syntax);
+    return self->priority;
+  }
+
+  case MPPL_EXPR_PAREN:
+    return self->priority = expr_assign_priority(self->child[0]);
+
+  case MPPL_EXPR_NOT:
+    return self->priority = expr_assign_priority(self->child[0]);
+
+  case MPPL_EXPR_CAST:
+    return self->priority = expr_assign_priority(self->child[0]);
+
+  case MPPL_EXPR_VAR: {
+    const AnyMpplVar *var_syntax = (const AnyMpplVar *) self->syntax;
+    switch (mppl_var__kind(var_syntax)) {
+    case MPPL_VAR_ENTIRE:
+      return self->priority = 1;
+
+    case MPPL_VAR_INDEXED:
+      return self->priority = expr_assign_priority(self->child[0]);
+
+    default:
+      unreachable();
+    }
+  }
+
+  case MPPL_EXPR_LIT:
+    return self->priority = 1;
+
+  default:
+    unreachable();
+  }
+}
+
+static Reg reserve_reg(Expr *usage[8], Expr *expr, int hint)
+{
+  if (hint >= 0) {
+    if (!usage[hint]) {
+      usage[hint] = expr;
+      expr->reg   = (Reg) hint;
+      return (Reg) hint;
+    } else {
+      unreachable();
+    }
+  } else {
+    unsigned long i;
+    unsigned long target = -1ul;
+
+    for (i = 0; i < 8; ++i) {
+      if (!usage[i]) {
+        target = i;
+        break;
+      }
+    }
+
+    if (target == -1ul) {
+      for (i = 1; i < 8; ++i) {
+        if (target == -1ul || usage[i]->id < usage[target]->id) {
+          target = i;
+          break;
+        }
+      }
+      usage[target]->spill = 1;
+    }
+
+    usage[target] = expr;
+    expr->reg     = (Reg) target;
+    return expr->reg;
+  }
+}
+
+static void release_reg(Expr *usage[8], Expr *expr)
+{
+  usage[expr->reg] = NULL;
+}
+
+static Reg expr_assign_reg(Expr *self, int hint, Expr *usage[8])
+{
+  self->spill = 0;
+  switch (mppl_expr__kind(self->syntax)) {
+  case MPPL_EXPR_BINARY: {
+    const MpplBinaryExpr *binary_syntax = (const MpplBinaryExpr *) self->syntax;
+    MpplToken            *op_syntax     = mppl_binary_expr__op_token(binary_syntax);
+    SyntaxKind            op_kind       = syntax_tree_kind((const SyntaxTree *) op_syntax);
+
+    if (op_kind == SYNTAX_AND_KW || op_kind == SYNTAX_OR_KW) {
+      hint = expr_assign_reg(self->child[0], hint, usage);
+      release_reg(usage, self->child[0]);
+      expr_assign_reg(self->child[1], hint, usage);
+      release_reg(usage, self->child[1]);
+    } else if (self->child[0]->priority > self->child[1]->priority) {
+      hint = expr_assign_reg(self->child[0], hint, usage);
+      expr_assign_reg(self->child[1], -1, usage);
+      release_reg(usage, self->child[1]);
+      release_reg(usage, self->child[0]);
+    } else {
+      hint = expr_assign_reg(self->child[1], hint, usage);
+      expr_assign_reg(self->child[0], -1, usage);
+      release_reg(usage, self->child[0]);
+      release_reg(usage, self->child[1]);
+    }
+
+    mppl_unref(op_syntax);
+    return reserve_reg(usage, self, hint);
+  }
+
+  case MPPL_EXPR_PAREN:
+    hint = expr_assign_reg(self->child[0], hint, usage);
+    release_reg(usage, self->child[0]);
+    return reserve_reg(usage, self, hint);
+
+  case MPPL_EXPR_NOT:
+    hint = expr_assign_reg(self->child[0], hint, usage);
+    release_reg(usage, self->child[0]);
+    return reserve_reg(usage, self, hint);
+
+  case MPPL_EXPR_CAST:
+    hint = expr_assign_reg(self->child[0], hint, usage);
+    release_reg(usage, self->child[0]);
+    return reserve_reg(usage, self, hint);
+
+  case MPPL_EXPR_VAR: {
+    const AnyMpplVar *var_syntax = (const AnyMpplVar *) self->syntax;
+    switch (mppl_var__kind(var_syntax)) {
+    case MPPL_VAR_ENTIRE:
+      return reserve_reg(usage, self, hint);
+
+    case MPPL_VAR_INDEXED:
+      hint = expr_assign_reg(self->child[0], hint, usage);
+      release_reg(usage, self->child[0]);
+      return reserve_reg(usage, self, hint);
+
+    default:
+      unreachable();
+    }
+  }
+
+  case MPPL_EXPR_LIT:
+    return reserve_reg(usage, self, hint);
+
+  default:
+    unreachable();
+  }
+}
+
+static void expr_new(const AnyMpplExpr *syntax)
+{
+  Expr         *self = expr_create_tree(mppl_ref(syntax));
+  Expr         *usage[8];
+  unsigned long i;
+  expr_assign_id(self, 0);
+  expr_assign_priority(self);
+  for (i = 0; i < 8; ++i) {
+    usage[i] = NULL;
+  }
+  expr_assign_reg(self, -1, usage);
+}
+
+static void expr_free(Expr *self)
+{
+  if (self) {
+    mppl_unref(self->syntax);
+    expr_free(self->child[0]);
+    expr_free(self->child[1]);
+    free(self);
+  }
 }
 
 static Adr locate(Generator *self, const Def *def, Adr label)
