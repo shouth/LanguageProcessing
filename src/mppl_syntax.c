@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include "mppl_syntax.h"
 #include "syntax_kind.h"
 #include "syntax_tree.h"
