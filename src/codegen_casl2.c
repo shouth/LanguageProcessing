@@ -262,7 +262,7 @@ static Reg reserve_reg(Expr *usage[8], Expr *expr, int hint)
     unsigned long i;
     unsigned long target = -1ul;
 
-    for (i = 0; i < 8; ++i) {
+    for (i = 1; i < 8; ++i) {
       if (!usage[i]) {
         target = i;
         break;
@@ -273,7 +273,6 @@ static Reg reserve_reg(Expr *usage[8], Expr *expr, int hint)
       for (i = 1; i < 8; ++i) {
         if (target == -1ul || usage[i]->id < usage[target]->id) {
           target = i;
-          break;
         }
       }
       usage[target]->spill = 1;
