@@ -242,6 +242,7 @@ MpplNumberLit *mppl_out_value__width(const MpplOutValue *value);
 
 MpplLitKind mppl_lit__kind(const AnyMpplLit *lit);
 
-void mppl_unref(void *ast);
+const void *mppl_ref(const void *syntax);
+void        mppl_unref(const void *syntax);
 
 #endif

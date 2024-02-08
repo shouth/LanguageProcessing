@@ -702,9 +702,14 @@ MpplLitKind mppl_lit__kind(const AnyMpplLit *lit)
   }
 }
 
-/* free ast node */
+/* utility */
 
-void mppl_unref(void *ast)
+const void *mppl_ref(const void *syntax)
 {
-  syntax_tree_unref(ast);
+  return syntax_tree_ref(syntax);
+}
+
+void mppl_unref(const void *syntax)
+{
+  syntax_tree_unref(syntax);
 }
