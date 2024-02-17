@@ -311,11 +311,12 @@ static void expr_assign_reg_core(Expr *self, Reg reg, RegState *state, unsigned 
       expr_assign_reg_core(self->child[1], reg, state, order);
       reg_state_release(state, reg);
     } else {
-      Reg rhs = reg_state_vacant(state);
+      Reg rhs;
       expr_assign_reg_core(self->child[0], reg, state, order);
+      rhs = reg_state_vacant(state);
       expr_assign_reg_core(self->child[1], rhs, state, order);
       reg_state_release(state, reg);
-      reg_state_release(state, reg);
+      reg_state_release(state, rhs);
     }
 
     mppl_unref(op_syntax);
