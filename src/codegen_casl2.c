@@ -464,21 +464,21 @@ static void write_inst3(Generator *self, const char *inst, const char *arg1, con
 
 static void write_label(Generator *self, Adr a)
 {
-  if (self->current_label >> ADR_KIND_OFFSET != ADR_NULL) {
-    write_inst0(self, "NOP");
+  if (self->current_label && self->current_label != a) {
+    write_inst0(self, "NOP ; emit for unused label");
   }
   self->current_label = a;
 }
 
-static void write_expr_core(Generator *self, const Expr *expr);
+static void write_expr_core(Generator *self, const Expr *expr, Adr sink);
 
-static void write_relational_expr(Generator *self, const char *inst, const Expr *expr, int reverse)
+static void write_relational_expr(Generator *self, const char *inst, const Expr *expr, int reverse, Adr sink)
 {
   Adr else_block = self->label_count++;
-  Adr next_block = self->label_count++;
+  sink = sink ? sink : self->label_count++;
 
-  write_expr_core(self, expr->child[0]);
-  write_expr_core(self, expr->child[1]);
+  write_expr_core(self, expr->child[0], ADR_NULL);
+  write_expr_core(self, expr->child[1], ADR_NULL);
   if (reverse) {
     write_inst2(self, "CPA", r1(expr->child[1]->reg), r2(expr->child[0]->reg));
   } else {
@@ -486,44 +486,53 @@ static void write_relational_expr(Generator *self, const char *inst, const Expr 
   }
   write_inst1(self, inst, adr(else_block));
   write_inst2(self, "LAD", r(expr->reg), "1");
-  write_inst1(self, "JUMP", adr(next_block));
+  write_inst1(self, "JUMP", adr(sink));
   write_label(self, else_block);
   write_inst2(self, "LAD", r(expr->reg), "0");
-  write_label(self, next_block);
+  write_label(self, sink);
 }
 
 static void write_arithmetic_expr(Generator *self, const char *inst, const Expr *expr)
 {
-  write_expr_core(self, expr->child[0]);
-  write_expr_core(self, expr->child[1]);
+  write_expr_core(self, expr->child[0], ADR_NULL);
+  write_expr_core(self, expr->child[1], ADR_NULL);
   write_inst2(self, inst, r1(expr->child[0]->reg), r2(expr->child[1]->reg));
   if (expr->reg != expr->child[0]->reg) {
     write_inst2(self, "LD", r1(expr->reg), r2(expr->child[0]->reg));
   }
 }
 
-static void write_logical_expr(Generator *self, const char *inst, const Expr *expr)
+static void write_logical_expr(Generator *self, const char *inst, const Expr *expr, Adr sink)
 {
-  Adr else_block = self->label_count++;
-  write_expr_core(self, expr->child[0]);
-  write_inst2(self, "CPA", r(expr->child[0]->reg), "1");
-  write_inst1(self, inst, adr(else_block));
-  write_expr_core(self, expr->child[1]);
-  if (expr->reg != expr->child[1]->reg) {
-    write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
-  }
+  sink = sink ? sink : self->label_count++;
   if (expr->reg != expr->child[0]->reg) {
-    Adr next_block = self->label_count++;
-    write_inst1(self, "JUMP", adr(next_block));
+    Adr else_block = self->label_count++;
+    write_expr_core(self, expr->child[0], ADR_NULL);
+    write_inst2(self, "CPA", r(expr->child[0]->reg), "1");
+    write_inst1(self, inst, adr(else_block));
+    write_expr_core(self, expr->child[1], ADR_NULL);
+    if (expr->reg != expr->child[1]->reg) {
+      write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
+    }
+    write_inst1(self, "JUMP", adr(sink));
     write_label(self, else_block);
     write_inst2(self, "LD", r1(expr->reg), r2(expr->child[0]->reg));
-    write_label(self, next_block);
+    write_label(self, sink);
   } else {
-    write_label(self, else_block);
+    write_expr_core(self, expr->child[0], ADR_NULL);
+    write_inst2(self, "CPA", r(expr->child[0]->reg), "1");
+    write_inst1(self, inst, adr(sink));
+    if (expr->reg != expr->child[1]->reg) {
+      write_expr_core(self, expr->child[1], ADR_NULL);
+      write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
+    } else {
+      write_expr_core(self, expr->child[1], sink);
+    }
+    write_label(self, sink);
   }
 }
 
-static void write_binary_expr(Generator *self, const Expr *expr)
+static void write_binary_expr(Generator *self, const Expr *expr, Adr sink)
 {
   const MpplBinaryExpr *syntax     = (const MpplBinaryExpr *) expr->syntax;
   AnyMpplExpr          *lhs_syntax = mppl_binary_expr__lhs(syntax);
@@ -534,27 +543,27 @@ static void write_binary_expr(Generator *self, const Expr *expr)
   if (lhs_syntax) {
     switch (op_kind) {
     case SYNTAX_EQUAL_TOKEN:
-      write_relational_expr(self, "JNZ", expr, 0);
+      write_relational_expr(self, "JNZ", expr, 0, sink);
       break;
 
     case SYNTAX_NOTEQ_TOKEN:
-      write_relational_expr(self, "JZE", expr, 0);
+      write_relational_expr(self, "JZE", expr, 0, sink);
       break;
 
     case SYNTAX_LESS_TOKEN:
-      write_relational_expr(self, "JMI", expr, 0);
+      write_relational_expr(self, "JMI", expr, 0, sink);
       break;
 
     case SYNTAX_LESSEQ_TOKEN:
-      write_relational_expr(self, "JPL", expr, 1);
+      write_relational_expr(self, "JPL", expr, 1, sink);
       break;
 
     case SYNTAX_GREATER_TOKEN:
-      write_relational_expr(self, "JPL", expr, 0);
+      write_relational_expr(self, "JPL", expr, 0, sink);
       break;
 
     case SYNTAX_GREATEREQ_TOKEN:
-      write_relational_expr(self, "JMI", expr, 1);
+      write_relational_expr(self, "JMI", expr, 1, sink);
       break;
 
     case SYNTAX_PLUS_TOKEN:
@@ -574,11 +583,11 @@ static void write_binary_expr(Generator *self, const Expr *expr)
       break;
 
     case SYNTAX_AND_KW:
-      write_logical_expr(self, "JNZ", expr);
+      write_logical_expr(self, "JNZ", expr, sink);
       break;
 
     case SYNTAX_OR_KW:
-      write_logical_expr(self, "JZE", expr);
+      write_logical_expr(self, "JZE", expr, sink);
       break;
 
     default:
@@ -587,7 +596,7 @@ static void write_binary_expr(Generator *self, const Expr *expr)
   } else {
     switch (op_kind) {
     case SYNTAX_PLUS_TOKEN:
-      write_expr_core(self, expr->child[1]);
+      write_expr_core(self, expr->child[1], sink);
       break;
 
     case SYNTAX_MINUS_TOKEN: {
@@ -605,28 +614,32 @@ static void write_binary_expr(Generator *self, const Expr *expr)
   mppl_unref(rhs_syntax);
 }
 
-static void write_paren_expr(Generator *self, const Expr *expr)
+static void write_paren_expr(Generator *self, const Expr *expr, Adr sink)
 {
-  write_expr_core(self, expr->child[0]);
   if (expr->reg != expr->child[0]->reg) {
+    write_expr_core(self, expr->child[0], ADR_NULL);
     write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
+  } else {
+    write_expr_core(self, expr->child[0], sink);
   }
 }
 
 static void write_not_expr(Generator *self, const Expr *expr)
 {
-  write_expr_core(self, expr->child[0]);
+  write_expr_core(self, expr->child[0], ADR_NULL);
   write_inst2(self, "XOR", r(expr->child[0]->reg), "1");
   if (expr->reg != expr->child[0]->reg) {
     write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
   }
 }
 
-static void write_cast_expr(Generator *self, const Expr *expr)
+static void write_cast_expr(Generator *self, const Expr *expr, Adr sink)
 {
-  write_expr_core(self, expr->child[0]);
   if (expr->reg != expr->child[0]->reg) {
+    write_expr_core(self, expr->child[0], ADR_NULL);
     write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
+  } else {
+    write_expr_core(self, expr->child[0], sink);
   }
 }
 
@@ -652,7 +665,7 @@ static void write_var(Generator *self, const Expr *expr)
     const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
     Adr             label          = locate(self, def, ADR_NULL);
 
-    write_expr_core(self, expr->child[0]);
+    write_expr_core(self, expr->child[0], ADR_NULL);
     write_inst3(self, "LD", r(expr->reg), adr(label), x(expr->child[0]->reg));
     mppl_unref(name_syntax);
     mppl_unref(index_syntax);
@@ -694,15 +707,15 @@ static void write_lit(Generator *self, const Expr *expr)
   write_inst2(self, "LAD", r(expr->reg), buf);
 }
 
-static void write_expr_core(Generator *self, const Expr *expr)
+static void write_expr_core(Generator *self, const Expr *expr, Adr sink)
 {
   switch (mppl_expr__kind(expr->syntax)) {
   case MPPL_EXPR_BINARY:
-    write_binary_expr(self, expr);
+    write_binary_expr(self, expr, sink);
     break;
 
   case MPPL_EXPR_PAREN:
-    write_paren_expr(self, expr);
+    write_paren_expr(self, expr, sink);
     break;
 
   case MPPL_EXPR_NOT:
@@ -710,7 +723,7 @@ static void write_expr_core(Generator *self, const Expr *expr)
     break;
 
   case MPPL_EXPR_CAST:
-    write_cast_expr(self, expr);
+    write_cast_expr(self, expr, sink);
     break;
 
   case MPPL_EXPR_VAR:
@@ -726,11 +739,11 @@ static void write_expr_core(Generator *self, const Expr *expr)
   }
 }
 
-static Reg write_expr(Generator *self, const AnyMpplExpr *syntax)
+static Reg write_expr(Generator *self, const AnyMpplExpr *syntax, Adr sink)
 {
   Expr *expr = expr_new(syntax);
   Reg   reg  = expr->reg;
-  write_expr_core(self, expr);
+  write_expr_core(self, expr, sink);
   expr_free(expr);
   return reg;
 }
@@ -746,7 +759,7 @@ static Adr write_if_stmt(Generator *self, const MpplIfStmt *syntax, Adr sink)
   Adr          false_block = else_syntax ? self->label_count++ : next_block;
   Reg          reg;
 
-  reg = write_expr(self, cond_syntax);
+  reg = write_expr(self, cond_syntax, ADR_NULL);
   write_inst2(self, "CPA", r(reg), "0");
   write_inst1(self, "JNZ", adr(false_block));
   write_stmt(self, then_syntax, ADR_NULL, ADR_NULL);
@@ -780,7 +793,7 @@ static Adr write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Adr so
   self->break_label = next_block;
 
   write_label(self, cond_block);
-  reg = write_expr(self, cond_syntax);
+  reg = write_expr(self, cond_syntax, ADR_NULL);
   write_inst2(self, "CPA", r(reg), "0");
   write_inst1(self, "JNZ", adr(next_block));
   write_stmt(self, do_syntax, ADR_NULL, ADR_NULL);
@@ -829,13 +842,13 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
 
 static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
 {
-  write_inst0(self, "NOP");
+  write_inst0(self, "NOP ; placeholder for input statement");
   return ADR_NULL;
 }
 
 static Adr write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
 {
-  write_inst0(self, "NOP");
+  write_inst0(self, "NOP ; placeholder for output statement");
   return ADR_NULL;
 }
 
@@ -843,7 +856,7 @@ static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Ad
 {
   switch (mppl_stmt__kind(syntax)) {
   case MPPL_STMT_ASSIGN:
-    write_inst0(self, "NOP");
+    write_inst0(self, "NOP ; placeholder for assignment statement");
     return ADR_NULL;
 
   case MPPL_STMT_IF:
