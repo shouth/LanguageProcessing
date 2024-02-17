@@ -35,14 +35,24 @@ typedef enum {
 } AdrKind;
 
 typedef unsigned long     Adr;
+typedef struct RegUsage   RegUsage;
+typedef struct RegState   RegState;
 typedef struct Expr       Expr;
 typedef struct ExprWriter ExprWriter;
 typedef struct Generator  Generator;
 
+struct RegUsage {
+  Expr         *user;
+  unsigned long order;
+};
+
+struct RegState {
+  RegUsage user[8];
+};
+
 struct Expr {
   const AnyMpplExpr *syntax;
   Expr              *child[2];
-  unsigned long      order;
   Reg                reg;
   int                spill;
 };
@@ -125,6 +135,51 @@ static const char *adr(Adr a)
   static char buf[16];
   fmt_adr(buf, a);
   return buf;
+}
+
+static RegState reg_state(void)
+{
+  RegState      self;
+  unsigned long i;
+  for (i = 0; i < 8; ++i) {
+    self.user[i].user  = NULL;
+    self.user[i].order = -1ul;
+  }
+  return self;
+}
+
+static void reg_state_use(RegState *self, Reg reg, Expr *user, unsigned long order)
+{
+  self->user[reg].user  = user;
+  self->user[reg].order = order;
+}
+
+static void reg_state_release(RegState *self, Reg reg)
+{
+  self->user[reg].user  = NULL;
+  self->user[reg].order = -1ul;
+}
+
+static Reg reg_state_vacant(RegState *self)
+{
+  unsigned long i;
+  unsigned long oldest = -1ul;
+
+  for (i = 1; i < 8; ++i) {
+    if (!self->user[i].user) {
+      return (Reg) i;
+    }
+  }
+
+  for (i = 1; i < 8; ++i) {
+    if (self->user[i].order < oldest) {
+      oldest = self->user[i].order;
+    }
+  }
+
+  self->user[oldest].user->spill = 1;
+  reg_state_release(self, (Reg) oldest);
+  return (Reg) oldest;
 }
 
 static Expr *expr_create_tree(const AnyMpplExpr *syntax)
@@ -241,49 +296,7 @@ static unsigned long expr_optimize_order(Expr *self)
   }
 }
 
-/* TODO: assign order to each expr */
-static Reg reserve_reg(Expr *usage[8], Expr *expr, int place)
-{
-  if (place >= 0) {
-    if (!usage[place]) {
-      usage[place] = expr;
-      expr->reg   = (Reg) place;
-      return (Reg) place;
-    } else {
-      unreachable();
-    }
-  } else {
-    unsigned long i;
-    unsigned long target = -1ul;
-
-    for (i = 1; i < 8; ++i) {
-      if (!usage[i]) {
-        target = i;
-        break;
-      }
-    }
-
-    if (target == -1ul) {
-      for (i = 1; i < 8; ++i) {
-        if (target == -1ul || usage[i]->order < usage[target]->order) {
-          target = i;
-        }
-      }
-      usage[target]->spill = 1;
-    }
-
-    usage[target] = expr;
-    expr->reg     = (Reg) target;
-    return expr->reg;
-  }
-}
-
-static void release_reg(Expr *usage[8], Expr *expr)
-{
-  usage[expr->reg] = NULL;
-}
-
-static Reg expr_assign_reg(Expr *self, int place, Expr *usage[8])
+static void expr_assign_reg_core(Expr *self, Reg reg, RegState *state, unsigned long *order)
 {
   self->spill = 0;
   switch (mppl_expr__kind(self->syntax)) {
@@ -293,46 +306,48 @@ static Reg expr_assign_reg(Expr *self, int place, Expr *usage[8])
     SyntaxKind            op_kind       = syntax_tree_kind((const SyntaxTree *) op_syntax);
 
     if (op_kind == SYNTAX_AND_KW || op_kind == SYNTAX_OR_KW) {
-      place = expr_assign_reg(self->child[0], place, usage);
-      release_reg(usage, self->child[0]);
-      expr_assign_reg(self->child[1], place, usage);
-      release_reg(usage, self->child[1]);
+      expr_assign_reg_core(self->child[0], reg, state, order);
+      reg_state_release(state, reg);
+      expr_assign_reg_core(self->child[1], reg, state, order);
+      reg_state_release(state, reg);
     } else {
-      place = expr_assign_reg(self->child[0], place, usage);
-      expr_assign_reg(self->child[1], -1, usage);
-      release_reg(usage, self->child[0]);
-      release_reg(usage, self->child[1]);
+      Reg rhs = reg_state_vacant(state);
+      expr_assign_reg_core(self->child[0], reg, state, order);
+      expr_assign_reg_core(self->child[1], rhs, state, order);
+      reg_state_release(state, reg);
+      reg_state_release(state, reg);
     }
 
     mppl_unref(op_syntax);
-    return reserve_reg(usage, self, place);
+    break;
   }
 
   case MPPL_EXPR_PAREN:
-    place = expr_assign_reg(self->child[0], place, usage);
-    release_reg(usage, self->child[0]);
-    return reserve_reg(usage, self, place);
+    expr_assign_reg_core(self->child[0], reg, state, order);
+    reg_state_release(state, reg);
+    break;
 
   case MPPL_EXPR_NOT:
-    place = expr_assign_reg(self->child[0], place, usage);
-    release_reg(usage, self->child[0]);
-    return reserve_reg(usage, self, place);
+    expr_assign_reg_core(self->child[0], reg, state, order);
+    reg_state_release(state, reg);
+    break;
 
   case MPPL_EXPR_CAST:
-    place = expr_assign_reg(self->child[0], place, usage);
-    release_reg(usage, self->child[0]);
-    return reserve_reg(usage, self, place);
+    expr_assign_reg_core(self->child[0], reg, state, order);
+    reg_state_release(state, reg);
+    break;
 
   case MPPL_EXPR_VAR: {
     const AnyMpplVar *var_syntax = (const AnyMpplVar *) self->syntax;
     switch (mppl_var__kind(var_syntax)) {
     case MPPL_VAR_ENTIRE:
-      return reserve_reg(usage, self, place);
+      /* do nothing */
+      break;
 
     case MPPL_VAR_INDEXED:
-      place = expr_assign_reg(self->child[0], place, usage);
-      release_reg(usage, self->child[0]);
-      return reserve_reg(usage, self, place);
+      expr_assign_reg_core(self->child[0], reg, state, order);
+      reg_state_release(state, reg);
+      break;
 
     default:
       unreachable();
@@ -340,23 +355,29 @@ static Reg expr_assign_reg(Expr *self, int place, Expr *usage[8])
   }
 
   case MPPL_EXPR_LIT:
-    return reserve_reg(usage, self, place);
+    /* do nothing */
+    break;
 
   default:
     unreachable();
   }
+
+  reg_state_use(state, self->reg = reg, self, (*order)++);
+}
+
+static void expr_assign_reg(Expr *self)
+{
+  RegState      state = reg_state();
+  Reg           reg   = reg_state_vacant(&state);
+  unsigned long order = 0;
+  expr_assign_reg_core(self, reg, &state, &order);
 }
 
 static void expr_new(const AnyMpplExpr *syntax)
 {
-  Expr         *self = expr_create_tree(mppl_ref(syntax));
-  Expr         *usage[8];
-  unsigned long i;
+  Expr *self = expr_create_tree(mppl_ref(syntax));
   expr_optimize_order(self);
-  for (i = 0; i < 8; ++i) {
-    usage[i] = NULL;
-  }
-  expr_assign_reg(self, -1, usage);
+  expr_assign_reg(self);
 }
 
 static void expr_free(Expr *self)
