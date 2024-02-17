@@ -373,11 +373,12 @@ static void expr_assign_reg(Expr *self)
   expr_assign_reg_core(self, reg, &state, &order);
 }
 
-static void expr_new(const AnyMpplExpr *syntax)
+static Expr *expr_new(const AnyMpplExpr *syntax)
 {
   Expr *self = expr_create_tree(mppl_ref(syntax));
   expr_optimize_order(self);
   expr_assign_reg(self);
+  return self;
 }
 
 static void expr_free(Expr *self)
@@ -408,17 +409,6 @@ static Adr locate(Generator *self, const Def *def, Adr label)
       unreachable();
     }
   }
-}
-
-static Reg reg_reserve(Generator *self)
-{
-  return GR0;
-}
-
-static void reg_release(Generator *self, Reg reg)
-{
-  (void) self;
-  (void) reg;
 }
 
 static void write_inst(Generator *self, const char *inst, const char *args[], int count)
@@ -479,106 +469,115 @@ static void write_label(Generator *self, Adr a)
   self->current_label = a;
 }
 
-static void write_expr(Generator *self, Reg reg, const AnyMpplExpr *syntax);
+static void write_expr_core(Generator *self, const Expr *expr);
 
-static void write_relational_expr(Generator *self, Reg reg, const char *inst, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+static void write_relational_expr(Generator *self, const char *inst, const Expr *expr, int reverse)
 {
-  Reg rhs_reg     = reg_reserve(self);
-  Adr false_block = self->label_count++;
-  Adr next_block  = self->label_count++;
+  Adr else_block = self->label_count++;
+  Adr next_block = self->label_count++;
 
-  write_expr(self, reg, lhs_syntax);
-  write_expr(self, rhs_reg, rhs_syntax);
-  write_inst2(self, "CPA", r1(reg), r2(rhs_reg));
-  reg_release(self, rhs_reg);
-  write_inst1(self, inst, adr(false_block));
-  write_inst2(self, "LAD", r(reg), "1");
+  write_expr_core(self, expr->child[0]);
+  write_expr_core(self, expr->child[1]);
+  if (reverse) {
+    write_inst2(self, "CPA", r1(expr->child[1]->reg), r2(expr->child[0]->reg));
+  } else {
+    write_inst2(self, "CPA", r1(expr->child[0]->reg), r2(expr->child[1]->reg));
+  }
+  write_inst1(self, inst, adr(else_block));
+  write_inst2(self, "LAD", r(expr->reg), "1");
   write_inst1(self, "JUMP", adr(next_block));
-  write_label(self, false_block);
-  write_inst2(self, "LAD", r(reg), "0");
+  write_label(self, else_block);
+  write_inst2(self, "LAD", r(expr->reg), "0");
   write_label(self, next_block);
 }
 
-static void write_arithmetic_expr(Generator *self, Reg reg, const char *inst, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+static void write_arithmetic_expr(Generator *self, const char *inst, const Expr *expr)
 {
-  Reg rhs_reg = reg_reserve(self);
-
-  write_expr(self, reg, lhs_syntax);
-  write_expr(self, rhs_reg, rhs_syntax);
-  write_inst2(self, inst, r1(reg), r2(rhs_reg));
-  reg_release(self, rhs_reg);
+  write_expr_core(self, expr->child[0]);
+  write_expr_core(self, expr->child[1]);
+  write_inst2(self, inst, r1(expr->child[0]->reg), r2(expr->child[1]->reg));
+  if (expr->reg != expr->child[0]->reg) {
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->child[0]->reg));
+  }
 }
 
-static void write_logical_expr(Generator *self, Reg reg, const char *jump, const char *early, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+static void write_logical_expr(Generator *self, const char *inst, const Expr *expr)
 {
-  Adr false_block = self->label_count++;
-  Adr next_block  = self->label_count++;
-
-  write_expr(self, reg, lhs_syntax);
-  write_inst2(self, "CPA", r(reg), "1");
-  write_inst1(self, jump, adr(false_block));
-  write_inst1(self, "LAD", early);
-  write_inst1(self, "JUMP", adr(next_block));
-  write_label(self, false_block);
-  write_expr(self, reg, rhs_syntax);
-  write_label(self, next_block);
+  Adr else_block = self->label_count++;
+  write_expr_core(self, expr->child[0]);
+  write_inst2(self, "CPA", r(expr->child[0]->reg), "1");
+  write_inst1(self, inst, adr(else_block));
+  write_expr_core(self, expr->child[1]);
+  if (expr->reg != expr->child[1]->reg) {
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
+  }
+  if (expr->reg != expr->child[0]->reg) {
+    Adr next_block = self->label_count++;
+    write_inst1(self, "JUMP", adr(next_block));
+    write_label(self, else_block);
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->child[0]->reg));
+    write_label(self, next_block);
+  } else {
+    write_label(self, else_block);
+  }
 }
 
-static void write_binary_expr(Generator *self, Reg reg, const MpplBinaryExpr *syntax)
+static void write_binary_expr(Generator *self, const Expr *expr)
 {
-  AnyMpplExpr *lhs_syntax = mppl_binary_expr__lhs(syntax);
-  MpplToken   *op_syntax  = mppl_binary_expr__op_token(syntax);
-  AnyMpplExpr *rhs_syntax = mppl_binary_expr__rhs(syntax);
-  SyntaxKind   op_kind    = syntax_tree_kind((const SyntaxTree *) op_syntax);
+  const MpplBinaryExpr *syntax     = (const MpplBinaryExpr *) expr->syntax;
+  AnyMpplExpr          *lhs_syntax = mppl_binary_expr__lhs(syntax);
+  MpplToken            *op_syntax  = mppl_binary_expr__op_token(syntax);
+  AnyMpplExpr          *rhs_syntax = mppl_binary_expr__rhs(syntax);
+  SyntaxKind            op_kind    = syntax_tree_kind((const SyntaxTree *) op_syntax);
 
   if (lhs_syntax) {
     switch (op_kind) {
     case SYNTAX_EQUAL_TOKEN:
-      write_relational_expr(self, reg, "JNZ", lhs_syntax, rhs_syntax);
+      write_relational_expr(self, "JNZ", expr, 0);
       break;
 
     case SYNTAX_NOTEQ_TOKEN:
-      write_relational_expr(self, reg, "JZE", lhs_syntax, rhs_syntax);
+      write_relational_expr(self, "JZE", expr, 0);
       break;
 
     case SYNTAX_LESS_TOKEN:
-      write_relational_expr(self, reg, "JMI", lhs_syntax, rhs_syntax);
+      write_relational_expr(self, "JMI", expr, 0);
       break;
 
     case SYNTAX_LESSEQ_TOKEN:
-      write_relational_expr(self, reg, "JPL", rhs_syntax, lhs_syntax);
+      write_relational_expr(self, "JPL", expr, 1);
       break;
 
     case SYNTAX_GREATER_TOKEN:
-      write_relational_expr(self, reg, "JPL", lhs_syntax, rhs_syntax);
+      write_relational_expr(self, "JPL", expr, 0);
       break;
 
     case SYNTAX_GREATEREQ_TOKEN:
-      write_relational_expr(self, reg, "JMI", rhs_syntax, lhs_syntax);
+      write_relational_expr(self, "JMI", expr, 1);
       break;
 
     case SYNTAX_PLUS_TOKEN:
-      write_arithmetic_expr(self, reg, "ADDA", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr(self, "ADDA", expr);
       break;
 
     case SYNTAX_MINUS_TOKEN:
-      write_arithmetic_expr(self, reg, "SUBA", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr(self, "SUBA", expr);
       break;
 
     case SYNTAX_STAR_TOKEN:
-      write_arithmetic_expr(self, reg, "MULA", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr(self, "MULA", expr);
       break;
 
     case SYNTAX_DIV_KW:
-      write_arithmetic_expr(self, reg, "DIVA", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr(self, "DIVA", expr);
       break;
 
     case SYNTAX_AND_KW:
-      write_logical_expr(self, reg, "JZE", "0", lhs_syntax, rhs_syntax);
+      write_logical_expr(self, "JNZ", expr);
       break;
 
     case SYNTAX_OR_KW:
-      write_logical_expr(self, reg, "JNZ", "1", lhs_syntax, rhs_syntax);
+      write_logical_expr(self, "JZE", expr);
       break;
 
     default:
@@ -587,18 +586,12 @@ static void write_binary_expr(Generator *self, Reg reg, const MpplBinaryExpr *sy
   } else {
     switch (op_kind) {
     case SYNTAX_PLUS_TOKEN:
-      write_expr(self, reg, rhs_syntax);
+      write_expr_core(self, expr->child[1]);
       break;
 
     case SYNTAX_MINUS_TOKEN: {
-      Reg rhs_reg = reg_reserve(self);
-
-      write_expr(self, rhs_reg, rhs_syntax);
-      write_inst2(self, "LAD", r(reg), "0");
-      write_inst2(self, "SUBA", r1(reg), r2(rhs_reg));
-
-      reg_release(self, rhs_reg);
-      break;
+      /* TODO: update `Expr` to deal with `-expr` */
+      unreachable();
     }
 
     default:
@@ -611,30 +604,34 @@ static void write_binary_expr(Generator *self, Reg reg, const MpplBinaryExpr *sy
   mppl_unref(rhs_syntax);
 }
 
-static void write_paren_expr(Generator *self, Reg reg, const MpplParenExpr *syntax)
+static void write_paren_expr(Generator *self, const Expr *expr)
 {
-  AnyMpplExpr *expr_syntax = mppl_paren_expr__expr(syntax);
-  write_expr(self, reg, expr_syntax);
-  mppl_unref(expr_syntax);
+  write_expr_core(self, expr->child[0]);
+  if (expr->reg != expr->child[0]->reg) {
+    write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
+  }
 }
 
-static void write_not_expr(Generator *self, Reg reg, const MpplNotExpr *syntax)
+static void write_not_expr(Generator *self, const Expr *expr)
 {
-  AnyMpplExpr *expr_syntax = mppl_not_expr__expr(syntax);
-  write_expr(self, reg, expr_syntax);
-  write_inst2(self, "XOR", r(reg), "1");
-  mppl_unref(expr_syntax);
+  write_expr_core(self, expr->child[0]);
+  write_inst2(self, "XOR", r(expr->child[0]->reg), "1");
+  if (expr->reg != expr->child[0]->reg) {
+    write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
+  }
 }
 
-static void write_cast_expr(Generator *self, Reg reg, const MpplCastExpr *syntax)
+static void write_cast_expr(Generator *self, const Expr *expr)
 {
-  AnyMpplExpr *expr_syntax = mppl_cast_expr__expr(syntax);
-  write_expr(self, reg, expr_syntax);
-  mppl_unref(expr_syntax);
+  write_expr_core(self, expr->child[0]);
+  if (expr->reg != expr->child[0]->reg) {
+    write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
+  }
 }
 
-static void write_var(Generator *self, Reg reg, const AnyMpplVar *syntax)
+static void write_var(Generator *self, const Expr *expr)
 {
+  const AnyMpplVar *syntax = (const AnyMpplVar *) expr->syntax;
   switch (mppl_var__kind(syntax)) {
   case MPPL_VAR_ENTIRE: {
     MpplEntireVar *entire_syntax = (MpplEntireVar *) syntax;
@@ -642,7 +639,7 @@ static void write_var(Generator *self, Reg reg, const AnyMpplVar *syntax)
     const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
     Adr            label         = locate(self, def, ADR_NULL);
 
-    write_inst2(self, "LD", r(reg), adr(label));
+    write_inst2(self, "LD", r(expr->reg), adr(label));
     mppl_unref(name_syntax);
     break;
   }
@@ -654,8 +651,8 @@ static void write_var(Generator *self, Reg reg, const AnyMpplVar *syntax)
     const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
     Adr             label          = locate(self, def, ADR_NULL);
 
-    write_expr(self, reg, index_syntax);
-    write_inst3(self, "LD", r(reg), adr(label), x(reg));
+    write_expr_core(self, expr->child[0]);
+    write_inst3(self, "LD", r(expr->reg), adr(label), x(expr->child[0]->reg));
     mppl_unref(name_syntax);
     mppl_unref(index_syntax);
     break;
@@ -666,9 +663,10 @@ static void write_var(Generator *self, Reg reg, const AnyMpplVar *syntax)
   }
 }
 
-static void write_lit(Generator *self, Reg reg, const AnyMpplLit *syntax)
+static void write_lit(Generator *self, const Expr *expr)
 {
-  char buf[16];
+  const AnyMpplLit *syntax = (const AnyMpplLit *) expr->syntax;
+  char              buf[16];
   switch (mppl_lit__kind(syntax)) {
   case MPPL_LIT_BOOLEAN: {
     int raw_value = mppl_lit_boolean__to_int((const MpplBooleanLit *) syntax);
@@ -692,39 +690,48 @@ static void write_lit(Generator *self, Reg reg, const AnyMpplLit *syntax)
   default:
     unreachable();
   }
-  write_inst2(self, "LAD", r(reg), buf);
+  write_inst2(self, "LAD", r(expr->reg), buf);
 }
 
-static void write_expr(Generator *self, Reg reg, const AnyMpplExpr *syntax)
+static void write_expr_core(Generator *self, const Expr *expr)
 {
-  switch (mppl_expr__kind(syntax)) {
+  switch (mppl_expr__kind(expr->syntax)) {
   case MPPL_EXPR_BINARY:
-    write_binary_expr(self, reg, (const MpplBinaryExpr *) syntax);
+    write_binary_expr(self, expr);
     break;
 
   case MPPL_EXPR_PAREN:
-    write_paren_expr(self, reg, (const MpplParenExpr *) syntax);
+    write_paren_expr(self, expr);
     break;
 
   case MPPL_EXPR_NOT:
-    write_not_expr(self, reg, (const MpplNotExpr *) syntax);
+    write_not_expr(self, expr);
     break;
 
   case MPPL_EXPR_CAST:
-    write_cast_expr(self, reg, (const MpplCastExpr *) syntax);
+    write_cast_expr(self, expr);
     break;
 
   case MPPL_EXPR_VAR:
-    write_var(self, reg, (const AnyMpplVar *) syntax);
+    write_var(self, expr);
     break;
 
   case MPPL_EXPR_LIT:
-    write_lit(self, reg, (const AnyMpplLit *) syntax);
+    write_lit(self, expr);
     break;
 
   default:
     unreachable();
   }
+}
+
+static Reg write_expr(Generator *self, const AnyMpplExpr *syntax)
+{
+  Expr *expr = expr_new(syntax);
+  Reg   reg  = expr->reg;
+  write_expr_core(self, expr);
+  expr_free(expr);
+  return reg;
 }
 
 static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Adr sink);
@@ -736,11 +743,10 @@ static Adr write_if_stmt(Generator *self, const MpplIfStmt *syntax, Adr sink)
   AnyMpplStmt *else_syntax = mppl_if_stmt__else_stmt(syntax);
   Adr          next_block  = sink ? sink : self->label_count++;
   Adr          false_block = else_syntax ? self->label_count++ : next_block;
-  Reg          reg         = reg_reserve(self);
+  Reg          reg;
 
-  write_expr(self, reg, cond_syntax);
+  reg = write_expr(self, cond_syntax);
   write_inst2(self, "CPA", r(reg), "0");
-  reg_release(self, reg);
   write_inst1(self, "JNZ", adr(false_block));
   write_stmt(self, then_syntax, ADR_NULL, ADR_NULL);
 
@@ -768,14 +774,13 @@ static Adr write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Adr so
   Adr          cond_block           = source ? source : self->label_count++;
   Adr          next_block           = sink ? sink : self->label_count++;
   Adr          previous_break_label = self->break_label;
-  Reg          reg                  = reg_reserve(self);
+  Reg          reg;
 
   self->break_label = next_block;
 
   write_label(self, cond_block);
-  write_expr(self, reg, cond_syntax);
+  reg = write_expr(self, cond_syntax);
   write_inst2(self, "CPA", r(reg), "0");
-  reg_release(self, reg);
   write_inst1(self, "JNZ", adr(next_block));
   write_stmt(self, do_syntax, ADR_NULL, ADR_NULL);
   write_inst1(self, "JUMP", adr(cond_block));
