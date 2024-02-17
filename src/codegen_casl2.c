@@ -475,7 +475,7 @@ static void write_expr_core(Generator *self, const Expr *expr, Adr sink);
 static void write_relational_expr(Generator *self, const char *inst, const Expr *expr, int reverse, Adr sink)
 {
   Adr else_block = self->label_count++;
-  sink = sink ? sink : self->label_count++;
+  Adr next_block = sink ? sink : self->label_count++;
 
   write_expr_core(self, expr->child[0], ADR_NULL);
   write_expr_core(self, expr->child[1], ADR_NULL);
@@ -486,10 +486,13 @@ static void write_relational_expr(Generator *self, const char *inst, const Expr 
   }
   write_inst1(self, inst, adr(else_block));
   write_inst2(self, "LAD", r(expr->reg), "1");
-  write_inst1(self, "JUMP", adr(sink));
+  write_inst1(self, "JUMP", adr(next_block));
   write_label(self, else_block);
   write_inst2(self, "LAD", r(expr->reg), "0");
-  write_label(self, sink);
+
+  if (!sink) {
+    write_label(self, next_block);
+  }
 }
 
 static void write_arithmetic_expr(Generator *self, const char *inst, const Expr *expr)
@@ -504,7 +507,7 @@ static void write_arithmetic_expr(Generator *self, const char *inst, const Expr 
 
 static void write_logical_expr(Generator *self, const char *inst, const Expr *expr, Adr sink)
 {
-  sink = sink ? sink : self->label_count++;
+  Adr next_block = sink ? sink : self->label_count++;
   if (expr->reg != expr->child[0]->reg) {
     Adr else_block = self->label_count++;
     write_expr_core(self, expr->child[0], ADR_NULL);
@@ -514,20 +517,22 @@ static void write_logical_expr(Generator *self, const char *inst, const Expr *ex
     if (expr->reg != expr->child[1]->reg) {
       write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
     }
-    write_inst1(self, "JUMP", adr(sink));
+    write_inst1(self, "JUMP", adr(next_block));
     write_label(self, else_block);
     write_inst2(self, "LD", r1(expr->reg), r2(expr->child[0]->reg));
-    write_label(self, sink);
   } else {
     write_expr_core(self, expr->child[0], ADR_NULL);
     write_inst2(self, "CPA", r(expr->child[0]->reg), "1");
-    write_inst1(self, inst, adr(sink));
+    write_inst1(self, inst, adr(next_block));
     if (expr->reg != expr->child[1]->reg) {
       write_expr_core(self, expr->child[1], ADR_NULL);
       write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
     } else {
-      write_expr_core(self, expr->child[1], sink);
+      write_expr_core(self, expr->child[1], next_block);
     }
+  }
+
+  if (!sink) {
     write_label(self, sink);
   }
 }
