@@ -37,9 +37,12 @@ typedef enum {
 typedef unsigned long     Adr;
 typedef struct RegUsage   RegUsage;
 typedef struct RegState   RegState;
+typedef struct BinaryExpr BinaryExpr;
+typedef struct NotExpr    NotExpr;
+typedef struct CastExpr   CastExpr;
+typedef struct VarExpr    VarExpr;
+typedef struct LitExpr    LitExpr;
 typedef struct Expr       Expr;
-typedef struct ExprWriter ExprWriter;
-typedef struct Generator  Generator;
 
 struct RegUsage {
   Expr         *user;
@@ -47,15 +50,79 @@ struct RegUsage {
 };
 
 struct RegState {
-  RegUsage user[8];
+  RegUsage      user[8];
+  unsigned long order;
 };
 
+typedef enum {
+  EXPR_BINARY,
+  EXPR_NOT,
+  EXPR_CAST,
+  EXPR_VAR,
+  EXPR_LIT
+} ExprKind;
+
+typedef enum {
+  BINARY_ADD,
+  BINARY_SUB,
+  BINARY_MUL,
+  BINARY_DIV,
+  BINARY_EQ,
+  BINARY_NE,
+  BINARY_LT,
+  BINARY_LE,
+  BINARY_GT,
+  BINARY_GE,
+  BINARY_AND,
+  BINARY_OR
+} BinaryExprKind;
+
 struct Expr {
-  const AnyMpplExpr *syntax;
-  Expr              *child[2];
-  Reg                reg;
-  int                spill;
+  ExprKind kind;
+  Reg      reg;
+  int      spill;
 };
+
+struct BinaryExpr {
+  ExprKind       kind;
+  Reg            reg;
+  int            spill;
+  BinaryExprKind op;
+  Expr          *lhs;
+  Expr          *rhs;
+};
+
+struct NotExpr {
+  ExprKind kind;
+  Reg      reg;
+  int      spill;
+  Expr    *expr;
+};
+
+struct CastExpr {
+  ExprKind kind;
+  Reg      reg;
+  int      spill;
+  Expr    *expr;
+};
+
+struct VarExpr {
+  ExprKind   kind;
+  Reg        reg;
+  int        spill;
+  const Def *def;
+  Expr      *index;
+};
+
+struct LitExpr {
+  ExprKind      kind;
+  Reg           reg;
+  int           spill;
+  unsigned long value;
+  int           hex;
+};
+
+typedef struct Generator Generator;
 
 struct Generator {
   FILE *file;
@@ -148,10 +215,10 @@ static RegState reg_state(void)
   return self;
 }
 
-static void reg_state_use(RegState *self, Reg reg, Expr *user, unsigned long order)
+static void reg_state_use(RegState *self, Reg reg, Expr *user)
 {
   self->user[reg].user  = user;
-  self->user[reg].order = order;
+  self->user[reg].order = self->order++;
 }
 
 static void reg_state_release(RegState *self, Reg reg)
@@ -182,113 +249,269 @@ static Reg reg_state_vacant(RegState *self)
   return (Reg) oldest;
 }
 
-static Expr *expr_create_tree(const AnyMpplExpr *syntax)
+static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
 {
-  Expr *self     = xmalloc(sizeof(Expr));
-  self->syntax   = syntax;
-  self->child[0] = NULL;
-  self->child[1] = NULL;
-
   switch (mppl_expr__kind(syntax)) {
   case MPPL_EXPR_BINARY: {
     const MpplBinaryExpr *binary_syntax = (const MpplBinaryExpr *) syntax;
-    self->child[0]                      = expr_create_tree(mppl_binary_expr__lhs(binary_syntax));
-    self->child[1]                      = expr_create_tree(mppl_binary_expr__rhs(binary_syntax));
-    break;
+    AnyMpplExpr          *lhs_syntax    = mppl_binary_expr__lhs(binary_syntax);
+    AnyMpplExpr          *rhs_syntax    = mppl_binary_expr__rhs(binary_syntax);
+    MpplToken            *op_syntax     = mppl_binary_expr__op_token(binary_syntax);
+    Expr                 *result;
+
+    if (lhs_syntax) {
+      BinaryExpr *self = malloc(sizeof(BinaryExpr));
+      self->kind       = EXPR_BINARY;
+      self->spill      = 0;
+      self->lhs        = expr_create_tree(ctx, lhs_syntax);
+      self->rhs        = expr_create_tree(ctx, rhs_syntax);
+
+      switch (syntax_tree_kind((const SyntaxTree *) op_syntax)) {
+      case SYNTAX_PLUS_TOKEN:
+        self->op = BINARY_ADD;
+        break;
+
+      case SYNTAX_MINUS_TOKEN:
+        self->op = BINARY_SUB;
+        break;
+
+      case SYNTAX_STAR_TOKEN:
+        self->op = BINARY_MUL;
+        break;
+
+      case SYNTAX_DIV_KW:
+        self->op = BINARY_DIV;
+        break;
+
+      case SYNTAX_EQUAL_TOKEN:
+        self->op = BINARY_EQ;
+        break;
+
+      case SYNTAX_NOTEQ_TOKEN:
+        self->op = BINARY_NE;
+        break;
+
+      case SYNTAX_LESS_TOKEN:
+        self->op = BINARY_LT;
+        break;
+
+      case SYNTAX_LESSEQ_TOKEN:
+        self->op = BINARY_LE;
+        break;
+
+      case SYNTAX_GREATER_TOKEN:
+        self->op = BINARY_GT;
+        break;
+
+      case SYNTAX_GREATEREQ_TOKEN:
+        self->op = BINARY_GE;
+        break;
+
+      case SYNTAX_AND_KW:
+        self->op = BINARY_AND;
+        break;
+
+      case SYNTAX_OR_KW:
+        self->op = BINARY_OR;
+        break;
+
+      default:
+        unreachable();
+      }
+
+      result = (Expr *) self;
+    } else {
+      switch (syntax_tree_kind((const SyntaxTree *) op_syntax)) {
+      case SYNTAX_PLUS_TOKEN:
+        result = expr_create_tree(ctx, rhs_syntax);
+        break;
+
+      case SYNTAX_MINUS_TOKEN: {
+        BinaryExpr *self = malloc(sizeof(BinaryExpr));
+        self->kind       = EXPR_BINARY;
+        self->spill      = 0;
+        {
+          LitExpr *zero = malloc(sizeof(LitExpr));
+          zero->kind    = EXPR_LIT;
+          zero->spill   = 0;
+          zero->value   = 0;
+          self->lhs     = (Expr *) zero;
+        }
+        self->rhs = expr_create_tree(ctx, rhs_syntax);
+        self->op  = BINARY_SUB;
+
+        result = (Expr *) self;
+        break;
+      }
+
+      default:
+        unreachable();
+      }
+    }
+    mppl_unref(lhs_syntax);
+    mppl_unref(rhs_syntax);
+    mppl_unref(op_syntax);
+    return result;
   }
 
   case MPPL_EXPR_PAREN: {
     const MpplParenExpr *paren_syntax = (const MpplParenExpr *) syntax;
-    self->child[0]                    = expr_create_tree(mppl_paren_expr__expr(paren_syntax));
-    break;
+    AnyMpplExpr         *expr_syntax  = mppl_paren_expr__expr(paren_syntax);
+    Expr                *result       = expr_create_tree(ctx, expr_syntax);
+
+    mppl_unref(expr_syntax);
+    return result;
   }
 
   case MPPL_EXPR_NOT: {
-    const MpplNotExpr *not_syntax = (const MpplNotExpr *) syntax;
-    self->child[0]                = expr_create_tree(mppl_not_expr__expr(not_syntax));
-    break;
+    const MpplNotExpr *not_syntax  = (const MpplNotExpr *) syntax;
+    AnyMpplExpr       *expr_syntax = mppl_not_expr__expr(not_syntax);
+
+    NotExpr *self = malloc(sizeof(NotExpr));
+    self->kind    = EXPR_NOT;
+    self->reg     = GR0;
+    self->spill   = 0;
+    self->expr    = expr_create_tree(ctx, expr_syntax);
+
+    mppl_unref(expr_syntax);
+    return (Expr *) self;
   }
 
   case MPPL_EXPR_CAST: {
     const MpplCastExpr *cast_syntax = (const MpplCastExpr *) syntax;
-    self->child[0]                  = expr_create_tree(mppl_cast_expr__expr(cast_syntax));
-    break;
+    AnyMpplExpr        *expr_syntax = mppl_cast_expr__expr(cast_syntax);
+
+    CastExpr *self = malloc(sizeof(CastExpr));
+    self->kind     = EXPR_CAST;
+    self->reg      = GR0;
+    self->spill    = 0;
+    self->expr     = expr_create_tree(ctx, expr_syntax);
+
+    mppl_unref(expr_syntax);
+    return (Expr *) self;
   }
 
   case MPPL_EXPR_VAR: {
     const AnyMpplVar *var_syntax = (const AnyMpplVar *) syntax;
+
+    VarExpr *self = malloc(sizeof(VarExpr));
+    self->kind    = EXPR_VAR;
+    self->reg     = GR0;
+    self->spill   = 0;
+
     switch (mppl_var__kind(var_syntax)) {
-    case MPPL_VAR_ENTIRE:
-      /* do nothing */
+    case MPPL_VAR_ENTIRE: {
+      MpplEntireVar *entire_syntax = (MpplEntireVar *) var_syntax;
+      MpplToken     *name_syntax   = mppl_entire_var__name(entire_syntax);
+
+      self->def   = ctx_resolve(ctx, (const SyntaxTree *) name_syntax, NULL);
+      self->index = NULL;
+
+      mppl_unref(name_syntax);
       break;
+    }
 
     case MPPL_VAR_INDEXED: {
-      const MpplIndexedVar *indexed_syntax = (const MpplIndexedVar *) var_syntax;
-      self->child[0]                       = expr_create_tree(mppl_indexed_var__expr(indexed_syntax));
+      MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) var_syntax;
+      MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
+      AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
+
+      self->def   = ctx_resolve(ctx, (const SyntaxTree *) name_syntax, NULL);
+      self->index = expr_create_tree(ctx, index_syntax);
+
+      mppl_unref(name_syntax);
+      mppl_unref(index_syntax);
       break;
     }
+
+    default:
+      unreachable();
     }
-    break;
+
+    return (Expr *) self;
   }
 
-  case MPPL_EXPR_LIT:
-    /* do nothing */
-    break;
+  case MPPL_EXPR_LIT: {
+    const AnyMpplLit *lit_syntax = (const AnyMpplLit *) syntax;
+
+    LitExpr *self = malloc(sizeof(LitExpr));
+    self->kind    = EXPR_LIT;
+    self->reg     = GR0;
+    self->spill   = 0;
+
+    switch (mppl_lit__kind(lit_syntax)) {
+    case MPPL_LIT_BOOLEAN:
+      self->value = mppl_lit_boolean__to_int((const MpplBooleanLit *) lit_syntax);
+      self->hex   = 0;
+      break;
+
+    case MPPL_LIT_NUMBER:
+      self->value = mppl_lit_number__to_long((const MpplNumberLit *) lit_syntax);
+      self->hex   = 0;
+      break;
+
+    case MPPL_LIT_STRING: {
+      char *string = mppl_lit_string__to_string((const MpplStringLit *) lit_syntax);
+      self->value  = (unsigned long) string[0];
+      self->hex    = 1;
+      free(string);
+      break;
+    }
+
+    default:
+      unreachable();
+    }
+
+    return (Expr *) self;
   }
 
-  return self;
+  default:
+    unreachable();
+  }
 }
 
 static unsigned long expr_optimize_order(Expr *self)
 {
-  switch (mppl_expr__kind(self->syntax)) {
-  case MPPL_EXPR_BINARY: {
-    const MpplBinaryExpr *binary_syntax = (const MpplBinaryExpr *) self->syntax;
-    MpplToken            *op_syntax     = mppl_binary_expr__op_token(binary_syntax);
-    SyntaxKind            op_kind       = syntax_tree_kind((const SyntaxTree *) op_syntax);
+  switch (self->kind) {
+  case EXPR_BINARY: {
+    BinaryExpr   *expr         = (BinaryExpr *) self;
+    unsigned long lhs_priority = expr_optimize_order(expr->lhs);
+    unsigned long rhs_priority = expr_optimize_order(expr->rhs);
 
-    unsigned long lhs_priority = expr_optimize_order(self->child[0]);
-    unsigned long rhs_priority = expr_optimize_order(self->child[1]);
-
-    mppl_unref(op_syntax);
-    if (op_kind == SYNTAX_AND_KW || op_kind == SYNTAX_OR_KW) {
+    if (expr->op == BINARY_AND || expr->op == BINARY_OR) {
       return lhs_priority > rhs_priority ? lhs_priority : rhs_priority;
     } else if (lhs_priority == rhs_priority) {
       return lhs_priority + 1;
     } else if (lhs_priority > rhs_priority) {
       return lhs_priority;
     } else {
-      Expr *tmp      = self->child[0];
-      self->child[0] = self->child[1];
-      self->child[1] = tmp;
+      Expr *tmp = expr->lhs;
+      expr->lhs = expr->rhs;
+      expr->rhs = tmp;
       return rhs_priority;
     }
   }
 
-  case MPPL_EXPR_PAREN:
-    return expr_optimize_order(self->child[0]);
+  case EXPR_NOT: {
+    NotExpr *expr = (NotExpr *) self;
+    return expr_optimize_order(expr->expr);
+  }
 
-  case MPPL_EXPR_NOT:
-    return expr_optimize_order(self->child[0]);
+  case EXPR_CAST: {
+    CastExpr *expr = (CastExpr *) self;
+    return expr_optimize_order(expr->expr);
+  }
 
-  case MPPL_EXPR_CAST:
-    return expr_optimize_order(self->child[0]);
-
-  case MPPL_EXPR_VAR: {
-    const AnyMpplVar *var_syntax = (const AnyMpplVar *) self->syntax;
-    switch (mppl_var__kind(var_syntax)) {
-    case MPPL_VAR_ENTIRE:
+  case EXPR_VAR: {
+    VarExpr *expr = (VarExpr *) self;
+    if (expr->index) {
+      return expr_optimize_order(expr->index);
+    } else {
       return 1;
-
-    case MPPL_VAR_INDEXED:
-      return expr_optimize_order(self->child[0]);
-
-    default:
-      unreachable();
     }
   }
 
-  case MPPL_EXPR_LIT:
+  case EXPR_LIT:
     return 1;
 
   default:
@@ -296,66 +519,50 @@ static unsigned long expr_optimize_order(Expr *self)
   }
 }
 
-static void expr_assign_reg_core(Expr *self, Reg reg, RegState *state, unsigned long *order)
+static void expr_assign_reg(Expr *self, Reg reg, RegState *state)
 {
-  self->spill = 0;
-  switch (mppl_expr__kind(self->syntax)) {
-  case MPPL_EXPR_BINARY: {
-    const MpplBinaryExpr *binary_syntax = (const MpplBinaryExpr *) self->syntax;
-    MpplToken            *op_syntax     = mppl_binary_expr__op_token(binary_syntax);
-    SyntaxKind            op_kind       = syntax_tree_kind((const SyntaxTree *) op_syntax);
-
-    if (op_kind == SYNTAX_AND_KW || op_kind == SYNTAX_OR_KW) {
-      expr_assign_reg_core(self->child[0], reg, state, order);
+  switch (self->kind) {
+  case EXPR_BINARY: {
+    BinaryExpr *expr = (BinaryExpr *) self;
+    if (expr->op == BINARY_AND || expr->op == BINARY_OR) {
+      expr_assign_reg(expr->lhs, reg, state);
       reg_state_release(state, reg);
-      expr_assign_reg_core(self->child[1], reg, state, order);
+      expr_assign_reg(expr->rhs, reg, state);
       reg_state_release(state, reg);
     } else {
       Reg rhs;
-      expr_assign_reg_core(self->child[0], reg, state, order);
+      expr_assign_reg(expr->lhs, reg, state);
       rhs = reg_state_vacant(state);
-      expr_assign_reg_core(self->child[1], rhs, state, order);
+      expr_assign_reg(expr->rhs, rhs, state);
       reg_state_release(state, reg);
       reg_state_release(state, rhs);
     }
-
-    mppl_unref(op_syntax);
     break;
   }
 
-  case MPPL_EXPR_PAREN:
-    expr_assign_reg_core(self->child[0], reg, state, order);
+  case EXPR_NOT: {
+    NotExpr *expr = (NotExpr *) self;
+    expr_assign_reg(expr->expr, reg, state);
     reg_state_release(state, reg);
     break;
+  }
 
-  case MPPL_EXPR_NOT:
-    expr_assign_reg_core(self->child[0], reg, state, order);
+  case EXPR_CAST: {
+    CastExpr *expr = (CastExpr *) self;
+    expr_assign_reg(expr->expr, reg, state);
     reg_state_release(state, reg);
     break;
+  }
 
-  case MPPL_EXPR_CAST:
-    expr_assign_reg_core(self->child[0], reg, state, order);
-    reg_state_release(state, reg);
-    break;
-
-  case MPPL_EXPR_VAR: {
-    const AnyMpplVar *var_syntax = (const AnyMpplVar *) self->syntax;
-    switch (mppl_var__kind(var_syntax)) {
-    case MPPL_VAR_ENTIRE:
-      /* do nothing */
-      break;
-
-    case MPPL_VAR_INDEXED:
-      expr_assign_reg_core(self->child[0], reg, state, order);
+  case EXPR_VAR: {
+    VarExpr *expr = (VarExpr *) self;
+    if (expr->index) {
+      expr_assign_reg(expr->index, reg, state);
       reg_state_release(state, reg);
-      break;
-
-    default:
-      unreachable();
     }
   }
 
-  case MPPL_EXPR_LIT:
+  case EXPR_LIT:
     /* do nothing */
     break;
 
@@ -363,31 +570,54 @@ static void expr_assign_reg_core(Expr *self, Reg reg, RegState *state, unsigned 
     unreachable();
   }
 
-  reg_state_use(state, self->reg = reg, self, (*order)++);
+  reg_state_use(state, self->reg = reg, self);
 }
 
-static void expr_assign_reg(Expr *self)
+static Expr *expr_new(Ctx *ctx, const AnyMpplExpr *syntax)
 {
-  RegState      state = reg_state();
-  Reg           reg   = reg_state_vacant(&state);
-  unsigned long order = 0;
-  expr_assign_reg_core(self, reg, &state, &order);
-}
-
-static Expr *expr_new(const AnyMpplExpr *syntax)
-{
-  Expr *self = expr_create_tree(mppl_ref(syntax));
+  Expr *self = expr_create_tree(ctx, syntax);
   expr_optimize_order(self);
-  expr_assign_reg(self);
   return self;
 }
 
 static void expr_free(Expr *self)
 {
   if (self) {
-    mppl_unref(self->syntax);
-    expr_free(self->child[0]);
-    expr_free(self->child[1]);
+    switch (self->kind) {
+    case EXPR_BINARY: {
+      BinaryExpr *expr = (BinaryExpr *) self;
+      expr_free(expr->lhs);
+      expr_free(expr->rhs);
+      break;
+    }
+
+    case EXPR_NOT: {
+      NotExpr *expr = (NotExpr *) self;
+      expr_free(expr->expr);
+      break;
+    }
+
+    case EXPR_CAST: {
+      CastExpr *expr = (CastExpr *) self;
+      expr_free(expr->expr);
+      break;
+    }
+
+    case EXPR_VAR: {
+      VarExpr *expr = (VarExpr *) self;
+      if (expr->index) {
+        expr_free(expr->index);
+      }
+      break;
+    }
+
+    case EXPR_LIT:
+      /* do nothing */
+      break;
+
+    default:
+      unreachable();
+    }
     free(self);
   }
 }
@@ -472,17 +702,17 @@ static void write_label(Generator *self, Adr a)
 
 static void write_expr_core(Generator *self, const Expr *expr, Adr sink);
 
-static void write_relational_expr(Generator *self, const char *inst, const Expr *expr, int reverse, Adr sink)
+static void write_relational_expr(Generator *self, const char *inst, const BinaryExpr *expr, int reverse, Adr sink)
 {
   Adr else_block = self->label_count++;
   Adr next_block = sink ? sink : self->label_count++;
 
-  write_expr_core(self, expr->child[0], ADR_NULL);
-  write_expr_core(self, expr->child[1], ADR_NULL);
+  write_expr_core(self, expr->lhs, ADR_NULL);
+  write_expr_core(self, expr->rhs, ADR_NULL);
   if (reverse) {
-    write_inst2(self, "CPA", r1(expr->child[1]->reg), r2(expr->child[0]->reg));
+    write_inst2(self, "CPA", r1(expr->lhs->reg), r2(expr->rhs->reg));
   } else {
-    write_inst2(self, "CPA", r1(expr->child[0]->reg), r2(expr->child[1]->reg));
+    write_inst2(self, "CPA", r1(expr->lhs->reg), r2(expr->rhs->reg));
   }
   write_inst1(self, inst, adr(else_block));
   write_inst2(self, "LAD", r(expr->reg), "1");
@@ -495,248 +725,166 @@ static void write_relational_expr(Generator *self, const char *inst, const Expr 
   }
 }
 
-static void write_arithmetic_expr(Generator *self, const char *inst, const Expr *expr)
+static void write_arithmetic_expr(Generator *self, const char *inst, const BinaryExpr *expr)
 {
-  write_expr_core(self, expr->child[0], ADR_NULL);
-  write_expr_core(self, expr->child[1], ADR_NULL);
-  write_inst2(self, inst, r1(expr->child[0]->reg), r2(expr->child[1]->reg));
-  if (expr->reg != expr->child[0]->reg) {
-    write_inst2(self, "LD", r1(expr->reg), r2(expr->child[0]->reg));
+  write_expr_core(self, expr->lhs, ADR_NULL);
+  write_expr_core(self, expr->rhs, ADR_NULL);
+  write_inst2(self, inst, r1(expr->lhs->reg), r2(expr->rhs->reg));
+  if (expr->reg != expr->lhs->reg) {
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
   }
 }
 
-static void write_logical_expr(Generator *self, const char *inst, const Expr *expr, Adr sink)
+static void write_logical_expr(Generator *self, const char *inst, const BinaryExpr *expr, Adr sink)
 {
   Adr next_block = sink ? sink : self->label_count++;
-  if (expr->reg != expr->child[0]->reg) {
+  if (expr->reg != expr->lhs->reg) {
     Adr else_block = self->label_count++;
-    write_expr_core(self, expr->child[0], ADR_NULL);
-    write_inst2(self, "CPA", r(expr->child[0]->reg), "1");
+    write_expr_core(self, expr->lhs, ADR_NULL);
+    write_inst2(self, "CPA", r(expr->lhs->reg), "1");
     write_inst1(self, inst, adr(else_block));
-    write_expr_core(self, expr->child[1], ADR_NULL);
-    if (expr->reg != expr->child[1]->reg) {
-      write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
+    write_expr_core(self, expr->rhs, ADR_NULL);
+    if (expr->reg != expr->rhs->reg) {
+      write_inst2(self, "LD", r1(expr->reg), r2(expr->rhs->reg));
     }
     write_inst1(self, "JUMP", adr(next_block));
     write_label(self, else_block);
-    write_inst2(self, "LD", r1(expr->reg), r2(expr->child[0]->reg));
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
   } else {
-    write_expr_core(self, expr->child[0], ADR_NULL);
-    write_inst2(self, "CPA", r(expr->child[0]->reg), "1");
+    write_expr_core(self, expr->lhs, ADR_NULL);
+    write_inst2(self, "CPA", r(expr->lhs->reg), "1");
     write_inst1(self, inst, adr(next_block));
-    if (expr->reg != expr->child[1]->reg) {
-      write_expr_core(self, expr->child[1], ADR_NULL);
-      write_inst2(self, "LD", r1(expr->reg), r2(expr->child[1]->reg));
+    if (expr->reg != expr->rhs->reg) {
+      write_expr_core(self, expr->rhs, ADR_NULL);
+      write_inst2(self, "LD", r1(expr->reg), r2(expr->rhs->reg));
     } else {
-      write_expr_core(self, expr->child[1], next_block);
+      write_expr_core(self, expr->rhs, next_block);
     }
   }
 
   if (!sink) {
-    write_label(self, sink);
+    write_label(self, next_block);
   }
 }
 
-static void write_binary_expr(Generator *self, const Expr *expr, Adr sink)
+static void write_binary_expr(Generator *self, const BinaryExpr *expr, Adr sink)
 {
-  const MpplBinaryExpr *syntax     = (const MpplBinaryExpr *) expr->syntax;
-  AnyMpplExpr          *lhs_syntax = mppl_binary_expr__lhs(syntax);
-  MpplToken            *op_syntax  = mppl_binary_expr__op_token(syntax);
-  AnyMpplExpr          *rhs_syntax = mppl_binary_expr__rhs(syntax);
-  SyntaxKind            op_kind    = syntax_tree_kind((const SyntaxTree *) op_syntax);
+  switch (expr->op) {
+  case BINARY_EQ:
+    write_relational_expr(self, "JNZ", expr, 0, sink);
+    break;
 
-  if (lhs_syntax) {
-    switch (op_kind) {
-    case SYNTAX_EQUAL_TOKEN:
-      write_relational_expr(self, "JNZ", expr, 0, sink);
-      break;
+  case BINARY_NE:
+    write_relational_expr(self, "JZE", expr, 0, sink);
+    break;
 
-    case SYNTAX_NOTEQ_TOKEN:
-      write_relational_expr(self, "JZE", expr, 0, sink);
-      break;
+  case BINARY_LT:
+    write_relational_expr(self, "JMI", expr, 0, sink);
+    break;
 
-    case SYNTAX_LESS_TOKEN:
-      write_relational_expr(self, "JMI", expr, 0, sink);
-      break;
+  case BINARY_LE:
+    write_relational_expr(self, "JPL", expr, 1, sink);
+    break;
 
-    case SYNTAX_LESSEQ_TOKEN:
-      write_relational_expr(self, "JPL", expr, 1, sink);
-      break;
+  case BINARY_GT:
+    write_relational_expr(self, "JPL", expr, 0, sink);
+    break;
 
-    case SYNTAX_GREATER_TOKEN:
-      write_relational_expr(self, "JPL", expr, 0, sink);
-      break;
+  case BINARY_GE:
+    write_relational_expr(self, "JMI", expr, 1, sink);
+    break;
 
-    case SYNTAX_GREATEREQ_TOKEN:
-      write_relational_expr(self, "JMI", expr, 1, sink);
-      break;
+  case BINARY_ADD:
+    write_arithmetic_expr(self, "ADDA", expr);
+    break;
 
-    case SYNTAX_PLUS_TOKEN:
-      write_arithmetic_expr(self, "ADDA", expr);
-      break;
+  case BINARY_SUB:
+    write_arithmetic_expr(self, "SUBA", expr);
+    break;
 
-    case SYNTAX_MINUS_TOKEN:
-      write_arithmetic_expr(self, "SUBA", expr);
-      break;
+  case BINARY_MUL:
+    write_arithmetic_expr(self, "MULA", expr);
+    break;
 
-    case SYNTAX_STAR_TOKEN:
-      write_arithmetic_expr(self, "MULA", expr);
-      break;
+  case BINARY_DIV:
+    write_arithmetic_expr(self, "DIVA", expr);
+    break;
 
-    case SYNTAX_DIV_KW:
-      write_arithmetic_expr(self, "DIVA", expr);
-      break;
+  case BINARY_AND:
+    write_logical_expr(self, "JNZ", expr, sink);
+    break;
 
-    case SYNTAX_AND_KW:
-      write_logical_expr(self, "JNZ", expr, sink);
-      break;
+  case BINARY_OR:
+    write_logical_expr(self, "JZE", expr, sink);
+    break;
 
-    case SYNTAX_OR_KW:
-      write_logical_expr(self, "JZE", expr, sink);
-      break;
+  default:
+    unreachable();
+  }
+}
 
-    default:
-      unreachable();
-    }
+static void write_not_expr(Generator *self, const NotExpr *expr)
+{
+  write_expr_core(self, expr->expr, ADR_NULL);
+  write_inst2(self, "XOR", r(expr->expr->reg), "1");
+  if (expr->reg != expr->expr->reg) {
+    write_inst2(self, "LD", r(expr->reg), r(expr->expr->reg));
+  }
+}
+
+static void write_cast_expr(Generator *self, const CastExpr *expr, Adr sink)
+{
+  if (expr->reg != expr->expr->reg) {
+    write_expr_core(self, expr->expr, ADR_NULL);
+    write_inst2(self, "LD", r(expr->reg), r(expr->expr->reg));
   } else {
-    switch (op_kind) {
-    case SYNTAX_PLUS_TOKEN:
-      write_expr_core(self, expr->child[1], sink);
-      break;
-
-    case SYNTAX_MINUS_TOKEN: {
-      /* TODO: update `Expr` to deal with `-expr` */
-      unreachable();
-    }
-
-    default:
-      unreachable();
-    }
+    write_expr_core(self, expr->expr, sink);
   }
-
-  mppl_unref(lhs_syntax);
-  mppl_unref(op_syntax);
-  mppl_unref(rhs_syntax);
 }
 
-static void write_paren_expr(Generator *self, const Expr *expr, Adr sink)
+static void write_var(Generator *self, const VarExpr *expr)
 {
-  if (expr->reg != expr->child[0]->reg) {
-    write_expr_core(self, expr->child[0], ADR_NULL);
-    write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
+  Adr label = locate(self, expr->def, ADR_NULL);
+  if (expr->index) {
+    write_expr_core(self, expr->index, ADR_NULL);
+    write_inst3(self, "LD", r(expr->reg), adr(label), x(expr->index->reg));
   } else {
-    write_expr_core(self, expr->child[0], sink);
-  }
-}
-
-static void write_not_expr(Generator *self, const Expr *expr)
-{
-  write_expr_core(self, expr->child[0], ADR_NULL);
-  write_inst2(self, "XOR", r(expr->child[0]->reg), "1");
-  if (expr->reg != expr->child[0]->reg) {
-    write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
-  }
-}
-
-static void write_cast_expr(Generator *self, const Expr *expr, Adr sink)
-{
-  if (expr->reg != expr->child[0]->reg) {
-    write_expr_core(self, expr->child[0], ADR_NULL);
-    write_inst2(self, "LD", r(expr->reg), r(expr->child[0]->reg));
-  } else {
-    write_expr_core(self, expr->child[0], sink);
-  }
-}
-
-static void write_var(Generator *self, const Expr *expr)
-{
-  const AnyMpplVar *syntax = (const AnyMpplVar *) expr->syntax;
-  switch (mppl_var__kind(syntax)) {
-  case MPPL_VAR_ENTIRE: {
-    MpplEntireVar *entire_syntax = (MpplEntireVar *) syntax;
-    MpplToken     *name_syntax   = mppl_entire_var__name(entire_syntax);
-    const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
-    Adr            label         = locate(self, def, ADR_NULL);
-
     write_inst2(self, "LD", r(expr->reg), adr(label));
-    mppl_unref(name_syntax);
-    break;
-  }
-
-  case MPPL_VAR_INDEXED: {
-    MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) syntax;
-    MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
-    AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
-    const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
-    Adr             label          = locate(self, def, ADR_NULL);
-
-    write_expr_core(self, expr->child[0], ADR_NULL);
-    write_inst3(self, "LD", r(expr->reg), adr(label), x(expr->child[0]->reg));
-    mppl_unref(name_syntax);
-    mppl_unref(index_syntax);
-    break;
-  }
-
-  default:
-    unreachable();
   }
 }
 
-static void write_lit(Generator *self, const Expr *expr)
+static void write_lit(Generator *self, const LitExpr *expr)
 {
-  const AnyMpplLit *syntax = (const AnyMpplLit *) expr->syntax;
-  char              buf[16];
-  switch (mppl_lit__kind(syntax)) {
-  case MPPL_LIT_BOOLEAN: {
-    int raw_value = mppl_lit_boolean__to_int((const MpplBooleanLit *) syntax);
-    sprintf(buf, "%d", raw_value);
-    break;
-  }
-
-  case MPPL_LIT_NUMBER: {
-    long raw_value = mppl_lit_number__to_long((const MpplNumberLit *) syntax);
-    sprintf(buf, "%ld", raw_value);
-    break;
-  }
-
-  case MPPL_LIT_STRING: {
-    char *raw_value = mppl_lit_string__to_string((const MpplStringLit *) syntax);
-    sprintf(buf, "#%04x", (int) raw_value[0]);
-    free(raw_value);
-    break;
-  }
-
-  default:
-    unreachable();
+  char buf[16];
+  if (expr->hex) {
+    sprintf(buf, "#%04lX", expr->value);
+  } else {
+    sprintf(buf, "%lu", expr->value);
   }
   write_inst2(self, "LAD", r(expr->reg), buf);
 }
 
 static void write_expr_core(Generator *self, const Expr *expr, Adr sink)
 {
-  switch (mppl_expr__kind(expr->syntax)) {
-  case MPPL_EXPR_BINARY:
-    write_binary_expr(self, expr, sink);
+  switch (expr->kind) {
+  case EXPR_BINARY:
+    write_binary_expr(self, (const BinaryExpr *) expr, sink);
     break;
 
-  case MPPL_EXPR_PAREN:
-    write_paren_expr(self, expr, sink);
+  case EXPR_NOT:
+    write_not_expr(self, (const NotExpr *) expr);
     break;
 
-  case MPPL_EXPR_NOT:
-    write_not_expr(self, expr);
+  case EXPR_CAST:
+    write_cast_expr(self, (const CastExpr *) expr, sink);
     break;
 
-  case MPPL_EXPR_CAST:
-    write_cast_expr(self, expr, sink);
+  case EXPR_VAR:
+    write_var(self, (const VarExpr *) expr);
     break;
 
-  case MPPL_EXPR_VAR:
-    write_var(self, expr);
-    break;
-
-  case MPPL_EXPR_LIT:
-    write_lit(self, expr);
+  case EXPR_LIT:
+    write_lit(self, (const LitExpr *) expr);
     break;
 
   default:
@@ -746,14 +894,73 @@ static void write_expr_core(Generator *self, const Expr *expr, Adr sink)
 
 static Reg write_expr(Generator *self, const AnyMpplExpr *syntax, Adr sink)
 {
-  Expr *expr = expr_new(syntax);
-  Reg   reg  = expr->reg;
+  Expr    *expr  = expr_new(self->ctx, syntax);
+  RegState state = reg_state();
+  Reg      reg   = reg_state_vacant(&state);
+
+  expr_assign_reg(expr, reg, &state);
   write_expr_core(self, expr, sink);
   expr_free(expr);
   return reg;
 }
 
 static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Adr sink);
+
+static Adr write_assign_stmt(Generator *self, const MpplAssignStmt *syntax)
+{
+  AnyMpplVar  *lhs_syntax = mppl_assign_stmt__lhs(syntax);
+  AnyMpplExpr *rhs_syntax = mppl_assign_stmt__rhs(syntax);
+
+  switch (mppl_var__kind(lhs_syntax)) {
+  case MPPL_VAR_ENTIRE: {
+    MpplEntireVar *entire_syntax = (MpplEntireVar *) lhs_syntax;
+    MpplToken     *name_syntax   = mppl_entire_var__name(entire_syntax);
+    const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+    Adr            label         = locate(self, def, ADR_NULL);
+
+    Reg reg = write_expr(self, rhs_syntax, ADR_NULL);
+    write_inst2(self, "ST", r(reg), adr(label));
+    mppl_unref(name_syntax);
+    break;
+  }
+
+  case MPPL_VAR_INDEXED: {
+    MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) lhs_syntax;
+    MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
+    AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
+    const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+    Adr             label          = locate(self, def, ADR_NULL);
+
+    RegState state = reg_state();
+    Expr    *value = expr_new(self->ctx, rhs_syntax);
+    Expr    *index = expr_new(self->ctx, index_syntax);
+    Reg      value_reg, index_reg;
+
+    value_reg = reg_state_vacant(&state);
+    expr_assign_reg(value, value_reg, &state);
+    index_reg = reg_state_vacant(&state);
+    expr_assign_reg(index, index_reg, &state);
+    reg_state_release(&state, value_reg);
+    reg_state_release(&state, index_reg);
+
+    write_expr_core(self, value, ADR_NULL);
+    write_expr_core(self, index, ADR_NULL);
+
+    write_inst3(self, "ST", r(value_reg), adr(label), x(index_reg));
+    mppl_unref(name_syntax);
+    mppl_unref(index_syntax);
+    break;
+  }
+
+  default:
+    unreachable();
+  }
+
+  mppl_unref(lhs_syntax);
+  mppl_unref(rhs_syntax);
+
+  return ADR_NULL;
+}
 
 static Adr write_if_stmt(Generator *self, const MpplIfStmt *syntax, Adr sink)
 {
@@ -861,8 +1068,7 @@ static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Ad
 {
   switch (mppl_stmt__kind(syntax)) {
   case MPPL_STMT_ASSIGN:
-    write_inst0(self, "NOP ; placeholder for assignment statement");
-    return ADR_NULL;
+    return write_assign_stmt(self, (const MpplAssignStmt *) syntax);
 
   case MPPL_STMT_IF:
     return write_if_stmt(self, (const MpplIfStmt *) syntax, sink);
