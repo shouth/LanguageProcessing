@@ -24,13 +24,14 @@ typedef enum {
   GR7
 } Reg;
 
-#define ADR_KIND_OFFSET (sizeof(Adr) * CHAR_BIT - 2)
+#define ADR_KIND_OFFSET (sizeof(Adr) * CHAR_BIT - 4)
 #define ADR_NULL        ((Adr) 0)
 #define ADR_CALL        ((Adr) 0 - 1)
 
 typedef enum {
   ADR_NORMAL = 1,
   ADR_VAR,
+  ADR_ARG,
   ADR_PROC
 } AdrKind;
 
@@ -131,6 +132,7 @@ struct Generator {
   Adr   current_label;
   Adr   label_count;
   Adr   var_label_count;
+  Adr   arg_label_count;
   Adr   proc_label_count;
   Adr   break_label;
 
@@ -159,6 +161,10 @@ static void fmt_adr(char *buf, Adr a)
 
   case ADR_VAR:
     sprintf(buf, "V%lu", a);
+    break;
+
+  case ADR_ARG:
+    sprintf(buf, "A%lu", a);
     break;
 
   case ADR_PROC:
@@ -704,7 +710,7 @@ static void write_inst3(Generator *self, const char *inst, const char *arg1, con
 static void write_label(Generator *self, Adr a)
 {
   if (self->current_label && self->current_label != a) {
-    write_inst0(self, "NOP ; emit for unused label");
+    write_inst0(self, "NOP");
   }
   self->current_label = a;
 }
@@ -746,7 +752,7 @@ static void write_arithmetic_expr(Generator *self, const char *inst, const Binar
   }
   write_inst2(self, inst, r1(expr->lhs->reg), r2(expr->rhs->reg));
   if (expr->reg != expr->lhs->reg) {
-    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->lhs->reg));
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
   }
 }
 
@@ -756,22 +762,22 @@ static void write_logical_expr(Generator *self, const char *inst, const BinaryEx
   if (expr->reg != expr->lhs->reg) {
     Adr else_block = self->label_count++;
     write_expr_core(self, expr->lhs, ADR_NULL);
-    write_inst2(self, "CPA", r(expr->lhs->reg), "1");
+    write_inst2(self, "CPA", r(expr->lhs->reg), "=1");
     write_inst1(self, inst, adr(else_block));
     write_expr_core(self, expr->rhs, ADR_NULL);
     if (expr->reg != expr->rhs->reg) {
-      write_inst3(self, "LAD", r(expr->reg), "0", x(expr->rhs->reg));
+      write_inst2(self, "LD", r1(expr->reg), r2(expr->rhs->reg));
     }
     write_inst1(self, "JUMP", adr(next_block));
     write_label(self, else_block);
-    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->lhs->reg));
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
   } else {
     write_expr_core(self, expr->lhs, ADR_NULL);
-    write_inst2(self, "CPA", r(expr->lhs->reg), "1");
+    write_inst2(self, "CPA", r(expr->lhs->reg), "=1");
     write_inst1(self, inst, adr(next_block));
     if (expr->reg != expr->rhs->reg) {
       write_expr_core(self, expr->rhs, ADR_NULL);
-      write_inst3(self, "LAD", r(expr->reg), "0", x(expr->rhs->reg));
+      write_inst2(self, "LD", r1(expr->reg), r2(expr->rhs->reg));
     } else {
       write_expr_core(self, expr->rhs, next_block);
     }
@@ -841,9 +847,9 @@ static void write_binary_expr(Generator *self, const BinaryExpr *expr, Adr sink)
 static void write_not_expr(Generator *self, const NotExpr *expr)
 {
   write_expr_core(self, expr->expr, ADR_NULL);
-  write_inst2(self, "XOR", r(expr->expr->reg), "1");
+  write_inst2(self, "XOR", r(expr->expr->reg), "=1");
   if (expr->reg != expr->expr->reg) {
-    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->expr->reg));
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
   }
 }
 
@@ -851,7 +857,7 @@ static void write_cast_expr(Generator *self, const CastExpr *expr, Adr sink)
 {
   if (expr->reg != expr->expr->reg) {
     write_expr_core(self, expr->expr, ADR_NULL);
-    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->expr->reg));
+    write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
   } else {
     write_expr_core(self, expr->expr, sink);
   }
@@ -994,7 +1000,7 @@ static Adr write_if_stmt(Generator *self, const MpplIfStmt *syntax, Adr sink)
   Reg          reg;
 
   reg = write_expr(self, cond_syntax, ADR_NULL);
-  write_inst2(self, "CPA", r(reg), "0");
+  write_inst2(self, "CPA", r(reg), "=0");
   write_inst1(self, "JNZ", adr(false_block));
   write_stmt(self, then_syntax, ADR_NULL, ADR_NULL);
 
@@ -1028,7 +1034,7 @@ static Adr write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Adr so
 
   write_label(self, cond_block);
   reg = write_expr(self, cond_syntax, ADR_NULL);
-  write_inst2(self, "CPA", r(reg), "0");
+  write_inst2(self, "CPA", r(reg), "=0");
   write_inst1(self, "JNZ", adr(next_block));
   write_stmt(self, do_syntax, ADR_NULL, ADR_NULL);
   write_inst1(self, "JUMP", adr(cond_block));
@@ -1234,6 +1240,7 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   generator.current_label    = 0;
   generator.label_count      = (unsigned long) ADR_NORMAL << ADR_KIND_OFFSET;
   generator.var_label_count  = (unsigned long) ADR_VAR << ADR_KIND_OFFSET;
+  generator.arg_label_count  = (unsigned long) ADR_ARG << ADR_KIND_OFFSET;
   generator.proc_label_count = (unsigned long) ADR_PROC << ADR_KIND_OFFSET;
   generator.break_label      = ADR_NULL;
   {
