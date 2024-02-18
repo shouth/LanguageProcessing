@@ -133,6 +133,14 @@ struct Generator {
   Adr   var_label_count;
   Adr   proc_label_count;
   Adr   break_label;
+
+  int builtin_write_integer;
+  int builtin_write_boolean;
+  int builtin_write_string;
+  int builtin_write_char;
+  int builtin_read_integer;
+  int builtin_read_char;
+  int builtin_read_newline;
 };
 
 static void fmt_reg(char *buf, Reg reg)
@@ -738,7 +746,7 @@ static void write_arithmetic_expr(Generator *self, const char *inst, const Binar
   }
   write_inst2(self, inst, r1(expr->lhs->reg), r2(expr->rhs->reg));
   if (expr->reg != expr->lhs->reg) {
-    write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
+    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->lhs->reg));
   }
 }
 
@@ -752,18 +760,18 @@ static void write_logical_expr(Generator *self, const char *inst, const BinaryEx
     write_inst1(self, inst, adr(else_block));
     write_expr_core(self, expr->rhs, ADR_NULL);
     if (expr->reg != expr->rhs->reg) {
-      write_inst2(self, "LD", r1(expr->reg), r2(expr->rhs->reg));
+      write_inst3(self, "LAD", r(expr->reg), "0", x(expr->rhs->reg));
     }
     write_inst1(self, "JUMP", adr(next_block));
     write_label(self, else_block);
-    write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
+    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->lhs->reg));
   } else {
     write_expr_core(self, expr->lhs, ADR_NULL);
     write_inst2(self, "CPA", r(expr->lhs->reg), "1");
     write_inst1(self, inst, adr(next_block));
     if (expr->reg != expr->rhs->reg) {
       write_expr_core(self, expr->rhs, ADR_NULL);
-      write_inst2(self, "LD", r1(expr->reg), r2(expr->rhs->reg));
+      write_inst3(self, "LAD", r(expr->reg), "0", x(expr->rhs->reg));
     } else {
       write_expr_core(self, expr->rhs, next_block);
     }
@@ -835,7 +843,7 @@ static void write_not_expr(Generator *self, const NotExpr *expr)
   write_expr_core(self, expr->expr, ADR_NULL);
   write_inst2(self, "XOR", r(expr->expr->reg), "1");
   if (expr->reg != expr->expr->reg) {
-    write_inst2(self, "LD", r(expr->reg), r(expr->expr->reg));
+    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->expr->reg));
   }
 }
 
@@ -843,7 +851,7 @@ static void write_cast_expr(Generator *self, const CastExpr *expr, Adr sink)
 {
   if (expr->reg != expr->expr->reg) {
     write_expr_core(self, expr->expr, ADR_NULL);
-    write_inst2(self, "LD", r(expr->reg), r(expr->expr->reg));
+    write_inst3(self, "LAD", r(expr->reg), "0", x(expr->expr->reg));
   } else {
     write_expr_core(self, expr->expr, sink);
   }
