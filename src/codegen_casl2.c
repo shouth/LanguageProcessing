@@ -710,6 +710,9 @@ static void write_relational_expr(Generator *self, const char *inst, const Binar
 
   write_expr_core(self, expr->lhs, ADR_NULL);
   write_expr_core(self, expr->rhs, ADR_NULL);
+  if (expr->lhs->spill) {
+    write_inst1(self, "POP", r(expr->lhs->reg));
+  }
   if (reverse) {
     write_inst2(self, "CPA", r1(expr->lhs->reg), r2(expr->rhs->reg));
   } else {
@@ -730,6 +733,9 @@ static void write_arithmetic_expr(Generator *self, const char *inst, const Binar
 {
   write_expr_core(self, expr->lhs, ADR_NULL);
   write_expr_core(self, expr->rhs, ADR_NULL);
+  if (expr->lhs->spill) {
+    write_inst1(self, "POP", r(expr->lhs->reg));
+  }
   write_inst2(self, inst, r1(expr->lhs->reg), r2(expr->rhs->reg));
   if (expr->reg != expr->lhs->reg) {
     write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
@@ -890,6 +896,10 @@ static void write_expr_core(Generator *self, const Expr *expr, Adr sink)
 
   default:
     unreachable();
+  }
+
+  if (expr->spill) {
+    write_inst1(self, "PUSH", r(expr->reg));
   }
 }
 
