@@ -30,6 +30,7 @@ typedef enum {
 
 typedef enum {
   ADR_NORMAL = 1,
+  ADR_TMP,
   ADR_VAR,
   ADR_ARG,
   ADR_PROC
@@ -131,6 +132,7 @@ struct Generator {
   Map  *symbols;
   Adr   current_label;
   Adr   label_count;
+  Adr   tmp_label_count;
   Adr   var_label_count;
   Adr   arg_label_count;
   Adr   proc_label_count;
@@ -157,6 +159,10 @@ static void fmt_adr(char *buf, Adr a)
   switch (kind) {
   case ADR_NORMAL:
     sprintf(buf, "L%lu", a);
+    break;
+
+  case ADR_TMP:
+    sprintf(buf, "T%lu", a);
     break;
 
   case ADR_VAR:
@@ -1078,8 +1084,55 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
 
   for (i = mppl_act_param_list__expr_count(params) - 1; i >= 0; --i) {
     AnyMpplExpr *expr_syntax = mppl_act_param_list__expr(params, i);
-    Reg          reg         = write_expr(self, expr_syntax, ADR_NULL);
-    write_inst1(self, "PUSH", r(reg));
+
+    if (mppl_expr__kind(expr_syntax) == MPPL_EXPR_VAR) {
+      const AnyMpplVar *var_syntax = (AnyMpplVar *) expr_syntax;
+      switch (mppl_var__kind(var_syntax)) {
+      case MPPL_VAR_ENTIRE: {
+        MpplEntireVar *entire_syntax = (MpplEntireVar *) var_syntax;
+        MpplToken     *name_syntax   = mppl_entire_var__name(entire_syntax);
+        const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+        Adr            label         = locate(self, def, ADR_NULL);
+
+        if (def_kind(def) == DEF_PARAM) {
+          write_inst2(self, "LD", r(GR0), adr(label));
+          write_inst1(self, "PUSH", r(GR0));
+        } else {
+          write_inst2(self, "LAD", r(GR0), adr(label));
+          write_inst1(self, "PUSH", r(GR0));
+        }
+
+        mppl_unref(name_syntax);
+        break;
+      }
+
+      case MPPL_VAR_INDEXED: {
+        MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) var_syntax;
+        MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
+        AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
+        const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+        Adr             label          = locate(self, def, ADR_NULL);
+
+        Reg index = write_expr(self, index_syntax, ADR_NULL);
+        write_inst3(self, "LAD", r(GR0), adr(label), x(index));
+        write_inst1(self, "PUSH", r(GR0));
+
+        mppl_unref(name_syntax);
+        mppl_unref(index_syntax);
+        break;
+      }
+
+      default:
+        unreachable();
+      }
+    } else {
+      Reg reg       = write_expr(self, expr_syntax, ADR_NULL);
+      Adr tmp_label = self->tmp_label_count; /* TODO: assign location for a temporal */
+      write_inst2(self, "ST", r(reg), adr(tmp_label));
+      write_inst2(self, "LAD", r(GR0), adr(tmp_label));
+      write_inst1(self, "PUSH", r(GR0));
+    }
+
     mppl_unref(expr_syntax);
   }
   write_inst1(self, "CALL", adr(label));
@@ -1239,6 +1292,7 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   generator.symbols          = map_new(NULL, NULL);
   generator.current_label    = 0;
   generator.label_count      = (unsigned long) ADR_NORMAL << ADR_KIND_OFFSET;
+  generator.tmp_label_count  = (unsigned long) ADR_TMP << ADR_KIND_OFFSET;
   generator.var_label_count  = (unsigned long) ADR_VAR << ADR_KIND_OFFSET;
   generator.arg_label_count  = (unsigned long) ADR_ARG << ADR_KIND_OFFSET;
   generator.proc_label_count = (unsigned long) ADR_PROC << ADR_KIND_OFFSET;
