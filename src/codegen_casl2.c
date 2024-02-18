@@ -863,6 +863,9 @@ static void write_var(Generator *self, const VarExpr *expr)
   if (expr->index) {
     write_expr_core(self, expr->index, ADR_NULL);
     write_inst3(self, "LD", r(expr->reg), adr(label), x(expr->index->reg));
+  } else if (def_kind(expr->def) == DEF_PARAM) {
+    write_inst2(self, "LD", r(expr->reg), adr(label));
+    write_inst3(self, "LD", r(expr->reg), "0", x(expr->reg));
   } else {
     write_inst2(self, "LD", r(expr->reg), adr(label));
   }
