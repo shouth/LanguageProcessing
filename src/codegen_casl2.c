@@ -1284,16 +1284,21 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
 static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax, void *generator)
 {
   unsigned long i;
-  Generator    *self = generator;
-  MpplCompStmt *body = mppl_program__stmt(syntax);
+  Generator    *self  = generator;
+  MpplCompStmt *body  = mppl_program__stmt(syntax);
+  Adr           start = self->label_count++;
 
+  write_inst1(self, "START", adr(start));
   for (i = 0; i < mppl_program__decl_part_count(syntax); ++i) {
     AnyMpplDeclPart *decl_part_syntax = mppl_program__decl_part(syntax, i);
     mppl_ast__walk_decl_part(walker, decl_part_syntax, generator);
     mppl_unref(decl_part_syntax);
   }
-
-  write_stmt(self, (const AnyMpplStmt *) body, ADR_NULL, ADR_NULL);
+  write_label(self, start);
+  if (write_stmt(self, (const AnyMpplStmt *) body, ADR_NULL, ADR_NULL) != ADR_CALL) {
+    write_inst0(self, "RET");
+  }
+  write_inst0(self, "END");
 
   mppl_unref(body);
 }
