@@ -1053,13 +1053,22 @@ static Adr write_comp_stmt(Generator *self, const MpplCompStmt *syntax, Adr sour
 
 static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
 {
-  MpplToken *name  = mppl_call_stmt__name(syntax);
-  const Def *def   = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
-  Adr        label = locate(self, def, ADR_NULL);
+  unsigned long     i;
+  MpplToken        *name   = mppl_call_stmt__name(syntax);
+  MpplActParamList *params = mppl_call_stmt__act_param_list(syntax);
+  const Def        *def    = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
+  Adr               label  = locate(self, def, ADR_NULL);
 
+  for (i = mppl_act_param_list__expr_count(params) - 1; i >= 0; --i) {
+    AnyMpplExpr *expr_syntax = mppl_act_param_list__expr(params, i);
+    Reg          reg         = write_expr(self, expr_syntax, ADR_NULL);
+    write_inst1(self, "PUSH", r(reg));
+    mppl_unref(expr_syntax);
+  }
   write_inst1(self, "CALL", adr(label));
 
   mppl_unref(name);
+  mppl_unref(params);
   return ADR_CALL;
 }
 
