@@ -1053,7 +1053,7 @@ static Adr write_comp_stmt(Generator *self, const MpplCompStmt *syntax, Adr sour
 
 static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
 {
-  unsigned long     i;
+  long              i;
   MpplToken        *name   = mppl_call_stmt__name(syntax);
   MpplActParamList *params = mppl_call_stmt__act_param_list(syntax);
   const Def        *def    = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
@@ -1069,7 +1069,7 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
 
   mppl_unref(name);
   mppl_unref(params);
-  return ADR_CALL;
+  return ADR_NULL;
 }
 
 static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
@@ -1105,7 +1105,7 @@ static Adr write_stmt(Generator *self, const AnyMpplStmt *syntax, Adr source, Ad
 
   case MPPL_STMT_RETURN:
     write_inst0(self, "RET");
-    return ADR_NULL;
+    return ADR_CALL;
 
   case MPPL_STMT_INPUT:
     return write_input_stmt(self, (const MpplInputStmt *) syntax);
