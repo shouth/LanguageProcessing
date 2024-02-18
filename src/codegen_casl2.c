@@ -335,6 +335,7 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
           zero->kind    = EXPR_LIT;
           zero->spill   = 0;
           zero->value   = 0;
+          zero->hex     = 0;
           self->lhs     = (Expr *) zero;
         }
         self->rhs = expr_create_tree(ctx, rhs_syntax);
