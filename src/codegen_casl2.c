@@ -1164,7 +1164,7 @@ static void visit_fml_param_sec(const MpplAstWalker *walker, const MpplFmlParamS
   for (i = 0; i < mppl_fml_param_sec__name_count(syntax); ++i) {
     MpplToken *name  = mppl_fml_param_sec__name(syntax, i);
     const Def *def   = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
-    Adr        label = locate(self, def, self->var_label_count++);
+    Adr        label = locate(self, def, self->arg_label_count++);
 
     write_label(self, label);
     write_inst1(self, "DC", "1");
