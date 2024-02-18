@@ -952,8 +952,21 @@ static Adr write_assign_stmt(Generator *self, const MpplAssignStmt *syntax)
     const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
     Adr            label         = locate(self, def, ADR_NULL);
 
-    Reg reg = write_expr(self, rhs_syntax, ADR_NULL);
-    write_inst2(self, "ST", r(reg), adr(label));
+    RegState state     = reg_state();
+    Expr    *value     = expr_new(self->ctx, rhs_syntax);
+    Reg      value_reg = reg_state_vacant(&state);
+    expr_assign_reg(value, value_reg, &state);
+
+    write_expr_core(self, value, ADR_NULL);
+    if (def_kind(def) == DEF_PARAM) {
+      Reg reg = reg_state_vacant(&state);
+      write_inst2(self, "LD", r(reg), adr(label));
+      write_inst3(self, "ST", r(value_reg), "0", x(reg));
+    } else {
+      write_inst2(self, "ST", r(value_reg), adr(label));
+    }
+
+    expr_free(value);
     mppl_unref(name_syntax);
     break;
   }
