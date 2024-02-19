@@ -491,55 +491,6 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
   }
 }
 
-static unsigned long expr_optimize_order(Expr *self)
-{
-  switch (self->kind) {
-  case EXPR_BINARY: {
-    BinaryExpr   *expr         = (BinaryExpr *) self;
-    unsigned long lhs_priority = expr_optimize_order(expr->lhs);
-    unsigned long rhs_priority = expr_optimize_order(expr->rhs);
-
-    if (expr->op == BINARY_AND || expr->op == BINARY_OR) {
-      return lhs_priority > rhs_priority ? lhs_priority : rhs_priority;
-    } else if (lhs_priority == rhs_priority) {
-      return lhs_priority + 1;
-    } else if (lhs_priority > rhs_priority) {
-      return lhs_priority;
-    } else {
-      Expr *tmp = expr->lhs;
-      expr->lhs = expr->rhs;
-      expr->rhs = tmp;
-      return rhs_priority;
-    }
-  }
-
-  case EXPR_NOT: {
-    NotExpr *expr = (NotExpr *) self;
-    return expr_optimize_order(expr->expr);
-  }
-
-  case EXPR_CAST: {
-    CastExpr *expr = (CastExpr *) self;
-    return expr_optimize_order(expr->expr);
-  }
-
-  case EXPR_VAR: {
-    VarExpr *expr = (VarExpr *) self;
-    if (expr->index) {
-      return expr_optimize_order(expr->index);
-    } else {
-      return 1;
-    }
-  }
-
-  case EXPR_LIT:
-    return 1;
-
-  default:
-    unreachable();
-  }
-}
-
 static void expr_assign_reg(Expr *self, Reg reg, RegState *state)
 {
   switch (self->kind) {
@@ -596,9 +547,7 @@ static void expr_assign_reg(Expr *self, Reg reg, RegState *state)
 
 static Expr *expr_new(Ctx *ctx, const AnyMpplExpr *syntax)
 {
-  Expr *self = expr_create_tree(ctx, syntax);
-  expr_optimize_order(self);
-  return self;
+  return expr_create_tree(ctx, syntax);
 }
 
 static void expr_free(Expr *self)
