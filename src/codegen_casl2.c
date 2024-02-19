@@ -977,6 +977,9 @@ static Adr write_assign_stmt(Generator *self, const MpplAssignStmt *syntax)
     write_expr_core(self, index, ADR_NULL);
 
     write_inst3(self, "ST", r(value_reg), adr(label), x(index_reg));
+
+    expr_free(value);
+    expr_free(index);
     mppl_unref(name_syntax);
     mppl_unref(index_syntax);
     break;
