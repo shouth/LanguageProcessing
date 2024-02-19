@@ -455,16 +455,10 @@ static const Type *check_expr(Checker *checker, const AnyMpplExpr *syntax)
 
 static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *syntax, void *checker)
 {
-  unsigned long i;
-  Checker      *self        = checker;
-  AnyMpplType  *type_syntax = mppl_var_decl__type(syntax);
-
-  for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
-    const Type *type        = mppl_type__to_type(type_syntax, self->ctx);
-    MpplToken  *name_syntax = mppl_var_decl__name(syntax, i);
-    ctx_type_of(self->ctx, (const SyntaxTree *) name_syntax, type);
-    mppl_unref(name_syntax);
-  }
+  Checker     *self        = checker;
+  AnyMpplType *type_syntax = mppl_var_decl__type(syntax);
+  const Type  *type        = mppl_type__to_type(type_syntax, self->ctx);
+  ctx_type_of(self->ctx, (const SyntaxTree *) syntax, type);
 
   mppl_unref(type_syntax);
   mppl_ast__walk_var_decl(walker, syntax, checker);
@@ -514,11 +508,9 @@ static const TypeList *check_fml_param_list(Checker *checker, const MpplFmlParam
         AnyMpplType     *type_syntax      = mppl_fml_param_sec__type(param_sec_syntax);
         const Type      *type             = mppl_type__to_type(type_syntax, checker->ctx);
 
+        ctx_type_of(checker->ctx, (SyntaxTree *) param_sec_syntax, type);
         for (j = 0; j < mppl_fml_param_sec__name_count(param_sec_syntax); ++j) {
-          MpplToken *name_syntax = mppl_fml_param_sec__name(param_sec_syntax, j);
-          ctx_type_of(checker->ctx, (const SyntaxTree *) name_syntax, type);
           array_push(types, &type);
-          mppl_unref(name_syntax);
         }
 
         mppl_unref(type_syntax);
@@ -543,9 +535,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   const TypeList   *param_types       = check_fml_param_list(checker, param_list_syntax);
 
   if (param_types) {
-    MpplToken *name_syntax = mppl_proc_decl__name(syntax);
-    ctx_type_of(self->ctx, (const SyntaxTree *) name_syntax, ctx_proc_type(self->ctx, param_types));
-    mppl_unref(name_syntax);
+    ctx_type_of(self->ctx, (const SyntaxTree *) syntax, ctx_proc_type(self->ctx, param_types));
   }
 
   mppl_unref(param_list_syntax);
@@ -759,7 +749,8 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
 {
   Checker    *self        = checker;
   MpplToken  *name_syntax = mppl_call_stmt__name(syntax);
-  const Type *type        = ctx_type_of(self->ctx, (SyntaxTree *) name_syntax, NULL);
+  const Def  *def         = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+  const Type *type        = ctx_type_of(self->ctx, def_syntax(def), NULL);
 
   if (type) {
     MpplActParamList *act_param_list_syntax = mppl_call_stmt__act_param_list(syntax);
