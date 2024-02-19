@@ -1208,6 +1208,9 @@ static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
   if (syntax_tree_kind((const SyntaxTree *) read_syntax) == SYNTAX_READLN_KW) {
     write_inst1(self, "CALL", "RLINE");
   }
+
+  mppl_unref(read_syntax);
+  mppl_unref(input_list_syntax);
   return ADR_NULL;
 }
 
