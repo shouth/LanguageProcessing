@@ -1005,7 +1005,7 @@ static Adr write_if_stmt(Generator *self, const MpplIfStmt *syntax, Adr sink)
   Reg          reg;
 
   reg = write_expr(self, cond_syntax, ADR_NULL);
-  write_inst2(self, "CPA", r(reg), "=0");
+  write_inst2(self, "CPA", r(reg), "=1");
   write_inst1(self, "JNZ", adr(false_block));
   write_stmt(self, then_syntax, ADR_NULL, ADR_NULL);
 
@@ -1039,7 +1039,7 @@ static Adr write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Adr so
 
   write_label(self, cond_block);
   reg = write_expr(self, cond_syntax, ADR_NULL);
-  write_inst2(self, "CPA", r(reg), "=0");
+  write_inst2(self, "CPA", r(reg), "=1");
   write_inst1(self, "JNZ", adr(next_block));
   write_stmt(self, do_syntax, ADR_NULL, ADR_NULL);
   write_inst1(self, "JUMP", adr(cond_block));
