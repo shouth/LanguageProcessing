@@ -138,13 +138,18 @@ struct Generator {
   Adr   proc_label_count;
   Adr   break_label;
 
+  int builtin_error_overflow;
+  int builtin_error_zero_division;
+  int builtin_error_range;
   int builtin_write_integer;
   int builtin_write_boolean;
   int builtin_write_string;
   int builtin_write_char;
+  int builtin_write_newline;
+  int builtin_flush;
   int builtin_read_integer;
   int builtin_read_char;
-  int builtin_read_newline;
+  int builtin_read_line;
 };
 
 static void fmt_reg(char *buf, Reg reg)
@@ -670,6 +675,14 @@ static void write_label(Generator *self, Adr a)
   self->current_label = a;
 }
 
+static void write_builtin(Generator *self, const char **lines, unsigned long count)
+{
+  unsigned long i;
+  for (i = 0; i < count; ++i) {
+    fprintf(self->file, "%s\n", lines[i]);
+  }
+}
+
 static void write_expr_core(Generator *self, const Expr *expr, Adr sink);
 
 static void write_relational_expr(Generator *self, const char *inst, const BinaryExpr *expr, int reverse, Adr sink)
@@ -698,14 +711,23 @@ static void write_relational_expr(Generator *self, const char *inst, const Binar
   }
 }
 
-static void write_arithmetic_expr(Generator *self, const char *inst, const BinaryExpr *expr)
+static void write_arithmetic_expr(Generator *self, const char *inst, const BinaryExpr *expr, int check_overflow, int check_zero_division)
 {
   write_expr_core(self, expr->lhs, ADR_NULL);
   write_expr_core(self, expr->rhs, ADR_NULL);
+  if (check_zero_division) {
+    write_inst2(self, "CPA", r1(expr->rhs->reg), "=0");
+    write_inst1(self, "JZE", "E0DIV");
+    self->builtin_error_zero_division = 1;
+  }
   if (expr->lhs->spill) {
     write_inst1(self, "POP", r(expr->lhs->reg));
   }
   write_inst2(self, inst, r1(expr->lhs->reg), r2(expr->rhs->reg));
+  if (check_overflow) {
+    write_inst1(self, "JOV", "EOVF");
+    self->builtin_error_overflow = 1;
+  }
   if (expr->reg != expr->lhs->reg) {
     write_inst2(self, "LD", r1(expr->reg), r2(expr->lhs->reg));
   }
@@ -771,19 +793,19 @@ static void write_binary_expr(Generator *self, const BinaryExpr *expr, Adr sink)
     break;
 
   case BINARY_ADD:
-    write_arithmetic_expr(self, "ADDA", expr);
+    write_arithmetic_expr(self, "ADDA", expr, 1, 0);
     break;
 
   case BINARY_SUB:
-    write_arithmetic_expr(self, "SUBA", expr);
+    write_arithmetic_expr(self, "SUBA", expr, 0, 0);
     break;
 
   case BINARY_MUL:
-    write_arithmetic_expr(self, "MULA", expr);
+    write_arithmetic_expr(self, "MULA", expr, 1, 0);
     break;
 
   case BINARY_DIV:
-    write_arithmetic_expr(self, "DIVA", expr);
+    write_arithmetic_expr(self, "DIVA", expr, 0, 1);
     break;
 
   case BINARY_AND:
@@ -822,8 +844,20 @@ static void write_var(Generator *self, const VarExpr *expr)
 {
   Adr label = locate(self, expr->def, ADR_NULL);
   if (expr->index) {
-    write_expr_core(self, expr->index, ADR_NULL);
-    write_inst3(self, "LD", r(expr->reg), adr(label), x(expr->index->reg));
+    const Type   *type   = ctx_type_of(self->ctx, def_syntax(expr->def), NULL);
+    unsigned long length = array_type_length((const ArrayType *) type);
+
+    if (length > 0) {
+      char buf[16];
+      sprintf(buf, "=%lu", length - 1);
+      write_expr_core(self, expr->index, ADR_NULL);
+      write_inst2(self, "CPA", r(expr->index->reg), buf);
+      write_inst1(self, "JPL", "ERNG");
+      write_inst3(self, "LD", r(expr->reg), adr(label), x(expr->index->reg));
+    } else {
+      write_inst1(self, "JPL", "ERNG");
+    }
+    self->builtin_error_range = 1;
   } else if (def_kind(expr->def) == DEF_PARAM) {
     write_inst2(self, "LD", r(expr->reg), adr(label));
     write_inst3(self, "LD", r(expr->reg), "0", x(expr->reg));
@@ -1247,6 +1281,289 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
   if (write_stmt(self, (const AnyMpplStmt *) body, ADR_NULL, ADR_NULL) != ADR_CALL) {
     write_inst0(self, "RET");
   }
+
+  if (self->builtin_error_overflow) {
+    const char *csl[] = {
+      "EOVF      CALL  WLINE",
+      "          LAD   GR1, EOVF1",
+      "          LAD   GR2, 0",
+      "          CALL  WSTR",
+      "          CALL  WLINE",
+      "          SVC   1",
+      "EOVF1     DC    '***** Run-Time Error : Overflow *****'",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+    self->builtin_write_string  = 1;
+    self->builtin_write_newline = 1;
+  }
+
+  if (self->builtin_error_zero_division) {
+    const char *csl[] = {
+      "E0DIV     CALL  WLINE",
+      "          LAD   GR1, E0DIV1",
+      "          LAD   GR2, 0",
+      "          CALL  WSTR",
+      "          CALL  WLINE",
+      "          SVC   2",
+      "E0DIV1    DC    '***** Run-Time Error : Zero Division *****'",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+    self->builtin_write_string  = 1;
+    self->builtin_write_newline = 1;
+  }
+
+  if (self->builtin_error_range) {
+    const char *csl[] = {
+      "ERNG      CALL  WLINE",
+      "          LAD   GR1, ERNG1",
+      "          LAD   GR2, 0",
+      "          CALL  WSTR",
+      "          CALL  WLINE",
+      "          SVC   3",
+      "ERNG1     DC    '***** Run-Time Error : Range *****'",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+    self->builtin_write_string  = 1;
+    self->builtin_write_newline = 1;
+  }
+
+  if (self->builtin_write_integer) {
+    const char *csl[] = {
+      "WINT      LAD   GR7, 0",
+      "          CPA   GR1, =0",
+      "          JPL   WI1",
+      "          JZE   WI1",
+      "          LAD   GR4, 0",
+      "          SUBA  GR4, GR1",
+      "          CPA   GR4, GR1",
+      "          JZE   WI6",
+      "          LD    GR1, GR4",
+      "          LAD   GR7, 1",
+      "WI1       LAD   GR6, 6",
+      "          LAD   GR0, 0",
+      "          ST    GR0, INTBUF, GR6",
+      "          SUBA  GR6, =1",
+      "          CPA   GR1, =0",
+      "          JNZ   WI2",
+      "          LAD   GR4, #0030",
+      "          ST    GR4, INTBUF, GR6",
+      "          JUMP  WI5",
+      "WI2       CPA   GR1, =0",
+      "          JZE   WI3",
+      "          LD    GR5, GR1",
+      "          DIVA  GR1, =10",
+      "          LD    GR4, GR1",
+      "          MULA  GR4, =10",
+      "          SUBA  GR5, GR4",
+      "          ADDA  GR5, =#0030",
+      "          ST    GR5, INTBUF, GR6",
+      "          SUBA  GR6, =1",
+      "          JUMP  WI2",
+      "WI3       CPA   GR7, =0",
+      "          JZE   WI4",
+      "          LAD   GR4, #002D",
+      "          ST    GR4, INTBUF, GR6",
+      "          JUMP  WI5",
+      "WI4       ADDA  GR6, =1",
+      "WI5       LAD   GR1, INTBUF, GR6",
+      "          CALL  WSTR",
+      "          RET",
+      "WI6       LAD   GR1, MMINT",
+      "          CALL  WSTR",
+      "          RET",
+      "MMINT     DC    '-32768'",
+      "INTBUF    DS    8",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+    self->builtin_write_string = 1;
+  }
+
+  if (self->builtin_write_boolean) {
+    const char *csl[] = {
+      "WBOOL     CPA   GR1, =0",
+      "          JZE   WB1",
+      "          LAD   GR1, WT",
+      "          JUMP  WB2",
+      "WB1       LAD   GR1, WF",
+      "WB2       CALL  WSTR",
+      "          RET",
+      "WT        DC    'TRUE'",
+      "WF        DC    'FALSE'",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+    self->builtin_write_string = 1;
+  }
+
+  if (self->builtin_write_char) {
+    const char *csl[] = {
+      "WCHAR     LAD   GR6, #0020",
+      "          LD    GR7, OBUFSZ",
+      "WC1       SUBA  GR2, =1",
+      "          JZE   WC2",
+      "          JMI   WC2",
+      "          ST    GR6, OBUF, GR7",
+      "          CALL  BOVFCHK",
+      "          JUMP  WC1",
+      "WC2       ST    GR1, OBUF, GR7",
+      "          CALL  BOVFCHK",
+      "          ST    GR7, OBUFSZ",
+      "          RET",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+  }
+
+  if (self->builtin_write_string) {
+    const char *csl[] = {
+      "WSTR      LD    GR6, GR1",
+      "WS1       LD    GR4, 0, GR6",
+      "          JZE   WS2",
+      "          ADDA  GR6, =1",
+      "          SUBA  GR2, =1",
+      "          JUMP  WS1",
+      "WS2       LD    GR7, OBUFSZ",
+      "          LAD   GR5, #0020",
+      "WS3       SUBA  GR2, =1",
+      "          JMI   WS4",
+      "          ST    GR5, OBUF, GR7",
+      "          CALL  BOVFCHK",
+      "          JUMP  WS3",
+      "WS4       LD    GR4, 0, GR1",
+      "          JZE   WS5",
+      "          ST    GR4, OBUF, GR7",
+      "          ADDA  GR1, =1",
+      "          CALL  BOVFCHK",
+      "          JUMP  WS4",
+      "WS5       ST    GR7, OBUFSZ",
+      "          RET",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+  }
+
+  if (self->builtin_write_newline) {
+    const char *csl[] = {
+      "WLINE     LD    GR7, OBUFSZ",
+      "          LAD   GR6, #000A",
+      "          ST    GR6, OBUF, GR7",
+      "          CALL  BOVFCHK",
+      "          RET",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+  }
+
+  if (self->builtin_write_char || self->builtin_write_string || self->builtin_write_newline) {
+    const char *csl[] = {
+      "BOVFCHK   ADDA  GR7, =1",
+      "          CPA   GR7, =256",
+      "          JMI   BOVF1",
+      "          CALL  FLUSH",
+      "          LD    GR7, OBUFSZ",
+      "BOVF1     RET",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+    self->builtin_flush = 1;
+  }
+
+  if (self->builtin_flush) {
+    const char *csl[] = {
+      "FLUSH     OUT   OBUF, OBUFSZ",
+      "          LAD   GR0, 0",
+      "          ST    GR0, OBUFSZ",
+      "          RET",
+      "OBUF      DS    256",
+      "OBUFSZ    DC    0",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+  }
+
+  if (self->builtin_read_integer) {
+    const char *csl[] = {
+      "RINT      NOP",
+      "RI1       CALL  RCHAR",
+      "          LD    GR7, 0, GR1",
+      "          CPA   GR7, =#0020",
+      "          JZE   RI1",
+      "          CPA   GR7, =#0009",
+      "          JZE   RI1",
+      "          CPA   GR7, =#0010",
+      "          JZE   RI1",
+      "          LAD   GR5, 1",
+      "          CPA   GR7, =#002D",
+      "          JNZ   RI4",
+      "          LAD   GR5, 0",
+      "          CALL  RCHAR",
+      "          LD    GR7, 0, GR1",
+      "RI4       LAD   GR6, 0",
+      "RI2       CPA   GR7, =0",
+      "          JMI   RI3",
+      "          CPA   GR7, =9",
+      "          JPL   RI3",
+      "          MULA  GR6, =10",
+      "          ADDA  GR6, GR7",
+      "          SUBA  GR6, =0",
+      "          CALL  RCHAR",
+      "          LD    GR7, 0, GR1",
+      "          JUMP  RI2",
+      "RI3       ST    GR7, RPBBUF",
+      "          ST    GR6, 0, GR1",
+      "          CPA   GR5, =0",
+      "          JNZ   RI5",
+      "          SUBA  GR5, GR6",
+      "          ST    GR5, 0, GR1",
+      "RI5       RET",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+    self->builtin_read_char = 1;
+  }
+
+  if (self->builtin_read_char) {
+    const char *csl[] = {
+      "RCHAR     LD    GR5, RPBBUF",
+      "          JZE   RC0",
+      "          ST    GR5, 0, GR1",
+      "          ST    GR0, RPBBUF",
+      "          JUMP  RC3",
+      "RC0       LD    GR7, INP",
+      "          LD    GR6, IBUFSZ",
+      "          JNZ   RC1",
+      "          IN    IBUF, IBUFSZ",
+      "          LD    GR7, GR0",
+      "RC1       CPA   GR7, IBUFSZ",
+      "          JNZ   RC2",
+      "          LD    GR5, NEWLINE",
+      "          ST    GR5, 0, GR1",
+      "          ST    GR0, IBUFSIZE",
+      "          ST    GR0, INP",
+      "          JUMP  RC3",
+      "RC2       LD    GR5, IBUF, GR7",
+      "          ADDA  GR7, =1",
+      "          ST    GR5, 0, GR1",
+      "          ST    GR7, INP",
+      "RC3       RET",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+  }
+
+  if (self->builtin_read_line) {
+    const char *csl[] = {
+      "RLINE     LAD   GR0, 0",
+      "          ST    GR0, IBUFSIZE",
+      "          ST    GR0, INP",
+      "          ST    GR0, RPBBUF",
+      "          RET",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+  }
+
+  if (self->builtin_read_char || self->builtin_read_line) {
+    const char *csl[] = {
+      "IBUF      DS    257",
+      "IBUFSZ    DC    0",
+      "INP       DC    0",
+      "RPBBUF    DC    0",
+    };
+    write_builtin(self, csl, sizeof(csl) / sizeof(csl[0]));
+  }
+
   write_inst0(self, "END");
 
   mppl_unref(body);
@@ -1256,44 +1573,56 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
 {
   MpplAstWalker walker;
 
-  Generator generator;
-  generator.ctx              = ctx;
-  generator.symbols          = map_new(NULL, NULL);
-  generator.current_label    = 0;
-  generator.label_count      = (unsigned long) ADR_NORMAL << ADR_KIND_OFFSET;
-  generator.tmp_label_count  = (unsigned long) ADR_TMP << ADR_KIND_OFFSET;
-  generator.var_label_count  = (unsigned long) ADR_VAR << ADR_KIND_OFFSET;
-  generator.arg_label_count  = (unsigned long) ADR_ARG << ADR_KIND_OFFSET;
-  generator.proc_label_count = (unsigned long) ADR_PROC << ADR_KIND_OFFSET;
-  generator.break_label      = ADR_NULL;
+  Generator self;
+  self.ctx              = ctx;
+  self.symbols          = map_new(NULL, NULL);
+  self.current_label    = 0;
+  self.label_count      = (unsigned long) ADR_NORMAL << ADR_KIND_OFFSET;
+  self.tmp_label_count  = (unsigned long) ADR_TMP << ADR_KIND_OFFSET;
+  self.var_label_count  = (unsigned long) ADR_VAR << ADR_KIND_OFFSET;
+  self.arg_label_count  = (unsigned long) ADR_ARG << ADR_KIND_OFFSET;
+  self.proc_label_count = (unsigned long) ADR_PROC << ADR_KIND_OFFSET;
+  self.break_label      = ADR_NULL;
   {
     char *output_filename = xmalloc(sizeof(char) * (source->file_name_length + 1));
     sprintf(output_filename, "%.*s.csl", (int) source->file_name_length - 4, source->file_name);
     printf("output: %s\n", output_filename);
-    generator.file = fopen(output_filename, "w");
+    self.file = fopen(output_filename, "w");
     free(output_filename);
   }
 
-  if (generator.file == NULL) {
+  if (self.file == NULL) {
     fprintf(stderr, "error: failed to open output file\n");
     return 0;
   }
+
+  self.builtin_error_overflow      = 0;
+  self.builtin_error_zero_division = 0;
+  self.builtin_error_range         = 0;
+  self.builtin_read_char           = 0;
+  self.builtin_read_integer        = 0;
+  self.builtin_read_line           = 0;
+  self.builtin_write_char          = 0;
+  self.builtin_write_string        = 0;
+  self.builtin_write_integer       = 0;
+  self.builtin_write_boolean       = 0;
+  self.builtin_write_newline       = 0;
 
   mppl_ast_walker__setup(&walker);
   walker.visit_program       = &visit_program;
   walker.visit_proc_decl     = &visit_proc_decl;
   walker.visit_fml_param_sec = &visit_fml_param_sec;
   walker.visit_var_decl      = &visit_var_decl;
-  mppl_ast_walker__travel(&walker, syntax, &generator);
+  mppl_ast_walker__travel(&walker, syntax, &self);
 
   {
     MapIndex index;
-    for (map_iterator(generator.symbols, &index); map_next(generator.symbols, &index);) {
-      free(map_value(generator.symbols, &index));
+    for (map_iterator(self.symbols, &index); map_next(self.symbols, &index);) {
+      free(map_value(self.symbols, &index));
     }
-    map_free(generator.symbols);
+    map_free(self.symbols);
   }
 
-  fclose(generator.file);
+  fclose(self.file);
   return 1;
 }
