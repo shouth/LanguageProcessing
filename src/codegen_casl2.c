@@ -1389,6 +1389,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   mppl_ast__walk_var_decl_part(walker, vars, generator);
 
   write_label(self, label);
+  write_inst1(self, "POP", r(GR1));
   for (i = 0; i < mppl_fml_param_list__sec_count(params); ++i) {
     MpplFmlParamSec *sec = mppl_fml_param_list__sec(params, i);
     for (j = 0; j < mppl_fml_param_sec__name_count(sec); ++j) {
@@ -1402,6 +1403,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
     }
     mppl_unref(sec);
   }
+  write_inst2(self, "PUSH", "0", r(GR1));
 
   if (write_stmt(self, (const AnyMpplStmt *) body, ADR_NULL, ADR_NULL) != ADR_CALL) {
     write_inst0(self, "RET");
