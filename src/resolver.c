@@ -188,7 +188,7 @@ static void visit_indexed_var(const MpplAstWalker *walker, const MpplIndexedVar 
   MpplToken *name_syntax = mppl_indexed_var__name(syntax);
   try_resolve(resolver, (const SyntaxTree *) name_syntax, 0);
   mppl_unref(name_syntax);
-  (void) walker;
+  mppl_ast__walk_indexed_var(walker, syntax, resolver);
 }
 
 static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syntax, void *resolver)
