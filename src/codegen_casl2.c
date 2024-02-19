@@ -1142,7 +1142,72 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
 
 static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
 {
-  write_inst0(self, "NOP ; placeholder for input statement");
+  unsigned long  i;
+  MpplToken     *read_syntax       = mppl_input_stmt__read_token(syntax);
+  MpplInputList *input_list_syntax = mppl_input_stmt__input_list(syntax);
+
+  for (i = 0; i < mppl_input_list__var_count(input_list_syntax); ++i) {
+    AnyMpplVar *var_syntax = mppl_input_list__var(input_list_syntax, i);
+    const Type *type       = ctx_type_of(self->ctx, (const SyntaxTree *) var_syntax, NULL);
+
+    switch (mppl_var__kind(var_syntax)) {
+    case MPPL_VAR_ENTIRE: {
+      MpplEntireVar *entire_syntax = (MpplEntireVar *) var_syntax;
+      MpplToken     *name_syntax   = mppl_entire_var__name(entire_syntax);
+      const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+      Adr            label         = locate(self, def, ADR_NULL);
+
+      switch (def_kind(def)) {
+      case DEF_PARAM:
+        write_inst2(self, "LD", r(GR0), adr(label));
+        break;
+
+      case DEF_VAR:
+        write_inst2(self, "LAD", r(GR0), adr(label));
+        break;
+
+      default:
+        unreachable();
+      }
+
+      mppl_unref(name_syntax);
+      break;
+    }
+
+    case MPPL_VAR_INDEXED: {
+      MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) var_syntax;
+      MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
+      AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
+      const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+      Adr             label          = locate(self, def, ADR_NULL);
+
+      Reg index = write_expr(self, index_syntax, ADR_NULL);
+      write_inst3(self, "LAD", r(GR0), adr(label), x(index));
+
+      mppl_unref(name_syntax);
+      mppl_unref(index_syntax);
+      break;
+    }
+    }
+
+    switch (type_kind(type)) {
+    case TYPE_CHAR:
+      write_inst1(self, "CALL", "RCHAR");
+      break;
+
+    case TYPE_INTEGER:
+      write_inst1(self, "CALL", "RINT");
+      break;
+
+    default:
+      unreachable();
+    }
+    mppl_unref(var_syntax);
+  }
+
+  if (syntax_tree_kind((const SyntaxTree *) read_syntax) == SYNTAX_READLN_KW) {
+    write_inst1(self, "CALL", "RLINE");
+  }
   return ADR_NULL;
 }
 
