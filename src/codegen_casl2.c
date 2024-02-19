@@ -1415,14 +1415,16 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
   Generator    *self  = generator;
   MpplCompStmt *body  = mppl_program__stmt(syntax);
   Adr           start = self->label_count++;
+  Adr           main  = self->label_count++;
 
-  write_inst1(self, "START", adr(start));
+  write_label(self, start);
+  write_inst1(self, "START", adr(main));
   for (i = 0; i < mppl_program__decl_part_count(syntax); ++i) {
     AnyMpplDeclPart *decl_part_syntax = mppl_program__decl_part(syntax, i);
     mppl_ast__walk_decl_part(walker, decl_part_syntax, generator);
     mppl_unref(decl_part_syntax);
   }
-  write_label(self, start);
+  write_label(self, main);
   if (write_stmt(self, (const AnyMpplStmt *) body, ADR_NULL, ADR_NULL) != ADR_CALL) {
     write_inst0(self, "RET");
   }
