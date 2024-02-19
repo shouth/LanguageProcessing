@@ -905,7 +905,7 @@ static void write_expr_core(Generator *self, const Expr *expr, Adr sink)
   }
 
   if (expr->spill) {
-    write_inst1(self, "PUSH", r(expr->reg));
+    write_inst2(self, "PUSH", "0", r(expr->reg));
   }
 }
 
@@ -1094,11 +1094,10 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
         Adr            label         = locate(self, def, ADR_NULL);
 
         if (def_kind(def) == DEF_PARAM) {
-          write_inst2(self, "LD", r(GR0), adr(label));
-          write_inst1(self, "PUSH", r(GR0));
+          write_inst2(self, "LD", r(GR1), adr(label));
+          write_inst2(self, "PUSH", "0", r(GR1));
         } else {
-          write_inst2(self, "LAD", r(GR0), adr(label));
-          write_inst1(self, "PUSH", r(GR0));
+          write_inst1(self, "PUSH", adr(label));
         }
 
         mppl_unref(name_syntax);
@@ -1113,8 +1112,7 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
         Adr             label          = locate(self, def, ADR_NULL);
 
         Reg index = write_expr(self, index_syntax, ADR_NULL);
-        write_inst3(self, "LAD", r(GR0), adr(label), x(index));
-        write_inst1(self, "PUSH", r(GR0));
+        write_inst2(self, "PUSH", adr(label), x(index));
 
         mppl_unref(name_syntax);
         mppl_unref(index_syntax);
@@ -1130,8 +1128,7 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
       write_label(self, tmp_label);
       write_inst1(self, "DC", "0");
       write_inst2(self, "ST", r(reg), adr(tmp_label));
-      write_inst2(self, "LAD", r(GR0), adr(tmp_label));
-      write_inst1(self, "PUSH", r(GR0));
+      write_inst1(self, "PUSH", adr(tmp_label));
     }
 
     mppl_unref(expr_syntax);
