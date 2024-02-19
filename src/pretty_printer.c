@@ -92,6 +92,7 @@ static void print_program(Printer *printer, const MpplProgram *syntax)
 
     print_indent(printer);
     print_decl_part(printer, part);
+    print_newline();
 
     mppl_unref(part);
   }
