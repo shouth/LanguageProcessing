@@ -1159,11 +1159,11 @@ static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
 
       switch (def_kind(def)) {
       case DEF_PARAM:
-        write_inst2(self, "LD", r(GR0), adr(label));
+        write_inst2(self, "LD", r(GR1), adr(label));
         break;
 
       case DEF_VAR:
-        write_inst2(self, "LAD", r(GR0), adr(label));
+        write_inst2(self, "LAD", r(GR1), adr(label));
         break;
 
       default:
@@ -1182,7 +1182,7 @@ static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
       Adr             label          = locate(self, def, ADR_NULL);
 
       Reg index = write_expr(self, index_syntax, ADR_NULL);
-      write_inst3(self, "LAD", r(GR0), adr(label), x(index));
+      write_inst3(self, "LAD", r(GR1), adr(label), x(index));
 
       mppl_unref(name_syntax);
       mppl_unref(index_syntax);
