@@ -1194,10 +1194,12 @@ static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
       switch (type_kind(type)) {
       case TYPE_CHAR:
         write_inst1(self, "CALL", "RCHAR");
+        self->builtin_read_char = 1;
         break;
 
       case TYPE_INTEGER:
         write_inst1(self, "CALL", "RINT");
+        self->builtin_read_integer = 1;
         break;
 
       default:
@@ -1209,6 +1211,7 @@ static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
 
   if (syntax_tree_kind((const SyntaxTree *) read_syntax) == SYNTAX_READLN_KW) {
     write_inst1(self, "CALL", "RLINE");
+    self->builtin_read_line = 1;
   }
 
   mppl_unref(read_syntax);
@@ -1261,14 +1264,17 @@ static Adr write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
         switch (type_kind(type)) {
         case TYPE_CHAR:
           write_inst1(self, "CALL", "WCHAR");
+          self->builtin_write_char = 1;
           break;
 
         case TYPE_INTEGER:
           write_inst1(self, "CALL", "WINT");
+          self->builtin_write_integer = 1;
           break;
 
         case TYPE_BOOLEAN:
           write_inst1(self, "CALL", "WBOOL");
+          self->builtin_write_boolean = 1;
           break;
 
         default:
@@ -1288,6 +1294,7 @@ static Adr write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
   if (syntax_tree_kind((const SyntaxTree *) write_syntax) == SYNTAX_WRITELN_KW) {
     write_inst1(self, "CALL", "WLINE");
   }
+  write_inst1(self, "CALL", "FLUSH");
 
   mppl_unref(write_syntax);
   mppl_unref(output_list_syntax);
@@ -1673,9 +1680,9 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
       "          LD    GR7, GR0",
       "RC1       CPA   GR7, IBUFSZ",
       "          JNZ   RC2",
-      "          LD    GR5, NEWLINE",
+      "          LAD   GR5, #0010",
       "          ST    GR5, 0, GR1",
-      "          ST    GR0, IBUFSIZE",
+      "          ST    GR0, IBUFSZ",
       "          ST    GR0, INP",
       "          JUMP  RC3",
       "RC2       LD    GR5, IBUF, GR7",
@@ -1690,7 +1697,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
   if (self->builtin_read_line) {
     const char *csl[] = {
       "RLINE     LAD   GR0, 0",
-      "          ST    GR0, IBUFSIZE",
+      "          ST    GR0, IBUFSZ",
       "          ST    GR0, INP",
       "          ST    GR0, RPBBUF",
       "          RET",
