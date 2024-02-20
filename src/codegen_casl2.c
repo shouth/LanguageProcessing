@@ -1452,6 +1452,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
       "          LAD   GR2, 0",
       "          CALL  WSTR",
       "          CALL  WLINE",
+      "          CALL  FLUSH",
       "          SVC   1",
       "EOVF1     DC    '***** Run-Time Error : Overflow *****'",
     };
@@ -1467,6 +1468,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
       "          LAD   GR2, 0",
       "          CALL  WSTR",
       "          CALL  WLINE",
+      "          CALL  FLUSH",
       "          SVC   2",
       "E0DIV1    DC    '***** Run-Time Error : Zero Division *****'",
     };
@@ -1482,6 +1484,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
       "          LAD   GR2, 0",
       "          CALL  WSTR",
       "          CALL  WLINE",
+      "          CALL  FLUSH",
       "          SVC   3",
       "ERNG1     DC    '***** Run-Time Error : Range *****'",
     };
