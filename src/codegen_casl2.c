@@ -30,7 +30,6 @@ typedef enum {
 
 typedef enum {
   ADR_NORMAL = 1,
-  ADR_TMP,
   ADR_VAR,
   ADR_ARG,
   ADR_PROC
@@ -132,7 +131,6 @@ struct Generator {
   Map  *symbols;
   Adr   current_label;
   Adr   label_count;
-  Adr   tmp_label_count;
   Adr   var_label_count;
   Adr   arg_label_count;
   Adr   proc_label_count;
@@ -164,10 +162,6 @@ static void fmt_adr(char *buf, Adr a)
   switch (kind) {
   case ADR_NORMAL:
     sprintf(buf, "L%lu", a);
-    break;
-
-  case ADR_TMP:
-    sprintf(buf, "T%lu", a);
     break;
 
   case ADR_VAR:
@@ -1248,11 +1242,9 @@ static Adr write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
         const MpplStringLit  *string_syntax = (MpplStringLit *) expr_syntax;
         const RawSyntaxToken *token         = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) string_syntax);
 
-        Adr   label = self->tmp_label_count++;
-        char *buf   = xmalloc(string_length(token->string) + 2);
+        char *buf = xmalloc(string_length(token->string) + 2);
         sprintf(buf, "=%s", string_data(token->string));
 
-        write_label(self, label);
         write_inst2(self, "LAD", r(GR1), buf);
         write_inst2(self, "LAD", r(GR2), "0");
         write_inst1(self, "CALL", "WSTR");
@@ -1749,7 +1741,6 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   self.symbols          = map_new(NULL, NULL);
   self.current_label    = 0;
   self.label_count      = (unsigned long) ADR_NORMAL << ADR_KIND_OFFSET;
-  self.tmp_label_count  = (unsigned long) ADR_TMP << ADR_KIND_OFFSET;
   self.var_label_count  = (unsigned long) ADR_VAR << ADR_KIND_OFFSET;
   self.arg_label_count  = (unsigned long) ADR_ARG << ADR_KIND_OFFSET;
   self.proc_label_count = (unsigned long) ADR_PROC << ADR_KIND_OFFSET;
