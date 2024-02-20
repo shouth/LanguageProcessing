@@ -1761,14 +1761,15 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   self.builtin_error_overflow      = 0;
   self.builtin_error_zero_division = 0;
   self.builtin_error_range         = 0;
-  self.builtin_read_char           = 0;
-  self.builtin_read_integer        = 0;
-  self.builtin_read_line           = 0;
   self.builtin_write_char          = 0;
   self.builtin_write_string        = 0;
   self.builtin_write_integer       = 0;
   self.builtin_write_boolean       = 0;
   self.builtin_write_newline       = 0;
+  self.builtin_flush               = 0;
+  self.builtin_read_char           = 0;
+  self.builtin_read_integer        = 0;
+  self.builtin_read_line           = 0;
 
   mppl_ast_walker__setup(&walker);
   walker.visit_program       = &visit_program;
