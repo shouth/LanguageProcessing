@@ -1680,7 +1680,8 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
 
   if (self->builtin_read_char) {
     const char *csl[] = {
-      "RCHAR     LD    GR5, RPBBUF",
+      "RCHAR     LAD   GR0, 0",
+      "          LD    GR5, RPBBUF",
       "          JZE   RC0",
       "          ST    GR5, 0, GR1",
       "          ST    GR0, RPBBUF",
@@ -1689,10 +1690,10 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
       "          LD    GR6, IBUFSZ",
       "          JNZ   RC1",
       "          IN    IBUF, IBUFSZ",
-      "          LD    GR7, GR0",
+      "          LAD   GR7, 0",
       "RC1       CPA   GR7, IBUFSZ",
       "          JNZ   RC2",
-      "          LAD   GR5, #0010",
+      "          LAD   GR5, #000A",
       "          ST    GR5, 0, GR1",
       "          ST    GR0, IBUFSZ",
       "          ST    GR0, INP",
