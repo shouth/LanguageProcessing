@@ -118,7 +118,13 @@ static int type_list_equal(const void *left, const void *right)
   const TypeList *l = left;
   const TypeList *r = right;
 
-  return l->length == r->length && !memcmp(l->types, r->types, sizeof(Type *) * l->length);
+  if (l->length != r->length) {
+    return 0;
+  } else if (l->length == 0) {
+    return 1;
+  } else {
+    return !memcmp(l->types, r->types, sizeof(Type *) * l->length);
+  }
 }
 
 static unsigned long type_hash(const void *value)
