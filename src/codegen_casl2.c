@@ -1083,57 +1083,59 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
   const Def        *def    = ctx_resolve(self->ctx, (const SyntaxTree *) name, NULL);
   Adr               label  = locate(self, def, ADR_NULL);
 
-  for (i = mppl_act_param_list__expr_count(params) - 1; i >= 0; --i) {
-    AnyMpplExpr *expr_syntax = mppl_act_param_list__expr(params, i);
+  if (params) {
+    for (i = mppl_act_param_list__expr_count(params) - 1; i >= 0; --i) {
+      AnyMpplExpr *expr_syntax = mppl_act_param_list__expr(params, i);
 
-    if (mppl_expr__kind(expr_syntax) == MPPL_EXPR_VAR) {
-      const AnyMpplVar *var_syntax = (AnyMpplVar *) expr_syntax;
-      switch (mppl_var__kind(var_syntax)) {
-      case MPPL_VAR_ENTIRE: {
-        MpplEntireVar *entire_syntax = (MpplEntireVar *) var_syntax;
-        MpplToken     *name_syntax   = mppl_entire_var__name(entire_syntax);
-        const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
-        Adr            label         = locate(self, def, ADR_NULL);
+      if (mppl_expr__kind(expr_syntax) == MPPL_EXPR_VAR) {
+        const AnyMpplVar *var_syntax = (AnyMpplVar *) expr_syntax;
+        switch (mppl_var__kind(var_syntax)) {
+        case MPPL_VAR_ENTIRE: {
+          MpplEntireVar *entire_syntax = (MpplEntireVar *) var_syntax;
+          MpplToken     *name_syntax   = mppl_entire_var__name(entire_syntax);
+          const Def     *def           = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+          Adr            label         = locate(self, def, ADR_NULL);
 
-        if (def_kind(def) == DEF_PARAM) {
-          write_inst2(self, "LD", r(GR1), adr(label));
-          write_inst2(self, "PUSH", "0", r(GR1));
-        } else {
-          write_inst1(self, "PUSH", adr(label));
+          if (def_kind(def) == DEF_PARAM) {
+            write_inst2(self, "LD", r(GR1), adr(label));
+            write_inst2(self, "PUSH", "0", r(GR1));
+          } else {
+            write_inst1(self, "PUSH", adr(label));
+          }
+
+          mppl_unref(name_syntax);
+          break;
         }
 
-        mppl_unref(name_syntax);
-        break;
+        case MPPL_VAR_INDEXED: {
+          MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) var_syntax;
+          MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
+          AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
+          const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
+          Adr             label          = locate(self, def, ADR_NULL);
+
+          Reg index = write_expr(self, index_syntax, ADR_NULL);
+          write_inst2(self, "PUSH", adr(label), x(index));
+
+          mppl_unref(name_syntax);
+          mppl_unref(index_syntax);
+          break;
+        }
+
+        default:
+          unreachable();
+        }
+      } else {
+        Reg reg       = write_expr(self, expr_syntax, ADR_NULL);
+        Adr tmp_label = self->tmp_label_count++;
+        write_label(self, tmp_label);
+        write_inst1(self, "DC", "0");
+        write_inst2(self, "ST", r(reg), adr(tmp_label));
+        write_inst1(self, "PUSH", adr(tmp_label));
       }
 
-      case MPPL_VAR_INDEXED: {
-        MpplIndexedVar *indexed_syntax = (MpplIndexedVar *) var_syntax;
-        MpplToken      *name_syntax    = mppl_indexed_var__name(indexed_syntax);
-        AnyMpplExpr    *index_syntax   = mppl_indexed_var__expr(indexed_syntax);
-        const Def      *def            = ctx_resolve(self->ctx, (const SyntaxTree *) name_syntax, NULL);
-        Adr             label          = locate(self, def, ADR_NULL);
-
-        Reg index = write_expr(self, index_syntax, ADR_NULL);
-        write_inst2(self, "PUSH", adr(label), x(index));
-
-        mppl_unref(name_syntax);
-        mppl_unref(index_syntax);
-        break;
-      }
-
-      default:
-        unreachable();
-      }
-    } else {
-      Reg reg       = write_expr(self, expr_syntax, ADR_NULL);
-      Adr tmp_label = self->tmp_label_count++;
-      write_label(self, tmp_label);
-      write_inst1(self, "DC", "0");
-      write_inst2(self, "ST", r(reg), adr(tmp_label));
-      write_inst1(self, "PUSH", adr(tmp_label));
+      mppl_unref(expr_syntax);
     }
-
-    mppl_unref(expr_syntax);
   }
   write_inst1(self, "CALL", adr(label));
 
