@@ -1126,12 +1126,20 @@ static Adr write_call_stmt(Generator *self, const MpplCallStmt *syntax)
           unreachable();
         }
       } else {
-        Reg reg       = write_expr(self, expr_syntax, ADR_NULL);
-        Adr tmp_label = self->tmp_label_count++;
-        write_label(self, tmp_label);
-        write_inst1(self, "DC", "0");
-        write_inst2(self, "ST", r(reg), adr(tmp_label));
-        write_inst1(self, "PUSH", adr(tmp_label));
+        RegState state = reg_state();
+        Expr    *expr  = expr_new(self->ctx, expr_syntax);
+        Reg      reg, tmp;
+
+        reg = reg_state_vacant(&state);
+        expr_assign_reg(expr, reg, &state);
+        tmp = reg_state_vacant(&state);
+
+        write_expr_core(self, expr, ADR_NULL);
+        write_inst2(self, "LAD", r(tmp), "=0");
+        write_inst3(self, "ST", r(reg), "0", x(tmp));
+        write_inst2(self, "PUSH", "0", x(tmp));
+
+        expr_free(expr);
       }
 
       mppl_unref(expr_syntax);
@@ -1239,13 +1247,17 @@ static Adr write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
       if (type_kind(type) == TYPE_STRING) {
         const MpplStringLit  *string_syntax = (MpplStringLit *) expr_syntax;
         const RawSyntaxToken *token         = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) string_syntax);
-        Adr                   label         = self->tmp_label_count++;
+
+        Adr   label = self->tmp_label_count++;
+        char *buf   = xmalloc(string_length(token->string) + 2);
+        sprintf(buf, "=%s", string_data(token->string));
 
         write_label(self, label);
-        write_inst1(self, "DC", string_data(token->string));
-        write_inst2(self, "LAD", r(GR1), adr(label));
+        write_inst2(self, "LAD", r(GR1), buf);
         write_inst2(self, "LAD", r(GR2), "0");
         write_inst1(self, "CALL", "WSTR");
+
+        free(buf);
       } else {
         Expr    *value_expr = expr_new(self->ctx, expr_syntax);
         Expr    *width_expr = width_syntax ? expr_new(self->ctx, (const AnyMpplExpr *) width_syntax) : NULL;
