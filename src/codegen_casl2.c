@@ -690,15 +690,15 @@ static void write_relational_expr(Generator *self, const char *inst, const Binar
     write_inst1(self, "POP", r(expr->lhs->reg));
   }
   if (reverse) {
-    write_inst2(self, "CPA", r1(expr->lhs->reg), r2(expr->rhs->reg));
+    write_inst2(self, "CPA", r1(expr->rhs->reg), r2(expr->lhs->reg));
   } else {
     write_inst2(self, "CPA", r1(expr->lhs->reg), r2(expr->rhs->reg));
   }
   write_inst1(self, inst, adr(else_block));
-  write_inst2(self, "LAD", r(expr->reg), "1");
+  write_inst2(self, "LAD", r(expr->reg), "0");
   write_inst1(self, "JUMP", adr(next_block));
   write_label(self, else_block);
-  write_inst2(self, "LAD", r(expr->reg), "0");
+  write_inst2(self, "LAD", r(expr->reg), "1");
 
   if (!sink) {
     write_label(self, next_block);
@@ -763,11 +763,11 @@ static void write_binary_expr(Generator *self, const BinaryExpr *expr, Adr sink)
 {
   switch (expr->op) {
   case BINARY_EQ:
-    write_relational_expr(self, "JNZ", expr, 0, sink);
+    write_relational_expr(self, "JZE", expr, 0, sink);
     break;
 
   case BINARY_NE:
-    write_relational_expr(self, "JZE", expr, 0, sink);
+    write_relational_expr(self, "JNZ", expr, 0, sink);
     break;
 
   case BINARY_LT:
