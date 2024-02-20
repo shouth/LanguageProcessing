@@ -1065,8 +1065,10 @@ static Adr write_comp_stmt(Generator *self, const MpplCompStmt *syntax, Adr sour
   for (i = 0; i < mppl_comp_stmt__stmt_count(syntax); ++i) {
     AnyMpplStmt *stmt = mppl_comp_stmt__stmt(syntax, i);
 
-    Adr next = i + 1 < mppl_comp_stmt__stmt_count(syntax) ? ADR_NULL : sink;
-    current  = write_stmt(self, stmt, current, next);
+    if (stmt) {
+      Adr next = i + 1 < mppl_comp_stmt__stmt_count(syntax) ? ADR_NULL : sink;
+      current  = write_stmt(self, stmt, current, next);
+    }
     mppl_unref(stmt);
   }
 
