@@ -1687,7 +1687,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
       "          ST    GR0, RPBBUF",
       "          JUMP  RC3",
       "RC0       LD    GR7, INP",
-      "          LD    GR6, IBUFSZ",
+      "          LD    GR5, IBUFSZ",
       "          JNZ   RC1",
       "          IN    IBUF, IBUFSZ",
       "          LAD   GR7, 0",
