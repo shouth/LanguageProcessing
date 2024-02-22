@@ -69,7 +69,7 @@ void deinit(void)
 
 void init(int argc, const char **argv)
 {
-  int i, j;
+  int i;
   int stop   = 0;
   int status = EXIT_SUCCESS;
 
@@ -92,10 +92,9 @@ void init(int argc, const char **argv)
       stop   = 1;
       status = EXIT_SUCCESS;
     } else if (strcmp(argv[i], "--") == 0) {
-      for (j = i + 1; j < argc; ++j) {
-        array_push(filenames, &argv[j]);
+      for (++i; i < argc; ++i) {
+        array_push(filenames, &argv[i]);
       }
-      break;
     } else if (argv[i][0] == '-') {
       fprintf(stderr, "Unknown option: %s\n", argv[i]);
       print_help();
