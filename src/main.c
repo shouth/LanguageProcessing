@@ -37,8 +37,8 @@ int run_compiler(void)
         mpplc_pretty_print(syntax, NULL);
       }
 
-      if (!syntax_only) {
-        if (mpplc_resolve(source, syntax, ctx) && mpplc_check(source, syntax, ctx)) {
+      if (mpplc_resolve(source, syntax, ctx) && mpplc_check(source, syntax, ctx)) {
+        if (!syntax_only) {
           mpplc_codegen_casl2(source, syntax, ctx);
         }
       }
