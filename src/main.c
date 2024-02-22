@@ -15,7 +15,7 @@ Array      *filenames = NULL;
 int pretty_print = 0;
 int syntax_only  = 0;
 
-int run_compiler(void)
+static int run_compiler(void)
 {
   unsigned long i;
   int           result = EXIT_SUCCESS;
@@ -51,7 +51,7 @@ int run_compiler(void)
   return result;
 }
 
-void print_help(void)
+static void print_help(void)
 {
   printf("Usage: %s [OPTIONS] INPUT\n", program);
   printf("Options:\n");
@@ -61,13 +61,13 @@ void print_help(void)
   fflush(stdout);
 }
 
-void deinit(void)
+static void deinit(void)
 {
   array_free(filenames);
   filenames = NULL;
 }
 
-void init(int argc, const char **argv)
+static void init(int argc, const char **argv)
 {
   int i;
   int stop   = 0;
