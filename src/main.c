@@ -9,12 +9,6 @@
 #include "mppl_syntax.h"
 #include "source.h"
 
-typedef enum {
-  COMMAND_CHECK,
-  COMMAND_PRETTY,
-  COMMAND_COMPILE
-} Command;
-
 const char *program;
 Array      *filenames = NULL;
 
