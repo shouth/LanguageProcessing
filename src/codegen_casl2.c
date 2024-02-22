@@ -1752,7 +1752,6 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
   {
     char *output_filename = xmalloc(sizeof(char) * (source->file_name_length + 1));
     sprintf(output_filename, "%.*s.csl", (int) source->file_name_length - 4, source->file_name);
-    printf("output: %s\n", output_filename);
     self.file = fopen(output_filename, "w");
     free(output_filename);
   }
