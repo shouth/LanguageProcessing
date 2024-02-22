@@ -165,12 +165,12 @@ static void token_count_deinit(Counter *count)
   array_free(count->identifer_counts);
 }
 
-unsigned long get_token_display_width(CounterEntry *entry)
+static unsigned long get_token_display_width(CounterEntry *entry)
 {
   return entry->token.text_length;
 }
 
-unsigned long get_max_token_display_width(CounterEntry **entries, unsigned long length)
+static unsigned long get_max_token_display_width(CounterEntry **entries, unsigned long length)
 {
   unsigned long result = 0;
   unsigned long i;
@@ -183,7 +183,7 @@ unsigned long get_max_token_display_width(CounterEntry **entries, unsigned long 
   return result;
 }
 
-unsigned long get_count_display_width(CounterEntry *entry)
+static unsigned long get_count_display_width(CounterEntry *entry)
 {
   unsigned long result = 1;
   unsigned long count  = entry->count;
@@ -194,7 +194,7 @@ unsigned long get_count_display_width(CounterEntry *entry)
   return result;
 }
 
-unsigned long get_max_count_display_width(CounterEntry **entries, unsigned long length)
+static unsigned long get_max_count_display_width(CounterEntry **entries, unsigned long length)
 {
   unsigned long result = 0;
   unsigned long i;
