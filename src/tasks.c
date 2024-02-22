@@ -4,10 +4,10 @@
 
 #include "array.h"
 #include "compiler.h"
+#include "context.h"
 #include "map.h"
 #include "source.h"
 #include "syntax_kind.h"
-#include "tasks.h"
 #include "utility.h"
 
 typedef struct CounterToken CounterToken;
@@ -256,36 +256,101 @@ static void token_count_print(Counter *count)
   }
 }
 
-void task1(int argc, const char **argv)
+int mpplc_task1(int argc, const char **argv)
 {
-  Source *source;
-  Counter counter;
+  int status = EXIT_SUCCESS;
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s INPUT\n", argv[0]);
+    status = EXIT_FAILURE;
+  } else {
+    Source *source = source_new(argv[1], strlen(argv[1]));
+    if (!source) {
+      fprintf(stderr, "Cannot open file: %s\n", argv[1]);
+      status = EXIT_FAILURE;
+    } else {
+      Counter counter;
+      switch (token_count_init(&counter, source)) {
+      case LEX_EOF:
+        token_count_print(&counter);
+        break;
 
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-    exit(EXIT_FAILURE);
-  }
+      case LEX_ERROR_STRAY_CHAR:
+        fprintf(stderr, "Error: Stray character in program\n");
+        status = EXIT_FAILURE;
+        break;
 
-  source = source_new(argv[1], strlen(argv[1]));
-  switch (token_count_init(&counter, source)) {
-  case LEX_EOF:
-    token_count_print(&counter);
-    break;
-  case LEX_ERROR_STRAY_CHAR:
-    fprintf(stderr, "Error: Stray character in program\n");
-    break;
-  case LEX_ERROR_NONGRAPHIC_CHAR:
-    fprintf(stderr, "Error: Non-graphic character in string\n");
-    break;
-  case LEX_ERROR_UNTERMINATED_STRING:
-    fprintf(stderr, "Error: String is unterminated\n");
-    break;
-  case LEX_ERROR_UNTERMINATED_COMMENT:
-    fprintf(stderr, "Error: Comment is unterminated\n");
-    break;
-  default:
-    unreachable();
+      case LEX_ERROR_NONGRAPHIC_CHAR:
+        fprintf(stderr, "Error: Non-graphic character in string\n");
+        status = EXIT_FAILURE;
+        break;
+
+      case LEX_ERROR_UNTERMINATED_STRING:
+        fprintf(stderr, "Error: String is unterminated\n");
+        status = EXIT_FAILURE;
+        break;
+
+      case LEX_ERROR_UNTERMINATED_COMMENT:
+        fprintf(stderr, "Error: Comment is unterminated\n");
+        status = EXIT_FAILURE;
+        break;
+
+      default:
+        unreachable();
+      }
+      source_free(source);
+      token_count_deinit(&counter);
+    }
   }
-  token_count_deinit(&counter);
-  source_free(source);
+  return status;
+}
+
+int mpplc_task2(int argc, const char **argv)
+{
+  int status = EXIT_SUCCESS;
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s INPUT\n", argv[0]);
+    status = EXIT_FAILURE;
+  } else {
+    Source      *source = source_new(argv[1], strlen(argv[1]));
+    MpplProgram *syntax = NULL;
+    if (!source) {
+      fprintf(stderr, "Cannot open file: %s\n", argv[1]);
+      status = EXIT_FAILURE;
+    } else if (mpplc_parse(source, NULL, &syntax)) {
+      mpplc_pretty_print(syntax, NULL);
+      status = EXIT_FAILURE;
+    }
+    mppl_unref(syntax);
+    source_free(source);
+  }
+  return status;
+}
+
+int mpplc_task3(int argc, const char **argv)
+{
+  fprintf(stderr, "Task 3 is not implemented\n");
+  return EXIT_FAILURE;
+}
+
+int mpplc_task4(int argc, const char **argv)
+{
+  int status = EXIT_SUCCESS;
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s INPUT\n", argv[0]);
+    status = EXIT_FAILURE;
+  } else {
+    Ctx         *ctx    = ctx_new();
+    Source      *source = source_new(argv[1], strlen(argv[1]));
+    MpplProgram *syntax = NULL;
+    if (!source) {
+      fprintf(stderr, "Cannot open file: %s\n", argv[1]);
+      status = EXIT_FAILURE;
+    } else if (mpplc_parse(source, ctx, &syntax) && mpplc_resolve(source, syntax, ctx) && mpplc_check(source, syntax, ctx)) {
+      mpplc_codegen_casl2(source, syntax, ctx);
+    }
+    mppl_unref(syntax);
+    source_free(source);
+    ctx_free(ctx);
+  }
+  return status;
 }

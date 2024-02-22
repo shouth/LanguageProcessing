@@ -31,11 +31,11 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
       array_fit(text);
       source->text_length = array_count(text) - 1;
       source->text        = array_steal(text);
+      fclose(file);
     } else {
       source->text_length = -1ul;
       source->text        = NULL;
     }
-    fclose(file);
   }
 
   if (source->text) {

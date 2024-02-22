@@ -52,4 +52,9 @@ struct PrinterOption {
 
 void mpplc_pretty_print(const MpplProgram *syntax, const PrinterOption *option);
 
+int mpplc_task1(int argc, const char **argv);
+int mpplc_task2(int argc, const char **argv);
+int mpplc_task3(int argc, const char **argv);
+int mpplc_task4(int argc, const char **argv);
+
 #endif

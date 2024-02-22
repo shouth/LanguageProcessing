@@ -26,6 +26,12 @@ int run_compiler(void)
     Source      *source   = source_new(filename, strlen(filename));
     MpplProgram *syntax   = NULL;
 
+    if (!source) {
+      fprintf(stderr, "Cannot open file: %s\n", filename);
+      result = EXIT_FAILURE;
+      continue;
+    }
+
     if (mpplc_parse(source, ctx, &syntax)) {
       if (pretty_print) {
         mpplc_pretty_print(syntax, NULL);
@@ -67,35 +73,35 @@ void init(int argc, const char **argv)
   int stop   = 0;
   int status = EXIT_SUCCESS;
 
-  program = argv[0];
+  program   = argv[0];
+  filenames = array_new(sizeof(const char *));
 
   if (argc < 2) {
     print_help();
-    exit(EXIT_FAILURE);
-  }
-
-  filenames = array_new(sizeof(const char *));
-
-  for (i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "--pretty-print") == 0) {
-      pretty_print = 1;
-    } else if (strcmp(argv[i], "--syntax-only") == 0) {
-      syntax_only = 1;
-    } else if (strcmp(argv[i], "--help") == 0) {
-      print_help();
-      stop   = 1;
-      status = EXIT_SUCCESS;
-    } else if (strcmp(argv[i], "--") == 0) {
-      for (++i; i < argc; ++i) {
+    stop   = 1;
+    status = EXIT_FAILURE;
+  } else {
+    for (i = 1; i < argc; ++i) {
+      if (strcmp(argv[i], "--pretty-print") == 0) {
+        pretty_print = 1;
+      } else if (strcmp(argv[i], "--syntax-only") == 0) {
+        syntax_only = 1;
+      } else if (strcmp(argv[i], "--help") == 0) {
+        print_help();
+        stop   = 1;
+        status = EXIT_SUCCESS;
+      } else if (strcmp(argv[i], "--") == 0) {
+        for (++i; i < argc; ++i) {
+          array_push(filenames, &argv[i]);
+        }
+      } else if (argv[i][0] == '-') {
+        fprintf(stderr, "Unknown option: %s\n", argv[i]);
+        print_help();
+        stop   = 1;
+        status = EXIT_FAILURE;
+      } else {
         array_push(filenames, &argv[i]);
       }
-    } else if (argv[i][0] == '-') {
-      fprintf(stderr, "Unknown option: %s\n", argv[i]);
-      print_help();
-      stop   = 1;
-      status = EXIT_FAILURE;
-    } else {
-      array_push(filenames, &argv[i]);
     }
   }
 
@@ -108,6 +114,20 @@ void init(int argc, const char **argv)
 int main(int argc, const char **argv)
 {
   int status;
+
+  char *mode = getenv("MPPLC_MODE");
+  if (mode) {
+    if (strcmp(mode, "TASK1") == 0) {
+      return mpplc_task1(argc, argv);
+    } else if (strcmp(mode, "TASK2") == 0) {
+      return mpplc_task2(argc, argv);
+    } else if (strcmp(mode, "TASK3") == 0) {
+      return mpplc_task3(argc, argv);
+    } else if (strcmp(mode, "TASK4") == 0) {
+      return mpplc_task4(argc, argv);
+    }
+  }
+
   init(argc, argv);
   status = run_compiler();
   deinit();
