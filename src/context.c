@@ -51,17 +51,12 @@ struct Ctx {
   Map   *syntax_type;
 };
 
-static const TypeList CTX_TYPE_LIST_EMPTY_INSTANCE = { NULL, 0 };
-const TypeList       *CTX_TYPE_LIST_EMPTY          = &CTX_TYPE_LIST_EMPTY_INSTANCE;
+static const TypeList CTX_TYPE_LIST_EMPTY = { NULL, 0 };
 
-static const Type CTX_TYPE_BOOLEAN_INSTANCE = { TYPE_BOOLEAN };
-static const Type CTX_TYPE_CHAR_INSTANCE    = { TYPE_CHAR };
-static const Type CTX_TYPE_INTEGER_INSTANCE = { TYPE_INTEGER };
-static const Type CTX_TYPE_STRING_INSTANCE  = { TYPE_STRING };
-const Type       *CTX_TYPE_BOOLEAN          = &CTX_TYPE_BOOLEAN_INSTANCE;
-const Type       *CTX_TYPE_CHAR             = &CTX_TYPE_CHAR_INSTANCE;
-const Type       *CTX_TYPE_INTEGER          = &CTX_TYPE_INTEGER_INSTANCE;
-const Type       *CTX_TYPE_STRING           = &CTX_TYPE_STRING_INSTANCE;
+static const Type CTX_TYPE_BOOLEAN = { TYPE_BOOLEAN };
+static const Type CTX_TYPE_CHAR    = { TYPE_CHAR };
+static const Type CTX_TYPE_INTEGER = { TYPE_INTEGER };
+static const Type CTX_TYPE_STRING  = { TYPE_STRING };
 
 static unsigned long string_hash(const void *value)
 {
@@ -168,20 +163,20 @@ Ctx *ctx_new(void)
   {
     MapIndex index;
 
-    map_entry(ctx->type_lists, (void *) CTX_TYPE_LIST_EMPTY, &index);
-    map_update(ctx->type_lists, &index, (void *) CTX_TYPE_LIST_EMPTY, NULL);
+    map_entry(ctx->type_lists, (void *) &CTX_TYPE_LIST_EMPTY, &index);
+    map_update(ctx->type_lists, &index, (void *) &CTX_TYPE_LIST_EMPTY, NULL);
 
-    map_entry(ctx->types, (void *) CTX_TYPE_BOOLEAN, &index);
-    map_update(ctx->types, &index, (void *) CTX_TYPE_BOOLEAN, NULL);
+    map_entry(ctx->types, (void *) &CTX_TYPE_BOOLEAN, &index);
+    map_update(ctx->types, &index, (void *) &CTX_TYPE_BOOLEAN, NULL);
 
-    map_entry(ctx->types, (void *) CTX_TYPE_CHAR, &index);
-    map_update(ctx->types, &index, (void *) CTX_TYPE_CHAR, NULL);
+    map_entry(ctx->types, (void *) &CTX_TYPE_CHAR, &index);
+    map_update(ctx->types, &index, (void *) &CTX_TYPE_CHAR, NULL);
 
-    map_entry(ctx->types, (void *) CTX_TYPE_INTEGER, &index);
-    map_update(ctx->types, &index, (void *) CTX_TYPE_INTEGER, NULL);
+    map_entry(ctx->types, (void *) &CTX_TYPE_INTEGER, &index);
+    map_update(ctx->types, &index, (void *) &CTX_TYPE_INTEGER, NULL);
 
-    map_entry(ctx->types, (void *) CTX_TYPE_STRING, &index);
-    map_update(ctx->types, &index, (void *) CTX_TYPE_STRING, NULL);
+    map_entry(ctx->types, (void *) &CTX_TYPE_STRING, &index);
+    map_update(ctx->types, &index, (void *) &CTX_TYPE_STRING, NULL);
   }
 
   return ctx;
@@ -256,6 +251,22 @@ const String *ctx_string(Ctx *ctx, const char *data, unsigned long length)
   }
 }
 
+const Type *ctx_type(TypeKind kind)
+{
+  switch (kind) {
+  case TYPE_BOOLEAN:
+    return &CTX_TYPE_BOOLEAN;
+  case TYPE_CHAR:
+    return &CTX_TYPE_CHAR;
+  case TYPE_INTEGER:
+    return &CTX_TYPE_INTEGER;
+  case TYPE_STRING:
+    return &CTX_TYPE_STRING;
+  default:
+    unreachable();
+  }
+}
+
 const Type *ctx_array_type(Ctx *ctx, const Type *base, unsigned long length)
 {
   MapIndex index;
@@ -299,19 +310,23 @@ const TypeList *ctx_type_list(Ctx *ctx, const Type **types, unsigned long length
 
 const TypeList *ctx_take_type_list(Ctx *ctx, const Type **types, unsigned long length)
 {
-  MapIndex index;
-
-  TypeList list;
-  list.types  = types;
-  list.length = length;
-
-  if (map_entry(ctx->type_lists, &list, &index)) {
-    free(types);
-    return map_key(ctx->type_lists, &index);
+  if (length == 0) {
+    return &CTX_TYPE_LIST_EMPTY;
   } else {
-    TypeList *instance = dup(&list, sizeof(TypeList), 1);
-    map_update(ctx->type_lists, &index, instance, instance);
-    return instance;
+    MapIndex index;
+
+    TypeList list;
+    list.types  = types;
+    list.length = length;
+
+    if (map_entry(ctx->type_lists, &list, &index)) {
+      free(types);
+      return map_key(ctx->type_lists, &index);
+    } else {
+      TypeList *instance = dup(&list, sizeof(TypeList), 1);
+      map_update(ctx->type_lists, &index, instance, instance);
+      return instance;
+    }
   }
 }
 

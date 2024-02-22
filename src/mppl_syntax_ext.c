@@ -12,13 +12,13 @@ const Type *mppl_std_type__to_type(const AnyMpplStdType *syntax)
 {
   switch (mppl_std_type__kind(syntax)) {
   case MPPL_STD_TYPE_BOOLEAN:
-    return CTX_TYPE_BOOLEAN;
+    return ctx_type(TYPE_BOOLEAN);
 
   case MPPL_STD_TYPE_CHAR:
-    return CTX_TYPE_CHAR;
+    return ctx_type(TYPE_CHAR);
 
   case MPPL_STD_TYPE_INTEGER:
-    return CTX_TYPE_INTEGER;
+    return ctx_type(TYPE_INTEGER);
 
   default:
     unreachable();

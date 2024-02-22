@@ -170,7 +170,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
           error_relational_mismatched_type(checker,
             (SyntaxTree *) syntax, (SyntaxTree *) lhs_syntax, lhs_type, (SyntaxTree *) rhs_syntax, rhs_type);
         } else {
-          result = CTX_TYPE_BOOLEAN;
+          result = ctx_type(TYPE_BOOLEAN);
         }
         break;
 
@@ -187,7 +187,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
             rhs_invalid, (SyntaxTree *) rhs_syntax, rhs_type,
             "`integer`");
         } else {
-          result = CTX_TYPE_INTEGER;
+          result = ctx_type(TYPE_INTEGER);
         }
         break;
 
@@ -202,7 +202,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
             rhs_invalid, (SyntaxTree *) rhs_syntax, rhs_type,
             "`boolean`");
         } else {
-          result = CTX_TYPE_BOOLEAN;
+          result = ctx_type(TYPE_BOOLEAN);
         }
         break;
 
@@ -220,7 +220,7 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
           error_unary_expr_invalid_operand(checker,
             (SyntaxTree *) syntax, (SyntaxTree *) op_syntax, (SyntaxTree *) rhs_syntax, rhs_type, "`integer`");
         } else {
-          result = CTX_TYPE_INTEGER;
+          result = ctx_type(TYPE_INTEGER);
         }
         break;
 
@@ -276,7 +276,7 @@ static const Type *check_not_expr(Checker *checker, const MpplNotExpr *syntax)
         (SyntaxTree *) syntax, (SyntaxTree *) not_token, (SyntaxTree *) expr_syntax, type);
       mppl_unref(not_token);
     } else {
-      result = CTX_TYPE_BOOLEAN;
+      result = ctx_type(TYPE_BOOLEAN);
     }
   }
 
@@ -408,18 +408,18 @@ static const Type *check_literal(Checker *checker, const AnyMpplLit *syntax)
 {
   switch (mppl_lit__kind(syntax)) {
   case MPPL_LIT_NUMBER: {
-    return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, CTX_TYPE_INTEGER);
+    return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, ctx_type(TYPE_INTEGER));
   }
 
   case MPPL_LIT_STRING: {
     char       *text   = mppl_lit_string__to_string((const MpplStringLit *) syntax);
-    const Type *result = strlen(text) == 1 ? CTX_TYPE_CHAR : CTX_TYPE_STRING;
+    const Type *result = strlen(text) == 1 ? ctx_type(TYPE_CHAR) : ctx_type(TYPE_STRING);
     free(text);
     return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, result);
   }
 
   case MPPL_LIT_BOOLEAN: {
-    return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, CTX_TYPE_BOOLEAN);
+    return ctx_type_of(checker->ctx, (const SyntaxTree *) syntax, ctx_type(TYPE_BOOLEAN));
   }
 
   default:
@@ -524,7 +524,7 @@ static const TypeList *check_fml_param_list(Checker *checker, const MpplFmlParam
       }
     }
   } else {
-    return CTX_TYPE_LIST_EMPTY;
+    return ctx_type_list(checker->ctx, NULL, 0);
   }
 }
 

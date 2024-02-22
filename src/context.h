@@ -4,18 +4,12 @@
 #include "context_fwd.h"
 #include "syntax_tree.h"
 
-extern const TypeList *CTX_TYPE_LIST_EMPTY;
-
-extern const Type *CTX_TYPE_BOOLEAN;
-extern const Type *CTX_TYPE_CHAR;
-extern const Type *CTX_TYPE_INTEGER;
-extern const Type *CTX_TYPE_STRING;
-
 Ctx            *ctx_new(void);
 void            ctx_free(Ctx *ctx);
 const String   *ctx_string(Ctx *ctx, const char *data, unsigned long length);
 const Type     *ctx_array_type(Ctx *ctx, const Type *base, unsigned long length);
 const Type     *ctx_proc_type(Ctx *ctx, const TypeList *params);
+const Type     *ctx_type(TypeKind kind);
 const TypeList *ctx_type_list(Ctx *ctx, const Type **types, unsigned long length);
 const TypeList *ctx_take_type_list(Ctx *ctx, const Type **types, unsigned long length);
 const Def      *ctx_define(Ctx *ctx, DefKind kind, const String *name, const SyntaxTree *syntax);
