@@ -531,6 +531,7 @@ static void expr_assign_reg(Expr *self, Reg reg, RegState *state)
       expr_assign_reg(expr->index, reg, state);
       reg_state_release(state, reg);
     }
+    break;
   }
 
   case EXPR_LIT:
