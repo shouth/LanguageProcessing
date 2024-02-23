@@ -1,0 +1,910 @@
+#include <stdarg.h>
+#include <stdio.h>
+
+#include "array.h"
+#include "compiler.h"
+#include "context.h"
+#include "context_fwd.h"
+#include "mppl_syntax.h"
+#include "mppl_syntax_ext.h"
+#include "syntax_kind.h"
+#include "syntax_tree.h"
+#include "utility.h"
+
+typedef unsigned long    Temporal;
+typedef unsigned long    Label;
+typedef struct Generator Generator;
+
+#define LABEL_NULL   ((Label) 0)
+#define LABEL_RETURN ((Label) 0 - 1)
+#define LABEL_BREAK  ((Label) 0 - 2)
+
+struct Generator {
+  Ctx  *ctx;
+  FILE *file;
+
+  Temporal temporal;
+  Label    block;
+  Label    break_label;
+
+  int indent;
+  int line_start;
+};
+
+unsigned long type_width(const Type *type)
+{
+  switch (type_kind(type)) {
+  case TYPE_INTEGER:
+    return 16;
+
+  case TYPE_CHAR:
+    return 8;
+
+  case TYPE_BOOLEAN:
+    return 1;
+
+  default:
+    unreachable();
+  }
+}
+
+void write(Generator *self, const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  if (self->line_start) {
+    fprintf(self->file, "%*.s", self->indent * 2, "");
+    self->line_start = 0;
+  }
+  vfprintf(self->file, format, args);
+  va_end(args);
+}
+
+void write_newline(Generator *self)
+{
+  fprintf(self->file, "\n");
+  self->line_start = 1;
+}
+
+void write_label(Generator *self, Label label)
+{
+  fprintf(self->file, "l%lu:\n", label);
+}
+
+void write_expr(Generator *self, Temporal result, const AnyMpplExpr *expr);
+
+void write_arithmetic_expr(Generator *self, Temporal result, const char *inst, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+{
+  Temporal lhs_temporal = self->temporal++;
+  Temporal rhs_temporal = self->temporal++;
+
+  write_expr(self, lhs_temporal, lhs_syntax);
+  write_expr(self, rhs_temporal, rhs_syntax);
+
+  write(self, "%%.t%lu = %s i16 %%.t%lu, %%.t%lu", result, inst, lhs_temporal, rhs_temporal);
+  write_newline(self);
+}
+
+void write_relational_expr(Generator *self, Temporal result, const char *inst, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+{
+  const Type   *type          = ctx_type_of(self->ctx, (const SyntaxTree *) rhs_syntax, NULL);
+  unsigned long operand_width = type_width(type);
+
+  Temporal lhs_temporal = self->temporal++;
+  Temporal rhs_temporal = self->temporal++;
+
+  write_expr(self, lhs_temporal, lhs_syntax);
+  write_expr(self, rhs_temporal, rhs_syntax);
+
+  write(self, "%%.t%lu = icmp %s i%lu %%.t%lu, %%.t%lu", result, inst, operand_width, lhs_temporal, rhs_temporal);
+  write_newline(self);
+}
+
+void write_logical_expr(Generator *self, Temporal result, int jumpon, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+{
+  Label then_label = self->block++;
+  Label next_label = self->block++;
+
+  Temporal temporal     = self->temporal++;
+  Temporal lhs_temporal = self->temporal++;
+  Temporal rhs_temporal = self->temporal++;
+
+  write(self, "%%.t%lu = alloca i1", temporal);
+  write_newline(self);
+  write_expr(self, lhs_temporal, lhs_syntax);
+  write(self, "store i1 %%.t%lu, ptr %%.t%lu", lhs_temporal, temporal);
+  write_newline(self);
+  if (jumpon) {
+    write(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", lhs_temporal, next_label, then_label);
+  } else {
+    write(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", lhs_temporal, then_label, next_label);
+  }
+  write_newline(self);
+  write_newline(self);
+
+  write_label(self, then_label);
+  write_expr(self, rhs_temporal, rhs_syntax);
+  write(self, "store i1 %%.t%lu, ptr %%.t%lu", rhs_temporal, temporal);
+  write_newline(self);
+  write(self, "br label %%l%lu", next_label);
+  write_newline(self);
+  write_newline(self);
+
+  write_label(self, next_label);
+  write(self, "%%.t%lu = load i1, ptr %%.t%lu", result, temporal);
+  write_newline(self);
+}
+
+void write_binary_expr(Generator *self, Temporal result, const MpplBinaryExpr *expr)
+{
+  AnyMpplExpr *lhs_syntax = mppl_binary_expr__lhs(expr);
+  AnyMpplExpr *rhs_syntax = mppl_binary_expr__rhs(expr);
+  MpplToken   *op_token   = mppl_binary_expr__op_token(expr);
+
+  if (lhs_syntax) {
+    switch (syntax_tree_kind((SyntaxTree *) op_token)) {
+    case SYNTAX_PLUS_TOKEN:
+      write_arithmetic_expr(self, result, "add", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_MINUS_TOKEN:
+      write_arithmetic_expr(self, result, "sub", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_STAR_TOKEN:
+      write_arithmetic_expr(self, result, "mul", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_DIV_KW:
+      write_arithmetic_expr(self, result, "sdiv", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_EQUAL_TOKEN:
+      write_relational_expr(self, result, "eq", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_NOTEQ_TOKEN:
+      write_relational_expr(self, result, "ne", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_LESS_TOKEN:
+      write_relational_expr(self, result, "slt", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_LESSEQ_TOKEN:
+      write_relational_expr(self, result, "sle", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_GREATER_TOKEN:
+      write_relational_expr(self, result, "sgt", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_GREATEREQ_TOKEN:
+      write_relational_expr(self, result, "sge", lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_AND_KW:
+      write_logical_expr(self, result, 0, lhs_syntax, rhs_syntax);
+      break;
+
+    case SYNTAX_OR_KW:
+      write_logical_expr(self, result, 1, lhs_syntax, rhs_syntax);
+      break;
+
+    default:
+      unreachable();
+    }
+  } else {
+    switch (syntax_tree_kind((SyntaxTree *) op_token)) {
+    case SYNTAX_PLUS_TOKEN:
+      write_expr(self, result, rhs_syntax);
+      break;
+
+    case SYNTAX_MINUS_TOKEN: {
+      Temporal rhs_temporal = self->temporal++;
+      write_expr(self, rhs_temporal, rhs_syntax);
+      write(self, "%%.t%lu = sub i16 0, %%.t%lu", result, rhs_temporal);
+      write_newline(self);
+      break;
+    }
+
+    default:
+      unreachable();
+    }
+  }
+
+  mppl_unref(op_token);
+  mppl_unref(lhs_syntax);
+  mppl_unref(rhs_syntax);
+}
+
+void write_not_expr(Generator *self, Temporal result, const MpplNotExpr *expr)
+{
+  AnyMpplExpr *operand_syntax   = mppl_not_expr__expr(expr);
+  Temporal     operand_temporal = self->temporal++;
+
+  write_expr(self, operand_temporal, operand_syntax);
+  write(self, "%%.t%lu = xor i1 %%.t%lu, 0", result, operand_temporal);
+  write_newline(self);
+
+  mppl_unref(operand_syntax);
+}
+
+void write_paren_expr(Generator *self, Temporal result, const MpplParenExpr *expr)
+{
+  AnyMpplExpr *operand_syntax = mppl_paren_expr__expr(expr);
+  write_expr(self, result, operand_syntax);
+  mppl_unref(operand_syntax);
+}
+
+void write_cast_expr(Generator *self, Temporal result, const MpplCastExpr *expr)
+{
+  AnyMpplExpr *operand_syntax = mppl_cast_expr__expr(expr);
+  const Type  *expr_type      = ctx_type_of(self->ctx, (const SyntaxTree *) expr, NULL);
+  const Type  *operand_type   = ctx_type_of(self->ctx, (const SyntaxTree *) operand_syntax, NULL);
+
+  if (expr_type == operand_type) {
+    write_expr(self, result, operand_syntax);
+  } else {
+    Temporal operand_temporal = self->temporal++;
+    write_expr(self, operand_temporal, operand_syntax);
+
+    switch (type_kind(expr_type)) {
+    case TYPE_BOOLEAN: {
+      write(self, "%%.t%lu = icmp ne i16 %%.t%lu, 0", result, operand_temporal);
+      write_newline(self);
+      break;
+    }
+
+    case TYPE_INTEGER: {
+      unsigned long operand_width = type_width(operand_type);
+      write(self, "%%.t%lu = zext i%lu %%.t%lu to i16", result, operand_width, operand_temporal);
+      write_newline(self);
+      break;
+    }
+
+    case TYPE_CHAR: {
+      switch (type_kind(operand_type)) {
+      case TYPE_BOOLEAN:
+        write(self, "%%.t%lu = zext i1 %%.t%lu to i8", result, operand_temporal);
+        write_newline(self);
+        break;
+
+      case TYPE_INTEGER:
+        write(self, "%%.t%lu = trunc i16 %%.t%lu to i8", result, operand_temporal);
+        write_newline(self);
+        break;
+
+      default:
+        unreachable();
+      }
+      break;
+    }
+
+    default:
+      unreachable();
+    }
+  }
+}
+
+void write_var_expr(Generator *self, Temporal result, const AnyMpplVar *var)
+{
+  switch (mppl_var__kind(var)) {
+  case MPPL_VAR_ENTIRE: {
+    const MpplEntireVar  *entire_var_syntax = (const MpplEntireVar *) var;
+    MpplToken            *name_token        = mppl_entire_var__name(entire_var_syntax);
+    const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+    const Def            *def               = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+
+    const SyntaxTree *syntax = def_syntax(def);
+    const Type       *type   = ctx_type_of(self->ctx, syntax, NULL);
+    for (;; syntax = syntax_tree_parent(syntax)) {
+      if (syntax_tree_kind(syntax) == SYNTAX_PROC_DECL) {
+        write(self, "%%.t%lu = load i%lu, ptr %%%s", result, type_width(type), string_data(raw_name_token->string));
+        break;
+      }
+      if (syntax_tree_kind(syntax) == SYNTAX_PROGRAM) {
+        write(self, "%%.t%lu = load i%lu, ptr @%s", result, type_width(type), string_data(raw_name_token->string));
+        break;
+      }
+    }
+    write_newline(self);
+
+    mppl_unref(name_token);
+    break;
+  }
+
+  case MPPL_VAR_INDEXED: {
+    const MpplIndexedVar *indexed_var_syntax = (const MpplIndexedVar *) var;
+    MpplToken            *name_token         = mppl_indexed_var__name(indexed_var_syntax);
+    AnyMpplExpr          *index_syntax       = mppl_indexed_var__expr(indexed_var_syntax);
+    const RawSyntaxToken *raw_name_token     = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+    Temporal              index_temporal     = self->temporal++;
+    const Def            *def                = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+    const ArrayType      *def_type           = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
+    unsigned long         length             = array_type_length(def_type);
+    Temporal              ptr_temporal       = self->temporal++;
+
+    write_expr(self, index_temporal, index_syntax);
+    write(self, "%%.t%lu = getelementptr inbounds [%lu x i16], ptr @%s, i16 %%.t%lu",
+      ptr_temporal, length, string_data(raw_name_token->string), index_temporal);
+    write_newline(self);
+    write(self, "%%.t%lu = load i16, %%.t%lu", result, ptr_temporal);
+    write_newline(self);
+
+    mppl_unref(name_token);
+    mppl_unref(index_syntax);
+    break;
+  }
+
+  default:
+    unreachable();
+  }
+}
+
+Label write_lit_expr(Generator *self, Temporal result, const AnyMpplLit *lit)
+{
+  switch (mppl_lit__kind(lit)) {
+  case MPPL_LIT_NUMBER: {
+    const MpplNumberLit *number_lit_syntax = (const MpplNumberLit *) lit;
+    long                 value             = mppl_lit_number__to_long(number_lit_syntax);
+    write(self, "%%.t%lu = add i16 0, %ld", result, value);
+    write_newline(self);
+    break;
+  }
+
+  case MPPL_LIT_STRING: {
+    const MpplStringLit *string_lit_syntax = (const MpplStringLit *) lit;
+    char                *value             = mppl_lit_string__to_string(string_lit_syntax);
+    write(self, "%%.t%lu = add i8 0, %d", result, (int) value[0]);
+    write_newline(self);
+    free(value);
+    break;
+  }
+
+  case MPPL_LIT_BOOLEAN: {
+    const MpplBooleanLit *boolean_lit_syntax = (const MpplBooleanLit *) lit;
+    int                   value              = mppl_lit_boolean__to_int(boolean_lit_syntax);
+    write(self, "%%.t%lu = add i1 0, %d", result, value);
+    write_newline(self);
+    break;
+  }
+
+  default:
+    unreachable();
+  }
+  return LABEL_NULL;
+}
+
+void write_expr(Generator *self, Temporal result, const AnyMpplExpr *expr)
+{
+  switch (mppl_expr__kind(expr)) {
+  case MPPL_EXPR_BINARY:
+    write_binary_expr(self, result, (const MpplBinaryExpr *) expr);
+    break;
+
+  case MPPL_EXPR_NOT:
+    write_not_expr(self, result, (const MpplNotExpr *) expr);
+    break;
+
+  case MPPL_EXPR_PAREN:
+    write_paren_expr(self, result, (const MpplParenExpr *) expr);
+    break;
+
+  case MPPL_EXPR_CAST:
+    write_cast_expr(self, result, (const MpplCastExpr *) expr);
+    break;
+
+  case MPPL_EXPR_VAR:
+    write_var_expr(self, result, (const AnyMpplVar *) expr);
+    break;
+
+  case MPPL_EXPR_LIT:
+    write_lit_expr(self, result, (const AnyMpplLit *) expr);
+    break;
+
+  default:
+    unreachable();
+  }
+}
+
+Label write_stmt(Generator *self, const AnyMpplStmt *stmt, Label source, Label sink);
+
+Label write_assign_stmt(Generator *self, const MpplAssignStmt *syntax)
+{
+  AnyMpplVar  *lhs_syntax   = mppl_assign_stmt__lhs(syntax);
+  AnyMpplExpr *rhs_syntax   = mppl_assign_stmt__rhs(syntax);
+  Temporal     rhs_temporal = self->temporal++;
+  Label        result       = LABEL_NULL;
+  const Type  *lhs_type     = ctx_type_of(self->ctx, (const SyntaxTree *) lhs_syntax, NULL);
+
+  write_expr(self, rhs_temporal, rhs_syntax);
+  switch (mppl_var__kind(lhs_syntax)) {
+  case MPPL_VAR_ENTIRE: {
+    const MpplEntireVar  *entire_var_syntax = (MpplEntireVar *) lhs_syntax;
+    MpplToken            *name_token        = mppl_entire_var__name(entire_var_syntax);
+    const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+    const Def            *def               = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+
+    const SyntaxTree *syntax = def_syntax(def);
+    for (;; syntax = syntax_tree_parent(syntax)) {
+      if (syntax_tree_kind(syntax) == SYNTAX_PROC_DECL) {
+        write(self, "store i%lu %%.t%lu, ptr %%%s", type_width(lhs_type), rhs_temporal, string_data(raw_name_token->string));
+        break;
+      }
+      if (syntax_tree_kind(syntax) == SYNTAX_PROGRAM) {
+        write(self, "store i%lu %%.t%lu, ptr @%s", type_width(lhs_type), rhs_temporal, string_data(raw_name_token->string));
+        break;
+      }
+    }
+    write_newline(self);
+
+    mppl_unref(name_token);
+    break;
+  }
+
+  case MPPL_VAR_INDEXED: {
+    const MpplIndexedVar *indexed_var_syntax = (MpplIndexedVar *) lhs_syntax;
+    MpplToken            *name_token         = mppl_indexed_var__name(indexed_var_syntax);
+    AnyMpplExpr          *index_syntax       = mppl_indexed_var__expr(indexed_var_syntax);
+    const RawSyntaxToken *raw_name_token     = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+    const Def            *def                = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+    const ArrayType      *def_type           = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
+    unsigned long         length             = array_type_length(def_type);
+
+    Temporal index_temporal = self->temporal++;
+    Temporal ptr_temporal   = self->temporal++;
+
+    write_expr(self, index_temporal, index_syntax);
+    write(self, "%%.t%lu = getelementptr inbounds [%lu x i16], ptr @%s, i16 %%.t%lu",
+      ptr_temporal, length, string_data(raw_name_token->string), index_temporal);
+    write_newline(self);
+    write(self, "store i%lu %%.t%lu, ptr %%.t%lu", type_width(lhs_type), rhs_temporal, ptr_temporal);
+    write_newline(self);
+
+    mppl_unref(name_token);
+    mppl_unref(index_syntax);
+    break;
+  }
+  }
+
+  mppl_unref(lhs_syntax);
+  mppl_unref(rhs_syntax);
+  return result;
+}
+
+Label write_if_stmt(Generator *self, const MpplIfStmt *syntax, Label sink)
+{
+  AnyMpplExpr *cond_syntax = mppl_if_stmt__cond(syntax);
+  AnyMpplStmt *then_syntax = mppl_if_stmt__then_stmt(syntax);
+  AnyMpplStmt *else_syntax = mppl_if_stmt__else_stmt(syntax);
+
+  Temporal cond_temporal = self->temporal++;
+  Label    next_label    = sink ? sink : self->block++;
+  write_expr(self, cond_temporal, cond_syntax);
+
+  if (else_syntax) {
+    Label then_label = self->block++;
+    Label else_label = self->block++;
+    write(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", cond_temporal, then_label, else_label);
+    write_newline(self);
+    write_newline(self);
+
+    write_label(self, then_label);
+    write_stmt(self, then_syntax, then_label, next_label);
+    write(self, "br label %%l%lu", next_label);
+    write_newline(self);
+    write_newline(self);
+
+    write_label(self, else_label);
+    write_stmt(self, else_syntax, else_label, next_label);
+  } else {
+    Label then_label = self->block++;
+    write(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", cond_temporal, then_label, next_label);
+    write_newline(self);
+    write_newline(self);
+
+    write_label(self, then_label);
+    write_stmt(self, then_syntax, then_label, next_label);
+  }
+
+  if (!sink) {
+    write(self, "br label %%l%lu", next_label);
+    write_newline(self);
+    write_newline(self);
+    write_label(self, next_label);
+  }
+
+  mppl_unref(cond_syntax);
+  mppl_unref(then_syntax);
+  mppl_unref(else_syntax);
+  return next_label;
+}
+
+Label write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Label source, Label sink)
+{
+  AnyMpplExpr *cond_syntax = mppl_while_stmt__cond(syntax);
+  AnyMpplStmt *stmt_syntax = mppl_while_stmt__do_stmt(syntax);
+
+  Label cond_label = source ? source : self->block++;
+  Label body_label = self->block++;
+  Label next_label = sink ? sink : self->block++;
+
+  Temporal cond_temporal = self->temporal++;
+
+  self->break_label = next_label;
+
+  write(self, "br label %%l%lu", cond_label);
+  write_newline(self);
+  write_newline(self);
+
+  write_label(self, cond_label);
+  write_expr(self, cond_temporal, cond_syntax);
+  write(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", cond_temporal, body_label, next_label);
+  write_newline(self);
+  write_newline(self);
+
+  write_label(self, body_label);
+  write_stmt(self, stmt_syntax, body_label, cond_label);
+  write(self, "br label %%l%lu", cond_label);
+  write_newline(self);
+  write_newline(self);
+
+  if (!sink) {
+    write_label(self, next_label);
+  }
+
+  mppl_unref(cond_syntax);
+  mppl_unref(stmt_syntax);
+  return next_label;
+}
+
+Label write_comp_stmt(Generator *self, const MpplCompStmt *syntax, Label source, Label sink)
+{
+  unsigned long i;
+
+  Label current = source;
+
+  for (i = 0; i < mppl_comp_stmt__stmt_count(syntax); ++i) {
+    AnyMpplStmt *stmt = mppl_comp_stmt__stmt(syntax, i);
+
+    if (stmt) {
+      Label next = i + 1 < mppl_comp_stmt__stmt_count(syntax) ? LABEL_NULL : sink;
+      current    = write_stmt(self, stmt, current, next);
+    }
+
+    mppl_unref(stmt);
+    if (current == LABEL_RETURN || current == LABEL_BREAK) {
+      break;
+    }
+  }
+
+  return current;
+}
+
+Label write_call_stmt(Generator *self, const MpplCallStmt *syntax)
+{
+  MpplToken            *name_token        = mppl_call_stmt__name(syntax);
+  const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+  MpplActParamList     *param_list_syntax = mppl_call_stmt__act_param_list(syntax);
+
+  Array *ptrs = array_new(sizeof(Temporal));
+
+  unsigned long i;
+  for (i = 0; i < mppl_act_param_list__expr_count(param_list_syntax); ++i) {
+    AnyMpplExpr *expr_syntax = mppl_act_param_list__expr(param_list_syntax, i);
+    const Type  *expr_type   = ctx_type_of(self->ctx, (const SyntaxTree *) expr_syntax, NULL);
+    Temporal     ptr_temporal;
+
+    if (mppl_expr__kind(expr_syntax) == MPPL_EXPR_VAR) {
+      const AnyMpplVar *var_syntax = (const AnyMpplVar *) expr_syntax;
+      switch (mppl_var__kind(var_syntax)) {
+      case MPPL_VAR_ENTIRE: {
+        ptr_temporal = -1ul;
+        break;
+      }
+
+      case MPPL_VAR_INDEXED: {
+        const MpplIndexedVar *indexed_var_syntax = (const MpplIndexedVar *) var_syntax;
+        MpplToken            *name_token         = mppl_indexed_var__name(indexed_var_syntax);
+        AnyMpplExpr          *index_syntax       = mppl_indexed_var__expr(indexed_var_syntax);
+        const RawSyntaxToken *raw_name_token     = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+        const Def            *def                = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+        const ArrayType      *def_type           = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
+        unsigned long         length             = array_type_length(def_type);
+
+        Temporal index_temporal = self->temporal++;
+        ptr_temporal            = self->temporal++;
+
+        write_expr(self, index_temporal, index_syntax);
+        write(self, "%%.t%lu = getelementptr inbounds [%lu x i16], ptr @%s, i16 %%.t%lu",
+          ptr_temporal, length, string_data(raw_name_token->string), index_temporal);
+        write_newline(self);
+        break;
+      }
+      }
+    } else {
+      Temporal expr_temporal = self->temporal++;
+      ptr_temporal           = self->temporal++;
+      write_expr(self, expr_temporal, expr_syntax);
+      write(self, "%%.t%lu = alloca i%lu", ptr_temporal, type_width(expr_type));
+      write_newline(self);
+      write(self, "store i%lu %%.t%lu, ptr %%.t%lu", type_width(expr_type), expr_temporal, ptr_temporal);
+      write_newline(self);
+    }
+    array_push(ptrs, &ptr_temporal);
+    mppl_unref(expr_syntax);
+  }
+
+  write(self, "call void @%s(", string_data(raw_name_token->string));
+  for (i = 0; i < array_count(ptrs); ++i) {
+    AnyMpplExpr *expr_syntax  = mppl_act_param_list__expr(param_list_syntax, i);
+    Temporal    *ptr_temporal = array_at(ptrs, i);
+
+    if (i > 0) {
+      write(self, ", ");
+    }
+
+    if (mppl_expr__kind(expr_syntax) == MPPL_EXPR_VAR) {
+      const AnyMpplVar *var_syntax = (const AnyMpplVar *) expr_syntax;
+      switch (mppl_var__kind(var_syntax)) {
+      case MPPL_VAR_ENTIRE: {
+        const MpplEntireVar  *entire_var_syntax = (const MpplEntireVar *) var_syntax;
+        MpplToken            *name_token        = mppl_entire_var__name(entire_var_syntax);
+        const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+        const Def            *def               = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+        const SyntaxTree     *syntax            = def_syntax(def);
+
+        for (;; syntax = syntax_tree_parent(syntax)) {
+          if (syntax_tree_kind(syntax) == SYNTAX_PROC_DECL) {
+            write(self, "ptr %%%s", string_data(raw_name_token->string));
+            break;
+          }
+          if (syntax_tree_kind(syntax) == SYNTAX_PROGRAM) {
+            write(self, "ptr @%s", string_data(raw_name_token->string));
+            break;
+          }
+        }
+
+        mppl_unref(name_token);
+        break;
+      }
+
+      case MPPL_VAR_INDEXED:
+        write(self, "ptr %%.t%lu", *ptr_temporal);
+        break;
+      }
+    } else {
+      write(self, "ptr %%.t%lu", *ptr_temporal);
+    }
+    mppl_unref(expr_syntax);
+  }
+  write(self, ")");
+  write_newline(self);
+
+  mppl_unref(name_token);
+  mppl_unref(param_list_syntax);
+  array_free(ptrs);
+  return LABEL_NULL;
+}
+
+Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
+{
+  return LABEL_NULL;
+}
+
+Label write_stmt(Generator *self, const AnyMpplStmt *stmt, Label source, Label sink)
+{
+  switch (mppl_stmt__kind(stmt)) {
+  case MPPL_STMT_ASSIGN:
+    return write_assign_stmt(self, (const MpplAssignStmt *) stmt);
+
+  case MPPL_STMT_IF:
+    return write_if_stmt(self, (const MpplIfStmt *) stmt, sink);
+
+  case MPPL_STMT_WHILE:
+    return write_while_stmt(self, (const MpplWhileStmt *) stmt, source, sink);
+
+  case MPPL_STMT_BREAK:
+    write(self, "br label %%l%lu", self->break_label);
+    write_newline(self);
+    return LABEL_BREAK;
+
+  case MPPL_STMT_CALL:
+    return write_call_stmt(self, (const MpplCallStmt *) stmt);
+
+  case MPPL_STMT_RETURN:
+    write(self, "ret void");
+    write_newline(self);
+    return LABEL_RETURN;
+
+  case MPPL_STMT_INPUT:
+    /* TODO: implement */
+    return LABEL_NULL;
+
+  case MPPL_STMT_OUTPUT:
+    /* TODO: implement */
+    return LABEL_NULL;
+
+  case MPPL_STMT_COMP:
+    return write_comp_stmt(self, (const MpplCompStmt *) stmt, source, sink);
+
+  default:
+    return -1;
+  }
+}
+
+void write_fml_param_list(Generator *self, const MpplFmlParamList *syntax)
+{
+  unsigned long i, j;
+
+  write(self, "(");
+  for (i = 0; i < mppl_fml_param_list__sec_count(syntax); ++i) {
+    MpplFmlParamSec *sec_syntax = mppl_fml_param_list__sec(syntax, i);
+
+    if (i > 0) {
+      write(self, ", ");
+    }
+
+    for (j = 0; j < mppl_fml_param_sec__name_count(sec_syntax); ++j) {
+      MpplToken            *name_token     = mppl_fml_param_sec__name(sec_syntax, j);
+      const RawSyntaxToken *raw_name_token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+
+      if (j > 0) {
+        write(self, ", ");
+      }
+
+      write(self, "ptr %%%s", string_data(raw_name_token->string));
+      mppl_unref(name_token);
+    }
+
+    mppl_unref(sec_syntax);
+  }
+  write(self, ")");
+}
+
+void visit_var_decl(const MpplAstWalker *self, const MpplVarDecl *syntax, void *generator)
+{
+  unsigned long i;
+  Generator    *gen  = generator;
+  const Type   *type = ctx_type_of(gen->ctx, (const SyntaxTree *) syntax, NULL);
+
+  for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
+    MpplToken            *name_token     = mppl_var_decl__name(syntax, i);
+    const RawSyntaxToken *raw_name_token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+
+    if (type_kind(type) == TYPE_ARRAY) {
+      const ArrayType *array_type = (const ArrayType *) type;
+      write(gen, "@%s = common global [%lu x i%lu] zeroinitializer",
+        string_data(raw_name_token->string), array_type_length(array_type), type_width(array_type_base(array_type)));
+    } else {
+      write(gen, "@%s = common global i%lu 0", string_data(raw_name_token->string), type_width(type));
+    }
+    write_newline(gen);
+
+    mppl_unref(name_token);
+  }
+
+  (void) self;
+}
+
+void visit_proc_decl(const MpplAstWalker *self, const MpplProcDecl *syntax, void *generator)
+{
+  unsigned long i, j;
+
+  Generator            *gen                  = generator;
+  MpplToken            *name_token           = mppl_proc_decl__name(syntax);
+  MpplFmlParamList     *param_list_syntax    = mppl_proc_decl__fml_param_list(syntax);
+  MpplVarDeclPart      *var_decl_part_syntax = mppl_proc_decl__var_decl_part(syntax);
+  MpplCompStmt         *stmt_syntax          = mppl_proc_decl__comp_stmt(syntax);
+  const RawSyntaxToken *raw_name_token       = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+
+  write(gen, "define void @%s", string_data(raw_name_token->string));
+  if (param_list_syntax) {
+    write_fml_param_list(generator, param_list_syntax);
+  }
+  write(gen, " {");
+  write_newline(gen);
+  ++gen->indent;
+  if (var_decl_part_syntax) {
+    for (i = 0; i < mppl_var_decl_part__var_decl_count(var_decl_part_syntax); ++i) {
+      MpplVarDecl *var_decl = mppl_var_decl_part__var_decl(var_decl_part_syntax, i);
+      const Type  *type     = ctx_type_of(gen->ctx, (const SyntaxTree *) var_decl, NULL);
+      for (j = 0; j < mppl_var_decl__name_count(var_decl); ++j) {
+        MpplToken            *name_token     = mppl_var_decl__name(var_decl, j);
+        const RawSyntaxToken *raw_name_token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+
+        if (type_kind(type) == TYPE_ARRAY) {
+          const ArrayType *array_type = (const ArrayType *) type;
+          write(gen, "%%%s = alloca [%lu x i%lu]",
+            string_data(raw_name_token->string), array_type_length(array_type), type_width(array_type_base(array_type)));
+        } else {
+          write(gen, "%%%s = alloca i%lu",
+            string_data(raw_name_token->string), type_width(type));
+        }
+        write_newline(gen);
+
+        mppl_unref(name_token);
+      }
+      mppl_unref(var_decl);
+    }
+  }
+  write_stmt(gen, (AnyMpplStmt *) stmt_syntax, LABEL_NULL, LABEL_NULL);
+  write(gen, "ret void");
+  write_newline(gen);
+  --gen->indent;
+  write(gen, "}");
+  write_newline(gen);
+
+  mppl_unref(name_token);
+  mppl_unref(param_list_syntax);
+  mppl_unref(var_decl_part_syntax);
+  mppl_unref(stmt_syntax);
+
+  (void) self;
+}
+
+void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *generator)
+{
+  unsigned long i;
+  Generator    *gen         = generator;
+  MpplCompStmt *stmt_syntax = mppl_program__stmt(syntax);
+
+  write(gen, "declare i32 @printf(ptr noalias nocapture, ...)");
+  write_newline(gen);
+  write(gen, "declare i32 @scanf(ptr noalias nocapture, ...)");
+  write_newline(gen);
+  write_newline(gen);
+
+  for (i = 0; i < mppl_program__decl_part_count(syntax); ++i) {
+    AnyMpplDeclPart *decl_part = mppl_program__decl_part(syntax, i);
+
+    mppl_ast__walk_decl_part(self, decl_part, generator);
+    write_newline(gen);
+
+    mppl_unref(decl_part);
+  }
+
+  write(gen, "define i32 @main() {");
+  write_newline(gen);
+  ++gen->indent;
+  write_stmt(gen, (const AnyMpplStmt *) stmt_syntax, LABEL_NULL, LABEL_NULL);
+  write(gen, "ret i32 0");
+  write_newline(gen);
+  --gen->indent;
+  write(gen, "}");
+  write_newline(gen);
+
+  mppl_unref(stmt_syntax);
+}
+
+int mpplc_codegen_llvm_ir(const Source *source, const MpplProgram *syntax, Ctx *ctx)
+{
+  MpplAstWalker walker;
+
+  Generator self;
+  self.ctx      = ctx;
+  self.temporal = 1;
+  self.block    = 1;
+  self.indent   = 0;
+  {
+    char *output_filename = xmalloc(sizeof(char) * (source->file_name_length + 1));
+    sprintf(output_filename, "%.*s.ll", (int) source->file_name_length - 4, source->file_name);
+    self.file = fopen(output_filename, "w");
+    free(output_filename);
+  }
+
+  if (!self.file) {
+    fprintf(stderr, "error: failed to open output file\n");
+    return 0;
+  }
+
+  mppl_ast_walker__setup(&walker);
+  walker.visit_program   = &visit_program;
+  walker.visit_var_decl  = &visit_var_decl;
+  walker.visit_proc_decl = &visit_proc_decl;
+  mppl_ast_walker__travel(&walker, syntax, &self);
+
+  fclose(self.file);
+  return 1;
+}
