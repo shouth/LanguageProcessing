@@ -79,13 +79,15 @@ typedef enum {
 } BinaryExprKind;
 
 struct Expr {
-  ExprKind kind;
-  Reg      reg;
-  int      spill;
+  ExprKind    kind;
+  const Type *type;
+  Reg         reg;
+  int         spill;
 };
 
 struct BinaryExpr {
   ExprKind       kind;
+  const Type    *type;
   Reg            reg;
   int            spill;
   BinaryExprKind op;
@@ -94,29 +96,33 @@ struct BinaryExpr {
 };
 
 struct NotExpr {
-  ExprKind kind;
-  Reg      reg;
-  int      spill;
-  Expr    *expr;
+  ExprKind    kind;
+  const Type *type;
+  Reg         reg;
+  int         spill;
+  Expr       *expr;
 };
 
 struct CastExpr {
-  ExprKind kind;
-  Reg      reg;
-  int      spill;
-  Expr    *expr;
+  ExprKind    kind;
+  const Type *type;
+  Reg         reg;
+  int         spill;
+  Expr       *expr;
 };
 
 struct VarExpr {
-  ExprKind   kind;
-  Reg        reg;
-  int        spill;
-  const Def *def;
-  Expr      *index;
+  ExprKind    kind;
+  const Type *type;
+  Reg         reg;
+  int         spill;
+  const Def  *def;
+  Expr       *index;
 };
 
 struct LitExpr {
   ExprKind      kind;
+  const Type   *type;
   Reg           reg;
   int           spill;
   unsigned long value;
@@ -281,6 +287,7 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
     if (lhs_syntax) {
       BinaryExpr *self = malloc(sizeof(BinaryExpr));
       self->kind       = EXPR_BINARY;
+      self->type       = ctx_type_of(ctx, (const SyntaxTree *) lhs_syntax, NULL);
       self->spill      = 0;
       self->lhs        = expr_create_tree(ctx, lhs_syntax);
       self->rhs        = expr_create_tree(ctx, rhs_syntax);
@@ -348,6 +355,7 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
       case SYNTAX_MINUS_TOKEN: {
         BinaryExpr *self = malloc(sizeof(BinaryExpr));
         self->kind       = EXPR_BINARY;
+        self->type       = ctx_type_of(ctx, (const SyntaxTree *) rhs_syntax, NULL);
         self->spill      = 0;
         {
           LitExpr *zero = malloc(sizeof(LitExpr));
@@ -389,6 +397,7 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
 
     NotExpr *self = malloc(sizeof(NotExpr));
     self->kind    = EXPR_NOT;
+    self->type    = ctx_type_of(ctx, (const SyntaxTree *) expr_syntax, NULL);
     self->reg     = GR0;
     self->spill   = 0;
     self->expr    = expr_create_tree(ctx, expr_syntax);
@@ -403,6 +412,7 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
 
     CastExpr *self = malloc(sizeof(CastExpr));
     self->kind     = EXPR_CAST;
+    self->type     = ctx_type_of(ctx, (const SyntaxTree *) expr_syntax, NULL);
     self->reg      = GR0;
     self->spill    = 0;
     self->expr     = expr_create_tree(ctx, expr_syntax);
@@ -416,6 +426,7 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
 
     VarExpr *self = malloc(sizeof(VarExpr));
     self->kind    = EXPR_VAR;
+    self->type    = ctx_type_of(ctx, (const SyntaxTree *) var_syntax, NULL);
     self->reg     = GR0;
     self->spill   = 0;
 
@@ -456,6 +467,7 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
 
     LitExpr *self = malloc(sizeof(LitExpr));
     self->kind    = EXPR_LIT;
+    self->type    = ctx_type_of(ctx, (const SyntaxTree *) lit_syntax, NULL);
     self->reg     = GR0;
     self->spill   = 0;
 
@@ -827,11 +839,75 @@ static void write_not_expr(Generator *self, const NotExpr *expr)
 
 static void write_cast_expr(Generator *self, const CastExpr *expr, Adr sink)
 {
-  if (expr->reg != expr->expr->reg) {
-    write_expr_core(self, expr->expr, ADR_NULL);
-    write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
+  if (expr->type == expr->expr->type) {
+    if (expr->reg != expr->expr->reg) {
+      write_expr_core(self, expr->expr, ADR_NULL);
+      write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
+    } else {
+      write_expr_core(self, expr->expr, sink);
+    }
   } else {
-    write_expr_core(self, expr->expr, sink);
+    switch (type_kind(expr->type)) {
+    case TYPE_BOOLEAN: {
+      write_expr_core(self, expr->expr, ADR_NULL);
+      if (expr->reg != expr->expr->reg) {
+        Adr next_block = self->label_count++;
+        write_inst2(self, "CPA", r(expr->expr->reg), "=0");
+        write_inst1(self, "JZE", adr(next_block));
+        write_inst2(self, "LAD", r(expr->expr->reg), "1");
+        write_label(self, next_block);
+        write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
+      } else {
+        Adr next_block = sink ? sink : self->label_count++;
+        write_inst2(self, "CPA", r(expr->expr->reg), "=0");
+        write_inst1(self, "JZE", adr(next_block));
+        write_inst2(self, "LAD", r(expr->expr->reg), "1");
+        if (!sink) {
+          write_label(self, next_block);
+        }
+      }
+      break;
+    }
+
+    case TYPE_INTEGER: {
+      if (expr->reg != expr->expr->reg) {
+        write_expr_core(self, expr->expr, ADR_NULL);
+        write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
+      } else {
+        write_expr_core(self, expr->expr, sink);
+      }
+      break;
+    }
+
+    case TYPE_CHAR: {
+      switch (type_kind(expr->expr->type)) {
+      case TYPE_BOOLEAN:
+        if (expr->reg != expr->expr->reg) {
+          write_expr_core(self, expr->expr, ADR_NULL);
+          write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
+        } else {
+          write_expr_core(self, expr->expr, sink);
+        }
+        break;
+
+      case TYPE_INTEGER:
+        write_expr_core(self, expr->expr, ADR_NULL);
+        write_inst2(self, "AND", r(expr->expr->reg), "=#00FF");
+
+        if (expr->reg != expr->expr->reg) {
+          write_inst2(self, "LD", r1(expr->reg), r2(expr->expr->reg));
+        }
+        break;
+
+      default:
+        unreachable();
+      }
+      break;
+    }
+
+    default:
+      unreachable();
+    }
   }
 }
 
