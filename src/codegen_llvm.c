@@ -481,23 +481,27 @@ Label write_if_stmt(Generator *self, const MpplIfStmt *syntax, Label sink)
 
   Temporal cond_temporal = self->temporal++;
   Label    next_label    = sink ? sink : self->block++;
+  Label    label;
   write_expr(self, cond_temporal, cond_syntax);
 
   if (else_syntax) {
     Label then_label = self->block++;
     Label else_label = self->block++;
+
     write(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", cond_temporal, then_label, else_label);
     write_newline(self);
     write_newline(self);
 
     write_label(self, then_label);
-    write_stmt(self, then_syntax, then_label, next_label);
-    write(self, "br label %%l%lu", next_label);
-    write_newline(self);
-    write_newline(self);
+    label = write_stmt(self, then_syntax, then_label, next_label);
+    if (label != LABEL_RETURN && label != LABEL_BREAK) {
+      write(self, "br label %%l%lu", next_label);
+      write_newline(self);
+    }
 
+    write_newline(self);
     write_label(self, else_label);
-    write_stmt(self, else_syntax, else_label, next_label);
+    label = write_stmt(self, else_syntax, else_label, next_label);
   } else {
     Label then_label = self->block++;
     write(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", cond_temporal, then_label, next_label);
@@ -505,12 +509,15 @@ Label write_if_stmt(Generator *self, const MpplIfStmt *syntax, Label sink)
     write_newline(self);
 
     write_label(self, then_label);
-    write_stmt(self, then_syntax, then_label, next_label);
+    label = write_stmt(self, then_syntax, then_label, next_label);
   }
 
   if (!sink) {
-    write(self, "br label %%l%lu", next_label);
-    write_newline(self);
+    if (label != LABEL_RETURN && label != LABEL_BREAK) {
+      write(self, "br label %%l%lu", next_label);
+      write_newline(self);
+    }
+
     write_newline(self);
     write_label(self, next_label);
   }
@@ -529,6 +536,7 @@ Label write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Label sourc
   Label cond_label = source ? source : self->block++;
   Label body_label = self->block++;
   Label next_label = sink ? sink : self->block++;
+  Label label;
 
   Temporal cond_temporal = self->temporal++;
 
@@ -545,11 +553,13 @@ Label write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Label sourc
   write_newline(self);
 
   write_label(self, body_label);
-  write_stmt(self, stmt_syntax, body_label, cond_label);
-  write(self, "br label %%l%lu", cond_label);
-  write_newline(self);
-  write_newline(self);
+  label = write_stmt(self, stmt_syntax, body_label, cond_label);
+  if (label != LABEL_RETURN && label != LABEL_BREAK) {
+    write(self, "br label %%l%lu", cond_label);
+    write_newline(self);
+  }
 
+  write_newline(self);
   if (!sink) {
     write_label(self, next_label);
   }
@@ -798,6 +808,7 @@ void visit_proc_decl(const MpplAstWalker *self, const MpplProcDecl *syntax, void
   MpplVarDeclPart      *var_decl_part_syntax = mppl_proc_decl__var_decl_part(syntax);
   MpplCompStmt         *stmt_syntax          = mppl_proc_decl__comp_stmt(syntax);
   const RawSyntaxToken *raw_name_token       = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+  Label                 label;
 
   write(gen, "define void @%s", string_data(raw_name_token->string));
   if (param_list_syntax) {
@@ -829,9 +840,11 @@ void visit_proc_decl(const MpplAstWalker *self, const MpplProcDecl *syntax, void
       mppl_unref(var_decl);
     }
   }
-  write_stmt(gen, (AnyMpplStmt *) stmt_syntax, LABEL_NULL, LABEL_NULL);
-  write(gen, "ret void");
-  write_newline(gen);
+  label = write_stmt(gen, (AnyMpplStmt *) stmt_syntax, LABEL_NULL, LABEL_NULL);
+  if (label != LABEL_RETURN) {
+    write(gen, "ret void");
+    write_newline(gen);
+  }
   --gen->indent;
   write(gen, "}");
   write_newline(gen);
@@ -849,6 +862,7 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
   unsigned long i;
   Generator    *gen         = generator;
   MpplCompStmt *stmt_syntax = mppl_program__stmt(syntax);
+  Label         label;
 
   write(gen, "declare i32 @printf(ptr noalias nocapture, ...)");
   write_newline(gen);
@@ -868,9 +882,11 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
   write(gen, "define i32 @main() {");
   write_newline(gen);
   ++gen->indent;
-  write_stmt(gen, (const AnyMpplStmt *) stmt_syntax, LABEL_NULL, LABEL_NULL);
-  write(gen, "ret i32 0");
-  write_newline(gen);
+  label = write_stmt(gen, (const AnyMpplStmt *) stmt_syntax, LABEL_NULL, LABEL_NULL);
+  if (label != LABEL_RETURN) {
+    write(gen, "ret i32 0");
+    write_newline(gen);
+  }
   --gen->indent;
   write(gen, "}");
   write_newline(gen);
