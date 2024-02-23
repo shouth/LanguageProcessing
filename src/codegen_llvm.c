@@ -727,10 +727,10 @@ void visit_var_decl(const MpplAstWalker *self, const MpplVarDecl *syntax, void *
 
     if (type_kind(type) == TYPE_ARRAY) {
       const ArrayType *array_type = (const ArrayType *) type;
-      write_inst(gen, "@%s = common global [%lu x i%lu] zeroinitializer",
+      write(gen, "@%s = common global [%lu x i%lu] zeroinitializer\n",
         string_data(raw_name_token->string), array_type_length(array_type), type_width(array_type_base(array_type)));
     } else {
-      write_inst(gen, "@%s = common global i%lu 0", string_data(raw_name_token->string), type_width(type));
+      write(gen, "@%s = common global i%lu 0\n", string_data(raw_name_token->string), type_width(type));
     }
 
     mppl_unref(name_token);
