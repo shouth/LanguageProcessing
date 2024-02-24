@@ -1038,34 +1038,34 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
 
   write(gen,
     "\n"
-    "@.msg.range = private unnamed_addr constant [27 x i8] c\"error: index out of range\\0A\\00\"\n"
+    "@.str.range = private unnamed_addr constant [27 x i8] c\"error: index out of range\\0A\\00\"\n"
     "\n"
     "define void @.assert.range(i16 %%v, i16 %%l) {\n"
     "  %%check1 = icmp sge i16 %%v, 0\n"
     "  %%check2 = icmp slt i16 %%v, %%l\n"
     "  %%check3 = and i1 %%check1, %%check2\n"
-    "  call void @.assert(i1 %%check3, ptr @.msg.range)\n"
+    "  call void @.assert(i1 %%check3, ptr @.str.range)\n"
     "  ret void\n"
     "}\n");
 
   write(gen,
     "\n"
-    "@.msg.division = private unnamed_addr constant [25 x i8] c\"error: division by zero\\0A\\00\"\n"
+    "@.str.division = private unnamed_addr constant [25 x i8] c\"error: division by zero\\0A\\00\"\n"
     "\n"
     "define void @.assert.division(i16 %%v) {\n"
     "  %%check = icmp ne i16 %%v, 0\n"
-    "  call void @.assert(i1 %%check, ptr @.msg.division)\n"
+    "  call void @.assert(i1 %%check, ptr @.str.division)\n"
     "  ret void\n"
     "}\n");
 
   write(gen,
     "\n"
-    "@.msg.overflow = private unnamed_addr constant [25 x i8] c\"error: integer overflow\\0A\\00\"\n"
+    "@.str.overflow = private unnamed_addr constant [25 x i8] c\"error: integer overflow\\0A\\00\"\n"
     "\n"
     "define i16 @.assert.overflow({i16, i1} %%p) {\n"
     "  %%check1 = extractvalue {i16, i1} %%p, 1\n"
     "  %%check2 = xor i1 %%check1, 1\n"
-    "  call void @.assert(i1 %%check2, ptr @.msg.overflow)\n"
+    "  call void @.assert(i1 %%check2, ptr @.str.overflow)\n"
     "  %%result = extractvalue {i16, i1} %%p, 0\n"
     "  ret i16 %%result\n"
     "}\n");
