@@ -14,6 +14,8 @@ Array      *filenames = NULL;
 
 int pretty_print = 0;
 int syntax_only  = 0;
+int emit_llvm    = 0;
+int emit_casl2   = 0;
 
 static int run_compiler(void)
 {
@@ -39,7 +41,13 @@ static int run_compiler(void)
 
       if (mpplc_resolve(source, syntax, ctx) && mpplc_check(source, syntax, ctx)) {
         if (!syntax_only) {
-          mpplc_codegen_casl2(source, syntax, ctx);
+          if (emit_casl2) {
+            mpplc_codegen_casl2(source, syntax, ctx);
+          }
+
+          if (emit_llvm) {
+            mpplc_codegen_llvm_ir(source, syntax, ctx);
+          }
         }
       }
     }
@@ -53,11 +61,15 @@ static int run_compiler(void)
 
 static void print_help(void)
 {
-  printf("Usage: %s [OPTIONS] INPUT\n", program);
-  printf("Options:\n");
-  printf("    --pretty-print  Pretty print the input file\n");
-  printf("    --syntax-only   Check syntax only\n");
-  printf("    --help          Print this help message\n");
+  printf(
+    "Usage: %s [OPTIONS] INPUT\n"
+    "Options:\n"
+    "    --pretty-print  Pretty print the input file\n"
+    "    --syntax-only   Check syntax only\n"
+    "    --emit-llvm     Emit LLVM IR\n"
+    "    --emit-casl2    Emit CASL2\n"
+    "    --help          Print this help message\n",
+    program);
   fflush(stdout);
 }
 
@@ -86,6 +98,10 @@ static void init(int argc, const char **argv)
         pretty_print = 1;
       } else if (strcmp(argv[i], "--syntax-only") == 0) {
         syntax_only = 1;
+      } else if (strcmp(argv[i], "--emit-llvm") == 0) {
+        emit_llvm = 1;
+      } else if (strcmp(argv[i], "--emit-casl2") == 0) {
+        emit_casl2 = 1;
       } else if (strcmp(argv[i], "--help") == 0) {
         print_help();
         stop   = 1;
@@ -103,6 +119,10 @@ static void init(int argc, const char **argv)
         array_push(filenames, &argv[i]);
       }
     }
+  }
+
+  if (!emit_llvm && !emit_casl2) {
+    emit_casl2 = 1;
   }
 
   if (stop) {
