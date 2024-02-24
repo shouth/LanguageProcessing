@@ -115,14 +115,33 @@ void write_label(Generator *self, Label label)
 
 void write_expr(Generator *self, Temp result, const AnyMpplExpr *expr);
 
-void write_arithmetic_expr(Generator *self, Temp result, const char *inst, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+void write_arithmetic_expr(
+  Generator *self, Temp result, const char *inst,
+  const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax, int check_division_by_zero)
 {
   Temp lhs_temporal = self->temp++;
   Temp rhs_temporal = self->temp++;
 
   write_expr(self, lhs_temporal, lhs_syntax);
   write_expr(self, rhs_temporal, rhs_syntax);
+  if (check_division_by_zero) {
+    write_inst(self, "call void @.assert.division(i16 %%.t%lu)", rhs_temporal);
+  }
   write_inst(self, "%%.t%lu = %s i16 %%.t%lu, %%.t%lu", result, inst, lhs_temporal, rhs_temporal);
+}
+
+void write_arithmetic_expr_with_overflow(
+  Generator *self, Temp result, const char *inst,
+  const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
+{
+  Temp result_temporal = self->temp++;
+  Temp lhs_temporal    = self->temp++;
+  Temp rhs_temporal    = self->temp++;
+
+  write_expr(self, lhs_temporal, lhs_syntax);
+  write_expr(self, rhs_temporal, rhs_syntax);
+  write_inst(self, "%%.t%lu = call {i16, i1} @llvm.%s.with.overflow.i16(i16 %%.t%lu, i16 %%.t%lu)", result_temporal, inst, lhs_temporal, rhs_temporal);
+  write_inst(self, "%%.t%lu = call i16 @.assert.overflow({i16, i1} %%.t%lu)", result, result_temporal);
 }
 
 void write_relational_expr(Generator *self, Temp result, const char *inst, const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax)
@@ -176,19 +195,19 @@ void write_binary_expr(Generator *self, Temp result, const MpplBinaryExpr *expr)
   if (lhs_syntax) {
     switch (syntax_tree_kind((SyntaxTree *) op_token)) {
     case SYNTAX_PLUS_TOKEN:
-      write_arithmetic_expr(self, result, "add", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr_with_overflow(self, result, "sadd", lhs_syntax, rhs_syntax);
       break;
 
     case SYNTAX_MINUS_TOKEN:
-      write_arithmetic_expr(self, result, "sub", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr_with_overflow(self, result, "ssub", lhs_syntax, rhs_syntax);
       break;
 
     case SYNTAX_STAR_TOKEN:
-      write_arithmetic_expr(self, result, "mul", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr_with_overflow(self, result, "smul", lhs_syntax, rhs_syntax);
       break;
 
     case SYNTAX_DIV_KW:
-      write_arithmetic_expr(self, result, "sdiv", lhs_syntax, rhs_syntax);
+      write_arithmetic_expr(self, result, "sdiv", lhs_syntax, rhs_syntax, 1);
       break;
 
     case SYNTAX_EQUAL_TOKEN:
@@ -695,13 +714,13 @@ Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
         write(self, "  store i8 0, ptr ");
         write_ptr(self, &ref);
         write(self, "\n");
-        write(self, "  call i32 @scanf(ptr @.fmtint, ptr ");
+        write(self, "  call i32 @scanf(ptr @.format.integer, ptr ");
         write_ptr(self, &ref);
         write(self, ")\n");
         break;
 
       case TYPE_CHAR: {
-        Temp raw_temporal = self->temp++;
+        Temp raw_temporal  = self->temp++;
         Temp char_temporal = self->temp++;
         write_inst(self, "%%.t%lu = call i32 @getchar()", raw_temporal);
         write_inst(self, "%%.t%lu = trunc i32 %%.t%lu to i8", char_temporal, raw_temporal);
@@ -720,7 +739,7 @@ Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
   }
 
   if (syntax_tree_kind((SyntaxTree *) read_token) == SYNTAX_READLN_KW) {
-    write_inst(self, "call i32 @scanf(ptr @.fmtline)");
+    write_inst(self, "call i32 @scanf(ptr @.format.line)");
     write_inst(self, "call i32 @getchar()");
   }
 
@@ -965,9 +984,16 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
   MpplCompStmt *stmt_syntax = mppl_program__stmt(syntax);
   Label         label;
 
-  write(gen, "declare i32 @getchar()\n");
-  write(gen, "declare i32 @printf(ptr, ...)\n");
-  write(gen, "declare i32 @scanf(ptr, ...)\n\n");
+  write(gen,
+    "declare {i16, i1} @llvm.sadd.with.overflow.i16(i16, i16)\n"
+    "declare {i16, i1} @llvm.ssub.with.overflow.i16(i16, i16)\n"
+    "declare {i16, i1} @llvm.smul.with.overflow.i16(i16, i16)\n"
+    "\n"
+    "declare i32 @getchar()\n"
+    "declare i32 @printf(ptr, ...)\n"
+    "declare i32 @scanf(ptr, ...)\n"
+    "declare void @exit(i32)\n"
+    "\n");
 
   for (i = 0; i < mppl_program__decl_part_count(syntax); ++i) {
     AnyMpplDeclPart *decl_part = mppl_program__decl_part(syntax, i);
@@ -986,8 +1012,8 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
   write(gen, "}\n");
 
   write(gen, "\n");
-  write(gen, "@.fmtint = private unnamed_addr constant [4 x i8] c\"%%hd\\00\"\n");
-  write(gen, "@.fmtline = private unnamed_addr constant [7 x i8] c\"%%*[^\\0A]\\00\"\n");
+  write(gen, "@.format.integer = private unnamed_addr constant [4 x i8] c\"%%hd\\00\"\n");
+  write(gen, "@.format.line = private unnamed_addr constant [7 x i8] c\"%%*[^\\0A]\\00\"\n");
 
   write(gen, "\n");
   for (i = 0; i < array_count(gen->strs); ++i) {
@@ -995,6 +1021,54 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
     array_push_count(str->chars, "\0", 1);
     write(gen, "@.str%lu = private unnamed_addr constant [%lu x i8] c\"%s\\00\"\n", i, str->length + 1, array_data(str->chars));
   }
+
+  write(gen,
+    "\n"
+    "define void @.assert(i1 %%cond, ptr %%msg) {\n"
+    "  br i1 %%cond, label %%normal, label %%error\n"
+    "\n"
+    "error:\n"
+    "  call i32 @printf(ptr %%msg)\n"
+    "  call void @exit(i32 1)\n"
+    "  unreachable\n"
+    "\n"
+    "normal:\n"
+    "  ret void\n"
+    "}\n");
+
+  write(gen,
+    "\n"
+    "@.msg.range = private unnamed_addr constant [27 x i8] c\"error: index out of range\\0A\\00\"\n"
+    "\n"
+    "define void @.assert.range(i16 %%v, i16 %%l) {\n"
+    "  %%check1 = icmp sge i16 %%v, 0\n"
+    "  %%check2 = icmp slt i16 %%v, %%l\n"
+    "  %%check3 = and i1 %%check1, %%check2\n"
+    "  call void @.assert(i1 %%check3, ptr @.msg.range)\n"
+    "  ret void\n"
+    "}\n");
+
+  write(gen,
+    "\n"
+    "@.msg.division = private unnamed_addr constant [25 x i8] c\"error: division by zero\\0A\\00\"\n"
+    "\n"
+    "define void @.assert.division(i16 %%v) {\n"
+    "  %%check = icmp ne i16 %%v, 0\n"
+    "  call void @.assert(i1 %%check, ptr @.msg.division)\n"
+    "  ret void\n"
+    "}\n");
+
+  write(gen,
+    "\n"
+    "@.msg.overflow = private unnamed_addr constant [25 x i8] c\"error: integer overflow\\0A\\00\"\n"
+    "\n"
+    "define i16 @.assert.overflow({i16, i1} %%p) {\n"
+    "  %%check1 = extractvalue {i16, i1} %%p, 1\n"
+    "  %%check2 = xor i1 %%check1, 1\n"
+    "  call void @.assert(i1 %%check2, ptr @.msg.overflow)\n"
+    "  %%result = extractvalue {i16, i1} %%p, 0\n"
+    "  ret i16 %%result\n"
+    "}\n");
 
   mppl_unref(stmt_syntax);
 }
