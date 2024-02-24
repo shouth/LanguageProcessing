@@ -311,6 +311,8 @@ void write_cast_expr(Generator *self, Temp result, const MpplCastExpr *expr)
       unreachable();
     }
   }
+
+  mppl_unref(operand_syntax);
 }
 
 void write_var_expr(Generator *self, Temp result, const AnyMpplVar *var)
