@@ -255,7 +255,7 @@ void write_not_expr(Generator *self, Temp result, const MpplNotExpr *expr)
   Temp         operand_temporal = self->temp++;
 
   write_expr(self, operand_temporal, operand_syntax);
-  write_inst(self, "%%.t%lu = xor i1 %%.t%lu, 0", result, operand_temporal);
+  write_inst(self, "%%.t%lu = xor i1 %%.t%lu, 1", result, operand_temporal);
 
   mppl_unref(operand_syntax);
 }
