@@ -437,7 +437,7 @@ void write_expr(Generator *self, Temp result, const AnyMpplExpr *expr)
   }
 }
 
-Ptr write_expr_ref(Generator *self, const AnyMpplExpr *expr)
+Ptr write_expr_ptr(Generator *self, const AnyMpplExpr *expr)
 {
   Ptr ref;
 
@@ -497,6 +497,16 @@ Ptr write_expr_ref(Generator *self, const AnyMpplExpr *expr)
   return ref;
 }
 
+void write_ptr(Generator *self, const Ptr *ptr)
+{
+  if (ptr->is_temporal) {
+    write(self, "%%.t%lu", ptr->ptr.temporal);
+  } else {
+    const char *prefix = def_kind(ptr->ptr.def) == DEF_VAR ? "@" : "%";
+    write(self, "%s%s", prefix, string_data(def_name(ptr->ptr.def)));
+  }
+}
+
 Label write_stmt(Generator *self, const AnyMpplStmt *stmt, Label source, Label sink);
 
 Label write_assign_stmt(Generator *self, const MpplAssignStmt *syntax)
@@ -504,22 +514,18 @@ Label write_assign_stmt(Generator *self, const MpplAssignStmt *syntax)
   AnyMpplVar   *lhs_syntax = mppl_assign_stmt__lhs(syntax);
   AnyMpplExpr  *rhs_syntax = mppl_assign_stmt__rhs(syntax);
   Temp          value      = self->temp++;
-  Label         result     = LABEL_NULL;
   const Type   *lhs_type   = ctx_type_of(self->ctx, (const SyntaxTree *) lhs_syntax, NULL);
   unsigned long width      = type_width(lhs_type);
 
-  Ptr ref = write_expr_ref(self, (AnyMpplExpr *) lhs_syntax);
+  Ptr ref = write_expr_ptr(self, (AnyMpplExpr *) lhs_syntax);
   write_expr(self, value, rhs_syntax);
-  if (ref.is_temporal) {
-    write_inst(self, "store i%lu %%.t%lu, ptr %%.t%lu", width, value, ref.ptr.temporal);
-  } else {
-    const char *prefix = def_kind(ref.ptr.def) == DEF_VAR ? "@" : "%";
-    write_inst(self, "store i%lu %%.t%lu, ptr %s%s", width, value, prefix, string_data(def_name(ref.ptr.def)));
-  }
+  write(self, "  store i%lu %%.t%lu, ptr ", width, value);
+  write_ptr(self, &ref);
+  write(self, "\n");
 
   mppl_unref(lhs_syntax);
   mppl_unref(rhs_syntax);
-  return result;
+  return LABEL_NULL;
 }
 
 Label write_if_stmt(Generator *self, const MpplIfStmt *syntax, Label sink)
@@ -645,7 +651,7 @@ Label write_call_stmt(Generator *self, const MpplCallStmt *syntax)
   unsigned long i;
   for (i = 0; i < mppl_act_param_list__expr_count(param_list_syntax); ++i) {
     AnyMpplExpr *expr_syntax = mppl_act_param_list__expr(param_list_syntax, i);
-    Ptr          ref         = write_expr_ref(self, expr_syntax);
+    Ptr          ref         = write_expr_ptr(self, expr_syntax);
 
     array_push(ptrs, &ref);
     mppl_unref(expr_syntax);
@@ -660,12 +666,8 @@ Label write_call_stmt(Generator *self, const MpplCallStmt *syntax)
       write(self, ", ");
     }
 
-    if (ref->is_temporal) {
-      write(self, "ptr %%.t%lu", ref->ptr.temporal);
-    } else {
-      const char *prefix = def_kind(ref->ptr.def) == DEF_VAR ? "@" : "%";
-      write(self, "ptr %s%s", prefix, string_data(def_name(ref->ptr.def)));
-    }
+    write(self, "ptr ");
+    write_ptr(self, ref);
 
     mppl_unref(expr_syntax);
   }
@@ -683,24 +685,31 @@ Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
   MpplToken     *read_token        = mppl_input_stmt__read_token(syntax);
   MpplInputList *input_list_syntax = mppl_input_stmt__input_list(syntax);
 
-  Array *ptrs   = array_new(sizeof(Ptr));
-  Str    format = str();
-
   if (input_list_syntax) {
     for (i = 0; i < mppl_input_list__var_count(input_list_syntax); ++i) {
       AnyMpplVar *var_syntax = mppl_input_list__var(input_list_syntax, i);
 
-      Ptr ref = write_expr_ref(self, (AnyMpplExpr *) var_syntax);
-      array_push(ptrs, &ref);
-
+      Ptr ref = write_expr_ptr(self, (AnyMpplExpr *) var_syntax);
       switch (type_kind(ref.type)) {
       case TYPE_INTEGER:
-        str_push(&format, "%hd");
+        write(self, "  store i8 0, ptr ");
+        write_ptr(self, &ref);
+        write(self, "\n");
+        write(self, "  call i32 @scanf(ptr @.fmtint, ptr ");
+        write_ptr(self, &ref);
+        write(self, ")\n");
         break;
 
-      case TYPE_CHAR:
-        str_push(&format, "%c");
+      case TYPE_CHAR: {
+        Temp raw_temporal = self->temp++;
+        Temp char_temporal = self->temp++;
+        write_inst(self, "%%.t%lu = call i32 @getchar()", raw_temporal);
+        write_inst(self, "%%.t%lu = trunc i32 %%.t%lu to i8", char_temporal, raw_temporal);
+        write(self, "  store i8 %%.t%lu, ptr ", char_temporal);
+        write_ptr(self, &ref);
+        write(self, "\n");
         break;
+      }
 
       default:
         unreachable();
@@ -711,36 +720,10 @@ Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
   }
 
   if (syntax_tree_kind((SyntaxTree *) read_token) == SYNTAX_READLN_KW) {
-    str_push(&format, "%*[^\\0A]");
-  }
-
-  {
-    unsigned long id = array_count(self->strs);
-    array_push(self->strs, &format);
-    write(self, "  call i32 @scanf(ptr @.str%lu", id);
-  }
-  if (input_list_syntax) {
-    for (i = 0; i < mppl_input_list__var_count(input_list_syntax); ++i) {
-      AnyMpplVar *var_syntax = mppl_input_list__var(input_list_syntax, i);
-      Ptr        *ref        = array_at(ptrs, i);
-
-      if (ref->is_temporal) {
-        write(self, ", ptr %%.t%lu", ref->ptr.temporal);
-      } else {
-        const char *prefix = def_kind(ref->ptr.def) == DEF_VAR ? "@" : "%";
-        write(self, ", ptr %s%s", prefix, string_data(def_name(ref->ptr.def)));
-      }
-
-      mppl_unref(var_syntax);
-    }
-  }
-  write(self, ")\n");
-
-  if (syntax_tree_kind((SyntaxTree *) read_token) == SYNTAX_READLN_KW) {
+    write_inst(self, "call i32 @scanf(ptr @.fmtline)");
     write_inst(self, "call i32 @getchar()");
   }
 
-  array_free(ptrs);
   mppl_unref(read_token);
   mppl_unref(input_list_syntax);
   return LABEL_NULL;
@@ -1002,6 +985,17 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
   }
   write(gen, "}\n");
 
+  write(gen, "\n");
+  write(gen, "@.fmtint = private unnamed_addr constant [4 x i8] c\"%%hd\\00\"\n");
+  write(gen, "@.fmtline = private unnamed_addr constant [7 x i8] c\"%%*[^\\0A]\\00\"\n");
+
+  write(gen, "\n");
+  for (i = 0; i < array_count(gen->strs); ++i) {
+    Str *str = array_at(gen->strs, i);
+    array_push_count(str->chars, "\0", 1);
+    write(gen, "@.str%lu = private unnamed_addr constant [%lu x i8] c\"%s\\00\"\n", i, str->length + 1, array_data(str->chars));
+  }
+
   mppl_unref(stmt_syntax);
 }
 
@@ -1033,12 +1027,8 @@ int mpplc_codegen_llvm_ir(const Source *source, const MpplProgram *syntax, Ctx *
   walker.visit_proc_decl = &visit_proc_decl;
   mppl_ast_walker__travel(&walker, syntax, &self);
 
-  write(&self, "\n");
   for (i = 0; i < array_count(self.strs); ++i) {
-    Str *str = array_at(self.strs, i);
-    array_push_count(str->chars, "\0", 1);
-    write(&self, "@.str%lu = private unnamed_addr constant [%lu x i8] c\"%s\\00\"\n", i, str->length + 1, array_data(str->chars));
-    str_free(str);
+    str_free(array_at(self.strs, i));
   }
 
   array_free(self.strs);
