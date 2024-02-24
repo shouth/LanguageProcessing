@@ -276,18 +276,20 @@ void write_var_expr(Generator *self, Temporal result, const AnyMpplVar *var)
     MpplToken            *name_token        = mppl_entire_var__name(entire_var_syntax);
     const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
     const Def            *def               = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+    const Type           *type              = ctx_type_of(self->ctx, def_syntax(def), NULL);
 
-    const SyntaxTree *syntax = def_syntax(def);
-    const Type       *type   = ctx_type_of(self->ctx, syntax, NULL);
-    for (;; syntax = syntax_tree_parent(syntax)) {
-      if (syntax_tree_kind(syntax) == SYNTAX_PROC_DECL) {
-        write_inst(self, "%%.t%lu = load i%lu, ptr %%%s", result, type_width(type), string_data(raw_name_token->string));
-        break;
-      }
-      if (syntax_tree_kind(syntax) == SYNTAX_PROGRAM) {
-        write_inst(self, "%%.t%lu = load i%lu, ptr @%s", result, type_width(type), string_data(raw_name_token->string));
-        break;
-      }
+    switch (def_kind(def)) {
+    case DEF_LOCAL:
+    case DEF_PARAM:
+      write_inst(self, "%%.t%lu = load i%lu, ptr %%%s", result, type_width(type), string_data(raw_name_token->string));
+      break;
+
+    case DEF_VAR:
+      write_inst(self, "%%.t%lu = load i%lu, ptr @%s", result, type_width(type), string_data(raw_name_token->string));
+      break;
+
+    default:
+      unreachable();
     }
 
     mppl_unref(name_token);
@@ -406,16 +408,18 @@ Label write_assign_stmt(Generator *self, const MpplAssignStmt *syntax)
     const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
     const Def            *def               = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
 
-    const SyntaxTree *syntax = def_syntax(def);
-    for (;; syntax = syntax_tree_parent(syntax)) {
-      if (syntax_tree_kind(syntax) == SYNTAX_PROC_DECL) {
-        write_inst(self, "store i%lu %%.t%lu, ptr %%%s", type_width(lhs_type), rhs_temporal, string_data(raw_name_token->string));
-        break;
-      }
-      if (syntax_tree_kind(syntax) == SYNTAX_PROGRAM) {
-        write_inst(self, "store i%lu %%.t%lu, ptr @%s", type_width(lhs_type), rhs_temporal, string_data(raw_name_token->string));
-        break;
-      }
+    switch (def_kind(def)) {
+    case DEF_LOCAL:
+    case DEF_PARAM:
+      write_inst(self, "store i%lu %%.t%lu, ptr %%%s", type_width(lhs_type), rhs_temporal, string_data(raw_name_token->string));
+      break;
+
+    case DEF_VAR:
+      write_inst(self, "store i%lu %%.t%lu, ptr @%s", type_width(lhs_type), rhs_temporal, string_data(raw_name_token->string));
+      break;
+
+    default:
+      unreachable();
     }
 
     mppl_unref(name_token);
@@ -632,17 +636,19 @@ Label write_call_stmt(Generator *self, const MpplCallStmt *syntax)
         MpplToken            *name_token        = mppl_entire_var__name(entire_var_syntax);
         const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
         const Def            *def               = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
-        const SyntaxTree     *syntax            = def_syntax(def);
 
-        for (;; syntax = syntax_tree_parent(syntax)) {
-          if (syntax_tree_kind(syntax) == SYNTAX_PROC_DECL) {
-            write(self, "ptr %%%s", string_data(raw_name_token->string));
-            break;
-          }
-          if (syntax_tree_kind(syntax) == SYNTAX_PROGRAM) {
-            write(self, "ptr @%s", string_data(raw_name_token->string));
-            break;
-          }
+        switch (def_kind(def)) {
+        case DEF_LOCAL:
+        case DEF_PARAM:
+          write(self, "ptr %%%s", string_data(raw_name_token->string));
+          break;
+
+        case DEF_VAR:
+          write(self, "ptr @%s", string_data(raw_name_token->string));
+          break;
+
+        default:
+          unreachable();
         }
 
         mppl_unref(name_token);
