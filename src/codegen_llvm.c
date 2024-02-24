@@ -791,6 +791,8 @@ Label write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
         default:
           unreachable();
         }
+
+        mppl_unref(number_lit_syntax);
       }
 
       mppl_unref(expr_syntax);
