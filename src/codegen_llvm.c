@@ -711,7 +711,7 @@ Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
   }
 
   if (syntax_tree_kind((SyntaxTree *) read_token) == SYNTAX_READLN_KW) {
-    str_push(&format, "%*[^\\0A]\\0A");
+    str_push(&format, "%*[^\\0A]");
   }
 
   {
@@ -735,6 +735,10 @@ Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
     }
   }
   write(self, ")\n");
+
+  if (syntax_tree_kind((SyntaxTree *) read_token) == SYNTAX_READLN_KW) {
+    write_inst(self, "call i32 @getchar()");
+  }
 
   array_free(ptrs);
   mppl_unref(read_token);
@@ -978,6 +982,7 @@ void visit_program(const MpplAstWalker *self, const MpplProgram *syntax, void *g
   MpplCompStmt *stmt_syntax = mppl_program__stmt(syntax);
   Label         label;
 
+  write(gen, "declare i32 @getchar()\n");
   write(gen, "declare i32 @printf(ptr, ...)\n");
   write(gen, "declare i32 @scanf(ptr, ...)\n\n");
 
