@@ -1030,7 +1030,7 @@ int mpplc_codegen_llvm_ir(const Source *source, const MpplProgram *syntax, Ctx *
   for (i = 0; i < array_count(self.strs); ++i) {
     Str *str = array_at(self.strs, i);
     array_push_count(str->chars, "\0", 1);
-    write(&self, "@.str%lu = private unnamed_addr constant [%lu x i8] c\"%s\"\n", i, str->length, array_data(str->chars));
+    write(&self, "@.str%lu = private unnamed_addr constant [%lu x i8] c\"%s\\00\"\n", i, str->length + 1, array_data(str->chars));
     str_free(str);
   }
 
