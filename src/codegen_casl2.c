@@ -1247,6 +1247,7 @@ static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
           break;
 
         case DEF_VAR:
+        case DEF_LOCAL:
           write_inst2(self, "LAD", r(GR1), adr(label));
           break;
 

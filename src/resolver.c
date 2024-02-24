@@ -19,8 +19,9 @@ typedef struct Scope    Scope;
 typedef struct Resolver Resolver;
 
 struct Scope {
-  Map   *defs;
-  Scope *parent;
+  Map              *defs;
+  Scope            *parent;
+  const SyntaxTree *syntax;
 };
 
 struct Resolver {
@@ -61,11 +62,12 @@ static void error_proc_res_failure(Resolver *resolver, const String *name, const
   array_push(resolver->errors, &report);
 }
 
-static void push_scope(Resolver *resolver)
+static void push_scope(Resolver *resolver, const SyntaxTree *syntax)
 {
   Scope *scope    = xmalloc(sizeof(Scope));
   scope->defs     = map_new(NULL, NULL);
   scope->parent   = resolver->scope;
+  scope->syntax   = syntax;
   resolver->scope = scope;
 }
 
@@ -138,7 +140,7 @@ static void visit_program(const MpplAstWalker *walker, const MpplProgram *syntax
   MpplToken *name_syntax = mppl_program__name(syntax);
   try_define(resolver, DEF_PROGRAM, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
   mppl_unref(name_syntax);
-  push_scope(resolver);
+  push_scope(resolver, (const SyntaxTree *) syntax);
   mppl_ast__walk_program(walker, syntax, resolver);
   pop_scope(resolver);
 }
@@ -148,7 +150,7 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
   MpplToken *name_syntax = mppl_proc_decl__name(syntax);
   try_define(resolver, DEF_PROC, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
   mppl_unref(name_syntax);
-  push_scope(resolver);
+  push_scope(resolver, (const SyntaxTree *) syntax);
   mppl_ast__walk_proc_decl(walker, syntax, resolver);
   pop_scope(resolver);
 }
@@ -156,9 +158,11 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
 static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *syntax, void *resolver)
 {
   unsigned long i;
+  Resolver *r = resolver;
+  DefKind kind = syntax_tree_kind(r->scope->syntax) == SYNTAX_PROGRAM ? DEF_VAR : DEF_LOCAL;
   for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
     MpplToken *name_syntax = mppl_var_decl__name(syntax, i);
-    try_define(resolver, DEF_VAR, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
+    try_define(resolver, kind, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
     mppl_unref(name_syntax);
   }
   (void) walker;

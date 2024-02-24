@@ -14,7 +14,8 @@ typedef enum {
   DEF_PROGRAM,
   DEF_PROC,
   DEF_VAR,
-  DEF_PARAM
+  DEF_PARAM,
+  DEF_LOCAL
 } DefKind;
 
 typedef struct String    String;
