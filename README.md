@@ -17,6 +17,7 @@ cmake --build ./build # 最終成果物として ./build/mpplc が生成され�
 $ ./build/mpplc --help
 Usage: ./build/mpplc [OPTIONS] INPUT
 Options:
+    --dump-syntax   Dump syntax tree
     --pretty-print  Pretty print the input file
     --syntax-only   Check syntax only
     --emit-llvm     Emit LLVM IR
