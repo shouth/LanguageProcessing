@@ -48,6 +48,49 @@ Options:
 # mpplファイルと同じディレクトリにLLVM IRのファイルができる
 ```
 
+こんな感じのファイルが出力されます。
+
+```llvm
+declare {i16, i1} @llvm.sadd.with.overflow.i16(i16, i16)
+declare {i16, i1} @llvm.ssub.with.overflow.i16(i16, i16)
+declare {i16, i1} @llvm.smul.with.overflow.i16(i16, i16)
+
+declare i32 @getchar()
+declare i32 @printf(ptr, ...)
+declare i32 @scanf(ptr, ...)
+declare void @exit(i32)
+
+@x = common global i16 0
+@high = common global i16 0
+@low = common global i16 0
+@mid = common global i16 0
+@can = common global i16 0
+
+define i32 @main() {
+  call i32 @printf(ptr @.str0)
+  store i8 0, ptr @x
+  call i32 @scanf(ptr @.format.integer, ptr @x)
+  call i32 @scanf(ptr @.format.line)
+  call i32 @getchar()
+  %.t2 = load i16, ptr @x
+  %.t3 = add i16 0, 0
+  %.t1 = icmp slt i16 %.t2, %.t3
+  br i1 %.t1, label %l2, label %l3
+
+l2:
+  call i32 @printf(ptr @.str1)
+  br label %l1
+
+l3:
+  %.t4 = add i16 0, 0
+  store i16 %.t4, ptr @low
+  %.t5 = add i16 0, 181
+  store i16 %.t5, ptr @high
+  br label %l4
+
+; 以下省略
+```
+
 生成されたLLVM IRのファイルをclangでコンパイルすればネイティブのプログラムが作れます。target tripleを埋め込んでないのでコンパイル時に警告が出てしまうのはご愛敬ということで。
 
 ```bash
