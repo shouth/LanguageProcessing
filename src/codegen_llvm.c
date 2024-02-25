@@ -581,10 +581,13 @@ Label write_while_stmt(Generator *self, const MpplWhileStmt *syntax, Label sourc
 
   self->break_label = next_label;
 
-  write_inst(self, "br label %%l%lu", cond_label);
-  write(self, "\n");
+  if (!source) {
+    write_inst(self, "br label %%l%lu", cond_label);
+    write(self, "\n");
 
-  write_label(self, cond_label);
+    write_label(self, cond_label);
+  }
+
   write_expr(self, cond_temporal, cond_syntax);
   write_inst(self, "br i1 %%.t%lu, label %%l%lu, label %%l%lu", cond_temporal, body_label, next_label);
   write(self, "\n");
