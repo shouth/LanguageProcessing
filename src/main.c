@@ -85,6 +85,7 @@ static void print_help(void)
   printf(
     "Usage: %s [OPTIONS] INPUT\n"
     "Options:\n"
+    "    --dump-syntax   Dump syntax tree\n"
     "    --pretty-print  Pretty print the input file\n"
     "    --syntax-only   Check syntax only\n"
     "    --emit-llvm     Emit LLVM IR\n"
