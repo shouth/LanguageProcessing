@@ -131,6 +131,76 @@ void write_label(Generator *self, Label label)
 
 void write_expr(Generator *self, Temp result, const AnyMpplExpr *expr);
 
+Ptr write_expr_ptr(Generator *self, const AnyMpplExpr *expr)
+{
+  Ptr ref;
+
+  ref.type = ctx_type_of(self->ctx, (const SyntaxTree *) expr, NULL);
+  if (mppl_expr__kind(expr) == MPPL_EXPR_VAR) {
+    const AnyMpplVar *var_syntax = (const AnyMpplVar *) expr;
+    switch (mppl_var__kind(var_syntax)) {
+    case MPPL_VAR_ENTIRE: {
+      const MpplEntireVar *entire_var_syntax = (const MpplEntireVar *) var_syntax;
+
+      MpplToken *name_token = mppl_entire_var__name(entire_var_syntax);
+      const Def *def        = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+
+      ref.is_temporal = 0;
+      ref.ptr.def     = def;
+
+      mppl_unref(name_token);
+      break;
+    }
+
+    case MPPL_VAR_INDEXED: {
+      const MpplIndexedVar *indexed_var_syntax = (const MpplIndexedVar *) var_syntax;
+      MpplToken            *name_token         = mppl_indexed_var__name(indexed_var_syntax);
+      AnyMpplExpr          *index_syntax       = mppl_indexed_var__expr(indexed_var_syntax);
+      const RawSyntaxToken *raw_name_token     = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
+
+      const Def       *def      = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+      const ArrayType *def_type = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
+      unsigned long    length   = array_type_length(def_type);
+
+      Temp index_temporal = self->temp++;
+      Temp ptr_temporal   = self->temp++;
+
+      write_expr(self, index_temporal, index_syntax);
+      write_inst(self, "%%.t%lu = getelementptr inbounds [%lu x i%lu], ptr @%s, i16 %%.t%lu",
+        ptr_temporal, length, type_width(ref.type), string_data(raw_name_token->string), index_temporal);
+
+      ref.is_temporal  = 1;
+      ref.ptr.temporal = ptr_temporal;
+
+      mppl_unref(name_token);
+      mppl_unref(index_syntax);
+      break;
+    }
+
+    default:
+      unreachable();
+    }
+  } else {
+    Temp temporal    = self->temp++;
+    ref.is_temporal  = 1;
+    ref.ptr.temporal = self->temp++;
+    write_expr(self, temporal, expr);
+    write_inst(self, "%%.t%lu = alloca i%lu", ref.ptr.temporal, type_width(ref.type));
+    write_inst(self, "store i%lu %%.t%lu, ptr %%.t%lu", type_width(ref.type), temporal, ref.ptr.temporal);
+  }
+  return ref;
+}
+
+void write_ptr(Generator *self, const Ptr *ptr)
+{
+  if (ptr->is_temporal) {
+    write(self, "%%.t%lu", ptr->ptr.temporal);
+  } else {
+    const char *prefix = def_kind(ptr->ptr.def) == DEF_VAR ? "@" : "%";
+    write(self, "%s%s", prefix, string_data(def_name(ptr->ptr.def)));
+  }
+}
+
 void write_arithmetic_expr(
   Generator *self, Temp result, const char *inst,
   const AnyMpplExpr *lhs_syntax, const AnyMpplExpr *rhs_syntax, int check_division_by_zero)
@@ -352,59 +422,10 @@ void write_cast_expr(Generator *self, Temp result, const MpplCastExpr *expr)
 
 void write_var_expr(Generator *self, Temp result, const AnyMpplVar *var)
 {
-  switch (mppl_var__kind(var)) {
-  case MPPL_VAR_ENTIRE: {
-    const MpplEntireVar  *entire_var_syntax = (const MpplEntireVar *) var;
-    MpplToken            *name_token        = mppl_entire_var__name(entire_var_syntax);
-    const RawSyntaxToken *raw_name_token    = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
-    const Def            *def               = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
-    const Type           *type              = ctx_type_of(self->ctx, def_syntax(def), NULL);
-
-    switch (def_kind(def)) {
-    case DEF_LOCAL:
-    case DEF_PARAM:
-      write_inst(self, "%%.t%lu = load i%lu, ptr %%%s", result, type_width(type), string_data(raw_name_token->string));
-      break;
-
-    case DEF_VAR:
-      write_inst(self, "%%.t%lu = load i%lu, ptr @%s", result, type_width(type), string_data(raw_name_token->string));
-      break;
-
-    default:
-      unreachable();
-    }
-
-    mppl_unref(name_token);
-    break;
-  }
-
-  case MPPL_VAR_INDEXED: {
-    const MpplIndexedVar *indexed_var_syntax = (const MpplIndexedVar *) var;
-    MpplToken            *name_token         = mppl_indexed_var__name(indexed_var_syntax);
-    AnyMpplExpr          *index_syntax       = mppl_indexed_var__expr(indexed_var_syntax);
-    const RawSyntaxToken *raw_name_token     = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
-
-    const Def       *def       = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
-    const ArrayType *def_type  = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
-    const Type      *base_type = array_type_base(def_type);
-    unsigned long    length    = array_type_length(def_type);
-
-    Temp index_temporal = self->temp++;
-    Temp ptr_temporal   = self->temp++;
-
-    write_expr(self, index_temporal, index_syntax);
-    write_inst(self, "%%.t%lu = getelementptr inbounds [%lu x i%lu], ptr @%s, i16 %%.t%lu",
-      ptr_temporal, length, type_width(base_type), string_data(raw_name_token->string), index_temporal);
-    write_inst(self, "%%.t%lu = load i%lu, ptr %%.t%lu", result, type_width(base_type), ptr_temporal);
-
-    mppl_unref(name_token);
-    mppl_unref(index_syntax);
-    break;
-  }
-
-  default:
-    unreachable();
-  }
+  Ptr ptr = write_expr_ptr(self, (AnyMpplExpr *) var);
+  write(self, "  %%.t%lu = load i%lu, ptr ", result, type_width(ptr.type));
+  write_ptr(self, &ptr);
+  write(self, "\n");
 }
 
 Label write_lit_expr(Generator *self, Temp result, const AnyMpplLit *lit)
@@ -470,76 +491,6 @@ void write_expr(Generator *self, Temp result, const AnyMpplExpr *expr)
 
   default:
     unreachable();
-  }
-}
-
-Ptr write_expr_ptr(Generator *self, const AnyMpplExpr *expr)
-{
-  Ptr ref;
-
-  ref.type = ctx_type_of(self->ctx, (const SyntaxTree *) expr, NULL);
-  if (mppl_expr__kind(expr) == MPPL_EXPR_VAR) {
-    const AnyMpplVar *var_syntax = (const AnyMpplVar *) expr;
-    switch (mppl_var__kind(var_syntax)) {
-    case MPPL_VAR_ENTIRE: {
-      const MpplEntireVar *entire_var_syntax = (const MpplEntireVar *) var_syntax;
-
-      MpplToken *name_token = mppl_entire_var__name(entire_var_syntax);
-      const Def *def        = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
-
-      ref.is_temporal = 0;
-      ref.ptr.def     = def;
-
-      mppl_unref(name_token);
-      break;
-    }
-
-    case MPPL_VAR_INDEXED: {
-      const MpplIndexedVar *indexed_var_syntax = (const MpplIndexedVar *) var_syntax;
-      MpplToken            *name_token         = mppl_indexed_var__name(indexed_var_syntax);
-      AnyMpplExpr          *index_syntax       = mppl_indexed_var__expr(indexed_var_syntax);
-      const RawSyntaxToken *raw_name_token     = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
-
-      const Def       *def      = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
-      const ArrayType *def_type = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
-      unsigned long    length   = array_type_length(def_type);
-
-      Temp index_temporal = self->temp++;
-      Temp ptr_temporal   = self->temp++;
-
-      write_expr(self, index_temporal, index_syntax);
-      write_inst(self, "%%.t%lu = getelementptr inbounds [%lu x i%lu], ptr @%s, i16 %%.t%lu",
-        ptr_temporal, length, type_width(ref.type), string_data(raw_name_token->string), index_temporal);
-
-      ref.is_temporal  = 1;
-      ref.ptr.temporal = ptr_temporal;
-
-      mppl_unref(name_token);
-      mppl_unref(index_syntax);
-      break;
-    }
-
-    default:
-      unreachable();
-    }
-  } else {
-    Temp temporal    = self->temp++;
-    ref.is_temporal  = 1;
-    ref.ptr.temporal = self->temp++;
-    write_expr(self, temporal, expr);
-    write_inst(self, "%%.t%lu = alloca i%lu", ref.ptr.temporal, type_width(ref.type));
-    write_inst(self, "store i%lu %%.t%lu, ptr %%.t%lu", type_width(ref.type), temporal, ref.ptr.temporal);
-  }
-  return ref;
-}
-
-void write_ptr(Generator *self, const Ptr *ptr)
-{
-  if (ptr->is_temporal) {
-    write(self, "%%.t%lu", ptr->ptr.temporal);
-  } else {
-    const char *prefix = def_kind(ptr->ptr.def) == DEF_VAR ? "@" : "%";
-    write(self, "%s%s", prefix, string_data(def_name(ptr->ptr.def)));
   }
 }
 
