@@ -166,7 +166,8 @@ Ptr write_expr_ptr(Generator *self, const AnyMpplExpr *expr)
       Temp ptr_temporal   = self->temp++;
 
       write_expr(self, index_temporal, index_syntax);
-      write_inst(self, "%%.t%lu = getelementptr inbounds [%lu x i%lu], ptr @%s, i16 %%.t%lu",
+      write_inst(self, "call void @.assert.range(i16 %%.t%lu, i16 %lu)", index_temporal, length);
+      write_inst(self, "%%.t%lu = getelementptr inbounds [%lu x i%lu], ptr @%s, i32 0, i16 %%.t%lu",
         ptr_temporal, length, type_width(ref.type), string_data(raw_name_token->string), index_temporal);
 
       ref.is_temporal  = 1;
