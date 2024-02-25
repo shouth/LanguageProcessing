@@ -28,6 +28,7 @@
 const char *program;
 Array      *filenames = NULL;
 
+int dump_syntax  = 0;
 int pretty_print = 0;
 int syntax_only  = 0;
 int emit_llvm    = 0;
@@ -51,6 +52,10 @@ static int run_compiler(void)
     }
 
     if (mpplc_parse(source, ctx, &syntax)) {
+      if (dump_syntax) {
+        mpplc_dump_syntax(syntax);
+      }
+
       if (pretty_print) {
         mpplc_pretty_print(syntax, NULL);
       }
@@ -110,7 +115,9 @@ static void init(int argc, const char **argv)
     status = EXIT_FAILURE;
   } else {
     for (i = 1; i < argc; ++i) {
-      if (strcmp(argv[i], "--pretty-print") == 0) {
+      if (strcmp(argv[i], "--dump-syntax") == 0) {
+        dump_syntax = 1;
+      } else if (strcmp(argv[i], "--pretty-print") == 0) {
         pretty_print = 1;
       } else if (strcmp(argv[i], "--syntax-only") == 0) {
         syntax_only = 1;

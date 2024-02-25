@@ -52,6 +52,8 @@ int mpplc_codegen_casl2(const Source *source, const MpplProgram *syntax, Ctx *ct
 
 int mpplc_codegen_llvm_ir(const Source *source, const MpplProgram *syntax, Ctx *ctx);
 
+void mpplc_dump_syntax(const MpplProgram *syntax);
+
 typedef struct PrinterOption PrinterOption;
 
 struct PrinterOption {

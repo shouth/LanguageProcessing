@@ -24,6 +24,11 @@
 #include "syntax_tree.h"
 #include "utility.h"
 
+void mpplc_dump_syntax(const MpplProgram *syntax)
+{
+  raw_syntax_node_print(syntax_tree_raw((const SyntaxTree *) syntax));
+}
+
 const Type *mppl_std_type__to_type(const AnyMpplStdType *syntax)
 {
   switch (mppl_std_type__kind(syntax)) {
