@@ -316,7 +316,7 @@ void write_cast_expr(Generator *self, Temp result, const MpplCastExpr *expr)
 
     switch (type_kind(expr_type)) {
     case TYPE_BOOLEAN: {
-      write_inst(self, "%%.t%lu = icmp ne i16 %%.t%lu, 0", result, operand_temporal);
+      write_inst(self, "%%.t%lu = icmp ne i%lu %%.t%lu, 0", result, type_width(operand_type), operand_temporal);
       break;
     }
 
@@ -384,17 +384,18 @@ void write_var_expr(Generator *self, Temp result, const AnyMpplVar *var)
     AnyMpplExpr          *index_syntax       = mppl_indexed_var__expr(indexed_var_syntax);
     const RawSyntaxToken *raw_name_token     = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) name_token);
 
-    const Def       *def      = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
-    const ArrayType *def_type = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
-    unsigned long    length   = array_type_length(def_type);
+    const Def       *def       = ctx_resolve(self->ctx, (const SyntaxTree *) name_token, NULL);
+    const ArrayType *def_type  = (const ArrayType *) ctx_type_of(self->ctx, def_syntax(def), NULL);
+    const Type      *base_type = array_type_base(def_type);
+    unsigned long    length    = array_type_length(def_type);
 
     Temp index_temporal = self->temp++;
     Temp ptr_temporal   = self->temp++;
 
     write_expr(self, index_temporal, index_syntax);
-    write_inst(self, "%%.t%lu = getelementptr inbounds [%lu x i16], ptr @%s, i16 %%.t%lu",
-      ptr_temporal, length, string_data(raw_name_token->string), index_temporal);
-    write_inst(self, "%%.t%lu = load i16, %%.t%lu", result, ptr_temporal);
+    write_inst(self, "%%.t%lu = getelementptr inbounds [%lu x i%lu], ptr @%s, i16 %%.t%lu",
+      ptr_temporal, length, type_width(base_type), string_data(raw_name_token->string), index_temporal);
+    write_inst(self, "%%.t%lu = load i%lu, ptr %%.t%lu", result, type_width(base_type), ptr_temporal);
 
     mppl_unref(name_token);
     mppl_unref(index_syntax);
