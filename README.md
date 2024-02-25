@@ -27,7 +27,7 @@ Options:
 ### エラー出力
 
 カッコいい(主観)エラーメッセージが出力されます。下の画像のは極端な例だけど。  
-実装は[report.c](https://github.com/shouth/LanguageProcessing/blob/new/src/report.c)にはいってます。
+実装は[report.c](https://github.com/shouth/LanguageProcessing/blob/main/src/report.c)にはいってます。
 
 フォーマット自体は[Ariadne](https://github.com/zesterer/ariadne)のものを参考…というかほぼそのまま使ってます。実装は何も見ずに一から自分でやった。
 
@@ -101,10 +101,10 @@ clang [上のコマンドで生成されたLLVM IRファイル]
 
 マルチパスのコンパイラです。
 
-1. 構文木の生成([parser.c](https://github.com/shouth/LanguageProcessing/blob/new/src/parser.c))
-2. 名前解決([resolver.c](https://github.com/shouth/LanguageProcessing/blob/new/src/resolver.c))
-3. 文法チェック([checker.c](https://github.com/shouth/LanguageProcessing/blob/new/src/resolver.c))
-4. コード生成([codegen_casl2.c](https://github.com/shouth/LanguageProcessing/blob/new/src/codegen_casl2.c), [codegen_llvm.c](https://github.com/shouth/LanguageProcessing/blob/new/src/codegen_llvm.c))
+1. 構文木の生成([parser.c](https://github.com/shouth/LanguageProcessing/blob/main/src/parser.c))
+2. 名前解決([resolver.c](https://github.com/shouth/LanguageProcessing/blob/main/src/resolver.c))
+3. 文法チェック([checker.c](https://github.com/shouth/LanguageProcessing/blob/main/src/resolver.c))
+4. コード生成([codegen_casl2.c](https://github.com/shouth/LanguageProcessing/blob/main/src/codegen_casl2.c), [codegen_llvm.c](https://github.com/shouth/LanguageProcessing/blob/main/src/codegen_llvm.c))
 
 の順に処理が進みます。講義ではワンパスで実装する形で進行していきますが、私は講義を受けていた当時もマルチパスで実装していました。
 
@@ -112,7 +112,7 @@ clang [上のコマンドで生成されたLLVM IRファイル]
 
 ### データ構造
 
-可変長配列([array.c](https://github.com/shouth/LanguageProcessing/blob/new/src/array.c))とハッシュテーブル([map.c](https://github.com/shouth/LanguageProcessing/blob/new/src/map.c))を自作してます。可変長配列の方はまあ…特に面白味もないありふれた感じの実装です。
+可変長配列([array.c](https://github.com/shouth/LanguageProcessing/blob/main/src/array.c))とハッシュテーブル([map.c](https://github.com/shouth/LanguageProcessing/blob/main/src/map.c))を自作してます。可変長配列の方はまあ…特に面白味もないありふれた感じの実装です。
 
 ハッシュテーブルの実装では[hopscotch hashing](https://en.wikipedia.org/wiki/Hopscotch_hashing)というアルゴリズムを使っています。ハッシュテーブルのアルゴリズムには大きく分けてチェイン法とオープンアドレス法の二つがありますが、このhopscotch hashingはチェイン法とオープンアドレス法をいい感じに統合したアルゴリズムになっています。ハッシュテーブルの充填率が高くなっても性能が落ちないこともあり、作者はこのアルゴリズムが好きです。
 
@@ -154,7 +154,7 @@ Red Green Tree(の改良版)は
 
 ### エラーメッセージ
 
-気合で実装しました。仮想ターミナルっぽいもの([canvas.c](https://github.com/shouth/LanguageProcessing/blob/new/src/canvas.c))を用意して、その上に出力していく([report.c](https://github.com/shouth/LanguageProcessing/blob/new/src/report.c))方法を取りました。ガチで気合で実装したのでアルゴリズムもへったくれもないです。めちゃくちゃ大変だった…
+気合で実装しました。仮想ターミナルっぽいもの([canvas.c](https://github.com/shouth/LanguageProcessing/blob/main/src/canvas.c))を用意して、その上に出力していく([report.c](https://github.com/shouth/LanguageProcessing/blob/main/src/report.c))方法を取りました。ガチで気合で実装したのでアルゴリズムもへったくれもないです。めちゃくちゃ大変だった…
 
 メッセージ出力を[box-drawing character](https://en.wikipedia.org/wiki/Box-drawing_character)を用いてリッチにしている都合上、簡易的にUTF-8を処理する仕組みが導入してあります。
 
