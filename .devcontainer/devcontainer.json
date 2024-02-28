@@ -17,6 +17,9 @@
     "ghcr.io/devcontainers/features/git:1": {
       "version": "2.43.0",
       "ppa": false
+    },
+    "ghcr.io/devcontainers-community/features/llvm:3": {
+      "version": "latest"
     }
   },
   "customizations": {
@@ -34,7 +37,7 @@
           "editor.formatOnSave": true,
           "editor.formatOnType": true
         },
-        "clangd.path": "clangd-18",
+        "clangd.path": "clangd",
         "cmake.buildTask": true,
         "cmake.configureOnOpen": true,
         "C_Cpp.intelliSenseEngine": "disabled",
