@@ -12,8 +12,7 @@
       "installOhMyZshConfig": false,
       "username": "vscode",
       "userUid": "automatic",
-      "userGid": "automatic",
-      "upgradePackages": true
+      "userGid": "automatic"
     },
     "ghcr.io/devcontainers/features/git:1": {
       "version": "2.43.0",
