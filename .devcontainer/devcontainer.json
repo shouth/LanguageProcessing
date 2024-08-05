@@ -2,6 +2,7 @@
   "name": "KIT LPP",
   "image": "omzn/kit-lpp:v2",
   "onCreateCommand": "bash .devcontainer/setup.bash",
+  "remoteUser": "vscode",
   "features": {
     "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -9,7 +10,7 @@
       "configureZshAsDefaultShell": false,
       "installOhMyZsh": false,
       "installOhMyZshConfig": false,
-      "username": "automatic",
+      "username": "vscode",
       "userUid": "automatic",
       "userGid": "automatic",
       "upgradePackages": true
@@ -35,7 +36,8 @@
         "[c]": {
           "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
           "editor.formatOnSave": true,
-          "editor.formatOnType": true
+          "editor.formatOnType": true,
+          "editor.indentSize": 2
         },
         "clangd.path": "clangd",
         "cmake.buildTask": true,
