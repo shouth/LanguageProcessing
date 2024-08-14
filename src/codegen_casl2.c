@@ -24,8 +24,8 @@
 #include "map.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
+#include "mppl_syntax_kind.h"
 #include "source.h"
-#include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
@@ -309,51 +309,51 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
       self->rhs        = expr_create_tree(ctx, rhs_syntax);
 
       switch (syntax_tree_kind((const SyntaxTree *) op_syntax)) {
-      case SYNTAX_PLUS_TOKEN:
+      case MPPL_PLUS_TOKEN:
         self->op = BINARY_ADD;
         break;
 
-      case SYNTAX_MINUS_TOKEN:
+      case MPPL_MINUS_TOKEN:
         self->op = BINARY_SUB;
         break;
 
-      case SYNTAX_STAR_TOKEN:
+      case MPPL_STAR_TOKEN:
         self->op = BINARY_MUL;
         break;
 
-      case SYNTAX_DIV_KW:
+      case MPPL_DIV_KW:
         self->op = BINARY_DIV;
         break;
 
-      case SYNTAX_EQUAL_TOKEN:
+      case MPPL_EQUAL_TOKEN:
         self->op = BINARY_EQ;
         break;
 
-      case SYNTAX_NOTEQ_TOKEN:
+      case MPPL_NOTEQ_TOKEN:
         self->op = BINARY_NE;
         break;
 
-      case SYNTAX_LESS_TOKEN:
+      case MPPL_LESS_TOKEN:
         self->op = BINARY_LT;
         break;
 
-      case SYNTAX_LESSEQ_TOKEN:
+      case MPPL_LESSEQ_TOKEN:
         self->op = BINARY_LE;
         break;
 
-      case SYNTAX_GREATER_TOKEN:
+      case MPPL_GREATER_TOKEN:
         self->op = BINARY_GT;
         break;
 
-      case SYNTAX_GREATEREQ_TOKEN:
+      case MPPL_GREATEREQ_TOKEN:
         self->op = BINARY_GE;
         break;
 
-      case SYNTAX_AND_KW:
+      case MPPL_AND_KW:
         self->op = BINARY_AND;
         break;
 
-      case SYNTAX_OR_KW:
+      case MPPL_OR_KW:
         self->op = BINARY_OR;
         break;
 
@@ -364,11 +364,11 @@ static Expr *expr_create_tree(Ctx *ctx, const AnyMpplExpr *syntax)
       result = (Expr *) self;
     } else {
       switch (syntax_tree_kind((const SyntaxTree *) op_syntax)) {
-      case SYNTAX_PLUS_TOKEN:
+      case MPPL_PLUS_TOKEN:
         result = expr_create_tree(ctx, rhs_syntax);
         break;
 
-      case SYNTAX_MINUS_TOKEN: {
+      case MPPL_MINUS_TOKEN: {
         BinaryExpr *self = malloc(sizeof(BinaryExpr));
         self->kind       = EXPR_BINARY;
         self->type       = ctx_type_of(ctx, (const SyntaxTree *) rhs_syntax, NULL);
@@ -627,7 +627,7 @@ static Adr locate(Generator *self, const Def *def, Adr label)
     if (map_entry(self->symbols, (void *) def, &index)) {
       return *(Adr *) map_value(self->symbols, &index) = label;
     } else {
-      Adr *p = dup(&label, sizeof(Adr), 1);
+      Adr *p = memdup(&label, sizeof(Adr));
       map_update(self->symbols, &index, (void *) def, p);
       return label;
     }
@@ -1309,7 +1309,7 @@ static Adr write_input_stmt(Generator *self, const MpplInputStmt *syntax)
     }
   }
 
-  if (syntax_tree_kind((const SyntaxTree *) read_syntax) == SYNTAX_READLN_KW) {
+  if (syntax_tree_kind((const SyntaxTree *) read_syntax) == MPPL_READLN_KW) {
     write_inst1(self, "CALL", "RLINE");
     self->builtin_read_line = 1;
   }
@@ -1393,7 +1393,7 @@ static Adr write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
     }
   }
 
-  if (syntax_tree_kind((const SyntaxTree *) write_syntax) == SYNTAX_WRITELN_KW) {
+  if (syntax_tree_kind((const SyntaxTree *) write_syntax) == MPPL_WRITELN_KW) {
     write_inst1(self, "CALL", "WLINE");
   }
   write_inst1(self, "CALL", "FLUSH");

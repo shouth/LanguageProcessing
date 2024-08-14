@@ -24,9 +24,9 @@
 #include "context_fwd.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
+#include "mppl_syntax_kind.h"
 #include "report.h"
 #include "string.h"
-#include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
@@ -37,32 +37,32 @@ struct Checker {
   Array *errors;
 };
 
-static const char *op_to_str(SyntaxKind kind)
+static const char *op_to_str(MpplSyntaxKind kind)
 {
   switch (kind) {
-  case SYNTAX_EQUAL_TOKEN:
+  case MPPL_EQUAL_TOKEN:
     return "=";
-  case SYNTAX_NOTEQ_TOKEN:
+  case MPPL_NOTEQ_TOKEN:
     return "<>";
-  case SYNTAX_LESS_TOKEN:
+  case MPPL_LESS_TOKEN:
     return "<";
-  case SYNTAX_LESSEQ_TOKEN:
+  case MPPL_LESSEQ_TOKEN:
     return "<=";
-  case SYNTAX_GREATER_TOKEN:
+  case MPPL_GREATER_TOKEN:
     return ">";
-  case SYNTAX_GREATEREQ_TOKEN:
+  case MPPL_GREATEREQ_TOKEN:
     return ">=";
-  case SYNTAX_PLUS_TOKEN:
+  case MPPL_PLUS_TOKEN:
     return "+";
-  case SYNTAX_MINUS_TOKEN:
+  case MPPL_MINUS_TOKEN:
     return "-";
-  case SYNTAX_STAR_TOKEN:
+  case MPPL_STAR_TOKEN:
     return "*";
-  case SYNTAX_DIV_KW:
+  case MPPL_DIV_KW:
     return "div";
-  case SYNTAX_AND_KW:
+  case MPPL_AND_KW:
     return "and";
-  case SYNTAX_OR_KW:
+  case MPPL_OR_KW:
     return "or";
   default:
     unreachable();
@@ -168,12 +168,12 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
 
     if (lhs_type && rhs_type) {
       switch (syntax_tree_kind((SyntaxTree *) op_syntax)) {
-      case SYNTAX_EQUAL_TOKEN:
-      case SYNTAX_NOTEQ_TOKEN:
-      case SYNTAX_LESS_TOKEN:
-      case SYNTAX_LESSEQ_TOKEN:
-      case SYNTAX_GREATER_TOKEN:
-      case SYNTAX_GREATEREQ_TOKEN:
+      case MPPL_EQUAL_TOKEN:
+      case MPPL_NOTEQ_TOKEN:
+      case MPPL_LESS_TOKEN:
+      case MPPL_LESSEQ_TOKEN:
+      case MPPL_GREATER_TOKEN:
+      case MPPL_GREATEREQ_TOKEN:
         lhs_invalid = !type_is_std(lhs_type);
         rhs_invalid = !type_is_std(rhs_type);
         if (lhs_invalid || rhs_invalid) {
@@ -190,10 +190,10 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
         }
         break;
 
-      case SYNTAX_PLUS_TOKEN:
-      case SYNTAX_MINUS_TOKEN:
-      case SYNTAX_STAR_TOKEN:
-      case SYNTAX_DIV_KW:
+      case MPPL_PLUS_TOKEN:
+      case MPPL_MINUS_TOKEN:
+      case MPPL_STAR_TOKEN:
+      case MPPL_DIV_KW:
         lhs_invalid = type_kind(lhs_type) != TYPE_INTEGER;
         rhs_invalid = type_kind(rhs_type) != TYPE_INTEGER;
         if (lhs_invalid || rhs_invalid) {
@@ -207,8 +207,8 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
         }
         break;
 
-      case SYNTAX_AND_KW:
-      case SYNTAX_OR_KW:
+      case MPPL_AND_KW:
+      case MPPL_OR_KW:
         lhs_invalid = type_kind(lhs_type) != TYPE_BOOLEAN;
         rhs_invalid = type_kind(rhs_type) != TYPE_BOOLEAN;
         if (lhs_invalid || rhs_invalid) {
@@ -230,8 +230,8 @@ static const Type *check_binary_expr(Checker *checker, const MpplBinaryExpr *syn
     const Type *rhs_type = check_expr(checker, rhs_syntax);
     if (rhs_type) {
       switch (syntax_tree_kind((SyntaxTree *) op_syntax)) {
-      case SYNTAX_PLUS_TOKEN:
-      case SYNTAX_MINUS_TOKEN:
+      case MPPL_PLUS_TOKEN:
+      case MPPL_MINUS_TOKEN:
         if (type_kind(rhs_type) != TYPE_INTEGER) {
           error_unary_expr_invalid_operand(checker,
             (SyntaxTree *) syntax, (SyntaxTree *) op_syntax, (SyntaxTree *) rhs_syntax, rhs_type, "`integer`");

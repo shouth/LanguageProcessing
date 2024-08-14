@@ -295,7 +295,7 @@ const Type *ctx_array_type(Ctx *ctx, const Type *base, unsigned long length)
   if (map_entry(ctx->types, &type, &index)) {
     return map_key(ctx->types, &index);
   } else {
-    ArrayType *instance = dup(&type, sizeof(ArrayType), 1);
+    ArrayType *instance = memdup(&type, sizeof(ArrayType), 1);
     map_update(ctx->types, &index, instance, instance);
     return (Type *) instance;
   }
@@ -312,7 +312,7 @@ const Type *ctx_proc_type(Ctx *ctx, const TypeList *params)
   if (map_entry(ctx->types, &type, &index)) {
     return map_key(ctx->types, &index);
   } else {
-    ProcType *instance = dup(&type, sizeof(ProcType), 1);
+    ProcType *instance = memdup(&type, sizeof(ProcType), 1);
     map_update(ctx->types, &index, instance, instance);
     return (Type *) instance;
   }
@@ -320,7 +320,7 @@ const Type *ctx_proc_type(Ctx *ctx, const TypeList *params)
 
 const TypeList *ctx_type_list(Ctx *ctx, const Type **types, unsigned long length)
 {
-  const Type **copy = dup(types, sizeof(Type *), length);
+  const Type **copy = memdup(types, sizeof(Type *), length);
   return ctx_take_type_list(ctx, copy, length);
 }
 
@@ -339,7 +339,7 @@ const TypeList *ctx_take_type_list(Ctx *ctx, const Type **types, unsigned long l
       free(types);
       return map_key(ctx->type_lists, &index);
     } else {
-      TypeList *instance = dup(&list, sizeof(TypeList), 1);
+      TypeList *instance = memdup(&list, sizeof(TypeList), 1);
       map_update(ctx->type_lists, &index, instance, instance);
       return instance;
     }

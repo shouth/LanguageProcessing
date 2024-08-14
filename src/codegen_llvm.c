@@ -24,7 +24,7 @@
 #include "context_fwd.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
-#include "syntax_kind.h"
+#include "mppl_syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
@@ -281,51 +281,51 @@ void write_binary_expr(Generator *self, Temp result, const MpplBinaryExpr *expr)
 
   if (lhs_syntax) {
     switch (syntax_tree_kind((SyntaxTree *) op_token)) {
-    case SYNTAX_PLUS_TOKEN:
+    case MPPL_PLUS_TOKEN:
       write_arithmetic_expr_with_overflow(self, result, "sadd", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_MINUS_TOKEN:
+    case MPPL_MINUS_TOKEN:
       write_arithmetic_expr_with_overflow(self, result, "ssub", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_STAR_TOKEN:
+    case MPPL_STAR_TOKEN:
       write_arithmetic_expr_with_overflow(self, result, "smul", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_DIV_KW:
+    case MPPL_DIV_KW:
       write_arithmetic_expr(self, result, "sdiv", lhs_syntax, rhs_syntax, 1);
       break;
 
-    case SYNTAX_EQUAL_TOKEN:
+    case MPPL_EQUAL_TOKEN:
       write_relational_expr(self, result, "eq", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_NOTEQ_TOKEN:
+    case MPPL_NOTEQ_TOKEN:
       write_relational_expr(self, result, "ne", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_LESS_TOKEN:
+    case MPPL_LESS_TOKEN:
       write_relational_expr(self, result, "slt", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_LESSEQ_TOKEN:
+    case MPPL_LESSEQ_TOKEN:
       write_relational_expr(self, result, "sle", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_GREATER_TOKEN:
+    case MPPL_GREATER_TOKEN:
       write_relational_expr(self, result, "sgt", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_GREATEREQ_TOKEN:
+    case MPPL_GREATEREQ_TOKEN:
       write_relational_expr(self, result, "sge", lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_AND_KW:
+    case MPPL_AND_KW:
       write_logical_expr(self, result, 0, lhs_syntax, rhs_syntax);
       break;
 
-    case SYNTAX_OR_KW:
+    case MPPL_OR_KW:
       write_logical_expr(self, result, 1, lhs_syntax, rhs_syntax);
       break;
 
@@ -334,11 +334,11 @@ void write_binary_expr(Generator *self, Temp result, const MpplBinaryExpr *expr)
     }
   } else {
     switch (syntax_tree_kind((SyntaxTree *) op_token)) {
-    case SYNTAX_PLUS_TOKEN:
+    case MPPL_PLUS_TOKEN:
       write_expr(self, result, rhs_syntax);
       break;
 
-    case SYNTAX_MINUS_TOKEN: {
+    case MPPL_MINUS_TOKEN: {
       Temp rhs_temporal = self->temp++;
       write_expr(self, rhs_temporal, rhs_syntax);
       write_inst(self, "%%.t%lu = sub i16 0, %%.t%lu", result, rhs_temporal);
@@ -710,7 +710,7 @@ Label write_input_stmt(Generator *self, const MpplInputStmt *syntax)
     }
   }
 
-  if (syntax_tree_kind((SyntaxTree *) read_token) == SYNTAX_READLN_KW) {
+  if (syntax_tree_kind((SyntaxTree *) read_token) == MPPL_READLN_KW) {
     write_inst(self, "call i32 @scanf(ptr @.format.line)");
     write_inst(self, "call i32 @getchar()");
   }
@@ -780,7 +780,7 @@ Label write_output_stmt(Generator *self, const MpplOutputStmt *syntax)
     }
   }
 
-  if (syntax_tree_kind((SyntaxTree *) write_token) == SYNTAX_WRITELN_KW) {
+  if (syntax_tree_kind((SyntaxTree *) write_token) == MPPL_WRITELN_KW) {
     str_push(&format, "\\0A");
   }
 

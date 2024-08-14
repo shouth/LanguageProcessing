@@ -15,7 +15,7 @@
 */
 
 #include "mppl_syntax.h"
-#include "syntax_kind.h"
+#include "mppl_syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
@@ -71,9 +71,9 @@ MpplToken *mppl_program__eof_token(const MpplProgram *program)
 MpplDeclPartKind mppl_decl_part__kind(const AnyMpplDeclPart *part)
 {
   switch (syntax_tree_kind(syntax(part))) {
-  case SYNTAX_VAR_DECL_PART:
+  case MPPL_VAR_DECL_PART:
     return MPPL_DECL_PART_VAR;
-  case SYNTAX_PROC_DECL:
+  case MPPL_PROC_DECL:
     return MPPL_DECL_PART_PROC;
   default:
     unreachable();
@@ -225,23 +225,23 @@ AnyMpplType *mppl_fml_param_sec__type(const MpplFmlParamSec *sec)
 MpplStmtKind mppl_stmt__kind(const AnyMpplStmt *stmt)
 {
   switch (syntax_tree_kind(syntax(stmt))) {
-  case SYNTAX_ASSIGN_STMT:
+  case MPPL_ASSIGN_STMT:
     return MPPL_STMT_ASSIGN;
-  case SYNTAX_IF_STMT:
+  case MPPL_IF_STMT:
     return MPPL_STMT_IF;
-  case SYNTAX_WHILE_STMT:
+  case MPPL_WHILE_STMT:
     return MPPL_STMT_WHILE;
-  case SYNTAX_BREAK_STMT:
+  case MPPL_BREAK_STMT:
     return MPPL_STMT_BREAK;
-  case SYNTAX_CALL_STMT:
+  case MPPL_CALL_STMT:
     return MPPL_STMT_CALL;
-  case SYNTAX_RETURN_STMT:
+  case MPPL_RETURN_STMT:
     return MPPL_STMT_RETURN;
-  case SYNTAX_INPUT_STMT:
+  case MPPL_INPUT_STMT:
     return MPPL_STMT_INPUT;
-  case SYNTAX_OUTPUT_STMT:
+  case MPPL_OUTPUT_STMT:
     return MPPL_STMT_OUTPUT;
-  case SYNTAX_COMP_STMT:
+  case MPPL_COMP_STMT:
     return MPPL_STMT_COMP;
   default:
     unreachable();
@@ -460,21 +460,21 @@ MpplToken *mppl_input_list__rparen_token(const MpplInputList *list)
 MpplExprKind mppl_expr__kind(const AnyMpplExpr *expr)
 {
   switch (syntax_tree_kind(syntax(expr))) {
-  case SYNTAX_BINARY_EXPR:
+  case MPPL_BINARY_EXPR:
     return MPPL_EXPR_BINARY;
-  case SYNTAX_PAREN_EXPR:
+  case MPPL_PAREN_EXPR:
     return MPPL_EXPR_PAREN;
-  case SYNTAX_NOT_EXPR:
+  case MPPL_NOT_EXPR:
     return MPPL_EXPR_NOT;
-  case SYNTAX_CAST_EXPR:
+  case MPPL_CAST_EXPR:
     return MPPL_EXPR_CAST;
-  case SYNTAX_ENTIRE_VAR:
-  case SYNTAX_INDEXED_VAR:
+  case MPPL_ENTIRE_VAR:
+  case MPPL_INDEXED_VAR:
     return MPPL_EXPR_VAR;
-  case SYNTAX_NUMBER_LIT:
-  case SYNTAX_STRING_LIT:
-  case SYNTAX_TRUE_KW:
-  case SYNTAX_FALSE_KW:
+  case MPPL_NUMBER_LIT:
+  case MPPL_STRING_LIT:
+  case MPPL_TRUE_KW:
+  case MPPL_FALSE_KW:
     return MPPL_EXPR_LIT;
   default:
     unreachable();
@@ -554,9 +554,9 @@ MpplToken *mppl_cast_expr__rparen_token(const MpplCastExpr *expr)
 MpplVarKind mppl_var__kind(const AnyMpplVar *var)
 {
   switch (syntax_tree_kind(syntax(var))) {
-  case SYNTAX_ENTIRE_VAR:
+  case MPPL_ENTIRE_VAR:
     return MPPL_VAR_ENTIRE;
-  case SYNTAX_INDEXED_VAR:
+  case MPPL_INDEXED_VAR:
     return MPPL_VAR_INDEXED;
   default:
     unreachable();
@@ -597,11 +597,11 @@ MpplToken *mppl_indexed_var__rbracket_token(const MpplIndexedVar *var)
 MpplTypeKind mppl_type__kind(const AnyMpplType *type)
 {
   switch (syntax_tree_kind(syntax(type))) {
-  case SYNTAX_INTEGER_KW:
-  case SYNTAX_BOOLEAN_KW:
-  case SYNTAX_CHAR_KW:
+  case MPPL_INTEGER_KW:
+  case MPPL_BOOLEAN_KW:
+  case MPPL_CHAR_KW:
     return MPPL_TYPE_STD;
-  case SYNTAX_ARRAY_TYPE:
+  case MPPL_ARRAY_TYPE:
     return MPPL_TYPE_ARRAY;
   default:
     unreachable();
@@ -613,11 +613,11 @@ MpplTypeKind mppl_type__kind(const AnyMpplType *type)
 MpplStdTypeKind mppl_std_type__kind(const AnyMpplStdType *type)
 {
   switch (syntax_tree_kind(syntax(type))) {
-  case SYNTAX_INTEGER_KW:
+  case MPPL_INTEGER_KW:
     return MPPL_STD_TYPE_INTEGER;
-  case SYNTAX_BOOLEAN_KW:
+  case MPPL_BOOLEAN_KW:
     return MPPL_STD_TYPE_BOOLEAN;
-  case SYNTAX_CHAR_KW:
+  case MPPL_CHAR_KW:
     return MPPL_STD_TYPE_CHAR;
   default:
     unreachable();
@@ -705,13 +705,13 @@ MpplNumberLit *mppl_out_value__width(const MpplOutValue *value)
 MpplLitKind mppl_lit__kind(const AnyMpplLit *lit)
 {
   switch (syntax_tree_kind(syntax(lit))) {
-  case SYNTAX_NUMBER_LIT:
+  case MPPL_NUMBER_LIT:
     return MPPL_LIT_NUMBER;
-  case SYNTAX_STRING_LIT:
+  case MPPL_STRING_LIT:
     return MPPL_LIT_STRING;
-  case SYNTAX_TRUE_KW:
+  case MPPL_TRUE_KW:
     return MPPL_LIT_BOOLEAN;
-  case SYNTAX_FALSE_KW:
+  case MPPL_FALSE_KW:
     return MPPL_LIT_BOOLEAN;
   default:
     unreachable();

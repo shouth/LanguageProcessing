@@ -14,8 +14,8 @@
    limitations under the License.
 */
 
-#ifndef MPPL_SYNTAX_EXT_H
-#define MPPL_SYNTAX_EXT_H
+#ifndef MPPL_MPPL_EXT_H
+#define MPPL_MPPL_EXT_H
 
 #include "context_fwd.h"
 #include "mppl_syntax.h"

@@ -20,7 +20,7 @@
 #include "context_fwd.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
-#include "syntax_kind.h"
+#include "mppl_syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
@@ -93,7 +93,7 @@ char *mppl_lit_string__to_string(const MpplStringLit *syntax)
 int mppl_lit_boolean__to_int(const MpplBooleanLit *syntax)
 {
   const RawSyntaxToken *token = (const RawSyntaxToken *) syntax_tree_raw((const SyntaxTree *) syntax);
-  return token->kind == SYNTAX_TRUE_KW;
+  return token->kind == MPPL_TRUE_KW;
 }
 
 /* visit ast node */

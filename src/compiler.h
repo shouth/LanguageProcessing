@@ -19,8 +19,8 @@
 
 #include "context_fwd.h"
 #include "mppl_syntax.h"
+#include "mppl_syntax_kind.h"
 #include "source.h"
-#include "syntax_kind.h"
 
 typedef struct LexedToken LexedToken;
 
@@ -35,14 +35,14 @@ typedef enum {
 } LexStatus;
 
 struct LexedToken {
-  SyntaxKind    kind;
-  unsigned long offset;
-  unsigned long length;
+  MpplSyntaxKind kind;
+  unsigned long  offset;
+  unsigned long  length;
 };
 
 LexStatus mpplc_lex(const Source *source, unsigned long offset, LexedToken *token);
 
-int mpplc_parse(const Source *source, Ctx *ctx, MpplProgram **syntax);
+int mpplc_parse(const Source *source, MpplProgram **syntax);
 
 int mpplc_resolve(const Source *source, const MpplProgram *syntax, Ctx *ctx);
 

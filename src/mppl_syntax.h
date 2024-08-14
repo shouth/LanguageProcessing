@@ -14,8 +14,8 @@
    limitations under the License.
 */
 
-#ifndef SYNTAX_H
-#define SYNTAX_H
+#ifndef MPPL_H
+#define MPPL_H
 
 typedef struct MpplProgram MpplProgram;
 

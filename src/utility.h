@@ -22,7 +22,8 @@
 #include <stdlib.h>
 
 void *xmalloc(unsigned long size);
-void *dup(const void *ptr, unsigned long size, unsigned long count);
+void *memdup(const void *ptr, unsigned long length);
+char *strndup(const char *src, unsigned long length);
 
 #define FNV1A_INIT 0x811C9DC5ul
 
@@ -32,13 +33,17 @@ unsigned long popcount(void *data, unsigned long size);
 
 #define ULONG_BIT (sizeof(unsigned long) * CHAR_BIT)
 
-#define BITSET(name, bits) unsigned long name[(bits + ULONG_BIT - 1) / ULONG_BIT]
+#define BITSET(name, bits)                                  \
+  struct {                                                  \
+    unsigned long data[(bits + ULONG_BIT - 1) / ULONG_BIT]; \
+  } name
 
-#define bitset_set(self, index)   (self[(index) / ULONG_BIT] |= 1ul << ((index) % ULONG_BIT))
-#define bitset_reset(self, index) (self[(index) / ULONG_BIT] &= ~(1ul << ((index) % ULONG_BIT)))
-#define bitset_get(self, index)   ((self[(index) / ULONG_BIT] >> ((index) % ULONG_BIT)) & 1ul)
-#define bitset_clear(self)        memset(self, 0, sizeof(self))
-#define bitset_count(self)        popcount(self, sizeof(self))
+#define bitset_data(self)         ((unsigned long *) (self))
+#define bitset_set(self, index)   (bitset_data(self)[(index) / ULONG_BIT] |= 1ul << ((index) % ULONG_BIT))
+#define bitset_reset(self, index) (bitset_data(self)[(index) / ULONG_BIT] &= ~(1ul << ((index) % ULONG_BIT)))
+#define bitset_get(self, index)   (bitset_data(self)[(index) / ULONG_BIT] >> ((index) % ULONG_BIT)) & 1ul)
+#define bitset_clear(self)        memset(bitset_data(self), 0, sizeof(*(self)))
+#define bitset_count(self)        popcount(bitset_data(self), sizeof(*(self)))
 
 int is_alphabet(int c);
 int is_number(int c);

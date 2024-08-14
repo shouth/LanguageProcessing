@@ -21,75 +21,95 @@
 
 #include "array.h"
 #include "compiler.h"
-#include "context.h"
-#include "context_fwd.h"
+#include "diagnostics.h"
 #include "mppl_syntax.h"
+#include "mppl_syntax_kind.h"
 #include "report.h"
 #include "source.h"
 #include "string.h"
-#include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
 typedef struct Parser Parser;
 
 struct Parser {
-  unsigned long  offset;
   const Source  *source;
-  Ctx           *ctx;
-  LexStatus      status;
+  LexedToken     lexed;
   SyntaxBuilder *builder;
-  const String  *token;
-  SyntaxKind     token_kind;
-  BITSET(expected, SYNTAX_EOF_TOKEN + 1);
-  Array        *errors;
-  int           alive;
-  unsigned long breakable;
+
+  MpplSyntaxKindSet expected;
+  Array            *diagnostics;
+  int               alive;
+  unsigned long     breakable;
 };
 
-static const String *token(Parser *self)
+static void diagnostics(Parser *self, Diag *diagnostics)
 {
-  if (!self->token) {
-    while (1) {
-      LexedToken    lexed;
-      LexStatus     status = mpplc_lex(self->source, self->offset, &lexed);
-      const String *token  = ctx_string(self->ctx, self->source->text + lexed.offset, lexed.length);
+  array_push(self->diagnostics, &diagnostics);
+}
 
-      if (syntax_kind_is_token(lexed.kind)) {
-        self->status     = status;
-        self->token      = token;
-        self->token_kind = lexed.kind;
-        break;
-      } else {
-        syntax_builder_trivia(self->builder, lexed.kind, token, 1);
-        self->offset += lexed.length;
-      }
-    }
-  }
-  return self->token;
+static void null(Parser *self)
+{
+  syntax_builder_null(self->builder);
 }
 
 static void bump(Parser *self)
 {
-  if (token(self)) {
-    bitset_clear(self->expected);
-    syntax_builder_token(self->builder, self->token_kind, self->token);
-    self->offset += string_length(self->token);
-    self->token = NULL;
+  while (1) {
+    LexStatus status = mpplc_lex(self->source, self->lexed.offset + self->lexed.length, &self->lexed);
+    if (status == LEX_OK) {
+      if (mppl_syntax_kind_is_token(self->lexed.kind)) {
+        syntax_builder_token(self->builder, self->lexed.kind, self->source->text + self->lexed.offset, self->lexed.length);
+        break;
+      } else {
+        syntax_builder_trivia(self->builder, self->lexed.kind, self->source->text + self->lexed.offset, self->lexed.length);
+      }
+    } else {
+      switch (status) {
+      case LEX_ERROR_STRAY_CHAR: {
+        diagnostics(self, diag_stray_char_error(self->lexed.offset, &self->expected));
+        self->alive = 0;
+        break;
+      }
+      case LEX_ERROR_NONGRAPHIC_CHAR: {
+        diagnostics(self, diag_nongraphic_char_error(self->lexed.offset));
+        break;
+      }
+      case LEX_ERROR_UNTERMINATED_STRING: {
+        diagnostics(self, diag_unterminated_string_error(self->lexed.offset, self->lexed.length));
+        self->alive = 0;
+        break;
+      }
+      case LEX_ERROR_UNTERMINATED_COMMENT: {
+        diagnostics(self, diag_unterminated_comment_error(self->lexed.offset, self->lexed.length));
+        self->alive = 0;
+        break;
+      }
+      case LEX_ERROR_TOO_BIG_NUMBER: {
+        diagnostics(self, diag_too_big_number_error(self->lexed.offset, self->lexed.length));
+        break;
+      }
+      default:
+        unreachable();
+      }
+      break;
+    }
   }
+
+  bitset_clear(&self->expected);
 }
 
-static int check_any(Parser *self, const SyntaxKind *kinds, unsigned long count)
+static int check_any(Parser *self, const MpplSyntaxKind *kinds, unsigned long count)
 {
   if (!self->alive) {
     return 0;
   } else {
     unsigned long i;
     for (i = 0; i < count; ++i) {
-      bitset_set(self->expected, kinds[i]);
+      bitset_set(&self->expected, kinds[i]);
     }
     for (i = 0; i < count; ++i) {
-      if (token(self) && self->token_kind == kinds[i]) {
+      if (self->lexed.kind == kinds[i]) {
         return 1;
       }
     }
@@ -97,12 +117,12 @@ static int check_any(Parser *self, const SyntaxKind *kinds, unsigned long count)
   }
 }
 
-static int check(Parser *self, SyntaxKind kind)
+static int check(Parser *self, MpplSyntaxKind kind)
 {
   return check_any(self, &kind, 1);
 }
 
-static int eat_any(Parser *self, const SyntaxKind *kinds, unsigned long count)
+static int eat_any(Parser *self, const MpplSyntaxKind *kinds, unsigned long count)
 {
   if (!self->alive) {
     return 0;
@@ -114,12 +134,12 @@ static int eat_any(Parser *self, const SyntaxKind *kinds, unsigned long count)
   }
 }
 
-static int eat(Parser *self, SyntaxKind kind)
+static int eat(Parser *self, MpplSyntaxKind kind)
 {
   return eat_any(self, &kind, 1);
 }
 
-static const char *SYNTAX_DISPLAY_STRING[] = {
+static const char *MPPL_SYNTAX_DISPLAY_STRING[] = {
   "",
   "identifier",
   "integer",
@@ -175,76 +195,17 @@ static const char *SYNTAX_DISPLAY_STRING[] = {
 
 static void error_unexpected(Parser *self)
 {
-  char          expected[1024];
-  unsigned long cursor = 0;
-  SyntaxKind    kind;
-  Report       *report;
-
-  for (kind = 0; kind <= SYNTAX_EOF_TOKEN; ++kind) {
-    if (bitset_get(self->expected, kind)) {
-      if (cursor > 0) {
-        if (bitset_count(self->expected) > 1) {
-          cursor += sprintf(expected + cursor, ", ");
-        } else {
-          cursor += sprintf(expected + cursor, " and ");
-        }
-      }
-      cursor += sprintf(expected + cursor, "%s", SYNTAX_DISPLAY_STRING[kind]);
-      bitset_reset(self->expected, kind);
-    }
-  }
-
-  if (token(self) && self->token_kind == SYNTAX_BAD_TOKEN) {
-    switch (self->status) {
-    case LEX_ERROR_STRAY_CHAR: {
-      if (is_graphic(string_data(token(self))[0])) {
-        report = report_new(REPORT_KIND_ERROR, self->offset, "stray `%s` in program", string_data(token(self)));
-      } else {
-        report = report_new(REPORT_KIND_ERROR, self->offset, "stray `\\x%X` in program", (unsigned char) string_data(token(self))[0]);
-      }
-      report_annotation(report, self->offset, self->offset + string_length(token(self)), "expected %s", expected);
-      self->alive = 0;
-      break;
-    }
-    case LEX_ERROR_NONGRAPHIC_CHAR: {
-      report = report_new(REPORT_KIND_ERROR, self->offset, "non-graphic character in string");
-      report_annotation(report, self->offset, self->offset + string_length(token(self)), NULL);
-      break;
-    }
-    case LEX_ERROR_UNTERMINATED_STRING: {
-      report = report_new(REPORT_KIND_ERROR, self->offset, "string is unterminated");
-      report_annotation(report, self->offset, self->offset + string_length(token(self)), NULL);
-      self->alive = 0;
-      break;
-    }
-    case LEX_ERROR_UNTERMINATED_COMMENT: {
-      report = report_new(REPORT_KIND_ERROR, self->offset, "comment is unterminated");
-      report_annotation(report, self->offset, self->offset + string_length(token(self)), NULL);
-      self->alive = 0;
-      break;
-    }
-    case LEX_ERROR_TOO_BIG_NUMBER: {
-      report = report_new(REPORT_KIND_ERROR, self->offset, "number is too big");
-      report_annotation(report, self->offset, self->offset + string_length(token(self)), "value should be less than or equal to 32768");
-      break;
-    }
-    default:
-      unreachable();
-    }
-  } else {
-    report = report_new(REPORT_KIND_ERROR, self->offset, "expected %s, found `%s`", expected, string_data(token(self)));
-    report_annotation(report, self->offset, self->offset + string_length(token(self)), "expected %s", expected);
+  if (self->lexed.kind != MPPL_SYNTAX_ERROR) {
+    diagnostics(self, diag_unexpected_token_error(self->lexed.offset, self->lexed.length, &self->expected));
     self->alive = 0;
   }
-  array_push(self->errors, &report);
-
   bump(self);
 }
 
-static int expect_any(Parser *self, const SyntaxKind *kinds, unsigned long count)
+static int expect_any(Parser *self, const MpplSyntaxKind *kinds, unsigned long count)
 {
   if (!self->alive) {
-    syntax_builder_null(self->builder);
+    null(self);
     return 0;
   } else if (eat_any(self, kinds, count)) {
     return 1;
@@ -254,45 +215,52 @@ static int expect_any(Parser *self, const SyntaxKind *kinds, unsigned long count
   }
 }
 
-static int expect(Parser *self, SyntaxKind kind)
+static int expect(Parser *self, MpplSyntaxKind kind)
 {
   return expect_any(self, &kind, 1);
 }
 
+static SyntaxCheckpoint open(Parser *self)
+{
+  return syntax_builder_open(self->builder);
+}
+
+static void close(Parser *self, MpplSyntaxKind kind, SyntaxCheckpoint checkpoint)
+{
+  syntax_builder_close(self->builder, kind, checkpoint);
+}
+
 static void expect_semi(Parser *self)
 {
-  unsigned long offset = self->offset;
-  if (!eat(self, SYNTAX_SEMI_TOKEN) && self->alive) {
-    Report *report = report_new(REPORT_KIND_ERROR, offset, "semicolon is missing");
-    report_annotation(report, offset, offset + 1, "insert `;` here");
-    array_push(self->errors, &report);
+  if (!eat(self, MPPL_SYNTAX_SEMI_TOKEN) && self->alive) {
+    diag_missing_semicolon_error(self->lexed.offset);
     self->alive = 0;
     bump(self);
   }
 }
 
-static const SyntaxKind FIRST_STD_TYPE[] = { SYNTAX_INTEGER_KW, SYNTAX_BOOLEAN_KW, SYNTAX_CHAR_KW };
+static const MpplSyntaxKind FIRST_STD_TYPE[] = { MPPL_SYNTAX_INTEGER_KW, MPPL_SYNTAX_BOOLEAN_KW, MPPL_SYNTAX_CHAR_KW };
 
 static void parse_std_type(Parser *self)
 {
-  expect_any(self, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(SyntaxKind));
+  expect_any(self, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(MpplSyntaxKind));
 }
 
 static void parse_array_type(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_ARRAY_KW);
-  expect(self, SYNTAX_LBRACKET_TOKEN);
-  expect(self, SYNTAX_NUMBER_LIT);
-  expect(self, SYNTAX_RBRACKET_TOKEN);
-  expect(self, SYNTAX_OF_KW);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_ARRAY_KW);
+  expect(self, MPPL_SYNTAX_LBRACKET_TOKEN);
+  expect(self, MPPL_SYNTAX_NUMBER_LIT);
+  expect(self, MPPL_SYNTAX_RBRACKET_TOKEN);
+  expect(self, MPPL_SYNTAX_OF_KW);
   parse_std_type(self);
-  syntax_builder_end_tree(self->builder, SYNTAX_ARRAY_TYPE);
+  close(self, MPPL_SYNTAX_ARRAY_TYPE, checkpoint);
 }
 
 static void parse_type(Parser *self)
 {
-  if (check_any(self, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(SyntaxKind))) {
+  if (check_any(self, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(MpplSyntaxKind))) {
     parse_std_type(self);
   } else {
     parse_array_type(self);
@@ -304,108 +272,105 @@ static void parse_expr(Parser *self);
 
 static void parse_var(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_IDENT_TOKEN);
-  if (eat(self, SYNTAX_LBRACKET_TOKEN)) {
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_IDENT_TOKEN);
+  if (eat(self, MPPL_SYNTAX_LBRACKET_TOKEN)) {
     parse_expr(self);
-    expect(self, SYNTAX_RBRACKET_TOKEN);
-    syntax_builder_end_tree(self->builder, SYNTAX_INDEXED_VAR);
+    expect(self, MPPL_SYNTAX_RBRACKET_TOKEN);
+    close(self, MPPL_SYNTAX_INDEXED_VAR, checkpoint);
   } else {
-    syntax_builder_end_tree(self->builder, SYNTAX_ENTIRE_VAR);
+    close(self, MPPL_SYNTAX_ENTIRE_VAR, checkpoint);
   }
 }
 
 static void parse_paren_expr(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_LPAREN_TOKEN);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_LPAREN_TOKEN);
   parse_expr(self);
-  expect(self, SYNTAX_RPAREN_TOKEN);
-  syntax_builder_end_tree(self->builder, SYNTAX_PAREN_EXPR);
+  expect(self, MPPL_SYNTAX_RPAREN_TOKEN);
+  close(self, MPPL_SYNTAX_PAREN_EXPR, checkpoint);
 }
 
 static void parse_not_expr(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_NOT_KW);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_NOT_KW);
   parse_factor(self);
-  syntax_builder_end_tree(self->builder, SYNTAX_NOT_EXPR);
+  close(self, MPPL_SYNTAX_NOT_EXPR, checkpoint);
 }
 
 static void parse_cast_expr(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
   parse_std_type(self);
-  expect(self, SYNTAX_LPAREN_TOKEN);
+  expect(self, MPPL_SYNTAX_LPAREN_TOKEN);
   parse_expr(self);
-  expect(self, SYNTAX_RPAREN_TOKEN);
-  syntax_builder_end_tree(self->builder, SYNTAX_CAST_EXPR);
+  expect(self, MPPL_SYNTAX_RPAREN_TOKEN);
+  close(self, MPPL_SYNTAX_CAST_EXPR, checkpoint);
 }
 
-static const SyntaxKind FIRST_CONST[] = { SYNTAX_NUMBER_LIT, SYNTAX_TRUE_KW, SYNTAX_FALSE_KW, SYNTAX_STRING_LIT };
+static const MpplSyntaxKind FIRST_CONST[] = { MPPL_SYNTAX_NUMBER_LIT, MPPL_SYNTAX_TRUE_KW, MPPL_SYNTAX_FALSE_KW, MPPL_SYNTAX_STRING_LIT };
 
 static void parse_factor(Parser *self)
 {
-  if (check(self, SYNTAX_IDENT_TOKEN)) {
+  if (check(self, MPPL_SYNTAX_IDENT_TOKEN)) {
     parse_var(self);
-  } else if (check(self, SYNTAX_LPAREN_TOKEN)) {
+  } else if (check(self, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_paren_expr(self);
-  } else if (check(self, SYNTAX_NOT_KW)) {
+  } else if (check(self, MPPL_SYNTAX_NOT_KW)) {
     parse_not_expr(self);
-  } else if (check_any(self, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(SyntaxKind))) {
+  } else if (check_any(self, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(MpplSyntaxKind))) {
     parse_cast_expr(self);
   } else {
-    expect_any(self, FIRST_CONST, sizeof(FIRST_CONST) / sizeof(SyntaxKind));
+    expect_any(self, FIRST_CONST, sizeof(FIRST_CONST) / sizeof(MpplSyntaxKind));
   }
 }
 
-static const SyntaxKind FIRST_MULTI_OP[] = { SYNTAX_STAR_TOKEN, SYNTAX_DIV_KW, SYNTAX_AND_KW };
+static const MpplSyntaxKind FIRST_MULTI_OP[] = { MPPL_SYNTAX_STAR_TOKEN, MPPL_SYNTAX_DIV_KW, MPPL_SYNTAX_AND_KW };
 
 static void parse_term(Parser *self)
 {
-  unsigned long checkpoint = syntax_builder_checkpoint(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
   parse_factor(self);
-  while (eat_any(self, FIRST_MULTI_OP, sizeof(FIRST_MULTI_OP) / sizeof(SyntaxKind))) {
-    syntax_builder_start_tree_at(self->builder, checkpoint);
+  while (eat_any(self, FIRST_MULTI_OP, sizeof(FIRST_MULTI_OP) / sizeof(MpplSyntaxKind))) {
     parse_factor(self);
-    syntax_builder_end_tree(self->builder, SYNTAX_BINARY_EXPR);
+    close(self, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
   }
 }
 
-static const SyntaxKind FIRST_ADD_OP[] = { SYNTAX_PLUS_TOKEN, SYNTAX_MINUS_TOKEN, SYNTAX_OR_KW };
+static const MpplSyntaxKind FIRST_ADD_OP[] = { MPPL_SYNTAX_PLUS_TOKEN, MPPL_SYNTAX_MINUS_TOKEN, MPPL_SYNTAX_OR_KW };
 
 static void parse_simple_expr(Parser *self)
 {
-  unsigned long checkpoint = syntax_builder_checkpoint(self->builder);
-  if (check_any(self, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(SyntaxKind))) {
-    syntax_builder_null(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
+  if (check_any(self, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(MpplSyntaxKind))) {
+    null(self);
   } else {
     parse_term(self);
   }
-  while (eat_any(self, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(SyntaxKind))) {
-    syntax_builder_start_tree_at(self->builder, checkpoint);
+  while (eat_any(self, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(MpplSyntaxKind))) {
     parse_term(self);
-    syntax_builder_end_tree(self->builder, SYNTAX_BINARY_EXPR);
+    close(self, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
   }
 }
 
-static const SyntaxKind FIRST_RELAT_OP[] = {
-  SYNTAX_EQUAL_TOKEN,
-  SYNTAX_NOTEQ_TOKEN,
-  SYNTAX_LESS_TOKEN,
-  SYNTAX_LESSEQ_TOKEN,
-  SYNTAX_GREATER_TOKEN,
-  SYNTAX_GREATEREQ_TOKEN,
+static const MpplSyntaxKind FIRST_RELAT_OP[] = {
+  MPPL_SYNTAX_EQUAL_TOKEN,
+  MPPL_SYNTAX_NOTEQ_TOKEN,
+  MPPL_SYNTAX_LESS_TOKEN,
+  MPPL_SYNTAX_LESSEQ_TOKEN,
+  MPPL_SYNTAX_GREATER_TOKEN,
+  MPPL_SYNTAX_GREATEREQ_TOKEN,
 };
 
 static void parse_expr(Parser *self)
 {
-  unsigned long checkpoint = syntax_builder_checkpoint(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
   parse_simple_expr(self);
-  while (eat_any(self, FIRST_RELAT_OP, sizeof(FIRST_RELAT_OP) / sizeof(SyntaxKind))) {
-    syntax_builder_start_tree_at(self->builder, checkpoint);
+  while (eat_any(self, FIRST_RELAT_OP, sizeof(FIRST_RELAT_OP) / sizeof(MpplSyntaxKind))) {
     parse_simple_expr(self);
-    syntax_builder_end_tree(self->builder, SYNTAX_BINARY_EXPR);
+    close(self, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
   }
 }
 
@@ -413,307 +378,303 @@ static void parse_stmt(Parser *self);
 
 static void parse_assign_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
   parse_var(self);
-  expect(self, SYNTAX_ASSIGN_TOKEN);
+  expect(self, MPPL_SYNTAX_ASSIGN_TOKEN);
   parse_expr(self);
-  syntax_builder_end_tree(self->builder, SYNTAX_ASSIGN_STMT);
+  close(self, MPPL_SYNTAX_ASSIGN_STMT, checkpoint);
 }
 
 static void parse_if_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_IF_KW);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_IF_KW);
   parse_expr(self);
-  expect(self, SYNTAX_THEN_KW);
+  expect(self, MPPL_SYNTAX_THEN_KW);
   parse_stmt(self);
-  if (eat(self, SYNTAX_ELSE_KW)) {
+  if (eat(self, MPPL_SYNTAX_ELSE_KW)) {
     parse_stmt(self);
   } else {
-    syntax_builder_null(self->builder);
-    syntax_builder_null(self->builder);
+    null(self);
+    null(self);
   }
-  syntax_builder_end_tree(self->builder, SYNTAX_IF_STMT);
+  close(self, MPPL_SYNTAX_IF_STMT, checkpoint);
 }
 
 static void parse_while_stmt(Parser *self)
 {
+  SyntaxCheckpoint checkpoint = open(self);
   ++self->breakable;
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_WHILE_KW);
+  expect(self, MPPL_SYNTAX_WHILE_KW);
   parse_expr(self);
-  expect(self, SYNTAX_DO_KW);
+  expect(self, MPPL_SYNTAX_DO_KW);
   parse_stmt(self);
-  syntax_builder_end_tree(self->builder, SYNTAX_WHILE_STMT);
   --self->breakable;
+  close(self, MPPL_SYNTAX_WHILE_STMT, checkpoint);
 }
 
 static void parse_break_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  if (check(self, SYNTAX_BREAK_KW)) {
+  SyntaxCheckpoint checkpoint = open(self);
+  if (check(self, MPPL_SYNTAX_BREAK_KW)) {
     if (!self->breakable && self->alive) {
-      Report *report = report_new(REPORT_KIND_ERROR, self->offset, "`break` is outside of a loop");
-      report_annotation(report, self->offset, self->offset + string_length(token(self)),
-        "`break` should be enclosed by a loop");
-      array_push(self->errors, &report);
+      diagnostics(self, diag_break_outside_loop_error(self->lexed.offset, self->lexed.length));
     }
     bump(self);
   } else {
     error_unexpected(self);
   }
-  syntax_builder_end_tree(self->builder, SYNTAX_BREAK_STMT);
+  close(self, MPPL_SYNTAX_BREAK_STMT, checkpoint);
 }
 
 static void parse_act_param_list(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_LPAREN_TOKEN);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
     parse_expr(self);
-  } while (eat(self, SYNTAX_COMMA_TOKEN));
-  expect(self, SYNTAX_RPAREN_TOKEN);
-  syntax_builder_end_tree(self->builder, SYNTAX_ACT_PARAM_LIST);
+  } while (eat(self, MPPL_SYNTAX_COMMA_TOKEN));
+  expect(self, MPPL_SYNTAX_RPAREN_TOKEN);
+  close(self, MPPL_SYNTAX_ACT_PARAM_LIST, checkpoint);
 }
 
 static void parse_call_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_CALL_KW);
-  expect(self, SYNTAX_IDENT_TOKEN);
-  if (check(self, SYNTAX_LPAREN_TOKEN)) {
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_CALL_KW);
+  expect(self, MPPL_SYNTAX_IDENT_TOKEN);
+  if (check(self, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_act_param_list(self);
   } else {
-    syntax_builder_null(self->builder);
+    null(self);
   }
-  syntax_builder_end_tree(self->builder, SYNTAX_CALL_STMT);
+  close(self, MPPL_SYNTAX_CALL_STMT, checkpoint);
 }
 
 static void parse_return_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_RETURN_KW);
-  syntax_builder_end_tree(self->builder, SYNTAX_RETURN_STMT);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_RETURN_KW);
+  close(self, MPPL_SYNTAX_RETURN_STMT, checkpoint);
 }
 
 static void parse_input_list(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_LPAREN_TOKEN);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
     parse_var(self);
-  } while (eat(self, SYNTAX_COMMA_TOKEN));
-  expect(self, SYNTAX_RPAREN_TOKEN);
-  syntax_builder_end_tree(self->builder, SYTANX_INPUT_LIST);
+  } while (eat(self, MPPL_SYNTAX_COMMA_TOKEN));
+  expect(self, MPPL_SYNTAX_RPAREN_TOKEN);
+  close(self, MPPL_SYNTAX_INPUT_LIST, checkpoint);
 }
 
-static const SyntaxKind FIRST_INPUT_STMT[] = { SYNTAX_READ_KW, SYNTAX_READLN_KW };
+static const MpplSyntaxKind FIRST_INPUT_STMT[] = { MPPL_SYNTAX_READ_KW, MPPL_SYNTAX_READLN_KW };
 
 static void parse_input_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect_any(self, FIRST_INPUT_STMT, sizeof(FIRST_INPUT_STMT) / sizeof(SyntaxKind));
-  if (check(self, SYNTAX_LPAREN_TOKEN)) {
+  SyntaxCheckpoint checkpoint = open(self);
+  expect_any(self, FIRST_INPUT_STMT, sizeof(FIRST_INPUT_STMT) / sizeof(MpplSyntaxKind));
+  if (check(self, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_input_list(self);
   } else {
-    syntax_builder_null(self->builder);
+    null(self);
   }
-  syntax_builder_end_tree(self->builder, SYNTAX_INPUT_STMT);
+  close(self, MPPL_SYNTAX_INPUT_STMT, checkpoint);
 }
 
 static void parse_output_value(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
   parse_expr(self);
-  if (eat(self, SYNTAX_COLON_TOKEN)) {
-    expect(self, SYNTAX_NUMBER_LIT);
+  if (eat(self, MPPL_SYNTAX_COLON_TOKEN)) {
+    expect(self, MPPL_SYNTAX_NUMBER_LIT);
   } else {
-    syntax_builder_null(self->builder);
-    syntax_builder_null(self->builder);
+    null(self);
+    null(self);
   }
-  syntax_builder_end_tree(self->builder, SYNTAX_OUTPUT_VALUE);
+  close(self, MPPL_SYNTAX_OUTPUT_VALUE, checkpoint);
 }
 
 static void parse_output_list(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_LPAREN_TOKEN);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
     parse_output_value(self);
-  } while (eat(self, SYNTAX_COMMA_TOKEN));
-  expect(self, SYNTAX_RPAREN_TOKEN);
-  syntax_builder_end_tree(self->builder, SYNTAX_OUTPUT_LIST);
+  } while (eat(self, MPPL_SYNTAX_COMMA_TOKEN));
+  expect(self, MPPL_SYNTAX_RPAREN_TOKEN);
+  close(self, MPPL_SYNTAX_OUTPUT_LIST, checkpoint);
 }
 
-static const SyntaxKind FIRST_OUTPUT_STMT[] = { SYNTAX_WRITE_KW, SYNTAX_WRITELN_KW };
+static const MpplSyntaxKind FIRST_OUTPUT_STMT[] = { MPPL_SYNTAX_WRITE_KW, MPPL_SYNTAX_WRITELN_KW };
 
 static void parse_output_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect_any(self, FIRST_OUTPUT_STMT, sizeof(FIRST_OUTPUT_STMT) / sizeof(SyntaxKind));
-  if (check(self, SYNTAX_LPAREN_TOKEN)) {
+  SyntaxCheckpoint checkpoint = open(self);
+  expect_any(self, FIRST_OUTPUT_STMT, sizeof(FIRST_OUTPUT_STMT) / sizeof(MpplSyntaxKind));
+  if (check(self, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_output_list(self);
   } else {
-    syntax_builder_null(self->builder);
+    null(self);
   }
-  syntax_builder_end_tree(self->builder, SYNTAX_OUTPUT_STMT);
+  close(self, MPPL_SYNTAX_OUTPUT_STMT, checkpoint);
 }
 
 static void parse_comp_stmt(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_BEGIN_KW);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_BEGIN_KW);
   do {
     parse_stmt(self);
-  } while (eat(self, SYNTAX_SEMI_TOKEN));
-  expect(self, SYNTAX_END_KW);
-  syntax_builder_end_tree(self->builder, SYNTAX_COMP_STMT);
+  } while (eat(self, MPPL_SYNTAX_SEMI_TOKEN));
+  expect(self, MPPL_SYNTAX_END_KW);
+  close(self, MPPL_SYNTAX_COMP_STMT, checkpoint);
 }
 
 static void parse_stmt(Parser *self)
 {
-  if (check(self, SYNTAX_IDENT_TOKEN)) {
+  if (check(self, MPPL_SYNTAX_IDENT_TOKEN)) {
     parse_assign_stmt(self);
-  } else if (check(self, SYNTAX_IF_KW)) {
+  } else if (check(self, MPPL_SYNTAX_IF_KW)) {
     parse_if_stmt(self);
-  } else if (check(self, SYNTAX_WHILE_KW)) {
+  } else if (check(self, MPPL_SYNTAX_WHILE_KW)) {
     parse_while_stmt(self);
-  } else if (check(self, SYNTAX_BREAK_KW)) {
+  } else if (check(self, MPPL_SYNTAX_BREAK_KW)) {
     parse_break_stmt(self);
-  } else if (check(self, SYNTAX_CALL_KW)) {
+  } else if (check(self, MPPL_SYNTAX_CALL_KW)) {
     parse_call_stmt(self);
-  } else if (check(self, SYNTAX_RETURN_KW)) {
+  } else if (check(self, MPPL_SYNTAX_RETURN_KW)) {
     parse_return_stmt(self);
-  } else if (check_any(self, FIRST_INPUT_STMT, sizeof(FIRST_INPUT_STMT) / sizeof(SyntaxKind))) {
+  } else if (check_any(self, FIRST_INPUT_STMT, sizeof(FIRST_INPUT_STMT) / sizeof(MpplSyntaxKind))) {
     parse_input_stmt(self);
-  } else if (check_any(self, FIRST_OUTPUT_STMT, sizeof(FIRST_OUTPUT_STMT) / sizeof(SyntaxKind))) {
+  } else if (check_any(self, FIRST_OUTPUT_STMT, sizeof(FIRST_OUTPUT_STMT) / sizeof(MpplSyntaxKind))) {
     parse_output_stmt(self);
-  } else if (check(self, SYNTAX_BEGIN_KW)) {
+  } else if (check(self, MPPL_SYNTAX_BEGIN_KW)) {
     parse_comp_stmt(self);
   } else {
-    syntax_builder_null(self->builder);
+    null(self);
   }
 }
 
 static void parse_var_decl(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
   do {
-    expect(self, SYNTAX_IDENT_TOKEN);
-  } while (eat(self, SYNTAX_COMMA_TOKEN));
-  expect(self, SYNTAX_COLON_TOKEN);
+    expect(self, MPPL_SYNTAX_IDENT_TOKEN);
+  } while (eat(self, MPPL_SYNTAX_COMMA_TOKEN));
+  expect(self, MPPL_SYNTAX_COLON_TOKEN);
   parse_type(self);
-  syntax_builder_end_tree(self->builder, SYNTAX_VAR_DECL);
+  close(self, MPPL_SYNTAX_VAR_DECL, checkpoint);
 }
 
 static void parse_var_decl_part(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_VAR_KW);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_VAR_KW);
   do {
     parse_var_decl(self);
     expect_semi(self);
-  } while (check(self, SYNTAX_IDENT_TOKEN));
-  syntax_builder_end_tree(self->builder, SYNTAX_VAR_DECL_PART);
+  } while (check(self, MPPL_SYNTAX_IDENT_TOKEN));
+  close(self, MPPL_SYNTAX_VAR_DECL_PART, checkpoint);
 }
 
 static void parse_fml_param_sec(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
+  SyntaxCheckpoint checkpoint = open(self);
   do {
-    expect(self, SYNTAX_IDENT_TOKEN);
-  } while (eat(self, SYNTAX_COMMA_TOKEN));
-  expect(self, SYNTAX_COLON_TOKEN);
+    expect(self, MPPL_SYNTAX_IDENT_TOKEN);
+  } while (eat(self, MPPL_SYNTAX_COMMA_TOKEN));
+  expect(self, MPPL_SYNTAX_COLON_TOKEN);
   parse_type(self);
-  syntax_builder_end_tree(self->builder, SYNTAX_FML_PARAM_SEC);
+  close(self, MPPL_SYNTAX_FML_PARAM_SEC, checkpoint);
 }
 
 static void parse_fml_param_list(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_LPAREN_TOKEN);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
     parse_fml_param_sec(self);
-  } while (eat(self, SYNTAX_SEMI_TOKEN));
-  expect(self, SYNTAX_RPAREN_TOKEN);
-  syntax_builder_end_tree(self->builder, SYNTAX_FML_PARAM_LIST);
+  } while (eat(self, MPPL_SYNTAX_SEMI_TOKEN));
+  expect(self, MPPL_SYNTAX_RPAREN_TOKEN);
+  close(self, MPPL_SYNTAX_FML_PARAM_LIST, checkpoint);
 }
 
 static void parse_proc_decl(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_PROCEDURE_KW);
-  expect(self, SYNTAX_IDENT_TOKEN);
-  if (check(self, SYNTAX_LPAREN_TOKEN)) {
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_PROCEDURE_KW);
+  expect(self, MPPL_SYNTAX_IDENT_TOKEN);
+  if (check(self, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_fml_param_list(self);
   } else {
-    syntax_builder_null(self->builder);
+    null(self);
   }
   expect_semi(self);
-  if (check(self, SYNTAX_VAR_KW)) {
+  if (check(self, MPPL_SYNTAX_VAR_KW)) {
     parse_var_decl_part(self);
   } else {
-    syntax_builder_null(self->builder);
+    null(self);
   }
   parse_comp_stmt(self);
   expect_semi(self);
-  syntax_builder_end_tree(self->builder, SYNTAX_PROC_DECL);
+  close(self, MPPL_SYNTAX_PROC_DECL, checkpoint);
 }
 
 static void parse_program(Parser *self)
 {
-  syntax_builder_start_tree(self->builder);
-  expect(self, SYNTAX_PROGRAM_KW);
-  expect(self, SYNTAX_IDENT_TOKEN);
+  SyntaxCheckpoint checkpoint = open(self);
+  expect(self, MPPL_SYNTAX_PROGRAM_KW);
+  expect(self, MPPL_SYNTAX_IDENT_TOKEN);
   expect_semi(self);
 
   while (1) {
-    if (check(self, SYNTAX_VAR_KW)) {
+    if (check(self, MPPL_SYNTAX_VAR_KW)) {
       parse_var_decl_part(self);
-    } else if (check(self, SYNTAX_PROCEDURE_KW)) {
+    } else if (check(self, MPPL_SYNTAX_PROCEDURE_KW)) {
       parse_proc_decl(self);
     } else {
       break;
     }
   }
   parse_comp_stmt(self);
-  expect(self, SYNTAX_DOT_TOKEN);
-  expect(self, SYNTAX_EOF_TOKEN);
-  syntax_builder_end_tree(self->builder, SYNTAX_PROGRAM);
+  expect(self, MPPL_SYNTAX_DOT_TOKEN);
+  expect(self, MPPL_SYNTAX_EOF_TOKEN);
+  close(self, MPPL_SYNTAX_PROGRAM, checkpoint);
 }
 
-int mpplc_parse(const Source *source, Ctx *ctx, MpplProgram **syntax)
+int mpplc_parse(const Source *source, MpplProgram **syntax)
 {
   Parser self;
   int    result;
-  self.offset     = 0;
-  self.source     = source;
-  self.ctx        = ctx;
-  self.status     = LEX_OK;
-  self.builder    = syntax_builder_new();
-  self.token      = NULL;
-  self.token_kind = SYNTAX_BAD_TOKEN;
-  bitset_clear(self.expected);
-  self.errors    = array_new(sizeof(Report *));
-  self.alive     = 1;
-  self.breakable = 0;
+  self.source  = source;
+  self.builder = syntax_builder_new();
+  bitset_clear(&self.expected);
+  self.diagnostics = array_new(sizeof(Report *));
+  self.alive       = 1;
+  self.breakable   = 0;
+
+  self.lexed.offset = 0;
+  self.lexed.length = 0;
+  bump(&self);
 
   parse_program(&self);
   *syntax = (MpplProgram *) syntax_builder_build(self.builder);
   {
     unsigned long i;
-    for (i = 0; i < array_count(self.errors); ++i) {
-      report_emit(*(Report **) array_at(self.errors, i), source);
+    for (i = 0; i < array_count(self.diagnostics); ++i) {
+      report_emit(*(Report **) array_at(self.diagnostics, i), source);
     }
     fflush(stdout);
   }
-  result = !array_count(self.errors);
+  result = !array_count(self.diagnostics);
 
   if (!result) {
     mppl_unref(*syntax);
     *syntax = NULL;
   }
 
-  array_free(self.errors);
+  array_free(self.diagnostics);
   return result;
 }

@@ -22,8 +22,8 @@
 #include "compiler.h"
 #include "context.h"
 #include "map.h"
+#include "mppl_syntax_kind.h"
 #include "source.h"
-#include "syntax_kind.h"
 #include "utility.h"
 
 typedef struct CounterToken CounterToken;
@@ -31,9 +31,9 @@ typedef struct CounterEntry CounterEntry;
 typedef struct Counter      Counter;
 
 struct CounterToken {
-  SyntaxKind    kind;
-  char         *text;
-  unsigned long text_length;
+  MpplSyntaxKind kind;
+  char          *text;
+  unsigned long  text_length;
 };
 
 struct CounterEntry {
@@ -46,7 +46,7 @@ struct Counter {
   Array *identifer_counts;
 };
 
-static CounterEntry *counter_entry_new(SyntaxKind kind, const char *text, unsigned long text_length)
+static CounterEntry *counter_entry_new(MpplSyntaxKind kind, const char *text, unsigned long text_length)
 {
   CounterEntry *entry = xmalloc(sizeof(CounterEntry));
   entry->count        = 0;
@@ -66,7 +66,7 @@ static void counter_entry_free(CounterEntry *entry)
   }
 }
 
-static void increment_token(Map *counts, SyntaxKind kind, const char *text, unsigned long text_length)
+static void increment_token(Map *counts, MpplSyntaxKind kind, const char *text, unsigned long text_length)
 {
   CounterEntry *counter = counter_entry_new(kind, text, text_length);
   MapIndex      index;
@@ -83,7 +83,7 @@ static unsigned long counter_token_hash(const void *key)
 {
   const CounterToken *token = key;
   unsigned long       hash  = FNV1A_INIT;
-  hash                      = fnv1a(hash, &token->kind, sizeof(SyntaxKind));
+  hash                      = fnv1a(hash, &token->kind, sizeof(MpplSyntaxKind));
   hash                      = fnv1a(hash, token->text, token->text_length);
   return hash;
 }
@@ -139,20 +139,20 @@ static LexStatus token_count_init(Counter *count, const Source *source)
     }
 
     offset += token.length;
-    if (syntax_kind_is_trivia(token.kind)) {
+    if (mppl_syntax_kind_is_trivia(token.kind)) {
       continue;
     }
 
     switch (token.kind) {
-    case SYNTAX_IDENT_TOKEN:
+    case MPPL_IDENT_TOKEN:
       increment_token(identifier_counts, token.kind, source->text + token.offset, token.length);
-      increment_token(token_counts, SYNTAX_IDENT_TOKEN, "NAME", 4);
+      increment_token(token_counts, MPPL_IDENT_TOKEN, "NAME", 4);
       break;
-    case SYNTAX_NUMBER_LIT:
-      increment_token(token_counts, SYNTAX_NUMBER_LIT, "NUMBER", 6);
+    case MPPL_NUMBER_LIT:
+      increment_token(token_counts, MPPL_NUMBER_LIT, "NUMBER", 6);
       break;
-    case SYNTAX_STRING_LIT:
-      increment_token(token_counts, SYNTAX_STRING_LIT, "STRING", 6);
+    case MPPL_STRING_LIT:
+      increment_token(token_counts, MPPL_STRING_LIT, "STRING", 6);
       break;
     default:
       increment_token(token_counts, token.kind, source->text + token.offset, token.length);
@@ -259,7 +259,7 @@ static void token_count_print(Counter *count)
       + (max_count_display_width - get_count_display_width(token_entry)) + 2;
     printf("\"%s\"%*c%lu\n", token_entry->token.text, (int) token_space_width, ' ', token_entry->count);
 
-    if (token_entry->token.kind == SYNTAX_IDENT_TOKEN) {
+    if (token_entry->token.kind == MPPL_IDENT_TOKEN) {
       for (j = 0; j < array_count(count->identifer_counts); ++j) {
         CounterEntry *identifier_entry = *(CounterEntry **) array_at(count->identifer_counts, j);
         unsigned long identifier_space_width

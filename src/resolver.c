@@ -24,10 +24,10 @@
 #include "map.h"
 #include "mppl_syntax.h"
 #include "mppl_syntax_ext.h"
+#include "mppl_syntax_kind.h"
 #include "report.h"
 #include "source.h"
 #include "string.h"
-#include "syntax_kind.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
@@ -174,8 +174,8 @@ static void visit_proc_decl(const MpplAstWalker *walker, const MpplProcDecl *syn
 static void visit_var_decl(const MpplAstWalker *walker, const MpplVarDecl *syntax, void *resolver)
 {
   unsigned long i;
-  Resolver *r = resolver;
-  DefKind kind = syntax_tree_kind(r->scope->syntax) == SYNTAX_PROGRAM ? DEF_VAR : DEF_LOCAL;
+  Resolver     *r    = resolver;
+  DefKind       kind = syntax_tree_kind(r->scope->syntax) == MPPL_PROGRAM ? DEF_VAR : DEF_LOCAL;
   for (i = 0; i < mppl_var_decl__name_count(syntax); ++i) {
     MpplToken *name_syntax = mppl_var_decl__name(syntax, i);
     try_define(resolver, kind, (const SyntaxTree *) syntax, (SyntaxTree *) name_syntax);
@@ -218,7 +218,7 @@ static void visit_call_stmt(const MpplAstWalker *walker, const MpplCallStmt *syn
   if (proc) {
     const SyntaxTree *node;
     for (node = (const SyntaxTree *) syntax; node; node = syntax_tree_parent(node)) {
-      if (syntax_tree_kind(node) == SYNTAX_PROC_DECL && syntax_tree_raw(node) == syntax_tree_raw(def_syntax(proc))) {
+      if (syntax_tree_kind(node) == MPPL_PROC_DECL && syntax_tree_raw(node) == syntax_tree_raw(def_syntax(proc))) {
         error_call_stmt_recursion(resolver, proc, (const SyntaxTree *) name_syntax);
         break;
       }

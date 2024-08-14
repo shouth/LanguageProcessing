@@ -30,14 +30,26 @@ void *xmalloc(unsigned long size)
   return result;
 }
 
-void *dup(const void *ptr, unsigned long size, unsigned long count)
+void *memdup(const void *ptr, unsigned long length)
 {
-  if (count == 0) {
+  if (length == 0) {
     return NULL;
   } else {
-    void *result = xmalloc(size * count);
-    memcpy(result, ptr, size * count);
+    void *result = xmalloc(length);
+    memcpy(result, ptr, length);
     return result;
+  }
+}
+
+char *strndup(const char *src, unsigned long length)
+{
+  if (length == 0) {
+    return NULL;
+  } else {
+    char *dest = xmalloc(length + 1);
+    strncpy(dest, src, length);
+    dest[length] = '\0';
+    return dest;
   }
 }
 
