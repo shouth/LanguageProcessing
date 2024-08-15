@@ -42,8 +42,8 @@ unsigned long popcount(void *data, unsigned long size);
 #define bitset_set(self, index)   (bitset_data(self)[(index) / ULONG_BIT] |= 1ul << ((index) % ULONG_BIT))
 #define bitset_reset(self, index) (bitset_data(self)[(index) / ULONG_BIT] &= ~(1ul << ((index) % ULONG_BIT)))
 #define bitset_get(self, index)   (bitset_data(self)[(index) / ULONG_BIT] >> ((index) % ULONG_BIT)) & 1ul)
-#define bitset_clear(self)        memset(bitset_data(self), 0, sizeof(*(self)))
-#define bitset_count(self)        popcount(bitset_data(self), sizeof(*(self)))
+#define bitset_clear(self) memset(bitset_data(self), 0, sizeof(*(self)))
+#define bitset_count(self) popcount(bitset_data(self), sizeof(*(self)))
 
 int is_alphabet(int c);
 int is_number(int c);
@@ -57,5 +57,21 @@ long utf8_len(const char *str, long len);
     fprintf(stderr, "Internal Error: Entered unreachable region [%s:%d]\n", __FILE__, __LINE__); \
     exit(EXIT_FAILURE);                                                                          \
   } while (0)
+
+#define META_SWALLOW(x)
+#define META_EXPAND(x)   x
+#define META_DEFER(x)    x META_SWALLOW()
+#define META_OBSTRUCT(x) x META_DEFER(META_SWALLOW)()
+
+#define META_TRUE(p, q)  p
+#define META_FALSE(p, q) q
+#define META_AND(p, q)   p(q, META_FALSE)
+#define META_OR(p, q)    p(META_TRUE, q)
+#define META_NOT(p)      p(META_FALSE, META_TRUE)
+
+#define META_IF(p, x, y) p(x, y)
+
+#define META_DETECT(x) META_EXPAND(META_EXPAND(META_FALSE META_DEFER(META_SWALLOW)(x)))
+#define META_DETECT_PROBE )(?, META_TRUE
 
 #endif
