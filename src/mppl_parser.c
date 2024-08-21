@@ -15,7 +15,6 @@
 */
 
 #include <stddef.h>
-#include <stdio.h>
 
 #include "array.h"
 #include "diagnostics.h"
@@ -31,6 +30,7 @@ typedef struct Parser       Parser;
 struct Parser {
   const Source     *source;
   LexedToken        token;
+  Array            *trivia_pieces;
   RawSyntaxBuilder *builder;
 
   MpplSyntaxKindSet expected;
@@ -51,13 +51,20 @@ static void null(Parser *self)
 
 static void lex(Parser *self)
 {
+  unsigned long previous_offset = self->token.offset + self->token.length;
   while (1) {
     LexStatus status = mpplc_lex(self->source, self->token.offset + self->token.length, &self->token);
     if (status == LEX_OK || status == LEX_EOF) {
       if (mppl_syntax_kind_is_token(self->token.kind)) {
+        raw_syntax_builder_trivia(self->builder, self->source->text + previous_offset,
+          array_data(self->trivia_pieces), array_count(self->trivia_pieces));
+        array_clear(self->trivia_pieces);
         break;
       } else {
-        raw_syntax_builder_trivia(self->builder, self->token.kind, self->source->text + self->token.offset, self->token.length);
+        RawSyntaxTriviaPiece piece;
+        piece.span.text_length = self->token.length;
+        piece.kind             = self->token.kind;
+        array_push(self->trivia_pieces, &piece);
       }
     } else {
       switch (status) {
@@ -601,9 +608,10 @@ void mpplc_parse(const Source *source, MpplParseResult *result)
   self.alive       = 1;
   self.breakable   = 0;
 
-  self.token.kind   = -1;
-  self.token.offset = 0;
-  self.token.length = 0;
+  self.trivia_pieces = array_new(sizeof(RawSyntaxTriviaPiece));
+  self.token.kind    = -1;
+  self.token.offset  = 0;
+  self.token.length  = 0;
 
   lex(&self);
   parse_program(&self);
@@ -611,4 +619,6 @@ void mpplc_parse(const Source *source, MpplParseResult *result)
   result->root       = raw_syntax_builder_finish(self.builder);
   result->diag_count = array_count(self.diagnostics);
   result->diags      = array_steal(self.diagnostics);
+
+  array_free(self.trivia_pieces);
 }

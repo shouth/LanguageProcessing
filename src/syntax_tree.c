@@ -17,15 +17,15 @@ static void print_spans(FILE *file, RawSyntaxSpan **spans, unsigned long span_co
 static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offset, int depth, RawSyntaxKindPrinter *kind_printer)
 {
   unsigned long i;
-  for (i = 0; i < trivia->children_count; ++i) {
+  for (i = 0; i < trivia->piece_count; ++i) {
     fprintf(file, "%*.s(", (int) depth * 2, "");
     if (kind_printer) {
-      kind_printer(trivia->children[i]->node.kind, file);
+      kind_printer(trivia->pieces[i].kind, file);
     } else {
-      fprintf(file, "TRIVIA(%d)", trivia->children[i]->node.kind);
+      fprintf(file, "TRIVIA(%d)", trivia->pieces[i].kind);
     }
-    fprintf(file, " @ %ld..%ld)\n", offset, offset + trivia->children[i]->node.span.text_length);
-    offset += trivia->children[i]->node.span.text_length;
+    fprintf(file, " @ %ld..%ld)\n", offset, offset + trivia->pieces[i].span.text_length);
+    offset += trivia->pieces[i].span.text_length;
   }
 }
 
@@ -83,13 +83,11 @@ static void free_spans(RawSyntaxSpan **spans, unsigned long span_count, int dept
 
 static void free_trivia(RawSyntaxTrivia *trivia)
 {
-  unsigned long i;
-  for (i = 0; i < trivia->children_count; ++i) {
-    free(trivia->children[i]->text);
-    free(trivia->children[i]);
+  if (trivia) {
+    free(trivia->text);
+    free(trivia->pieces);
+    free(trivia);
   }
-  free(trivia->children);
-  free(trivia);
 }
 
 static void free_node(RawSyntaxNode *node, int depth)
@@ -132,27 +130,25 @@ void raw_syntax_free(RawSyntaxRoot *syntax)
 /* syntax builder */
 
 struct RawSyntaxBuilder {
-  Array *trivias; /* RawSyntaxToken */
-  Array *spans; /* RawSyntaxSpan */
+  RawSyntaxTrivia *trivia;
+  Array           *spans; /* RawSyntaxSpan */
 };
-
-static RawSyntaxTrivia *finish_trivia(RawSyntaxBuilder *self)
-{
-  unsigned long    i;
-  RawSyntaxTrivia *trivia  = xmalloc(sizeof(RawSyntaxTrivia));
-  trivia->children_count   = array_count(self->trivias);
-  trivia->children         = memdup(array_data(self->trivias), sizeof(RawSyntaxToken *) * trivia->children_count);
-  trivia->span.text_length = 0;
-  for (i = 0; i < trivia->children_count; ++i) {
-    trivia->span.text_length += trivia->children[i]->node.span.text_length;
-  }
-  array_clear(self->trivias);
-  return trivia;
-}
 
 static void push_span(RawSyntaxBuilder *self, RawSyntaxSpan *span)
 {
+  if (span->text_length > 10000) {
+    fprintf(stderr, "span->text_length: %ld\n", span->text_length);
+  }
   array_push(self->spans, &span);
+}
+
+static void push_trivia(RawSyntaxBuilder *self)
+{
+  if (!self->trivia) {
+    raw_syntax_builder_trivia(self, NULL, NULL, 0);
+  }
+  push_span(self, (RawSyntaxSpan *) self->trivia);
+  self->trivia = NULL;
 }
 
 static unsigned long syntax_span_sum(RawSyntaxSpan **span, unsigned long count)
@@ -168,7 +164,7 @@ static unsigned long syntax_span_sum(RawSyntaxSpan **span, unsigned long count)
 RawSyntaxBuilder *raw_syntax_builder_new(void)
 {
   RawSyntaxBuilder *builder = xmalloc(sizeof(RawSyntaxBuilder));
-  builder->trivias          = array_new(sizeof(RawSyntaxToken *));
+  builder->trivia           = NULL;
   builder->spans            = array_new(sizeof(RawSyntaxSpan *));
   return builder;
 }
@@ -176,19 +172,28 @@ RawSyntaxBuilder *raw_syntax_builder_new(void)
 void raw_syntax_builder_free(RawSyntaxBuilder *self)
 {
   if (self) {
-    array_free(self->trivias);
     array_free(self->spans);
     free(self);
   }
 }
 
-void raw_syntax_builder_trivia(RawSyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length)
+void raw_syntax_builder_trivia(RawSyntaxBuilder *self, const char *text, RawSyntaxTriviaPiece *pieces, unsigned long piece_count)
 {
-  RawSyntaxToken *token        = xmalloc(sizeof(RawSyntaxToken));
-  token->node.span.text_length = text_length;
-  token->node.kind             = kind;
-  token->text                  = strndup(text, text_length);
-  array_push(self->trivias, &token);
+  unsigned long i;
+
+  if (self->trivia) {
+    free_trivia(self->trivia);
+  }
+  self->trivia = xmalloc(sizeof(RawSyntaxTrivia));
+
+  self->trivia->piece_count = piece_count;
+  self->trivia->pieces      = memdup(pieces, sizeof(RawSyntaxTriviaPiece) * self->trivia->piece_count);
+
+  self->trivia->span.text_length = 0;
+  for (i = 0; i < self->trivia->piece_count; ++i) {
+    self->trivia->span.text_length += self->trivia->pieces[i].span.text_length;
+  }
+  self->trivia->text = strndup(text, self->trivia->span.text_length);
 }
 
 void raw_syntax_builder_empty(RawSyntaxBuilder *self)
@@ -198,7 +203,7 @@ void raw_syntax_builder_empty(RawSyntaxBuilder *self)
   node->node_kind        = RAW_SYNTAX_EMPTY;
   node->kind             = -1;
 
-  push_span(self, (RawSyntaxSpan *) finish_trivia(self));
+  push_trivia(self);
   push_span(self, (RawSyntaxSpan *) node);
 }
 
@@ -210,7 +215,7 @@ void raw_syntax_builder_token(RawSyntaxBuilder *self, RawSyntaxKind kind, const 
   token->node.node_kind        = RAW_SYNTAX_TOKEN;
   token->text                  = strndup(text, text_length);
 
-  push_span(self, (RawSyntaxSpan *) finish_trivia(self));
+  push_trivia(self);
   push_span(self, (RawSyntaxSpan *) token);
 }
 
@@ -229,13 +234,20 @@ void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyn
   if (checkpoint == array_count(self->spans)) {
     tree->children_count = 0;
     tree->children       = NULL;
-    push_span(self, (RawSyntaxSpan *) finish_trivia(self));
+    push_trivia(self);
   } else {
     unsigned long start = checkpoint + 1;
     unsigned long end   = array_count(self->spans);
+    unsigned long i;
 
     tree->children_count = end - start;
-    tree->children       = memdup(array_at(self->spans, start), sizeof(RawSyntaxSpan *) * tree->children_count);
+    printf("tree->children_count: %ld\n", tree->children_count);
+    tree->children = memdup(array_at(self->spans, start), sizeof(RawSyntaxSpan *) * tree->children_count);
+    for (i = 0; i < tree->children_count; ++i) {
+      if (tree->children[i]->text_length > 10000) {
+        fprintf(stderr, "tree->children[%ld]->text_length: %ld\n", i, tree->children[i]->text_length);
+      }
+    }
     array_pop_count(self->spans, tree->children_count);
   }
 
@@ -250,7 +262,7 @@ RawSyntaxRoot *raw_syntax_builder_finish(RawSyntaxBuilder *self)
   RawSyntaxRoot *root = xmalloc(sizeof(RawSyntaxRoot));
 
   assert(array_count(self->spans) % 2 == 0);
-  push_span(self, (RawSyntaxSpan *) finish_trivia(self));
+  push_trivia(self);
 
   array_fit(self->spans);
   root->children_count   = array_count(self->spans);

@@ -11,13 +11,14 @@ typedef enum {
   RAW_SYNTAX_TREE
 } RawSyntaxNodeKind;
 
-typedef struct RawSyntaxSpan   RawSyntaxSpan;
-typedef struct RawSyntaxRoot   RawSyntaxRoot;
-typedef struct RawSyntaxNode   RawSyntaxNode;
-typedef struct RawSyntaxTree   RawSyntaxTree;
-typedef struct RawSyntaxToken  RawSyntaxToken;
-typedef struct RawSyntaxTrivia RawSyntaxTrivia;
-typedef unsigned int           RawSyntaxKind;
+typedef struct RawSyntaxSpan        RawSyntaxSpan;
+typedef struct RawSyntaxRoot        RawSyntaxRoot;
+typedef struct RawSyntaxNode        RawSyntaxNode;
+typedef struct RawSyntaxTree        RawSyntaxTree;
+typedef struct RawSyntaxToken       RawSyntaxToken;
+typedef struct RawSyntaxTrivia      RawSyntaxTrivia;
+typedef struct RawSyntaxTriviaPiece RawSyntaxTriviaPiece;
+typedef unsigned int                RawSyntaxKind;
 
 struct RawSyntaxSpan {
   unsigned long text_length;
@@ -47,9 +48,15 @@ struct RawSyntaxToken {
 };
 
 struct RawSyntaxTrivia {
-  RawSyntaxSpan    span;
-  unsigned long    children_count;
-  RawSyntaxToken **children;
+  RawSyntaxSpan         span;
+  char                 *text;
+  unsigned long         piece_count;
+  RawSyntaxTriviaPiece *pieces;
+};
+
+struct RawSyntaxTriviaPiece {
+  RawSyntaxSpan span;
+  RawSyntaxKind kind;
 };
 
 typedef void RawSyntaxKindPrinter(RawSyntaxKind kind, FILE *file);
@@ -59,14 +66,13 @@ void raw_syntax_free(RawSyntaxRoot *syntax);
 
 /* raw syntax tree builder */
 
-typedef struct RawSyntaxTriviaBuilder SyntaxTriviaBuilder;
-typedef struct RawSyntaxBuilder       RawSyntaxBuilder;
-typedef unsigned long                 RawSyntaxCheckpoint;
+typedef struct RawSyntaxBuilder RawSyntaxBuilder;
+typedef unsigned long           RawSyntaxCheckpoint;
 
 RawSyntaxBuilder   *raw_syntax_builder_new(void);
 void                raw_syntax_builder_free(RawSyntaxBuilder *self);
 void                raw_syntax_builder_empty(RawSyntaxBuilder *self);
-void                raw_syntax_builder_trivia(RawSyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length);
+void                raw_syntax_builder_trivia(RawSyntaxBuilder *self, const char *text, RawSyntaxTriviaPiece *pieces, unsigned long piece_count);
 void                raw_syntax_builder_token(RawSyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length);
 RawSyntaxCheckpoint raw_syntax_builder_open(RawSyntaxBuilder *self);
 void                raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyntaxCheckpoint checkpoint);
