@@ -136,9 +136,6 @@ struct RawSyntaxBuilder {
 
 static void push_span(RawSyntaxBuilder *self, RawSyntaxSpan *span)
 {
-  if (span->text_length > 10000) {
-    fprintf(stderr, "span->text_length: %ld\n", span->text_length);
-  }
   array_push(self->spans, &span);
 }
 
@@ -238,16 +235,9 @@ void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyn
   } else {
     unsigned long start = checkpoint + 1;
     unsigned long end   = array_count(self->spans);
-    unsigned long i;
 
     tree->children_count = end - start;
-    printf("tree->children_count: %ld\n", tree->children_count);
     tree->children = memdup(array_at(self->spans, start), sizeof(RawSyntaxSpan *) * tree->children_count);
-    for (i = 0; i < tree->children_count; ++i) {
-      if (tree->children[i]->text_length > 10000) {
-        fprintf(stderr, "tree->children[%ld]->text_length: %ld\n", i, tree->children[i]->text_length);
-      }
-    }
     array_pop_count(self->spans, tree->children_count);
   }
 
