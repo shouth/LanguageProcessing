@@ -45,9 +45,9 @@ LexStatus mpplc_lex(const Source *source, unsigned long offset, LexedToken *toke
 typedef struct MpplParseResult MpplParseResult;
 
 struct MpplParseResult {
-  SyntaxRoot   *root;
-  Diag         *diags;
-  unsigned long diag_count;
+  RawSyntaxRoot *root;
+  Diag          *diags;
+  unsigned long  diag_count;
 };
 
 void mpplc_parse(const Source *source, MpplParseResult *result);

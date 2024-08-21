@@ -21,6 +21,7 @@
 
 #include "array.h"
 #include "mppl_compiler.h"
+#include "mppl_syntax_kind.h"
 #include "source.h"
 #include "syntax_tree.h"
 #include "utility.h"
@@ -33,6 +34,11 @@ int pretty_print = 0;
 int syntax_only  = 0;
 int emit_llvm    = 0;
 int emit_casl2   = 0;
+
+void mppl_syntax_kind_print(RawSyntaxKind kind, FILE *file)
+{
+  fprintf(file, "%s", mppl_syntax_kind_to_string(kind));
+}
 
 static int run_compiler(void)
 {
@@ -52,13 +58,13 @@ static int run_compiler(void)
 
     mpplc_parse(source, &parse_result);
     if (dump_syntax) {
-      syntax_print(parse_result.root, source->text, stdout);
+      raw_syntax_print(parse_result.root, stdout, &mppl_syntax_kind_print);
     } else {
       unreachable();
     }
 
     source_free(source);
-    syntax_free(parse_result.root);
+    raw_syntax_free(parse_result.root);
   }
   return result;
 }

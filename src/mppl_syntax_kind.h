@@ -22,7 +22,6 @@
 /* mppl syntax kind */
 
 #define MPPL_SYNTAX_FOR_EACH(F)         \
-  F(EMPTY, TOKEN, "")                   \
   F(ERROR, TOKEN, "")                   \
   F(IDENT_TOKEN, TOKEN, "")             \
   F(NUMBER_LIT, TOKEN, "")              \
