@@ -53,16 +53,15 @@ char *strndup(const char *src, unsigned long length)
   }
 }
 
-unsigned long fnv1a(unsigned long hash, const void *ptr, unsigned long len)
+void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len)
 {
   const unsigned char *data  = ptr;
   const unsigned char *end   = data + len;
   const unsigned long  prime = 0x01000193ul;
 
   for (; data < end; ++data) {
-    hash = (hash ^ *data) * prime;
+    *hash = 0xFFFFFFFFul & ((*hash ^ *data) * prime);
   }
-  return 0xFFFFFFFFul & hash;
 }
 
 unsigned long popcount(void *data, unsigned long count)

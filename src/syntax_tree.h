@@ -70,7 +70,7 @@ typedef unsigned long        SyntaxCheckpoint;
 
 SyntaxBuilder   *syntax_builder_new(void);
 void             syntax_builder_free(SyntaxBuilder *self);
-void             syntax_builder_null(SyntaxBuilder *self);
+void             syntax_builder_empty(SyntaxBuilder *self);
 void             syntax_builder_trivia(SyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length);
 void             syntax_builder_token(SyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length);
 SyntaxCheckpoint syntax_builder_open(SyntaxBuilder *self);

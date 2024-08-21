@@ -22,10 +22,12 @@
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size)
 {
 
-#define KEYWORD_SOME(str) \
-  if (strncmp())
+#define F(name, kind, keyword) \
+  META_IF(META_DETECT(PROBE_##kind), if (strncmp(keyword, string, size) == 0 && !keyword[size]) { return MPPL_SYNTAX_##name; }, META_DEFER(META_EMPTY)())
 
-#define F(name, kind, string)
+#define PROBE_KEYWORD META_DETECT_PROBE
+  MPPL_SYNTAX_FOR_EACH(F)
+#undef PROBE_KEYWORD
 
 #undef F
   return MPPL_SYNTAX_ERROR;
@@ -45,7 +47,7 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
 {
 #define F(name, kind, string) \
   case MPPL_SYNTAX_##name:    \
-    return "MPPL_SYNTAX_" #name;
+    return #name;
 
   switch (kind) {
     MPPL_SYNTAX_FOR_EACH(F)

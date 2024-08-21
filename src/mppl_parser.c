@@ -16,17 +16,12 @@
 
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "array.h"
-#include "compiler.h"
 #include "diagnostics.h"
-#include "mppl_syntax.h"
+#include "mppl_compiler.h"
 #include "mppl_syntax_kind.h"
-#include "report.h"
 #include "source.h"
-#include "string.h"
 #include "syntax_tree.h"
 #include "utility.h"
 
@@ -34,7 +29,7 @@ typedef struct Parser Parser;
 
 struct Parser {
   const Source  *source;
-  LexedToken     lexed;
+  LexedToken     token;
   SyntaxBuilder *builder;
 
   MpplSyntaxKindSet expected;
@@ -50,43 +45,42 @@ static void diagnostics(Parser *self, Diag *diagnostics)
 
 static void null(Parser *self)
 {
-  syntax_builder_null(self->builder);
+  syntax_builder_empty(self->builder);
 }
 
-static void bump(Parser *self)
+static void lex(Parser *self)
 {
   while (1) {
-    LexStatus status = mpplc_lex(self->source, self->lexed.offset + self->lexed.length, &self->lexed);
-    if (status == LEX_OK) {
-      if (mppl_syntax_kind_is_token(self->lexed.kind)) {
-        syntax_builder_token(self->builder, self->lexed.kind, self->source->text + self->lexed.offset, self->lexed.length);
+    LexStatus status = mpplc_lex(self->source, self->token.offset + self->token.length, &self->token);
+    if (status == LEX_OK || status == LEX_EOF) {
+      if (mppl_syntax_kind_is_token(self->token.kind)) {
         break;
       } else {
-        syntax_builder_trivia(self->builder, self->lexed.kind, self->source->text + self->lexed.offset, self->lexed.length);
+        syntax_builder_trivia(self->builder, self->token.kind, self->source->text + self->token.offset, self->token.length);
       }
     } else {
       switch (status) {
       case LEX_ERROR_STRAY_CHAR: {
-        diagnostics(self, diag_stray_char_error(self->lexed.offset, &self->expected));
+        diagnostics(self, diag_stray_char_error(self->token.offset, &self->expected));
         self->alive = 0;
         break;
       }
       case LEX_ERROR_NONGRAPHIC_CHAR: {
-        diagnostics(self, diag_nongraphic_char_error(self->lexed.offset));
+        diagnostics(self, diag_nongraphic_char_error(self->token.offset));
         break;
       }
       case LEX_ERROR_UNTERMINATED_STRING: {
-        diagnostics(self, diag_unterminated_string_error(self->lexed.offset, self->lexed.length));
+        diagnostics(self, diag_unterminated_string_error(self->token.offset, self->token.length));
         self->alive = 0;
         break;
       }
       case LEX_ERROR_UNTERMINATED_COMMENT: {
-        diagnostics(self, diag_unterminated_comment_error(self->lexed.offset, self->lexed.length));
+        diagnostics(self, diag_unterminated_comment_error(self->token.offset, self->token.length));
         self->alive = 0;
         break;
       }
       case LEX_ERROR_TOO_BIG_NUMBER: {
-        diagnostics(self, diag_too_big_number_error(self->lexed.offset, self->lexed.length));
+        diagnostics(self, diag_too_big_number_error(self->token.offset, self->token.length));
         break;
       }
       default:
@@ -95,8 +89,13 @@ static void bump(Parser *self)
       break;
     }
   }
+}
 
+static void bump(Parser *self)
+{
+  syntax_builder_token(self->builder, self->token.kind, self->source->text + self->token.offset, self->token.length);
   bitset_clear(&self->expected);
+  lex(self);
 }
 
 static int check_any(Parser *self, const MpplSyntaxKind *kinds, unsigned long count)
@@ -109,7 +108,7 @@ static int check_any(Parser *self, const MpplSyntaxKind *kinds, unsigned long co
       bitset_set(&self->expected, kinds[i]);
     }
     for (i = 0; i < count; ++i) {
-      if (self->lexed.kind == kinds[i]) {
+      if (self->token.kind == kinds[i]) {
         return 1;
       }
     }
@@ -139,64 +138,10 @@ static int eat(Parser *self, MpplSyntaxKind kind)
   return eat_any(self, &kind, 1);
 }
 
-static const char *MPPL_SYNTAX_DISPLAY_STRING[] = {
-  "",
-  "identifier",
-  "integer",
-  "string",
-  "`+`",
-  "`-`",
-  "`*`",
-  "`=`",
-  "`<>`",
-  "`<`",
-  "`<=`",
-  "`>`",
-  "`>=`",
-  "`(`",
-  "`)`",
-  "`[`",
-  "`]`",
-  "`:=`",
-  "`.`",
-  "`,`",
-  "`:`",
-  "`;`",
-  "`program`",
-  "`var`",
-  "`array`",
-  "`of`",
-  "`begin`",
-  "`end`",
-  "`if`",
-  "`then`",
-  "`else`",
-  "`procedure`",
-  "`return`",
-  "`call`",
-  "`while`",
-  "`do`",
-  "`not`",
-  "`or`",
-  "`div`",
-  "`and`",
-  "`char`",
-  "`integer`",
-  "`boolean`",
-  "`read`",
-  "`write`",
-  "`readln`",
-  "`writeln`",
-  "`true`",
-  "`false`",
-  "`break`",
-  "EOF",
-};
-
 static void error_unexpected(Parser *self)
 {
-  if (self->lexed.kind != MPPL_SYNTAX_ERROR) {
-    diagnostics(self, diag_unexpected_token_error(self->lexed.offset, self->lexed.length, &self->expected));
+  if (self->token.kind != MPPL_SYNTAX_ERROR) {
+    diagnostics(self, diag_unexpected_token_error(self->token.offset, self->token.length, &self->expected));
     self->alive = 0;
   }
   bump(self);
@@ -233,7 +178,7 @@ static void close(Parser *self, MpplSyntaxKind kind, SyntaxCheckpoint checkpoint
 static void expect_semi(Parser *self)
 {
   if (!eat(self, MPPL_SYNTAX_SEMI_TOKEN) && self->alive) {
-    diag_missing_semicolon_error(self->lexed.offset);
+    diagnostics(self, diag_missing_semicolon_error(self->token.offset));
     self->alive = 0;
     bump(self);
   }
@@ -418,7 +363,7 @@ static void parse_break_stmt(Parser *self)
   SyntaxCheckpoint checkpoint = open(self);
   if (check(self, MPPL_SYNTAX_BREAK_KW)) {
     if (!self->breakable && self->alive) {
-      diagnostics(self, diag_break_outside_loop_error(self->lexed.offset, self->lexed.length));
+      diagnostics(self, diag_break_outside_loop_error(self->token.offset, self->token.length));
     }
     bump(self);
   } else {
@@ -644,37 +589,39 @@ static void parse_program(Parser *self)
   close(self, MPPL_SYNTAX_PROGRAM, checkpoint);
 }
 
-int mpplc_parse(const Source *source, MpplProgram **syntax)
+static void mppl_interface_print_kind(FILE *file, RawSyntaxKind kind)
 {
-  Parser self;
-  int    result;
+  fprintf(file, "%s", mppl_syntax_kind_to_string(kind));
+}
+
+static int mppl_interface_is_token(RawSyntaxKind kind)
+{
+  return mppl_syntax_kind_is_token(kind);
+}
+
+void mpplc_parse(const Source *source, MpplParseResult *result)
+{
+  Parser          self;
+  SyntaxInterface interface;
+
   self.source  = source;
   self.builder = syntax_builder_new();
   bitset_clear(&self.expected);
-  self.diagnostics = array_new(sizeof(Report *));
+  self.diagnostics = array_new(sizeof(Diag *));
   self.alive       = 1;
   self.breakable   = 0;
 
-  self.lexed.offset = 0;
-  self.lexed.length = 0;
-  bump(&self);
+  self.token.kind   = MPPL_SYNTAX_EMPTY;
+  self.token.offset = 0;
+  self.token.length = 0;
 
+  lex(&self);
   parse_program(&self);
-  *syntax = (MpplProgram *) syntax_builder_build(self.builder);
-  {
-    unsigned long i;
-    for (i = 0; i < array_count(self.diagnostics); ++i) {
-      report_emit(*(Report **) array_at(self.diagnostics, i), source);
-    }
-    fflush(stdout);
-  }
-  result = !array_count(self.diagnostics);
 
-  if (!result) {
-    mppl_unref(*syntax);
-    *syntax = NULL;
-  }
+  interface.print_kind = &mppl_interface_print_kind;
+  interface.is_token   = &mppl_interface_is_token;
 
-  array_free(self.diagnostics);
-  return result;
+  result->root       = syntax_builder_finish(self.builder, &interface);
+  result->diag_count = array_count(self.diagnostics);
+  result->diags      = array_steal(self.diagnostics);
 }

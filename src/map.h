@@ -17,7 +17,9 @@
 #ifndef MAP_H
 #define MAP_H
 
-typedef unsigned long    MapHasher(const void *);
+#include "utility.h"
+
+typedef Hash             MapHasher(const void *);
 typedef int              MapComparator(const void *, const void *);
 typedef struct MapBucket MapBucket;
 typedef struct MapIndex  MapIndex;

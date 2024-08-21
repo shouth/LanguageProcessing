@@ -20,10 +20,10 @@
 #include <string.h>
 
 #include "array.h"
-#include "compiler.h"
-#include "context.h"
-#include "mppl_syntax.h"
+#include "mppl_compiler.h"
 #include "source.h"
+#include "syntax_tree.h"
+#include "utility.h"
 
 const char *program;
 Array      *filenames = NULL;
@@ -40,10 +40,9 @@ static int run_compiler(void)
   int           result = EXIT_SUCCESS;
 
   for (i = 0; i < array_count(filenames); ++i) {
-    const char  *filename = *(const char **) array_at(filenames, i);
-    Ctx         *ctx      = ctx_new();
-    Source      *source   = source_new(filename, strlen(filename));
-    MpplProgram *syntax   = NULL;
+    const char     *filename = *(const char **) array_at(filenames, i);
+    Source         *source   = source_new(filename, strlen(filename));
+    MpplParseResult parse_result;
 
     if (!source) {
       fprintf(stderr, "Cannot open file: %s\n", filename);
@@ -51,31 +50,15 @@ static int run_compiler(void)
       continue;
     }
 
-    if (mpplc_parse(source, ctx, &syntax)) {
-      if (dump_syntax) {
-        mpplc_dump_syntax(syntax);
-      }
-
-      if (pretty_print) {
-        mpplc_pretty_print(syntax, NULL);
-      }
-
-      if (mpplc_resolve(source, syntax, ctx) && mpplc_check(source, syntax, ctx)) {
-        if (!syntax_only) {
-          if (emit_casl2) {
-            mpplc_codegen_casl2(source, syntax, ctx);
-          }
-
-          if (emit_llvm) {
-            mpplc_codegen_llvm_ir(source, syntax, ctx);
-          }
-        }
-      }
+    mpplc_parse(source, &parse_result);
+    if (dump_syntax) {
+      syntax_print(parse_result.root, source->text, stdout);
+    } else {
+      unreachable();
     }
 
-    mppl_unref(syntax);
     source_free(source);
-    ctx_free(ctx);
+    syntax_free(parse_result.root);
   }
   return result;
 }
@@ -161,15 +144,7 @@ int main(int argc, const char **argv)
 
   char *mode = getenv("MPPLC_MODE");
   if (mode) {
-    if (strcmp(mode, "TASK1") == 0) {
-      return mpplc_task1(argc, argv);
-    } else if (strcmp(mode, "TASK2") == 0) {
-      return mpplc_task2(argc, argv);
-    } else if (strcmp(mode, "TASK3") == 0) {
-      return mpplc_task3(argc, argv);
-    } else if (strcmp(mode, "TASK4") == 0) {
-      return mpplc_task4(argc, argv);
-    }
+    /* TODO: add task */
   }
 
   init(argc, argv);

@@ -4,6 +4,7 @@
 #include "mppl_syntax_kind.h"
 #include "report.h"
 #include "source.h"
+#include "stdio.h"
 #include "utility.h"
 
 struct Diag {
@@ -17,8 +18,42 @@ Report *diag_to_report(const Diag *diagnostics, const Source *source)
 
 /* utility */
 
-char *expected_set_to_string(MpplSyntaxKindSet *expected)
+char *expected_set_to_string(const MpplSyntaxKindSet *expected)
 {
+  MpplSyntaxKind kind;
+  unsigned long  count;
+  unsigned long  length;
+  char          *result;
+
+  FILE *buffer = tmpfile();
+  if (buffer == NULL) {
+    return NULL;
+  }
+
+  count  = bitset_count(expected);
+  length = 0;
+  if (count > 1) {
+    length += fprintf(buffer, "one of ");
+  }
+
+  for (kind = 0; kind < SENTINEL_MPPL_SYNTAX; kind++) {
+    if (bitset_get(expected, kind)) {
+      length += fprintf(buffer, "%s", mppl_syntax_kind_to_string(kind));
+      if (count > 2) {
+        length += fprintf(buffer, ", ");
+      } else if (count == 2) {
+        length += fprintf(buffer, " and ");
+      }
+      --count;
+    }
+  }
+
+  result = xmalloc(length + 1);
+  rewind(buffer);
+  fread(result, 1, length, buffer);
+  result[length] = '\0';
+  fclose(buffer);
+  return result;
 }
 
 /* lexer */
@@ -173,10 +208,21 @@ static Report *report_diag_unexpected_token_error(const Diag *diag, const Source
 {
   const UnexpectedTokenError *e = (const UnexpectedTokenError *) diag;
 
-  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "expected");
+  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found `%.*s`",
+    expected_set_to_string(&e->expected), (int) e->length, source->text + e->offset);
+  report_annotation(report, e->offset, e->offset + e->length, NULL);
+  return report;
 }
 
-Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, MpplSyntaxKindSet *expected);
+Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, MpplSyntaxKindSet *expected)
+{
+  UnexpectedTokenError *e = xmalloc(sizeof(UnexpectedTokenError));
+  e->interface.to_report  = &report_diag_unexpected_token_error;
+  e->offset               = offset;
+  e->length               = length;
+  e->expected             = *expected;
+  return (Diag *) e;
+}
 
 typedef struct MissingSemicolonError MissingSemicolonError;
 
@@ -185,6 +231,23 @@ struct MissingSemicolonError {
   unsigned long offset;
 };
 
+static Report *report_missing_semicolon_error(const Diag *diag, const Source *source)
+{
+  const MissingSemicolonError *e = (const MissingSemicolonError *) diag;
+
+  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "missing semicolon");
+  report_annotation(report, e->offset, e->offset + 1, NULL);
+  return report;
+}
+
+Diag *diag_missing_semicolon_error(unsigned long offset)
+{
+  MissingSemicolonError *e = xmalloc(sizeof(MissingSemicolonError));
+  e->interface.to_report   = &report_missing_semicolon_error;
+  e->offset                = offset;
+  return (Diag *) e;
+}
+
 typedef struct BreakOutsideLoopError BreakOutsideLoopError;
 
 struct BreakOutsideLoopError {
@@ -192,3 +255,21 @@ struct BreakOutsideLoopError {
   unsigned long offset;
   unsigned long length;
 };
+
+static Report *report_break_outside_loop_error(const Diag *diag, const Source *source)
+{
+  const BreakOutsideLoopError *e = (const BreakOutsideLoopError *) diag;
+
+  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "`break` statement outside loop");
+  report_annotation(report, e->offset, e->offset + e->length, NULL);
+  return report;
+}
+
+Diag *diag_break_outside_loop_error(unsigned long offset, unsigned long length)
+{
+  BreakOutsideLoopError *e = xmalloc(sizeof(BreakOutsideLoopError));
+  e->interface.to_report   = &report_break_outside_loop_error;
+  e->offset                = offset;
+  e->length                = length;
+  return (Diag *) e;
+}

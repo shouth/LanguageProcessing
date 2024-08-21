@@ -20,30 +20,33 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void *xmalloc(unsigned long size);
 void *memdup(const void *ptr, unsigned long length);
 char *strndup(const char *src, unsigned long length);
 
-#define FNV1A_INIT 0x811C9DC5ul
+typedef unsigned long Hash;
 
-unsigned long fnv1a(unsigned long hash, const void *ptr, unsigned long len);
+#define HASH_FNV1A_INIT 0x811C9DC5ul
+
+void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 
 unsigned long popcount(void *data, unsigned long size);
 
-#define ULONG_BIT (sizeof(unsigned long) * CHAR_BIT)
+typedef unsigned long BitSet;
 
-#define BITSET(name, bits)                                  \
-  struct {                                                  \
-    unsigned long data[(bits + ULONG_BIT - 1) / ULONG_BIT]; \
+#define BITSET(name, bits)                       \
+  struct {                                       \
+    char data[(bits + CHAR_BIT - 1) / CHAR_BIT]; \
   } name
 
-#define bitset_data(self)         ((unsigned long *) (self))
-#define bitset_set(self, index)   (bitset_data(self)[(index) / ULONG_BIT] |= 1ul << ((index) % ULONG_BIT))
-#define bitset_reset(self, index) (bitset_data(self)[(index) / ULONG_BIT] &= ~(1ul << ((index) % ULONG_BIT)))
-#define bitset_get(self, index)   (bitset_data(self)[(index) / ULONG_BIT] >> ((index) % ULONG_BIT)) & 1ul)
-#define bitset_clear(self) memset(bitset_data(self), 0, sizeof(*(self)))
-#define bitset_count(self) popcount(bitset_data(self), sizeof(*(self)))
+#define bitset_data(self)         ((char *) (self))
+#define bitset_set(self, index)   (bitset_data(self)[(index) / CHAR_BIT] |= 1ul << ((index) % CHAR_BIT))
+#define bitset_reset(self, index) (bitset_data(self)[(index) / CHAR_BIT] &= ~(1ul << ((index) % CHAR_BIT)))
+#define bitset_get(self, index)   (bitset_data(self)[(index) / CHAR_BIT] & (1ul << ((index) % CHAR_BIT)))
+#define bitset_clear(self)        memset(bitset_data(self), 0, sizeof(*(self)))
+#define bitset_count(self)        popcount(bitset_data(self), sizeof(*(self)))
 
 int is_alphabet(int c);
 int is_number(int c);
@@ -58,10 +61,11 @@ long utf8_len(const char *str, long len);
     exit(EXIT_FAILURE);                                                                          \
   } while (0)
 
+#define META_EMPTY()
 #define META_SWALLOW(x)
 #define META_EXPAND(x)   x
-#define META_DEFER(x)    x META_SWALLOW()
-#define META_OBSTRUCT(x) x META_DEFER(META_SWALLOW)()
+#define META_DEFER(x)    x META_EMPTY()
+#define META_OBSTRUCT(x) x META_DEFER(META_EMPTY)()
 
 #define META_TRUE(p, q)  p
 #define META_FALSE(p, q) q

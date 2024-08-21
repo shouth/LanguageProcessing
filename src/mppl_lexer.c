@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "compiler.h"
+#include "mppl_compiler.h"
 #include "mppl_syntax_kind.h"
 #include "source.h"
 #include "utility.h"

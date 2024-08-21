@@ -37,9 +37,11 @@ struct Map {
   MapComparator *comparator;
 };
 
-static unsigned long map_default_hasher(const void *value)
+static Hash map_default_hasher(const void *value)
 {
-  return fnv1a(FNV1A_INIT, &value, sizeof(value));
+  Hash hash = HASH_FNV1A_INIT;
+  hash_fnv1a(&hash, &value, sizeof(value));
+  return hash;
 }
 
 static int map_default_comparator(const void *left, const void *right)
