@@ -61,8 +61,13 @@ struct RawSyntaxTriviaPiece {
 
 typedef void RawSyntaxKindPrinter(RawSyntaxKind kind, FILE *file);
 
-void raw_syntax_print(RawSyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
-void raw_syntax_free(RawSyntaxRoot *syntax);
+void                   raw_syntax_root_print(const RawSyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
+void                   raw_syntax_root_free(RawSyntaxRoot *syntax);
+const RawSyntaxNode   *raw_syntax_root_node(const RawSyntaxRoot *syntax, unsigned long index);
+const RawSyntaxTrivia *raw_syntax_root_trivia(const RawSyntaxRoot *syntax, unsigned long index);
+
+const RawSyntaxNode   *raw_syntax_tree_node(const RawSyntaxTree *syntax, unsigned long index);
+const RawSyntaxTrivia *raw_syntax_tree_trivia(const RawSyntaxTree *syntax, unsigned long index);
 
 /* raw syntax tree builder */
 

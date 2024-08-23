@@ -33,7 +33,8 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, in
 {
   fprintf(file, "%*.s", (int) depth * 2, "");
 
-  if (node->node_kind == RAW_SYNTAX_TOKEN) {
+  switch (node->node_kind) {
+  case RAW_SYNTAX_TOKEN: {
     RawSyntaxToken *token = (RawSyntaxToken *) node;
     if (kind_printer) {
       kind_printer(token->node.kind, file);
@@ -42,7 +43,9 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, in
     }
     fprintf(file, " @ %ld..%ld", offset, offset + token->node.span.text_length);
     fprintf(file, " \"%s\"\n", token->text);
-  } else if (node->node_kind == RAW_SYNTAX_TREE) {
+    break;
+  }
+  case RAW_SYNTAX_TREE: {
     RawSyntaxTree *tree = (RawSyntaxTree *) node;
     if (kind_printer) {
       kind_printer(tree->node.kind, file);
@@ -51,9 +54,13 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, in
     }
     fprintf(file, " @ %ld..%ld\n", offset, offset + tree->node.span.text_length);
     print_spans(file, tree->children, tree->children_count, offset, depth + 1, kind_printer);
-  } else {
+    break;
+  }
+  case RAW_SYNTAX_EMPTY: {
     fprintf(file, "[EMPTY]");
     fprintf(file, " @ %ld..%ld\n", offset, offset);
+    break;
+  }
   }
 }
 
@@ -72,7 +79,7 @@ static void print_spans(FILE *file, RawSyntaxSpan **spans, unsigned long span_co
   }
 }
 
-void raw_syntax_print(RawSyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer)
+void raw_syntax_root_print(const RawSyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer)
 {
   print_spans(file, syntax->children, syntax->children_count, 0, 0, kind_printer);
 }
@@ -92,14 +99,20 @@ static void free_trivia(RawSyntaxTrivia *trivia)
 
 static void free_node(RawSyntaxNode *node, int depth)
 {
-  if (node->node_kind == RAW_SYNTAX_TOKEN) {
+  switch (node->node_kind) {
+  case RAW_SYNTAX_TOKEN: {
     RawSyntaxToken *token = (RawSyntaxToken *) node;
     free(token->text);
-  } else if (node->node_kind == RAW_SYNTAX_TREE) {
+    break;
+  }
+  case RAW_SYNTAX_TREE: {
     RawSyntaxTree *tree = (RawSyntaxTree *) node;
     free_spans(tree->children, tree->children_count, depth + 1);
-  } else {
-    /* do nothing for empty nodes */
+    break;
+  }
+  case RAW_SYNTAX_EMPTY:
+    /* Nothing to do */
+    break;
   }
   free(node);
 }
@@ -119,12 +132,32 @@ static void free_spans(RawSyntaxSpan **spans, unsigned long span_count, int dept
   free(spans);
 }
 
-void raw_syntax_free(RawSyntaxRoot *syntax)
+void raw_syntax_root_free(RawSyntaxRoot *syntax)
 {
   if (syntax) {
     free_spans(syntax->children, syntax->children_count, 0);
     free(syntax);
   }
+}
+
+const RawSyntaxNode *raw_syntax_root_node(const RawSyntaxRoot *syntax, unsigned long index)
+{
+  return (const RawSyntaxNode *) syntax->children[(index << 1) | 1];
+}
+
+const RawSyntaxTrivia *raw_syntax_root_trivia(const RawSyntaxRoot *syntax, unsigned long index)
+{
+  return (const RawSyntaxTrivia *) syntax->children[index << 1];
+}
+
+const RawSyntaxNode *raw_syntax_tree_node(const RawSyntaxTree *syntax, unsigned long index)
+{
+  return (const RawSyntaxNode *) syntax->children[index << 1];
+}
+
+const RawSyntaxTrivia *raw_syntax_tree_trivia(const RawSyntaxTree *syntax, unsigned long index)
+{
+  return (const RawSyntaxTrivia *) syntax->children[(index << 1) | 1];
 }
 
 /* syntax builder */
@@ -237,7 +270,7 @@ void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyn
     unsigned long end   = array_count(self->spans);
 
     tree->children_count = end - start;
-    tree->children = memdup(array_at(self->spans, start), sizeof(RawSyntaxSpan *) * tree->children_count);
+    tree->children       = memdup(array_at(self->spans, start), sizeof(RawSyntaxSpan *) * tree->children_count);
     array_pop_count(self->spans, tree->children_count);
   }
 

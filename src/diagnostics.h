@@ -1,7 +1,7 @@
 #ifndef DIAGNOSTICS_H
 #define DIAGNOSTICS_H
 
-#include "mppl_syntax_kind.h"
+#include "mppl_syntax.h"
 #include "report.h"
 #include "source.h"
 

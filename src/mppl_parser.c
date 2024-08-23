@@ -19,7 +19,7 @@
 #include "array.h"
 #include "diagnostics.h"
 #include "mppl_compiler.h"
-#include "mppl_syntax_kind.h"
+#include "mppl_syntax.h"
 #include "source.h"
 #include "syntax_tree.h"
 #include "utility.h"

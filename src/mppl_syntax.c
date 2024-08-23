@@ -16,7 +16,7 @@
 
 #include <string.h>
 
-#include "mppl_syntax_kind.h"
+#include "mppl_syntax.h"
 #include "utility.h"
 
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size)

@@ -21,7 +21,7 @@
 
 #include "array.h"
 #include "mppl_compiler.h"
-#include "mppl_syntax_kind.h"
+#include "mppl_syntax.h"
 #include "source.h"
 #include "syntax_tree.h"
 #include "utility.h"
@@ -58,13 +58,13 @@ static int run_compiler(void)
 
     mpplc_parse(source, &parse_result);
     if (dump_syntax) {
-      raw_syntax_print(parse_result.root, stdout, &mppl_syntax_kind_print);
+      raw_syntax_root_print(parse_result.root, stdout, &mppl_syntax_kind_print);
     } else {
       unreachable();
     }
 
     source_free(source);
-    raw_syntax_free(parse_result.root);
+    raw_syntax_root_free(parse_result.root);
   }
   return result;
 }

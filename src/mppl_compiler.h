@@ -18,7 +18,7 @@
 #define COMPILER_H
 
 #include "diagnostics.h"
-#include "mppl_syntax_kind.h"
+#include "mppl_syntax.h"
 #include "source.h"
 #include "syntax_tree.h"
 

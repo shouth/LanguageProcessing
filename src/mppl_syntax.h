@@ -111,13 +111,13 @@ typedef enum {
 
 #undef F
 
+typedef BITSET(MpplSyntaxKindSet, SENTINEL_MPPL_SYNTAX);
+
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size);
 int            mppl_syntax_kind_is_token(MpplSyntaxKind kind);
 int            mppl_syntax_kind_is_trivia(MpplSyntaxKind kind);
 const char    *mppl_syntax_kind_to_string(MpplSyntaxKind kind);
 
-/* mppl syntax kind set */
-
-typedef BITSET(MpplSyntaxKindSet, SENTINEL_MPPL_SYNTAX);
+/* mppl syntax */
 
 #endif
