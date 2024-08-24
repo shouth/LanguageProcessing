@@ -72,10 +72,10 @@
   F(TRUE_KW, KEYWORD, "true")           \
   F(FALSE_KW, KEYWORD, "false")         \
   F(BREAK_KW, KEYWORD, "break")         \
-  F(EOF_TOKEN, TOKEN, "")               \
   F(SPACE_TRIVIA, TRIVIA, "")           \
   F(BRACES_COMMENT_TRIVIA, TRIVIA, "")  \
   F(C_COMMENT_TRIVIA, TRIVIA, "")       \
+  F(EOF_TRIVIA, TRIVIA, "")             \
   F(PROGRAM, SYNTAX, "")                \
   F(VAR_DECL_PART, SYNTAX, "")          \
   F(VAR_DECL, SYNTAX, "")               \

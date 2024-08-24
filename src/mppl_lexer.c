@@ -15,237 +15,208 @@
 */
 
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "mppl_compiler.h"
 #include "mppl_syntax.h"
-#include "source.h"
 #include "utility.h"
 
 typedef struct Lexer Lexer;
 
 struct Lexer {
-  const Source *source;
-  unsigned long offset;
-  unsigned long index;
+  const char   *text;
+  unsigned long length;
+  unsigned long span;
 };
 
-static void bump(Lexer *lexer)
+static void bump(Lexer *l)
 {
-  if (lexer->offset + lexer->index < lexer->source->text_length) {
-    ++lexer->index;
+  if (l->span < l->length) {
+    ++l->span;
   }
 }
 
-static int first(Lexer *lexer)
+static int first(Lexer *l)
 {
-  return lexer->offset + lexer->index < lexer->source->text_length
-    ? lexer->source->text[lexer->offset + lexer->index]
-    : EOF;
+  return l->span < l->length ? l->text[l->span] : EOF;
 }
 
-static int eat(Lexer *lexer, int c)
+static int eat(Lexer *l, int c)
 {
-  int result = first(lexer) == c;
+  int result = first(l) == c;
   if (result) {
-    bump(lexer);
+    bump(l);
   }
   return result;
 }
 
-static int eat_if(Lexer *lexer, int (*predicate)(int))
+static int eat_if(Lexer *l, int (*pred)(int))
 {
-  int result = predicate(first(lexer));
+  int result = pred(first(l));
   if (result) {
-    bump(lexer);
+    bump(l);
   }
   return result;
 }
 
-static LexStatus tokenize(Lexer *lexer, MpplSyntaxKind kind, LexedToken *lexed)
+static MpplLexResult lex(Lexer *l, MpplSyntaxKind kind)
 {
-  lexed->kind   = kind;
-  lexed->offset = lexer->offset;
-  lexed->length = lexer->index;
+  MpplLexResult result;
+  result.kind            = kind;
+  result.span            = l->span;
+  result.is_unterminated = 0;
+  result.has_nongraphic  = 0;
 
-  lexer->offset += lexer->index;
-  lexer->index = 0;
-  return LEX_OK;
+  l->text += l->span;
+  l->length -= l->span;
+  l->span = 0;
+
+  return result;
 }
 
-static LexStatus token_unexpected(Lexer *lexer, LexedToken *lexed)
+static MpplLexResult lex_identifier_or_keyword(Lexer *l)
 {
-  bump(lexer);
-  tokenize(lexer, MPPL_SYNTAX_ERROR, lexed);
-  return LEX_ERROR_STRAY_CHAR;
+  MpplSyntaxKind kind;
+  while (eat_if(l, &is_alphabet) || eat_if(l, &is_number)) { }
+  kind = mppl_syntax_kind_from_keyword(l->text, l->span);
+  return lex(l, kind != MPPL_SYNTAX_ERROR ? kind : MPPL_SYNTAX_IDENT_TOKEN);
 }
 
-static LexStatus token_identifier_and_keyword(Lexer *lexer, LexedToken *lexed)
+static MpplLexResult lex_integer(Lexer *l)
 {
-  if (eat_if(lexer, &is_alphabet)) {
-    MpplSyntaxKind kind;
-    while (eat_if(lexer, &is_alphabet) || eat_if(lexer, &is_number)) { }
-    kind = mppl_syntax_kind_from_keyword(lexer->source->text + lexer->offset, lexer->index);
-    return tokenize(lexer, kind != MPPL_SYNTAX_ERROR ? kind : MPPL_SYNTAX_IDENT_TOKEN, lexed);
-  } else {
-    return token_unexpected(lexer, lexed);
-  }
+  while (eat_if(l, &is_number)) { }
+  return lex(l, MPPL_SYNTAX_NUMBER_LIT);
 }
 
-static LexStatus token_integer(Lexer *lexer, LexedToken *lexed)
+static MpplLexResult lex_string(Lexer *l)
 {
-  if (eat_if(lexer, &is_number)) {
-    while (eat_if(lexer, &is_number)) { }
-
-    if (strtoul(lexer->source->text + lexer->offset, NULL, 10) > 32768) {
-      tokenize(lexer, MPPL_SYNTAX_ERROR, lexed);
-      return LEX_ERROR_TOO_BIG_NUMBER;
-    } else {
-      return tokenize(lexer, MPPL_SYNTAX_NUMBER_LIT, lexed);
-    }
-  } else {
-    return token_unexpected(lexer, lexed);
-  }
-}
-
-static LexStatus token_string(Lexer *lexer, LexedToken *lexed)
-{
-  if (eat(lexer, '\'')) {
-    int contain_non_graphic = 0;
-    while (1) {
-      if (eat(lexer, '\'') && !eat(lexer, '\'')) {
-        if (contain_non_graphic) {
-          tokenize(lexer, MPPL_SYNTAX_ERROR, lexed);
-          return LEX_ERROR_NONGRAPHIC_CHAR;
-        } else {
-          return tokenize(lexer, MPPL_SYNTAX_STRING_LIT, lexed);
-        }
-      } else if (first(lexer) == '\r' || first(lexer) == '\n' || first(lexer) == EOF) {
-        tokenize(lexer, MPPL_SYNTAX_ERROR, lexed);
-        return LEX_ERROR_UNTERMINATED_STRING;
-      } else if (!eat_if(lexer, &is_graphic)) {
-        contain_non_graphic = 1;
-        bump(lexer);
+  int has_nongraphic = 0;
+  while (1) {
+    if (eat(l, '\'') && !eat(l, '\'')) {
+      MpplLexResult result = lex(l, MPPL_SYNTAX_STRING_LIT);
+      if (has_nongraphic) {
+        result.has_nongraphic = 1;
       }
+      return result;
+    } else if (first(l) == '\r' || first(l) == '\n' || first(l) == EOF) {
+      MpplLexResult result   = lex(l, MPPL_SYNTAX_STRING_LIT);
+      result.is_unterminated = 1;
+      return result;
+    } else if (!eat_if(l, &is_graphic)) {
+      has_nongraphic = 1;
+      bump(l);
     }
-  } else {
-    return token_unexpected(lexer, lexed);
   }
 }
 
-static LexStatus token_whitespace(Lexer *lexer, LexedToken *lexed)
+static MpplLexResult lex_whitespace(Lexer *l)
 {
-  if (eat_if(lexer, &is_space)) {
-    while (eat_if(lexer, &is_space)) { }
-    return tokenize(lexer, MPPL_SYNTAX_SPACE_TRIVIA, lexed);
-  } else {
-    return token_unexpected(lexer, lexed);
+  while (eat_if(l, &is_space)) { }
+  return lex(l, MPPL_SYNTAX_SPACE_TRIVIA);
+}
+
+static MpplLexResult lex_braces_comment(Lexer *l)
+{
+  while (1) {
+    if (eat(l, '}')) {
+      return lex(l, MPPL_SYNTAX_BRACES_COMMENT_TRIVIA);
+    } else if (first(l) == EOF) {
+      MpplLexResult result   = lex(l, MPPL_SYNTAX_BRACES_COMMENT_TRIVIA);
+      result.is_unterminated = 1;
+      return result;
+    } else {
+      bump(l);
+    }
   }
 }
 
-static LexStatus token_comment(Lexer *lexer, LexedToken *lexed)
+static MpplLexResult lex_c_comment(Lexer *l)
 {
-  if (eat(lexer, '{')) {
-    while (1) {
-      if (eat(lexer, '}')) {
-        return tokenize(lexer, MPPL_SYNTAX_BRACES_COMMENT_TRIVIA, lexed);
-      } else if (first(lexer) == EOF) {
-        tokenize(lexer, MPPL_SYNTAX_ERROR, lexed);
-        return LEX_ERROR_UNTERMINATED_COMMENT;
-      } else {
-        bump(lexer);
-      }
-    }
-  } else if (eat(lexer, '/')) {
-    if (eat(lexer, '*')) {
-      while (1) {
-        if (eat(lexer, '*') && eat(lexer, '/')) {
-          return tokenize(lexer, MPPL_SYNTAX_C_COMMENT_TRIVIA, lexed);
-        } else if (first(lexer) == EOF) {
-          tokenize(lexer, MPPL_SYNTAX_ERROR, lexed);
-          return LEX_ERROR_UNTERMINATED_COMMENT;
-        } else {
-          bump(lexer);
-        }
-      }
+  while (1) {
+    if (eat(l, '*') && eat(l, '/')) {
+      return lex(l, MPPL_SYNTAX_C_COMMENT_TRIVIA);
+    } else if (first(l) == EOF) {
+      MpplLexResult result   = lex(l, MPPL_SYNTAX_C_COMMENT_TRIVIA);
+      result.is_unterminated = 1;
+      return result;
     } else {
-      return token_unexpected(lexer, lexed);
+      bump(l);
     }
-  } else {
-    return token_unexpected(lexer, lexed);
   }
 }
 
-static LexStatus token_symbol(Lexer *lexer, LexedToken *lexed)
+static MpplLexResult lex_token(Lexer *l)
 {
-  if (eat(lexer, '+')) {
-    return tokenize(lexer, MPPL_SYNTAX_PLUS_TOKEN, lexed);
-  } else if (eat(lexer, '-')) {
-    return tokenize(lexer, MPPL_SYNTAX_MINUS_TOKEN, lexed);
-  } else if (eat(lexer, '*')) {
-    return tokenize(lexer, MPPL_SYNTAX_STAR_TOKEN, lexed);
-  } else if (eat(lexer, '=')) {
-    return tokenize(lexer, MPPL_SYNTAX_EQUAL_TOKEN, lexed);
-  } else if (eat(lexer, '<')) {
-    if (eat(lexer, '>')) {
-      return tokenize(lexer, MPPL_SYNTAX_NOTEQ_TOKEN, lexed);
-    } else if (eat(lexer, '=')) {
-      return tokenize(lexer, MPPL_SYNTAX_LESSEQ_TOKEN, lexed);
+  if (first(l) == EOF) {
+    return lex(l, MPPL_SYNTAX_EOF_TRIVIA);
+  } else if (eat_if(l, &is_alphabet)) {
+    return lex_identifier_or_keyword(l);
+  } else if (eat_if(l, &is_number)) {
+    return lex_integer(l);
+  } else if (eat(l, '\'')) {
+    return lex_string(l);
+  } else if (eat_if(l, &is_space)) {
+    return lex_whitespace(l);
+  } else if (eat(l, '{')) {
+    return lex_braces_comment(l);
+  } else if (eat(l, '/')) {
+    if (eat(l, '*')) {
+      return lex_c_comment(l);
     } else {
-      return tokenize(lexer, MPPL_SYNTAX_LESS_TOKEN, lexed);
+      return lex(l, MPPL_SYNTAX_ERROR);
     }
-  } else if (eat(lexer, '>')) {
-    if (eat(lexer, '=')) {
-      return tokenize(lexer, MPPL_SYNTAX_GREATEREQ_TOKEN, lexed);
+  } else if (eat(l, '+')) {
+    return lex(l, MPPL_SYNTAX_PLUS_TOKEN);
+  } else if (eat(l, '-')) {
+    return lex(l, MPPL_SYNTAX_MINUS_TOKEN);
+  } else if (eat(l, '*')) {
+    return lex(l, MPPL_SYNTAX_STAR_TOKEN);
+  } else if (eat(l, '=')) {
+    return lex(l, MPPL_SYNTAX_EQUAL_TOKEN);
+  } else if (eat(l, '<')) {
+    if (eat(l, '>')) {
+      return lex(l, MPPL_SYNTAX_NOTEQ_TOKEN);
+    } else if (eat(l, '=')) {
+      return lex(l, MPPL_SYNTAX_LESSEQ_TOKEN);
     } else {
-      return tokenize(lexer, MPPL_SYNTAX_GREATER_TOKEN, lexed);
+      return lex(l, MPPL_SYNTAX_LESS_TOKEN);
     }
-  } else if (eat(lexer, '(')) {
-    return tokenize(lexer, MPPL_SYNTAX_LPAREN_TOKEN, lexed);
-  } else if (eat(lexer, ')')) {
-    return tokenize(lexer, MPPL_SYNTAX_RPAREN_TOKEN, lexed);
-  } else if (eat(lexer, '[')) {
-    return tokenize(lexer, MPPL_SYNTAX_LBRACKET_TOKEN, lexed);
-  } else if (eat(lexer, ']')) {
-    return tokenize(lexer, MPPL_SYNTAX_RBRACKET_TOKEN, lexed);
-  } else if (eat(lexer, ':')) {
-    if (eat(lexer, '=')) {
-      return tokenize(lexer, MPPL_SYNTAX_ASSIGN_TOKEN, lexed);
+  } else if (eat(l, '>')) {
+    if (eat(l, '=')) {
+      return lex(l, MPPL_SYNTAX_GREATEREQ_TOKEN);
     } else {
-      return tokenize(lexer, MPPL_SYNTAX_COLON_TOKEN, lexed);
+      return lex(l, MPPL_SYNTAX_GREATER_TOKEN);
     }
-  } else if (eat(lexer, '.')) {
-    return tokenize(lexer, MPPL_SYNTAX_DOT_TOKEN, lexed);
-  } else if (eat(lexer, ',')) {
-    return tokenize(lexer, MPPL_SYNTAX_COMMA_TOKEN, lexed);
-  } else if (eat(lexer, ';')) {
-    return tokenize(lexer, MPPL_SYNTAX_SEMI_TOKEN, lexed);
+  } else if (eat(l, '(')) {
+    return lex(l, MPPL_SYNTAX_LPAREN_TOKEN);
+  } else if (eat(l, ')')) {
+    return lex(l, MPPL_SYNTAX_RPAREN_TOKEN);
+  } else if (eat(l, '[')) {
+    return lex(l, MPPL_SYNTAX_LBRACKET_TOKEN);
+  } else if (eat(l, ']')) {
+    return lex(l, MPPL_SYNTAX_RBRACKET_TOKEN);
+  } else if (eat(l, ':')) {
+    if (eat(l, '=')) {
+      return lex(l, MPPL_SYNTAX_ASSIGN_TOKEN);
+    } else {
+      return lex(l, MPPL_SYNTAX_COLON_TOKEN);
+    }
+  } else if (eat(l, '.')) {
+    return lex(l, MPPL_SYNTAX_DOT_TOKEN);
+  } else if (eat(l, ',')) {
+    return lex(l, MPPL_SYNTAX_COMMA_TOKEN);
+  } else if (eat(l, ';')) {
+    return lex(l, MPPL_SYNTAX_SEMI_TOKEN);
   } else {
-    return token_unexpected(lexer, lexed);
+    bump(l);
+    return lex(l, MPPL_SYNTAX_ERROR);
   }
 }
 
-LexStatus mpplc_lex(const Source *source, unsigned long offset, LexedToken *lexed)
+MpplLexResult mppl_lex(const char *text, unsigned long length)
 {
-  Lexer lexer;
-  lexer.source = source;
-  lexer.offset = offset;
-  lexer.index  = 0;
-
-  if (first(&lexer) == EOF) {
-    tokenize(&lexer, MPPL_SYNTAX_EOF_TOKEN, lexed);
-    return LEX_EOF;
-  } else if (is_alphabet(first(&lexer))) {
-    return token_identifier_and_keyword(&lexer, lexed);
-  } else if (is_number(first(&lexer))) {
-    return token_integer(&lexer, lexed);
-  } else if (first(&lexer) == '\'') {
-    return token_string(&lexer, lexed);
-  } else if (is_space(first(&lexer))) {
-    return token_whitespace(&lexer, lexed);
-  } else if (first(&lexer) == '{' || first(&lexer) == '/') {
-    return token_comment(&lexer, lexed);
-  } else {
-    return token_symbol(&lexer, lexed);
-  }
+  Lexer l;
+  l.text   = text;
+  l.length = length;
+  l.span   = 0;
+  return lex_token(&l);
 }

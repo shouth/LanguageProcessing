@@ -21,40 +21,57 @@
 
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size)
 {
+#define KEYWORD_KIND_PAIR(keyword, name) { keyword, MPPL_SYNTAX_##name },
 
-#define F(name, kind, keyword) \
-  META_IF(META_DETECT(PROBE_##kind), if (strncmp(keyword, string, size) == 0 && !keyword[size]) { return MPPL_SYNTAX_##name; }, META_DEFER(META_EMPTY)())
+#define LIST_KEYWORD_KIND_PAIR(name, kind, keyword) \
+  META_IF(META_DETECT(PROBE_##kind), META_DEFER(KEYWORD_KIND_PAIR)(keyword, name), META_DEFER(META_EMPTY)())
 
 #define PROBE_KEYWORD META_DETECT_PROBE
-  MPPL_SYNTAX_FOR_EACH(F)
-#undef PROBE_KEYWORD
 
-#undef F
+  unsigned long i;
+
+  static const struct {
+    const char    *keyword;
+    MpplSyntaxKind kind;
+  } keywords[] = {
+    MPPL_SYNTAX_FOR_EACH(LIST_KEYWORD_KIND_PAIR)
+  };
+
+  for (i = 0; i < sizeof(keywords) / sizeof(*keywords); ++i) {
+    if (strncmp(keywords[i].keyword, string, size) == 0 && !keywords[i].keyword[size]) {
+      return keywords[i].kind;
+    }
+  }
+
   return MPPL_SYNTAX_ERROR;
+
+#undef PROBE_KEYWORD
+#undef LIST_KEYWORD_KIND_PAIR
+#undef KEYWORD_KIND_PAIR
 }
 
 int mppl_syntax_kind_is_token(MpplSyntaxKind kind)
 {
-  return kind <= MPPL_SYNTAX_EOF_TOKEN;
+  return kind <= MPPL_SYNTAX_EOF_TRIVIA;
 }
 
 int mppl_syntax_kind_is_trivia(MpplSyntaxKind kind)
 {
-  return kind >= MPPL_SYNTAX_SPACE_TRIVIA && kind <= MPPL_SYNTAX_C_COMMENT_TRIVIA;
+  return kind >= MPPL_SYNTAX_SPACE_TRIVIA && kind <= MPPL_SYNTAX_EOF_TRIVIA;
 }
 
 const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
 {
-#define F(name, kind, string) \
-  case MPPL_SYNTAX_##name:    \
+#define KIND_TO_STRING(name, kind, string) \
+  case MPPL_SYNTAX_##name:                 \
     return #name;
 
   switch (kind) {
-    MPPL_SYNTAX_FOR_EACH(F)
+    MPPL_SYNTAX_FOR_EACH(KIND_TO_STRING)
 
   default:
     unreachable();
   }
 
-#undef F
+#undef KIND_TO_STRING
 }

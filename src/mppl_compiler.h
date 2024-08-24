@@ -19,28 +19,18 @@
 
 #include "diagnostics.h"
 #include "mppl_syntax.h"
-#include "source.h"
 #include "syntax_tree.h"
 
-typedef struct LexedToken LexedToken;
+typedef struct MpplLexResult MpplLexResult;
 
-typedef enum {
-  LEX_OK,
-  LEX_EOF,
-  LEX_ERROR_STRAY_CHAR,
-  LEX_ERROR_NONGRAPHIC_CHAR,
-  LEX_ERROR_UNTERMINATED_STRING,
-  LEX_ERROR_UNTERMINATED_COMMENT,
-  LEX_ERROR_TOO_BIG_NUMBER
-} LexStatus;
-
-struct LexedToken {
+struct MpplLexResult {
   MpplSyntaxKind kind;
-  unsigned long  offset;
-  unsigned long  length;
+  unsigned long  span;
+  int            is_unterminated; /* For STRING_LIT, BRACES_COMMENT and C_COMMENT */
+  int            has_nongraphic; /* For STRING_LIT */
 };
 
-LexStatus mpplc_lex(const Source *source, unsigned long offset, LexedToken *token);
+MpplLexResult mppl_lex(const char *text, unsigned long length);
 
 typedef struct MpplParseResult MpplParseResult;
 
@@ -50,6 +40,6 @@ struct MpplParseResult {
   unsigned long  diag_count;
 };
 
-void mpplc_parse(const Source *source, MpplParseResult *result);
+MpplParseResult mppl_parse(const char *text, unsigned long length);
 
 #endif
