@@ -75,8 +75,6 @@ long utf8_len(const char *str, long len);
 #define META_OR(p, q)    p(META_TRUE, q)
 #define META_NOT(p)      p(META_FALSE, META_TRUE)
 
-#define META_IF(p, x, y) p(x, y)
-
 #define META_DETECT(x) META_EXPAND(META_EXPAND(META_FALSE META_DEFER(META_SWALLOW)(x)))
 #define META_DETECT_PROBE )(?, META_TRUE
 

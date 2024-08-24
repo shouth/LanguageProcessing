@@ -3,17 +3,37 @@
 #include "diagnostics.h"
 #include "mppl_syntax.h"
 #include "report.h"
-#include "source.h"
 #include "stdio.h"
 #include "utility.h"
 
+typedef Report *(DiagToReport) (const Diag *diag);
+typedef void(DiagFree)(Diag *diag);
+
 struct Diag {
-  Report *(*to_report)(const Diag *diagnostics, const Source *source);
+  DiagToReport *to_report;
+  DiagFree     *free;
 };
 
-Report *diag_to_report(const Diag *diagnostics, const Source *source)
+static Diag diag(DiagToReport *to_report, DiagFree *free)
 {
-  return diagnostics->to_report(diagnostics, source);
+  Diag d;
+  d.to_report = to_report;
+  d.free      = free;
+  return d;
+}
+
+void diag_free(Diag *diag)
+{
+  if (diag && diag->free) {
+    diag->free(diag);
+  } else {
+    free(diag);
+  }
+}
+
+Report *diag_to_report(const Diag *diag)
+{
+  return diag->to_report(diag);
 }
 
 /* utility */
@@ -38,7 +58,36 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
 
   for (kind = 0; kind < SENTINEL_MPPL_SYNTAX; kind++) {
     if (bitset_get(expected, kind)) {
-      length += fprintf(buffer, "%s", mppl_syntax_kind_to_string(kind));
+#define PROBE_PUNCT   META_DETECT_PROBE
+#define PROBE_KEYWORD META_DETECT_PROBE
+#define PRINT_QUOTED(name, string)             \
+  case MPPL_SYNTAX_##name:                     \
+    length += fprintf(buffer, "`%s`", string); \
+    break;
+#define F(name, kind, string) META_DETECT(PROBE_##kind)(PRINT_QUOTED(name, string), META_EMPTY())
+
+      switch (kind) {
+      case MPPL_SYNTAX_NUMBER_LIT:
+        length += fprintf(buffer, "number");
+        break;
+      case MPPL_SYNTAX_STRING_LIT:
+        length += fprintf(buffer, "string");
+        break;
+      case MPPL_SYNTAX_IDENT_TOKEN:
+        length += fprintf(buffer, "identifier");
+        break;
+
+        MPPL_SYNTAX_FOR_EACH(F)
+
+      default:
+        unreachable();
+      }
+
+#undef F
+#undef PRINT_QUOTED
+#undef PROBE_KEYWORD
+#undef PROBE_PUNCT
+
       if (count > 2) {
         length += fprintf(buffer, ", ");
       } else if (count == 2) {
@@ -63,31 +112,33 @@ typedef struct StrayCharError StrayCharError;
 struct StrayCharError {
   Diag              interface;
   unsigned long     offset;
+  int               stray;
   MpplSyntaxKindSet expected;
 };
 
-static Report *report_stray_char_error(const Diag *diag, const Source *source)
+static Report *report_stray_char_error(const Diag *diag)
 {
   const StrayCharError *e = (const StrayCharError *) diag;
 
-  char    stray = source->text[e->offset];
+  char   *expected = expected_set_to_string(&e->expected);
   Report *report;
-  if (is_graphic(stray)) {
-    report = report_new(REPORT_KIND_ERROR, e->offset, "stray `%c` in program", stray);
+  if (is_graphic(e->stray)) {
+    report = report_new(REPORT_KIND_ERROR, e->offset, "stray `%c` in program", (char) e->stray);
   } else {
-    report = report_new(REPORT_KIND_ERROR, e->offset, "stray `\\x%X` in program", (unsigned char) stray);
+    report = report_new(REPORT_KIND_ERROR, e->offset, "stray `\\x%X` in program", (unsigned char) e->stray);
   }
-  /* TODO: replace NULL with stringified syntax kind set */
-  report_annotation(report, e->offset, e->offset + 1, NULL);
+  report_annotation(report, e->offset, e->offset + 1, "expected %s", expected);
+  free(expected);
   return report;
 }
 
-Diag *diag_stray_char_error(unsigned long offset, MpplSyntaxKindSet *expected)
+Diag *diag_stray_char_error(unsigned long offset, int stray, MpplSyntaxKindSet expected)
 {
-  StrayCharError *e      = xmalloc(sizeof(StrayCharError));
-  e->interface.to_report = &report_stray_char_error;
-  e->offset              = offset;
-  e->expected            = *expected;
+  StrayCharError *e = xmalloc(sizeof(StrayCharError));
+  e->interface      = diag(&report_stray_char_error, NULL);
+  e->offset         = offset;
+  e->stray          = stray;
+  e->expected       = expected;
   return (Diag *) e;
 }
 
@@ -96,21 +147,23 @@ typedef struct NonGraphicCharError NonGraphicCharError;
 struct NonGraphicCharError {
   Diag          interface;
   unsigned long offset;
+  int           nongraphic;
 };
 
-static Report *report_nongraphic_char_error(const Diag *diag, const Source *source)
+static Report *report_nongraphic_char_error(const Diag *diag)
 {
   const NonGraphicCharError *e = (const NonGraphicCharError *) diag;
 
-  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "non-graphic character `\\x%X` in string", (unsigned char) source->text[e->offset]);
+  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "non-graphic character `\\x%X` in string", (unsigned char) e->nongraphic);
   report_annotation(report, e->offset, e->offset + 1, NULL);
   return report;
 }
 
-Diag *diag_nongraphic_char_error(unsigned long offset)
+Diag *diag_nongraphic_char_error(unsigned long offset, int nongraphic)
 {
   NonGraphicCharError *e = xmalloc(sizeof(NonGraphicCharError));
-  e->interface.to_report = &report_nongraphic_char_error;
+  e->interface           = diag(&report_nongraphic_char_error, NULL);
+  e->nongraphic          = nongraphic;
   e->offset              = offset;
   return (Diag *) e;
 }
@@ -123,7 +176,7 @@ struct UnterminatedStringError {
   unsigned long length;
 };
 
-static Report *report_unterminated_string(const Diag *diag, const Source *source)
+static Report *report_unterminated_string(const Diag *diag)
 {
   const UnterminatedStringError *e = (const UnterminatedStringError *) diag;
 
@@ -135,7 +188,7 @@ static Report *report_unterminated_string(const Diag *diag, const Source *source
 Diag *diag_unterminated_string_error(unsigned long offset, unsigned long length)
 {
   UnterminatedStringError *e = xmalloc(sizeof(UnterminatedStringError));
-  e->interface.to_report     = &report_unterminated_string;
+  e->interface               = diag(&report_unterminated_string, NULL);
   e->offset                  = offset;
   e->length                  = length;
   return (Diag *) e;
@@ -149,7 +202,7 @@ struct UnterminatedCommentError {
   unsigned long length;
 };
 
-static Report *report_unterminated_comment_error(const Diag *diagnostics, const Source *source)
+static Report *report_unterminated_comment_error(const Diag *diagnostics)
 {
   const UnterminatedCommentError *e = (const UnterminatedCommentError *) diagnostics;
 
@@ -161,7 +214,7 @@ static Report *report_unterminated_comment_error(const Diag *diagnostics, const 
 Diag *diag_unterminated_comment_error(unsigned long offset, unsigned long length)
 {
   UnterminatedCommentError *e = xmalloc(sizeof(UnterminatedCommentError));
-  e->interface.to_report      = &report_unterminated_comment_error;
+  e->interface                = diag(&report_unterminated_comment_error, NULL);
   e->offset                   = offset;
   e->length                   = length;
   return (Diag *) e;
@@ -175,7 +228,7 @@ struct TooBigNumberError {
   unsigned long length;
 };
 
-static Report *report_too_big_number_error(const Diag *diag, const Source *source)
+static Report *report_too_big_number_error(const Diag *diag)
 {
   const TooBigNumberError *e = (const TooBigNumberError *) diag;
 
@@ -186,10 +239,10 @@ static Report *report_too_big_number_error(const Diag *diag, const Source *sourc
 
 Diag *diag_too_big_number_error(unsigned long offset, unsigned long length)
 {
-  TooBigNumberError *e   = xmalloc(sizeof(TooBigNumberError));
-  e->interface.to_report = &report_too_big_number_error;
-  e->offset              = offset;
-  e->length              = length;
+  TooBigNumberError *e = xmalloc(sizeof(TooBigNumberError));
+  e->interface         = diag(&report_too_big_number_error, NULL);
+  e->offset            = offset;
+  e->length            = length;
   return (Diag *) e;
 }
 
@@ -201,26 +254,38 @@ struct UnexpectedTokenError {
   Diag              interface;
   unsigned long     offset;
   unsigned long     length;
+  char             *found;
   MpplSyntaxKindSet expected;
 };
 
-static Report *report_diag_unexpected_token_error(const Diag *diag, const Source *source)
+static Report *report_diag_unexpected_token_error(const Diag *diag)
 {
   const UnexpectedTokenError *e = (const UnexpectedTokenError *) diag;
 
-  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found `%.*s`",
-    expected_set_to_string(&e->expected), (int) e->length, source->text + e->offset);
+  char   *expected = expected_set_to_string(&e->expected);
+  Report *report   = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found `%s`", expected, e->found);
   report_annotation(report, e->offset, e->offset + e->length, NULL);
+  free(expected);
   return report;
 }
 
-Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, MpplSyntaxKindSet *expected)
+static void free_unexpected_token_error(Diag *diag)
+{
+  if (diag) {
+    UnexpectedTokenError *e = (UnexpectedTokenError *) diag;
+    free(e->found);
+    free(e);
+  }
+}
+
+Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, char *found, MpplSyntaxKindSet expected)
 {
   UnexpectedTokenError *e = xmalloc(sizeof(UnexpectedTokenError));
-  e->interface.to_report  = &report_diag_unexpected_token_error;
+  e->interface            = diag(&report_diag_unexpected_token_error, &free_unexpected_token_error);
   e->offset               = offset;
   e->length               = length;
-  e->expected             = *expected;
+  e->found                = found;
+  e->expected             = expected;
   return (Diag *) e;
 }
 
@@ -232,7 +297,7 @@ struct ExpectedExpressionError {
   unsigned long length;
 };
 
-static Report *report_expected_expression_error(const Diag *diag, const Source *source)
+static Report *report_expected_expression_error(const Diag *diag)
 {
   const ExpectedExpressionError *e = (const ExpectedExpressionError *) diag;
 
@@ -244,7 +309,7 @@ static Report *report_expected_expression_error(const Diag *diag, const Source *
 Diag *diag_expected_expression_error(unsigned long offset, unsigned long length)
 {
   ExpectedExpressionError *e = xmalloc(sizeof(ExpectedExpressionError));
-  e->interface.to_report     = &report_expected_expression_error;
+  e->interface               = diag(&report_expected_expression_error, NULL);
   e->offset                  = offset;
   e->length                  = length;
   return (Diag *) e;
@@ -257,7 +322,7 @@ struct MissingSemicolonError {
   unsigned long offset;
 };
 
-static Report *report_missing_semicolon_error(const Diag *diag, const Source *source)
+static Report *report_missing_semicolon_error(const Diag *diag)
 {
   const MissingSemicolonError *e = (const MissingSemicolonError *) diag;
 
@@ -269,7 +334,7 @@ static Report *report_missing_semicolon_error(const Diag *diag, const Source *so
 Diag *diag_missing_semicolon_error(unsigned long offset)
 {
   MissingSemicolonError *e = xmalloc(sizeof(MissingSemicolonError));
-  e->interface.to_report   = &report_missing_semicolon_error;
+  e->interface             = diag(&report_missing_semicolon_error, NULL);
   e->offset                = offset;
   return (Diag *) e;
 }
@@ -282,7 +347,7 @@ struct BreakOutsideLoopError {
   unsigned long length;
 };
 
-static Report *report_break_outside_loop_error(const Diag *diag, const Source *source)
+static Report *report_break_outside_loop_error(const Diag *diag)
 {
   const BreakOutsideLoopError *e = (const BreakOutsideLoopError *) diag;
 
@@ -294,7 +359,7 @@ static Report *report_break_outside_loop_error(const Diag *diag, const Source *s
 Diag *diag_break_outside_loop_error(unsigned long offset, unsigned long length)
 {
   BreakOutsideLoopError *e = xmalloc(sizeof(BreakOutsideLoopError));
-  e->interface.to_report   = &report_break_outside_loop_error;
+  e->interface             = diag(&report_break_outside_loop_error, NULL);
   e->offset                = offset;
   e->length                = length;
   return (Diag *) e;

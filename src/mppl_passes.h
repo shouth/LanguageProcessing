@@ -36,7 +36,7 @@ typedef struct MpplParseResult MpplParseResult;
 
 struct MpplParseResult {
   RawSyntaxRoot *root;
-  Diag          *diags;
+  Diag         **diags;
   unsigned long  diag_count;
 };
 

@@ -20,11 +20,11 @@
 #include <string.h>
 
 #include "array.h"
-#include "mppl_compiler.h"
+#include "mppl_passes.h"
 #include "mppl_syntax.h"
+#include "report.h"
 #include "source.h"
 #include "syntax_tree.h"
-#include "utility.h"
 
 const char *program;
 Array      *filenames = NULL;
@@ -42,7 +42,7 @@ void mppl_syntax_kind_print(RawSyntaxKind kind, FILE *file)
 
 static int run_compiler(void)
 {
-  unsigned long i;
+  unsigned long i, j;
   int           result = EXIT_SUCCESS;
 
   for (i = 0; i < array_count(filenames); ++i) {
@@ -59,9 +59,15 @@ static int run_compiler(void)
     parse_result = mppl_parse(source->text, source->text_length);
     if (dump_syntax) {
       raw_syntax_root_print(parse_result.root, stdout, &mppl_syntax_kind_print);
-    } else {
-      unreachable();
     }
+
+    for (j = 0; j < parse_result.diag_count; ++j) {
+      Diag   *diag   = parse_result.diags[j];
+      Report *report = diag_to_report(diag);
+      report_emit(report, source);
+      diag_free(diag);
+    }
+    free(parse_result.diags);
 
     source_free(source);
     raw_syntax_root_free(parse_result.root);

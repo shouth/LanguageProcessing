@@ -18,7 +18,7 @@
 
 #include "array.h"
 #include "diagnostics.h"
-#include "mppl_compiler.h"
+#include "mppl_passes.h"
 #include "mppl_syntax.h"
 #include "string.h"
 #include "syntax_tree.h"
@@ -61,6 +61,10 @@ static void next_token(Parser *p)
   p->span              = result.span;
 
   switch (p->kind) {
+  case MPPL_SYNTAX_ERROR: {
+    diag(p, diag_stray_char_error(p->offset, p->text[p->offset], p->expected));
+    break;
+  }
   case MPPL_SYNTAX_NUMBER_LIT: {
     char buffer[8];
     strncpy(buffer, p->text + p->offset, p->span);
@@ -79,7 +83,7 @@ static void next_token(Parser *p)
     if (result.has_nongraphic) {
       for (i = 0; i < p->span; ++i) {
         if (!is_graphic(p->text[p->offset + i])) {
-          diag(p, diag_nongraphic_char_error(p->offset + i));
+          diag(p, diag_nongraphic_char_error(p->offset + i, p->text[p->offset + i]));
         }
       }
     }
@@ -171,7 +175,8 @@ static int eat(Parser *p, MpplSyntaxKind kind)
 static void error_unexpected(Parser *p)
 {
   if (p->kind != MPPL_SYNTAX_ERROR) {
-    diag(p, diag_unexpected_token_error(p->offset, p->span, &p->expected));
+    char *found = strndup(p->text + p->offset, p->span);
+    diag(p, diag_unexpected_token_error(p->offset, p->span, found, p->expected));
     p->alive = 0;
   }
   bump(p);
