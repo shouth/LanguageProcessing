@@ -56,9 +56,9 @@ static void next_token(Parser *p)
   unsigned long next_offset = p->offset + p->span;
 
   MpplLexResult result = mppl_lex(p->text + next_offset, p->length - next_offset);
-  p->offset         = next_offset;
-  p->kind           = result.kind;
-  p->span           = result.span;
+  p->offset            = next_offset;
+  p->kind              = result.kind;
+  p->span              = result.span;
 
   switch (p->kind) {
   case MPPL_SYNTAX_NUMBER_LIT: {
