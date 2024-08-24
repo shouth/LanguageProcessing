@@ -270,25 +270,24 @@ static const MpplSyntaxKind FIRST_RELAT_OP[] = {
   MPPL_SYNTAX_GREATEREQ_TOKEN,
 };
 
-static void parse_leading_expr(Parser *p, int power);
-static void parse_trailing_expr(Parser *p, Checkpoint checkpoint, int power);
+static void parse_expr_with_power(Parser *p, int power);
 
 static void parse_expr(Parser *p)
 {
-  parse_leading_expr(p, 0);
+  parse_expr_with_power(p, 0);
 }
 
-static void parse_leading_expr(Parser *p, int power)
+static void parse_expr_with_power(Parser *p, int power)
 {
   Checkpoint checkpoint = open(p);
 
   if (power < 20 && (eat(p, MPPL_SYNTAX_PLUS_TOKEN) || eat(p, MPPL_SYNTAX_MINUS_TOKEN))) {
     /* ('+' | '-') expr */
-    parse_leading_expr(p, 21);
+    parse_expr_with_power(p, 21);
     close(p, MPPL_SYNTAX_UNARY_EXPR, checkpoint);
   } else if (eat(p, MPPL_SYNTAX_NOT_KW)) {
     /* 'not' expr */
-    parse_leading_expr(p, 100);
+    parse_expr_with_power(p, 100);
     close(p, MPPL_SYNTAX_UNARY_EXPR, checkpoint);
   } else if (eat(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
     /* '(' expr ')' */
@@ -317,23 +316,18 @@ static void parse_leading_expr(Parser *p, int power)
     diag(p, diag_expected_expression_error(p->offset, p->span));
   }
 
-  parse_trailing_expr(p, checkpoint, power);
-}
-
-static void parse_trailing_expr(Parser *p, Checkpoint checkpoint, int power)
-{
   while (1) {
     if (power < 10 && eat_any(p, FIRST_RELAT_OP, count_of(FIRST_RELAT_OP))) {
       /* expr ('=' | '<>' | '<' | '<=' | '>' | '>=) expr */
-      parse_leading_expr(p, 11);
+      parse_expr_with_power(p, 11);
       close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
     } else if (power < 20 && eat_any(p, FIRST_ADD_OP, count_of(FIRST_ADD_OP))) {
       /* expr ('+' | '-' | 'or') expr */
-      parse_leading_expr(p, 21);
+      parse_expr_with_power(p, 21);
       close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
     } else if (power < 30 && eat_any(p, FIRST_MULTI_OP, count_of(FIRST_MULTI_OP))) {
       /* expr ('*' | 'div' | 'and') expr */
-      parse_leading_expr(p, 31);
+      parse_expr_with_power(p, 31);
       close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
     } else {
       break;
