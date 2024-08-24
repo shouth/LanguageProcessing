@@ -224,6 +224,32 @@ Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, Mp
   return (Diag *) e;
 }
 
+typedef struct ExpectedExpressionError ExpectedExpressionError;
+
+struct ExpectedExpressionError {
+  Diag          interface;
+  unsigned long offset;
+  unsigned long length;
+};
+
+static Report *report_expected_expression_error(const Diag *diag, const Source *source)
+{
+  const ExpectedExpressionError *e = (const ExpectedExpressionError *) diag;
+
+  Report *report = report_new(REPORT_KIND_ERROR, e->offset, "expected expression");
+  report_annotation(report, e->offset, e->offset + e->length, NULL);
+  return report;
+}
+
+Diag *diag_expected_expression_error(unsigned long offset, unsigned long length)
+{
+  ExpectedExpressionError *e = xmalloc(sizeof(ExpectedExpressionError));
+  e->interface.to_report     = &report_expected_expression_error;
+  e->offset                  = offset;
+  e->length                  = length;
+  return (Diag *) e;
+}
+
 typedef struct MissingSemicolonError MissingSemicolonError;
 
 struct MissingSemicolonError {

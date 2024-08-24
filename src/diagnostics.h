@@ -20,6 +20,7 @@ Diag *diag_too_big_number_error(unsigned long offset, unsigned long length);
 /* parser */
 
 Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, MpplSyntaxKindSet *expected);
+Diag *diag_expected_expression_error(unsigned long offset, unsigned long length);
 Diag *diag_missing_semicolon_error(unsigned long offset);
 Diag *diag_break_outside_loop_error(unsigned long offset, unsigned long length);
 

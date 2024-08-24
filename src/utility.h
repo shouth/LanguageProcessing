@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define count_of(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
 void *xmalloc(unsigned long size);
 void *memdup(const void *ptr, unsigned long length);
 char *strndup(const char *src, unsigned long length);

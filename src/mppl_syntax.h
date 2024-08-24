@@ -98,9 +98,9 @@
   F(COMP_STMT, SYNTAX, "")              \
   F(ENTIRE_VAR, SYNTAX, "")             \
   F(INDEXED_VAR, SYNTAX, "")            \
+  F(UNARY_EXPR, SYNTAX, "")             \
   F(BINARY_EXPR, SYNTAX, "")            \
   F(PAREN_EXPR, SYNTAX, "")             \
-  F(NOT_EXPR, SYNTAX, "")               \
   F(CAST_EXPR, SYNTAX, "")
 
 #define F(name, kind, string) MPPL_SYNTAX_##name,

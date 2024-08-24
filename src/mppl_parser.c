@@ -41,7 +41,7 @@ struct Parser {
   unsigned long     breakable;
 };
 
-static void diagnostics(Parser *p, Diag *diagnostics)
+static void diag(Parser *p, Diag *diagnostics)
 {
   array_push(p->diagnostics, &diagnostics);
 }
@@ -67,19 +67,19 @@ static void next_token(Parser *p)
     buffer[p->span] = '\0';
 
     if (strtol(buffer, NULL, 10) > 32767) {
-      diagnostics(p, diag_too_big_number_error(p->offset, p->span));
+      diag(p, diag_too_big_number_error(p->offset, p->span));
     }
     break;
   }
   case MPPL_SYNTAX_STRING_LIT: {
     unsigned long i;
     if (result.is_unterminated) {
-      diagnostics(p, diag_unterminated_string_error(p->offset, p->span));
+      diag(p, diag_unterminated_string_error(p->offset, p->span));
     }
     if (result.has_nongraphic) {
       for (i = 0; i < p->span; ++i) {
         if (!is_graphic(p->text[p->offset + i])) {
-          diagnostics(p, diag_nongraphic_char_error(p->offset + i));
+          diag(p, diag_nongraphic_char_error(p->offset + i));
         }
       }
     }
@@ -87,18 +87,18 @@ static void next_token(Parser *p)
   }
   case MPPL_SYNTAX_BRACES_COMMENT_TRIVIA: {
     if (result.is_unterminated) {
-      diagnostics(p, diag_unterminated_comment_error(p->offset, p->span));
+      diag(p, diag_unterminated_comment_error(p->offset, p->span));
     }
     break;
   }
   case MPPL_SYNTAX_C_COMMENT_TRIVIA: {
     if (result.is_unterminated) {
-      diagnostics(p, diag_unterminated_comment_error(p->offset, p->span));
+      diag(p, diag_unterminated_comment_error(p->offset, p->span));
     }
     break;
   }
   default:
-    /* Do nothing */
+    /* do nothing */
     break;
   }
 }
@@ -171,7 +171,7 @@ static int eat(Parser *p, MpplSyntaxKind kind)
 static void error_unexpected(Parser *p)
 {
   if (p->kind != MPPL_SYNTAX_ERROR) {
-    diagnostics(p, diag_unexpected_token_error(p->offset, p->span, &p->expected));
+    diag(p, diag_unexpected_token_error(p->offset, p->span, &p->expected));
     p->alive = 0;
   }
   bump(p);
@@ -208,7 +208,7 @@ static void close(Parser *p, MpplSyntaxKind kind, Checkpoint checkpoint)
 static void expect_semi(Parser *p)
 {
   if (!eat(p, MPPL_SYNTAX_SEMI_TOKEN) && p->alive) {
-    diagnostics(p, diag_missing_semicolon_error(p->offset));
+    diag(p, diag_missing_semicolon_error(p->offset));
     p->alive = 0;
     bump(p);
   }
@@ -218,7 +218,7 @@ static const MpplSyntaxKind FIRST_STD_TYPE[] = { MPPL_SYNTAX_INTEGER_KW, MPPL_SY
 
 static void parse_std_type(Parser *p)
 {
-  expect_any(p, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(MpplSyntaxKind));
+  expect_any(p, FIRST_STD_TYPE, count_of(FIRST_STD_TYPE));
 }
 
 static void parse_array_type(Parser *p)
@@ -235,100 +235,31 @@ static void parse_array_type(Parser *p)
 
 static void parse_type(Parser *p)
 {
-  if (check_any(p, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(MpplSyntaxKind))) {
+  if (check_any(p, FIRST_STD_TYPE, count_of(FIRST_STD_TYPE))) {
     parse_std_type(p);
   } else {
     parse_array_type(p);
   }
 }
 
-static void parse_factor(Parser *p);
-static void parse_expr(Parser *p);
+static const MpplSyntaxKind FIRST_CONST[] = {
+  MPPL_SYNTAX_NUMBER_LIT,
+  MPPL_SYNTAX_TRUE_KW,
+  MPPL_SYNTAX_FALSE_KW,
+  MPPL_SYNTAX_STRING_LIT,
+};
 
-static void parse_var(Parser *p)
-{
-  Checkpoint checkpoint = open(p);
-  expect(p, MPPL_SYNTAX_IDENT_TOKEN);
-  if (eat(p, MPPL_SYNTAX_LBRACKET_TOKEN)) {
-    parse_expr(p);
-    expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
-    close(p, MPPL_SYNTAX_INDEXED_VAR, checkpoint);
-  } else {
-    close(p, MPPL_SYNTAX_ENTIRE_VAR, checkpoint);
-  }
-}
+static const MpplSyntaxKind FIRST_MULTI_OP[] = {
+  MPPL_SYNTAX_STAR_TOKEN,
+  MPPL_SYNTAX_DIV_KW,
+  MPPL_SYNTAX_AND_KW,
+};
 
-static void parse_paren_expr(Parser *p)
-{
-  Checkpoint checkpoint = open(p);
-  expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
-  parse_expr(p);
-  expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
-  close(p, MPPL_SYNTAX_PAREN_EXPR, checkpoint);
-}
-
-static void parse_not_expr(Parser *p)
-{
-  Checkpoint checkpoint = open(p);
-  expect(p, MPPL_SYNTAX_NOT_KW);
-  parse_factor(p);
-  close(p, MPPL_SYNTAX_NOT_EXPR, checkpoint);
-}
-
-static void parse_cast_expr(Parser *p)
-{
-  Checkpoint checkpoint = open(p);
-  parse_std_type(p);
-  expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
-  parse_expr(p);
-  expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
-  close(p, MPPL_SYNTAX_CAST_EXPR, checkpoint);
-}
-
-static const MpplSyntaxKind FIRST_CONST[] = { MPPL_SYNTAX_NUMBER_LIT, MPPL_SYNTAX_TRUE_KW, MPPL_SYNTAX_FALSE_KW, MPPL_SYNTAX_STRING_LIT };
-
-static void parse_factor(Parser *p)
-{
-  if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-    parse_var(p);
-  } else if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
-    parse_paren_expr(p);
-  } else if (check(p, MPPL_SYNTAX_NOT_KW)) {
-    parse_not_expr(p);
-  } else if (check_any(p, FIRST_STD_TYPE, sizeof(FIRST_STD_TYPE) / sizeof(MpplSyntaxKind))) {
-    parse_cast_expr(p);
-  } else {
-    expect_any(p, FIRST_CONST, sizeof(FIRST_CONST) / sizeof(MpplSyntaxKind));
-  }
-}
-
-static const MpplSyntaxKind FIRST_MULTI_OP[] = { MPPL_SYNTAX_STAR_TOKEN, MPPL_SYNTAX_DIV_KW, MPPL_SYNTAX_AND_KW };
-
-static void parse_term(Parser *p)
-{
-  Checkpoint checkpoint = open(p);
-  parse_factor(p);
-  while (eat_any(p, FIRST_MULTI_OP, sizeof(FIRST_MULTI_OP) / sizeof(MpplSyntaxKind))) {
-    parse_factor(p);
-    close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
-  }
-}
-
-static const MpplSyntaxKind FIRST_ADD_OP[] = { MPPL_SYNTAX_PLUS_TOKEN, MPPL_SYNTAX_MINUS_TOKEN, MPPL_SYNTAX_OR_KW };
-
-static void parse_simple_expr(Parser *p)
-{
-  Checkpoint checkpoint = open(p);
-  if (check_any(p, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(MpplSyntaxKind))) {
-    null(p);
-  } else {
-    parse_term(p);
-  }
-  while (eat_any(p, FIRST_ADD_OP, sizeof(FIRST_ADD_OP) / sizeof(MpplSyntaxKind))) {
-    parse_term(p);
-    close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
-  }
-}
+static const MpplSyntaxKind FIRST_ADD_OP[] = {
+  MPPL_SYNTAX_PLUS_TOKEN,
+  MPPL_SYNTAX_MINUS_TOKEN,
+  MPPL_SYNTAX_OR_KW,
+};
 
 static const MpplSyntaxKind FIRST_RELAT_OP[] = {
   MPPL_SYNTAX_EQUAL_TOKEN,
@@ -339,13 +270,74 @@ static const MpplSyntaxKind FIRST_RELAT_OP[] = {
   MPPL_SYNTAX_GREATEREQ_TOKEN,
 };
 
+static void parse_leading_expr(Parser *p, int power);
+static void parse_trailing_expr(Parser *p, Checkpoint checkpoint, int power);
+
 static void parse_expr(Parser *p)
 {
+  parse_leading_expr(p, 0);
+}
+
+static void parse_leading_expr(Parser *p, int power)
+{
   Checkpoint checkpoint = open(p);
-  parse_simple_expr(p);
-  while (eat_any(p, FIRST_RELAT_OP, sizeof(FIRST_RELAT_OP) / sizeof(MpplSyntaxKind))) {
-    parse_simple_expr(p);
-    close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
+
+  if (power < 20 && (eat(p, MPPL_SYNTAX_PLUS_TOKEN) || eat(p, MPPL_SYNTAX_MINUS_TOKEN))) {
+    /* ('+' | '-') expr */
+    parse_leading_expr(p, 21);
+    close(p, MPPL_SYNTAX_UNARY_EXPR, checkpoint);
+  } else if (eat(p, MPPL_SYNTAX_NOT_KW)) {
+    /* 'not' expr */
+    parse_leading_expr(p, 100);
+    close(p, MPPL_SYNTAX_UNARY_EXPR, checkpoint);
+  } else if (eat(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
+    /* '(' expr ')' */
+    parse_expr(p);
+    expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
+    close(p, MPPL_SYNTAX_PAREN_EXPR, checkpoint);
+  } else if (eat_any(p, FIRST_STD_TYPE, count_of(FIRST_STD_TYPE))) {
+    /* type '(' expr ')' */
+    expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
+    parse_expr(p);
+    expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
+    close(p, MPPL_SYNTAX_CAST_EXPR, checkpoint);
+  } else if (eat_any(p, FIRST_CONST, count_of(FIRST_CONST))) {
+    /* number | true | false | string */
+  } else if (eat(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+    if (eat(p, MPPL_SYNTAX_LBRACKET_TOKEN)) {
+      /* identifier '[' expr ']' */
+      parse_expr(p);
+      expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
+      close(p, MPPL_SYNTAX_INDEXED_VAR, checkpoint);
+    } else {
+      /* identifier */
+      close(p, MPPL_SYNTAX_ENTIRE_VAR, checkpoint);
+    }
+  } else {
+    diag(p, diag_expected_expression_error(p->offset, p->span));
+  }
+
+  parse_trailing_expr(p, checkpoint, power);
+}
+
+static void parse_trailing_expr(Parser *p, Checkpoint checkpoint, int power)
+{
+  while (1) {
+    if (power < 10 && eat_any(p, FIRST_RELAT_OP, count_of(FIRST_RELAT_OP))) {
+      /* expr ('=' | '<>' | '<' | '<=' | '>' | '>=) expr */
+      parse_leading_expr(p, 11);
+      close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
+    } else if (power < 20 && eat_any(p, FIRST_ADD_OP, count_of(FIRST_ADD_OP))) {
+      /* expr ('+' | '-' | 'or') expr */
+      parse_leading_expr(p, 21);
+      close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
+    } else if (power < 30 && eat_any(p, FIRST_MULTI_OP, count_of(FIRST_MULTI_OP))) {
+      /* expr ('*' | 'div' | 'and') expr */
+      parse_leading_expr(p, 31);
+      close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
+    } else {
+      break;
+    }
   }
 }
 
@@ -354,7 +346,7 @@ static void parse_stmt(Parser *p);
 static void parse_assign_stmt(Parser *p)
 {
   Checkpoint checkpoint = open(p);
-  parse_var(p);
+  parse_expr(p);
   expect(p, MPPL_SYNTAX_ASSIGN_TOKEN);
   parse_expr(p);
   close(p, MPPL_SYNTAX_ASSIGN_STMT, checkpoint);
@@ -393,7 +385,7 @@ static void parse_break_stmt(Parser *p)
   Checkpoint checkpoint = open(p);
   if (check(p, MPPL_SYNTAX_BREAK_KW)) {
     if (!p->breakable && p->alive) {
-      diagnostics(p, diag_break_outside_loop_error(p->offset, p->span));
+      diag(p, diag_break_outside_loop_error(p->offset, p->span));
     }
     bump(p);
   } else {
@@ -438,7 +430,7 @@ static void parse_input_list(Parser *p)
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
-    parse_var(p);
+    parse_expr(p);
   } while (eat(p, MPPL_SYNTAX_COMMA_TOKEN));
   expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
   close(p, MPPL_SYNTAX_INPUT_LIST, checkpoint);
@@ -449,7 +441,7 @@ static const MpplSyntaxKind FIRST_INPUT_STMT[] = { MPPL_SYNTAX_READ_KW, MPPL_SYN
 static void parse_input_stmt(Parser *p)
 {
   Checkpoint checkpoint = open(p);
-  expect_any(p, FIRST_INPUT_STMT, sizeof(FIRST_INPUT_STMT) / sizeof(MpplSyntaxKind));
+  expect_any(p, FIRST_INPUT_STMT, count_of(FIRST_INPUT_STMT));
   if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_input_list(p);
   } else {
@@ -487,7 +479,7 @@ static const MpplSyntaxKind FIRST_OUTPUT_STMT[] = { MPPL_SYNTAX_WRITE_KW, MPPL_S
 static void parse_output_stmt(Parser *p)
 {
   Checkpoint checkpoint = open(p);
-  expect_any(p, FIRST_OUTPUT_STMT, sizeof(FIRST_OUTPUT_STMT) / sizeof(MpplSyntaxKind));
+  expect_any(p, FIRST_OUTPUT_STMT, count_of(FIRST_OUTPUT_STMT));
   if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_output_list(p);
   } else {
@@ -521,9 +513,9 @@ static void parse_stmt(Parser *p)
     parse_call_stmt(p);
   } else if (check(p, MPPL_SYNTAX_RETURN_KW)) {
     parse_return_stmt(p);
-  } else if (check_any(p, FIRST_INPUT_STMT, sizeof(FIRST_INPUT_STMT) / sizeof(MpplSyntaxKind))) {
+  } else if (check_any(p, FIRST_INPUT_STMT, count_of(FIRST_INPUT_STMT))) {
     parse_input_stmt(p);
-  } else if (check_any(p, FIRST_OUTPUT_STMT, sizeof(FIRST_OUTPUT_STMT) / sizeof(MpplSyntaxKind))) {
+  } else if (check_any(p, FIRST_OUTPUT_STMT, count_of(FIRST_OUTPUT_STMT))) {
     parse_output_stmt(p);
   } else if (check(p, MPPL_SYNTAX_BEGIN_KW)) {
     parse_comp_stmt(p);
