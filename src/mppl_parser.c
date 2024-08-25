@@ -508,9 +508,10 @@ static void parse_while_stmt(Parser *p, MpplSyntaxKindSet recovery)
 static void parse_break_stmt(Parser *p)
 {
   Checkpoint checkpoint = open(p);
-  expect(p, MPPL_SYNTAX_BREAK_KW);
-  if (!p->breakable) {
-    diag(p, diag_break_outside_loop_error(p->offset, p->span));
+  unsigned long offset     = p->offset;
+  unsigned long span       = p->span;
+  if (expect(p, MPPL_SYNTAX_BREAK_KW) && !p->breakable) {
+    diag(p, diag_break_outside_loop_error(offset, span));
   }
   close(p, MPPL_SYNTAX_BREAK_STMT, checkpoint);
 }
