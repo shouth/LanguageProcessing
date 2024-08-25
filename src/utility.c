@@ -64,7 +64,7 @@ void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len)
   }
 }
 
-unsigned long popcount(void *data, unsigned long count)
+unsigned long popcount(const void *data, unsigned long count)
 {
 #define B2(n) n, n + 1, n + 1, n + 2
 #define B4(n) B2(n), B2(n + 1), B2(n + 1), B2(n + 2)

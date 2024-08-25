@@ -147,7 +147,7 @@ static MpplLexResult lex_c_comment(Lexer *l)
 static MpplLexResult lex_token(Lexer *l)
 {
   if (first(l) == EOF) {
-    return lex(l, MPPL_SYNTAX_EOF_TRIVIA);
+    return lex(l, MPPL_SYNTAX_EOF);
   } else if (eat_if(l, &is_alphabet)) {
     return lex_identifier_or_keyword(l);
   } else if (eat_if(l, &is_number)) {

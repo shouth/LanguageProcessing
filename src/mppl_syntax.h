@@ -23,6 +23,7 @@
 
 #define MPPL_SYNTAX_FOR_EACH(F)         \
   F(ERROR, TOKEN, "")                   \
+  F(EOF, TOKEN, "")                     \
   F(IDENT_TOKEN, TOKEN, "")             \
   F(NUMBER_LIT, TOKEN, "")              \
   F(STRING_LIT, TOKEN, "")              \
@@ -75,7 +76,6 @@
   F(SPACE_TRIVIA, TRIVIA, "")           \
   F(BRACES_COMMENT_TRIVIA, TRIVIA, "")  \
   F(C_COMMENT_TRIVIA, TRIVIA, "")       \
-  F(EOF_TRIVIA, TRIVIA, "")             \
   F(PROGRAM, SYNTAX, "")                \
   F(VAR_DECL_PART, SYNTAX, "")          \
   F(VAR_DECL, SYNTAX, "")               \
@@ -101,7 +101,8 @@
   F(UNARY_EXPR, SYNTAX, "")             \
   F(BINARY_EXPR, SYNTAX, "")            \
   F(PAREN_EXPR, SYNTAX, "")             \
-  F(CAST_EXPR, SYNTAX, "")
+  F(CAST_EXPR, SYNTAX, "")              \
+  F(BOGUS, BOGUS, "")
 
 #define F(name, kind, string) MPPL_SYNTAX_##name,
 

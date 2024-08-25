@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define count_of(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+#define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))
 
 void *xmalloc(unsigned long size);
 void *memdup(const void *ptr, unsigned long length);
@@ -34,21 +34,34 @@ typedef unsigned long Hash;
 
 void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 
-unsigned long popcount(void *data, unsigned long size);
+unsigned long popcount(const void *data, unsigned long size);
 
 typedef unsigned long BitSet;
 
-#define BITSET(name, bits)                       \
-  struct {                                       \
-    char data[(bits + CHAR_BIT - 1) / CHAR_BIT]; \
+#define BITSET(name, bits)                                \
+  struct {                                                \
+    unsigned char data[(bits + CHAR_BIT - 1) / CHAR_BIT]; \
   } name
 
-#define bitset_data(self)         ((char *) (self))
-#define bitset_set(self, index)   (bitset_data(self)[(index) / CHAR_BIT] |= 1ul << ((index) % CHAR_BIT))
-#define bitset_reset(self, index) (bitset_data(self)[(index) / CHAR_BIT] &= ~(1ul << ((index) % CHAR_BIT)))
-#define bitset_get(self, index)   (bitset_data(self)[(index) / CHAR_BIT] & (1ul << ((index) % CHAR_BIT)))
-#define bitset_clear(self)        memset(bitset_data(self), 0, sizeof(*(self)))
-#define bitset_count(self)        popcount(bitset_data(self), sizeof(*(self)))
+#define bitset_set(self, index)   ((self)->data[(index) / CHAR_BIT] |= 1ul << ((index) % CHAR_BIT))
+#define bitset_reset(self, index) ((self)->data[(index) / CHAR_BIT] &= ~(1ul << ((index) % CHAR_BIT)))
+#define bitset_get(self, index)   ((self)->data[(index) / CHAR_BIT] & (1ul << ((index) % CHAR_BIT)))
+#define bitset_clear(self)        memset((self)->data, 0, sizeof((self)->data))
+#define bitset_count(self)        popcount((self)->data, sizeof((self)->data))
+#define bitset_insert(self, other)                 \
+  do {                                             \
+    unsigned long i;                               \
+    for (i = 0; i < count_of((self)->data); ++i) { \
+      (self)->data[i] |= (other)->data[i];         \
+    }                                              \
+  } while (0)
+#define bitset_erase(self, other)                  \
+  do {                                             \
+    unsigned long i;                               \
+    for (i = 0; i < count_of((self)->data); ++i) { \
+      (self)->data[i] &= ~(other)->data[i];        \
+    }                                              \
+  } while (0)
 
 int is_alphabet(int c);
 int is_number(int c);

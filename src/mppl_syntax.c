@@ -50,12 +50,12 @@ MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long s
 
 int mppl_syntax_kind_is_token(MpplSyntaxKind kind)
 {
-  return kind <= MPPL_SYNTAX_EOF_TRIVIA;
+  return kind <= MPPL_SYNTAX_C_COMMENT_TRIVIA;
 }
 
 int mppl_syntax_kind_is_trivia(MpplSyntaxKind kind)
 {
-  return kind >= MPPL_SYNTAX_SPACE_TRIVIA && kind <= MPPL_SYNTAX_EOF_TRIVIA;
+  return kind >= MPPL_SYNTAX_SPACE_TRIVIA && kind <= MPPL_SYNTAX_C_COMMENT_TRIVIA;
 }
 
 const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
