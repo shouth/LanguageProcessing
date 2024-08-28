@@ -67,7 +67,7 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
 #define F(name, kind, string) META_DETECT(PROBE_##kind)(PRINT_QUOTED(name, string), META_EMPTY())
 
       switch (kind) {
-      case MPPL_SYNTAX_EOF:
+      case MPPL_SYNTAX_END_OF_FILE:
         length += fprintf(buffer, "end of file");
         break;
       case MPPL_SYNTAX_NUMBER_LIT:
