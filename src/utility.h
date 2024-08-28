@@ -49,19 +49,23 @@ typedef unsigned long BitSet;
 #define bitset_get(self, index)   ((self)->data[(index) / CHAR_BIT] & (1ul << ((index) % CHAR_BIT)))
 #define bitset_clear(self)        memset((self)->data, 0, sizeof((self)->data))
 #define bitset_count(self)        popcount((self)->data, sizeof((self)->data))
-#define bitset_insert(self, other)                 \
-  do {                                             \
-    unsigned long i;                               \
-    for (i = 0; i < count_of((self)->data); ++i) { \
-      (self)->data[i] |= (other)->data[i];         \
-    }                                              \
+#define bitset_insert(self, other)                   \
+  do {                                               \
+    unsigned long        i;                          \
+    unsigned char       *self_data  = (self)->data;  \
+    const unsigned char *other_data = (other)->data; \
+    for (i = 0; i < count_of((self)->data); ++i) {   \
+      self_data[i] |= other_data[i];                 \
+    }                                                \
   } while (0)
-#define bitset_erase(self, other)                  \
-  do {                                             \
-    unsigned long i;                               \
-    for (i = 0; i < count_of((self)->data); ++i) { \
-      (self)->data[i] &= ~(other)->data[i];        \
-    }                                              \
+#define bitset_erase(self, other)                    \
+  do {                                               \
+    unsigned long        i;                          \
+    unsigned char       *self_data  = (self)->data;  \
+    const unsigned char *other_data = (other)->data; \
+    for (i = 0; i < count_of((self)->data); ++i) {   \
+      self_data[i] &= ~other_data[i];                \
+    }                                                \
   } while (0)
 
 int is_alphabet(int c);
