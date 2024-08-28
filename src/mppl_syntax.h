@@ -23,7 +23,7 @@
 
 #define MPPL_SYNTAX_FOR_EACH(F)         \
   F(ERROR, TOKEN, "")                   \
-  F(EOF, TOKEN, "")                     \
+  F(END_OF_FILE, TOKEN, "")             \
   F(IDENT_TOKEN, TOKEN, "")             \
   F(NUMBER_LIT, TOKEN, "")              \
   F(STRING_LIT, TOKEN, "")              \

@@ -114,7 +114,7 @@ static void next_nontrivia(Parser *p)
 
 static int is_eof(Parser *p)
 {
-  return p->kind == MPPL_SYNTAX_EOF;
+  return p->kind == MPPL_SYNTAX_END_OF_FILE;
 }
 
 static void null(Parser *p)
