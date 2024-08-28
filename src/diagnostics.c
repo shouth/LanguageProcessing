@@ -67,6 +67,9 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
 #define F(name, kind, string) META_DETECT(PROBE_##kind)(PRINT_QUOTED(name, string), META_EMPTY())
 
       switch (kind) {
+      case MPPL_SYNTAX_EOF:
+        length += fprintf(buffer, "end of file");
+        break;
       case MPPL_SYNTAX_NUMBER_LIT:
         length += fprintf(buffer, "number");
         break;
@@ -263,7 +266,12 @@ static Report *report_diag_unexpected_token_error(const Diag *diag)
   const UnexpectedTokenError *e = (const UnexpectedTokenError *) diag;
 
   char   *expected = expected_set_to_string(&e->expected);
-  Report *report   = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found `%s`", expected, e->found);
+  Report *report;
+  if (e->found) {
+    report = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found `%s`", expected, e->found);
+  } else {
+    report = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found end of file", expected);
+  }
   report_annotation(report, e->offset, e->offset + e->length, NULL);
   free(expected);
   return report;

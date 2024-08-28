@@ -103,7 +103,7 @@ void source_free(Source *source)
 
 int source_location(const Source *source, unsigned long offset, SourceLocation *location)
 {
-  if (offset >= source->text_length) {
+  if (offset > source->text_length) {
     return 0;
   } else {
     unsigned long left  = 0;
