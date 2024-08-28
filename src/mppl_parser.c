@@ -56,10 +56,6 @@ static void next_token(Parser *p)
   p->span              = result.span;
 
   switch (p->kind) {
-  case MPPL_SYNTAX_ERROR: {
-    diag(p, diag_stray_char_error(p->offset, p->text[p->offset], p->expected));
-    break;
-  }
   case MPPL_SYNTAX_NUMBER_LIT: {
     char buffer[8];
     strncpy(buffer, p->text + p->offset, p->span);
@@ -133,21 +129,20 @@ static void bump(Parser *p)
   next_nontrivia(p);
 }
 
-static int check_any(Parser *p, MpplSyntaxKindSet kinds)
+static int check_any(Parser *p, const MpplSyntaxKindSet *kinds)
 {
-  bitset_insert(&p->expected, &kinds);
-  return bitset_get(&kinds, p->kind);
+  bitset_insert(&p->expected, kinds);
+  return bitset_get(kinds, p->kind);
 }
 
 static int check(Parser *p, MpplSyntaxKind kind)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, kind);
-  return check_any(p, kinds);
+  return check_any(p, &kinds);
 }
 
-static int eat_any(Parser *p, MpplSyntaxKindSet kinds)
+static int eat_any(Parser *p, const MpplSyntaxKindSet *kinds)
 {
   if (check_any(p, kinds)) {
     bump(p);
@@ -159,21 +154,22 @@ static int eat_any(Parser *p, MpplSyntaxKindSet kinds)
 
 static int eat(Parser *p, MpplSyntaxKind kind)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, kind);
-  return eat_any(p, kinds);
+  return eat_any(p, &kinds);
 }
 
 static void error_unexpected(Parser *p)
 {
-  if (p->kind != MPPL_SYNTAX_ERROR) {
+  if (p->kind == MPPL_SYNTAX_ERROR) {
+    diag(p, diag_stray_char_error(p->offset, p->text[p->offset], p->expected));
+  } else {
     char *found = strndup(p->text + p->offset, p->span);
     diag(p, diag_unexpected_token_error(p->offset, p->span, found, p->expected));
   }
 }
 
-static int expect_any(Parser *p, MpplSyntaxKindSet kinds)
+static int expect_any(Parser *p, const MpplSyntaxKindSet *kinds)
 {
   if (eat_any(p, kinds)) {
     return 1;
@@ -189,13 +185,12 @@ static int expect_any(Parser *p, MpplSyntaxKindSet kinds)
 
 static int expect(Parser *p, MpplSyntaxKind kind)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, kind);
-  return expect_any(p, kinds);
+  return expect_any(p, &kinds);
 }
 
-static void recover(Parser *p, MpplSyntaxKindSet kinds)
+static void recover(Parser *p, const MpplSyntaxKindSet *kinds)
 {
   while (!check_any(p, kinds) && !is_eof(p)) {
     p->kind = MPPL_SYNTAX_ERROR;
@@ -222,14 +217,13 @@ static void expect_semi(Parser *p)
   }
 }
 
-static MpplSyntaxKindSet first_std_type(void)
+static const MpplSyntaxKindSet *first_std_type(void)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_INTEGER_KW);
   bitset_set(&kinds, MPPL_SYNTAX_BOOLEAN_KW);
   bitset_set(&kinds, MPPL_SYNTAX_CHAR_KW);
-  return kinds;
+  return &kinds;
 }
 
 static void parse_std_type(Parser *p)
@@ -258,72 +252,62 @@ static void parse_type(Parser *p)
   }
 }
 
-static void parse_expr(Parser *p, MpplSyntaxKindSet recovery);
+static void parse_expr(Parser *p, const MpplSyntaxKindSet *recovery);
 
-static MpplSyntaxKindSet first_const(void)
+static const MpplSyntaxKindSet *first_const(void)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_NUMBER_LIT);
   bitset_set(&kinds, MPPL_SYNTAX_TRUE_KW);
   bitset_set(&kinds, MPPL_SYNTAX_FALSE_KW);
   bitset_set(&kinds, MPPL_SYNTAX_STRING_LIT);
-  return kinds;
+  return &kinds;
 }
 
-static MpplSyntaxKindSet first_multi_op(void)
+static const MpplSyntaxKindSet *first_multi_op(void)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_STAR_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_DIV_KW);
   bitset_set(&kinds, MPPL_SYNTAX_AND_KW);
-  return kinds;
+  return &kinds;
 }
 
-static MpplSyntaxKindSet first_add_op(void)
+static const MpplSyntaxKindSet *first_add_op(void)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_PLUS_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_MINUS_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_OR_KW);
-  return kinds;
+  return &kinds;
 }
 
-static MpplSyntaxKindSet first_relat_op(void)
+static const MpplSyntaxKindSet *first_relat_op(void)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_EQUAL_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_NOTEQ_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_LESS_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_LESSEQ_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_GREATER_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_GREATEREQ_TOKEN);
-  return kinds;
+  return &kinds;
 }
 
-static MpplSyntaxKindSet first_expr(void)
+static const MpplSyntaxKindSet *first_expr(void)
 {
-  MpplSyntaxKindSet kinds, other;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_PLUS_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_MINUS_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_NOT_KW);
   bitset_set(&kinds, MPPL_SYNTAX_LPAREN_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_IDENT_TOKEN);
-
-  other = first_const();
-  bitset_insert(&kinds, &other);
-
-  other = first_std_type();
-  bitset_insert(&kinds, &other);
-
-  return kinds;
+  bitset_insert(&kinds, first_const());
+  bitset_insert(&kinds, first_const());
+  return &kinds;
 }
 
-static void parse_expr_with_power(Parser *p, int power, MpplSyntaxKindSet recovery)
+static void parse_expr_with_power(Parser *p, int power, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
 
@@ -336,31 +320,31 @@ static void parse_expr_with_power(Parser *p, int power, MpplSyntaxKindSet recove
     parse_expr_with_power(p, 100, recovery);
     close(p, MPPL_SYNTAX_UNARY_EXPR, checkpoint);
   } else if (eat(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
     /* '(' expr ')' */
-    parse_expr(p, kinds);
+    parse_expr(p, &kinds);
     expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
     close(p, MPPL_SYNTAX_PAREN_EXPR, checkpoint);
   } else if (eat_any(p, first_std_type())) {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
     /* type '(' expr ')' */
     expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
-    parse_expr(p, kinds);
+    parse_expr(p, &kinds);
     expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
     close(p, MPPL_SYNTAX_CAST_EXPR, checkpoint);
   } else if (eat_any(p, first_const())) {
     /* number | true | false | string */
   } else if (eat(p, MPPL_SYNTAX_IDENT_TOKEN)) {
     if (eat(p, MPPL_SYNTAX_LBRACKET_TOKEN)) {
-      MpplSyntaxKindSet kinds = recovery;
+      MpplSyntaxKindSet kinds = *recovery;
       bitset_set(&kinds, MPPL_SYNTAX_RBRACKET_TOKEN);
 
       /* identifier '[' expr ']' */
-      parse_expr(p, kinds);
+      parse_expr(p, &kinds);
       expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
       close(p, MPPL_SYNTAX_INDEXED_VAR, checkpoint);
     } else {
@@ -391,49 +375,49 @@ static void parse_expr_with_power(Parser *p, int power, MpplSyntaxKindSet recove
   }
 }
 
-static void parse_expr(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_expr(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   parse_expr_with_power(p, 0, recovery);
 
-  if (!check_any(p, recovery)) {
-    while (!check_any(p, recovery) && !is_eof(p)) {
+  /*
+  if (!bitset_get(&recovery, p->kind)) {
+    error_unexpected(p);
+    while (!bitset_get(&recovery, p->kind) && !is_eof(p)) {
       MpplSyntaxKindSet kinds = first_expr();
       bitset_insert(&kinds, &recovery);
       recover(p, kinds);
 
-      if (!check_any(p, recovery) && check_any(p, first_expr())) {
+      if (!bitset_get(&recovery, p->kind) && check_any(p, first_expr())) {
         parse_expr_with_power(p, 0, recovery);
       }
     }
     close(p, MPPL_SYNTAX_BOGUS, checkpoint);
   }
+*/
 }
 
-static void parse_stmt(Parser *p, MpplSyntaxKindSet recovery);
+static void parse_stmt(Parser *p, const MpplSyntaxKindSet *recovery);
 
-static MpplSyntaxKindSet first_input_stmt(void)
+static const MpplSyntaxKindSet *first_input_stmt(void)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_READ_KW);
   bitset_set(&kinds, MPPL_SYNTAX_READLN_KW);
-  return kinds;
+  return &kinds;
 }
 
-static MpplSyntaxKindSet first_output_stmt(void)
+static const MpplSyntaxKindSet *first_output_stmt(void)
 {
-  MpplSyntaxKindSet kinds;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_WRITE_KW);
   bitset_set(&kinds, MPPL_SYNTAX_WRITELN_KW);
-  return kinds;
+  return &kinds;
 }
 
-static MpplSyntaxKindSet first_stmt(void)
+static const MpplSyntaxKindSet *first_stmt(void)
 {
-  MpplSyntaxKindSet kinds, other;
-  bitset_clear(&kinds);
+  static MpplSyntaxKindSet kinds = bitset_zero();
   bitset_set(&kinds, MPPL_SYNTAX_IDENT_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_IF_KW);
   bitset_set(&kinds, MPPL_SYNTAX_WHILE_KW);
@@ -441,44 +425,39 @@ static MpplSyntaxKindSet first_stmt(void)
   bitset_set(&kinds, MPPL_SYNTAX_CALL_KW);
   bitset_set(&kinds, MPPL_SYNTAX_RETURN_KW);
   bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
-
-  other = first_input_stmt();
-  bitset_insert(&kinds, &other);
-
-  other = first_output_stmt();
-  bitset_insert(&kinds, &other);
-
-  return kinds;
+  bitset_insert(&kinds, first_input_stmt());
+  bitset_insert(&kinds, first_output_stmt());
+  return &kinds;
 }
 
-static void parse_assign_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_assign_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_ASSIGN_TOKEN);
-    parse_expr(p, kinds);
+    parse_expr(p, &kinds);
   }
   expect(p, MPPL_SYNTAX_ASSIGN_TOKEN);
   parse_expr(p, recovery);
   close(p, MPPL_SYNTAX_ASSIGN_STMT, checkpoint);
 }
 
-static void parse_if_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_if_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_IF_KW);
   {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_THEN_KW);
     bitset_set(&kinds, MPPL_SYNTAX_ELSE_KW);
-    parse_expr(p, kinds);
+    parse_expr(p, &kinds);
   }
   expect(p, MPPL_SYNTAX_THEN_KW);
   {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_ELSE_KW);
-    parse_stmt(p, kinds);
+    parse_stmt(p, &kinds);
   }
   if (eat(p, MPPL_SYNTAX_ELSE_KW)) {
     parse_stmt(p, recovery);
@@ -489,15 +468,15 @@ static void parse_if_stmt(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_IF_STMT, checkpoint);
 }
 
-static void parse_while_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_while_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   ++p->breakable;
   expect(p, MPPL_SYNTAX_WHILE_KW);
   {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_DO_KW);
-    parse_expr(p, kinds);
+    parse_expr(p, &kinds);
   }
   expect(p, MPPL_SYNTAX_DO_KW);
   parse_stmt(p, recovery);
@@ -507,7 +486,7 @@ static void parse_while_stmt(Parser *p, MpplSyntaxKindSet recovery)
 
 static void parse_break_stmt(Parser *p)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint    checkpoint = open(p);
   unsigned long offset     = p->offset;
   unsigned long span       = p->span;
   if (expect(p, MPPL_SYNTAX_BREAK_KW) && !p->breakable) {
@@ -516,20 +495,20 @@ static void parse_break_stmt(Parser *p)
   close(p, MPPL_SYNTAX_BREAK_STMT, checkpoint);
 }
 
-static void parse_act_param_list(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_act_param_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
     if (check_any(p, first_expr())) {
-      parse_expr(p, kinds);
+      parse_expr(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   } while (eat(p, MPPL_SYNTAX_COMMA_TOKEN));
@@ -537,7 +516,7 @@ static void parse_act_param_list(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_ACT_PARAM_LIST, checkpoint);
 }
 
-static void parse_call_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_call_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_CALL_KW);
@@ -557,20 +536,20 @@ static void parse_return_stmt(Parser *p)
   close(p, MPPL_SYNTAX_RETURN_STMT, checkpoint);
 }
 
-static void parse_input_list(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_input_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
     if (check_any(p, first_expr())) {
-      parse_expr(p, kinds);
+      parse_expr(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   } while (eat(p, MPPL_SYNTAX_COMMA_TOKEN));
@@ -578,7 +557,7 @@ static void parse_input_list(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_INPUT_LIST, checkpoint);
 }
 
-static void parse_input_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_input_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect_any(p, first_input_stmt());
@@ -590,13 +569,13 @@ static void parse_input_stmt(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_INPUT_STMT, checkpoint);
 }
 
-static void parse_output_value(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_output_value(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
-    parse_expr(p, kinds);
+    parse_expr(p, &kinds);
   }
   if (eat(p, MPPL_SYNTAX_COLON_TOKEN)) {
     expect(p, MPPL_SYNTAX_NUMBER_LIT);
@@ -604,20 +583,20 @@ static void parse_output_value(Parser *p, MpplSyntaxKindSet recovery)
   }
 }
 
-static void parse_output_list(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_output_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
     if (check_any(p, first_expr())) {
-      parse_output_value(p, kinds);
+      parse_output_value(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   } while (eat(p, MPPL_SYNTAX_COMMA_TOKEN));
@@ -625,7 +604,7 @@ static void parse_output_list(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_OUTPUT_LIST, checkpoint);
 }
 
-static void parse_output_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_output_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect_any(p, first_output_stmt());
@@ -637,20 +616,20 @@ static void parse_output_stmt(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_OUTPUT_STMT, checkpoint);
 }
 
-static void parse_comp_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_comp_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_BEGIN_KW);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_END_KW);
 
     if (check_any(p, first_stmt())) {
-      parse_stmt(p, kinds);
+      parse_stmt(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   } while (eat(p, MPPL_SYNTAX_SEMI_TOKEN));
@@ -658,7 +637,7 @@ static void parse_comp_stmt(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_COMP_STMT, checkpoint);
 }
 
-static void parse_stmt(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
     parse_assign_stmt(p, recovery);
@@ -683,11 +662,11 @@ static void parse_stmt(Parser *p, MpplSyntaxKindSet recovery)
   }
 }
 
-static void parse_var_decl(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_var_decl(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
@@ -695,7 +674,7 @@ static void parse_var_decl(Parser *p, MpplSyntaxKindSet recovery)
       /* identifier */
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   } while (eat(p, MPPL_SYNTAX_COMMA_TOKEN));
@@ -704,19 +683,19 @@ static void parse_var_decl(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_VAR_DECL, checkpoint);
 }
 
-static void parse_var_decl_part(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_var_decl_part(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint checkpoint = open(p);
   expect(p, MPPL_SYNTAX_VAR_KW);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
 
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      parse_var_decl(p, kinds);
+      parse_var_decl(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
     expect_semi(p);
@@ -724,11 +703,11 @@ static void parse_var_decl_part(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_VAR_DECL_PART, checkpoint);
 }
 
-static void parse_fml_param_sec(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_fml_param_sec(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint fml_param_sec = open(p);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
@@ -736,7 +715,7 @@ static void parse_fml_param_sec(Parser *p, MpplSyntaxKindSet recovery)
       /* identifier */
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   } while (eat(p, MPPL_SYNTAX_COMMA_TOKEN));
@@ -745,20 +724,20 @@ static void parse_fml_param_sec(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_FML_PARAM_SEC, fml_param_sec);
 }
 
-static void parse_fml_param_list(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_fml_param_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint fml_param_list = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
   do {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      parse_fml_param_sec(p, kinds);
+      parse_fml_param_sec(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   } while (eat(p, MPPL_SYNTAX_SEMI_TOKEN));
@@ -766,33 +745,33 @@ static void parse_fml_param_list(Parser *p, MpplSyntaxKindSet recovery)
   close(p, MPPL_SYNTAX_FML_PARAM_LIST, fml_param_list);
 }
 
-static void parse_proc_decl(Parser *p, MpplSyntaxKindSet recovery)
+static void parse_proc_decl(Parser *p, const MpplSyntaxKindSet *recovery)
 {
   Checkpoint proc_decl = open(p);
   expect(p, MPPL_SYNTAX_PROCEDURE_KW);
   expect(p, MPPL_SYNTAX_IDENT_TOKEN);
   if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_VAR_KW);
     bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
-    parse_fml_param_list(p, kinds);
+    parse_fml_param_list(p, &kinds);
   } else {
     null(p);
   }
   expect_semi(p);
   if (check(p, MPPL_SYNTAX_VAR_KW)) {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
-    parse_var_decl_part(p, kinds);
+    parse_var_decl_part(p, &kinds);
   } else {
     null(p);
   }
   {
-    MpplSyntaxKindSet kinds = recovery;
+    MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
-    parse_comp_stmt(p, kinds);
+    parse_comp_stmt(p, &kinds);
   }
   expect_semi(p);
   close(p, MPPL_SYNTAX_PROC_DECL, proc_decl);
@@ -806,27 +785,25 @@ static void parse_program(Parser *p)
   expect_semi(p);
 
   while (!check(p, MPPL_SYNTAX_BEGIN_KW) && !is_eof(p)) {
-    MpplSyntaxKindSet kinds;
-    bitset_clear(&kinds);
+    MpplSyntaxKindSet kinds = bitset_zero();
     bitset_set(&kinds, MPPL_SYNTAX_VAR_KW);
     bitset_set(&kinds, MPPL_SYNTAX_PROCEDURE_KW);
     bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
 
     if (check(p, MPPL_SYNTAX_VAR_KW)) {
-      parse_var_decl_part(p, kinds);
+      parse_var_decl_part(p, &kinds);
     } else if (check(p, MPPL_SYNTAX_PROCEDURE_KW)) {
-      parse_proc_decl(p, kinds);
+      parse_proc_decl(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
-      recover(p, kinds);
+      recover(p, &kinds);
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   }
   {
-    MpplSyntaxKindSet kinds;
-    bitset_clear(&kinds);
+    MpplSyntaxKindSet kinds = bitset_zero();
     bitset_set(&kinds, MPPL_SYNTAX_DOT_TOKEN);
-    parse_comp_stmt(p, kinds);
+    parse_comp_stmt(p, &kinds);
   }
   expect(p, MPPL_SYNTAX_DOT_TOKEN);
   close(p, MPPL_SYNTAX_PROGRAM, program);
