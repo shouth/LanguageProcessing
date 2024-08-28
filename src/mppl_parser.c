@@ -201,7 +201,7 @@ static void recover(Parser *p, MpplSyntaxKindSet kinds)
     p->kind = MPPL_SYNTAX_ERROR;
     bump(p);
   }
-  p->recovery = 0;
+  p->recovery = is_eof(p);
 }
 
 static Checkpoint open(Parser *p)
