@@ -43,6 +43,7 @@ typedef unsigned long BitSet;
     unsigned char data[(bits + CHAR_BIT - 1) / CHAR_BIT]; \
   } name
 
+#define bitset_zero()             { 0 }
 #define bitset_set(self, index)   ((self)->data[(index) / CHAR_BIT] |= 1ul << ((index) % CHAR_BIT))
 #define bitset_reset(self, index) ((self)->data[(index) / CHAR_BIT] &= ~(1ul << ((index) % CHAR_BIT)))
 #define bitset_get(self, index)   ((self)->data[(index) / CHAR_BIT] & (1ul << ((index) % CHAR_BIT)))
