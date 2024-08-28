@@ -828,7 +828,7 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
 
   next_nontrivia(&p); /* initialize `p.span` and `p.kind` */
   parse_program(&p);
-  expect(&p, MPPL_SYNTAX_EOF);
+  expect(&p, MPPL_SYNTAX_END_OF_FILE);
 
   result.root       = raw_syntax_builder_finish(p.builder);
   result.diag_count = array_count(p.diagnostics);
