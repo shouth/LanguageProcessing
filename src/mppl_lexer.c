@@ -91,12 +91,14 @@ static MpplLexResult lex_string(Lexer *l)
 {
   int has_nongraphic = 0;
   while (1) {
-    if (eat(l, '\'') && !eat(l, '\'')) {
-      MpplLexResult result = lex(l, MPPL_SYNTAX_STRING_LIT);
-      if (has_nongraphic) {
-        result.has_nongraphic = 1;
+    if (eat(l, '\'')) {
+      if (!eat(l, '\'')) {
+        MpplLexResult result = lex(l, MPPL_SYNTAX_STRING_LIT);
+        if (has_nongraphic) {
+          result.has_nongraphic = 1;
+        }
+        return result;
       }
-      return result;
     } else if (first(l) == '\r' || first(l) == '\n' || first(l) == EOF) {
       MpplLexResult result   = lex(l, MPPL_SYNTAX_STRING_LIT);
       result.is_unterminated = 1;
