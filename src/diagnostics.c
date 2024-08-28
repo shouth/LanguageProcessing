@@ -269,10 +269,11 @@ static Report *report_diag_unexpected_token_error(const Diag *diag)
   Report *report;
   if (e->found) {
     report = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found `%s`", expected, e->found);
+    report_annotation(report, e->offset, e->offset + e->length, NULL);
   } else {
     report = report_new(REPORT_KIND_ERROR, e->offset, "expected %s, found end of file", expected);
+    report_annotation(report, e->offset, e->offset + 1, NULL);
   }
-  report_annotation(report, e->offset, e->offset + e->length, NULL);
   free(expected);
   return report;
 }
