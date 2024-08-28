@@ -59,8 +59,11 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
     Array        *line_lengths = array_new(sizeof(unsigned long));
     unsigned long offset       = 0;
     array_push(line_offsets, &offset);
-    while (offset < source->text_length) {
+    while (offset <= source->text_length) {
       unsigned long length = strcspn(source->text + offset, "\r\n");
+      if (source->text[offset + length] == '\0') {
+        ++length;
+      }
       array_push(line_lengths, &length);
       offset += length;
 

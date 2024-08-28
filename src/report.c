@@ -14,6 +14,7 @@
    limitations under the License.
 */
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -336,7 +337,16 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
 
   line_width = 0;
   for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
-    char c = writer->source->text[writer->source->line_offsets[line_number] + i];
+    char c;
+    if (writer->source->line_offsets[line_number] + i > writer->source->text_length) {
+      printf("text_length: %lu\n", writer->source->text_length);
+      printf("line_number: %lu\n", line_number);
+      printf("line_offsets: %lu\n", writer->source->line_offsets[line_number]);
+      printf("line_lengths: %lu\n", writer->source->line_lengths[line_number]);
+      printf("i: %lu\n", i);
+      assert(0);
+    }
+    c = writer->source->text[writer->source->line_offsets[line_number] + i];
     if (c == '\t') {
       line_width += writer->tab_width - (line_width % writer->tab_width);
     } else if (!is_graphic(c)) {
@@ -362,7 +372,7 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
       segment.end = line_offset - 1;
       array_push(nongraphics, &segment);
     } else {
-      line[line_offset++] = writer->source->text[writer->source->line_offsets[line_number] + i];
+      line[line_offset++] = c ? c : ' ';
     }
   }
   line[line_width] = '\0';
