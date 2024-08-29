@@ -75,6 +75,12 @@ int is_graphic(int c);
 
 long utf8_len(const char *str, long len);
 
+#define MONOKAI_RED    0xFF6188
+#define MONOKAI_GREEN  0xA9DC76
+#define MONOKAI_YELLOW 0xFFD866
+#define MONOKAI_BLUE   0x78DCE8
+#define MONOKAI_PURPLE 0xAB9DF2
+
 #define unreachable()                                                                            \
   do {                                                                                           \
     fprintf(stderr, "Internal Error: Entered unreachable region [%s:%d]\n", __FILE__, __LINE__); \
