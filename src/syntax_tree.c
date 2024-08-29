@@ -102,8 +102,10 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
     style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
     term_print(file, &style, "%ld", offset + token->node.span.text_length);
 
-    style.foreground = TERM_COLOR_256 | MONOKAI_YELLOW;
-    term_print(file, &style, " \"%s\"", token->text);
+    if (token->text) {
+      style.foreground = TERM_COLOR_256 | MONOKAI_YELLOW;
+      term_print(file, &style, " \"%s\"", token->text);
+    }
 
     fprintf(file, "\n");
     break;
