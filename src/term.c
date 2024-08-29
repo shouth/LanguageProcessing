@@ -328,7 +328,7 @@ void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ..
       {
         unsigned long initial_line_width = array_count(*line);
         TermBufCell   cell;
-        cell.style = *style;
+        cell.style = style ? *style : term_default_style();
         cell.size  = size;
         memcpy(cell.character, buffer + index, size);
         if (buf->current_column < initial_line_width) {
