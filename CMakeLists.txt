@@ -3,7 +3,7 @@ project(KIT_LPP)
 
 add_executable(mpplc)
 
-option(_POSIX_C_SOURCE "POSIX C source" 200809L)
+set(_POSIX_C_SOURCE 200112L CACHE STRING "POSIX version to use")
 
 file(GLOB src src/*.c)
 target_sources(mpplc
@@ -25,4 +25,4 @@ target_link_options(mpplc
     "$<${gnu_like_debug}:-fsanitize=address,leak,undefined>")
 target_compile_definitions(mpplc
   PRIVATE
-    "-D_POSIX_C_SOURCE=${_POSIX_C_SOURCE}")
+    _POSIX_C_SOURCE=${_POSIX_C_SOURCE})
