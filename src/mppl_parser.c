@@ -351,7 +351,7 @@ static void parse_expr_with_power(Parser *p, int power, const MpplSyntaxKindSet 
 
   while (1) {
     if (power < 10 && eat_any(p, first_relat_op())) {
-      /* expr ('=' | '<>' | '<' | '<=' | '>' | '>=) expr */
+      /* expr ('=' | '<>' | '<' | '<=' | '>' | '>=') expr */
       parse_expr_with_power(p, 11, recovery);
       close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
     } else if (power < 20 && eat_any(p, first_add_op())) {
