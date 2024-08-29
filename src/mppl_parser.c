@@ -14,12 +14,14 @@
    limitations under the License.
 */
 
+#include <errno.h>
 #include <stddef.h>
 
 #include "array.h"
 #include "diagnostics.h"
 #include "mppl_passes.h"
 #include "mppl_syntax.h"
+#include "stdio.h"
 #include "string.h"
 #include "syntax_tree.h"
 #include "utility.h"
@@ -57,11 +59,7 @@ static void next_token(Parser *p)
 
   switch (p->kind) {
   case MPPL_SYNTAX_NUMBER_LIT: {
-    char buffer[8];
-    strncpy(buffer, p->text + p->offset, p->span);
-    buffer[p->span] = '\0';
-
-    if (strtol(buffer, NULL, 10) > 32767) {
+    if (strtoul(p->text + p->offset, NULL, 10) > 32767) {
       diag(p, diag_too_big_number_error(p->offset, p->span));
     }
     break;
