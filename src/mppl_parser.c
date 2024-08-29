@@ -14,7 +14,6 @@
    limitations under the License.
 */
 
-#include <errno.h>
 #include <stddef.h>
 
 #include "array.h"
@@ -223,14 +222,14 @@ static void parse_std_type(Parser *p)
 
 static void parse_array_type(Parser *p)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint array_type = open(p);
   expect(p, MPPL_SYNTAX_ARRAY_KW);
   expect(p, MPPL_SYNTAX_LBRACKET_TOKEN);
   expect(p, MPPL_SYNTAX_NUMBER_LIT);
   expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
   expect(p, MPPL_SYNTAX_OF_KW);
   parse_std_type(p);
-  close(p, MPPL_SYNTAX_ARRAY_TYPE, checkpoint);
+  close(p, MPPL_SYNTAX_ARRAY_TYPE, array_type);
 }
 
 static void parse_type(Parser *p)
@@ -299,16 +298,16 @@ static const MpplSyntaxKindSet *first_expr(void)
 
 static void parse_expr_with_power(Parser *p, int power, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint expr = open(p);
 
   if (power < 20 && (eat(p, MPPL_SYNTAX_PLUS_TOKEN) || eat(p, MPPL_SYNTAX_MINUS_TOKEN))) {
     /* ('+' | '-') expr */
     parse_expr_with_power(p, 21, recovery);
-    close(p, MPPL_SYNTAX_UNARY_EXPR, checkpoint);
+    close(p, MPPL_SYNTAX_UNARY_EXPR, expr);
   } else if (eat(p, MPPL_SYNTAX_NOT_KW)) {
     /* 'not' expr */
     parse_expr_with_power(p, 100, recovery);
-    close(p, MPPL_SYNTAX_UNARY_EXPR, checkpoint);
+    close(p, MPPL_SYNTAX_UNARY_EXPR, expr);
   } else if (eat(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
@@ -316,7 +315,7 @@ static void parse_expr_with_power(Parser *p, int power, const MpplSyntaxKindSet 
     /* '(' expr ')' */
     parse_expr(p, &kinds);
     expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
-    close(p, MPPL_SYNTAX_PAREN_EXPR, checkpoint);
+    close(p, MPPL_SYNTAX_PAREN_EXPR, expr);
   } else if (eat_any(p, first_std_type())) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
@@ -325,7 +324,7 @@ static void parse_expr_with_power(Parser *p, int power, const MpplSyntaxKindSet 
     expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
     parse_expr(p, &kinds);
     expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
-    close(p, MPPL_SYNTAX_CAST_EXPR, checkpoint);
+    close(p, MPPL_SYNTAX_CAST_EXPR, expr);
   } else if (eat_any(p, first_const())) {
     /* number | true | false | string */
   } else if (eat(p, MPPL_SYNTAX_IDENT_TOKEN)) {
@@ -336,10 +335,10 @@ static void parse_expr_with_power(Parser *p, int power, const MpplSyntaxKindSet 
       /* identifier '[' expr ']' */
       parse_expr(p, &kinds);
       expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
-      close(p, MPPL_SYNTAX_INDEXED_VAR, checkpoint);
+      close(p, MPPL_SYNTAX_INDEXED_VAR, expr);
     } else {
       /* identifier */
-      close(p, MPPL_SYNTAX_ENTIRE_VAR, checkpoint);
+      close(p, MPPL_SYNTAX_ENTIRE_VAR, expr);
     }
   } else {
     diag(p, diag_expected_expression_error(p->offset, p->span));
@@ -353,15 +352,15 @@ static void parse_expr_with_power(Parser *p, int power, const MpplSyntaxKindSet 
     if (power < 10 && eat_any(p, first_relat_op())) {
       /* expr ('=' | '<>' | '<' | '<=' | '>' | '>=') expr */
       parse_expr_with_power(p, 11, recovery);
-      close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
+      close(p, MPPL_SYNTAX_BINARY_EXPR, expr);
     } else if (power < 20 && eat_any(p, first_add_op())) {
       /* expr ('+' | '-' | 'or') expr */
       parse_expr_with_power(p, 21, recovery);
-      close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
+      close(p, MPPL_SYNTAX_BINARY_EXPR, expr);
     } else if (power < 30 && eat_any(p, first_multi_op())) {
       /* expr ('*' | 'div' | 'and') expr */
       parse_expr_with_power(p, 31, recovery);
-      close(p, MPPL_SYNTAX_BINARY_EXPR, checkpoint);
+      close(p, MPPL_SYNTAX_BINARY_EXPR, expr);
     } else {
       break;
     }
@@ -408,7 +407,7 @@ static const MpplSyntaxKindSet *first_stmt(void)
 
 static void parse_assign_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint assign_stmt = open(p);
   {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_ASSIGN_TOKEN);
@@ -416,12 +415,12 @@ static void parse_assign_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
   }
   expect(p, MPPL_SYNTAX_ASSIGN_TOKEN);
   parse_expr(p, recovery);
-  close(p, MPPL_SYNTAX_ASSIGN_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_ASSIGN_STMT, assign_stmt);
 }
 
 static void parse_if_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint if_stmt = open(p);
   expect(p, MPPL_SYNTAX_IF_KW);
   {
     MpplSyntaxKindSet kinds = *recovery;
@@ -435,18 +434,20 @@ static void parse_if_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
     bitset_set(&kinds, MPPL_SYNTAX_ELSE_KW);
     parse_stmt(p, &kinds);
   }
-  if (eat(p, MPPL_SYNTAX_ELSE_KW)) {
+  if (check(p, MPPL_SYNTAX_ELSE_KW)) {
+    Checkpoint else_clause = open(p);
+    expect(p, MPPL_SYNTAX_ELSE_KW);
     parse_stmt(p, recovery);
+    close(p, MPPL_SYNTAX_ELSE_CLAUSE, else_clause);
   } else {
     null(p);
-    null(p);
   }
-  close(p, MPPL_SYNTAX_IF_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_IF_STMT, if_stmt);
 }
 
 static void parse_while_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint while_stmt = open(p);
   ++p->breakable;
   expect(p, MPPL_SYNTAX_WHILE_KW);
   {
@@ -457,29 +458,33 @@ static void parse_while_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
   expect(p, MPPL_SYNTAX_DO_KW);
   parse_stmt(p, recovery);
   --p->breakable;
-  close(p, MPPL_SYNTAX_WHILE_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_WHILE_STMT, while_stmt);
 }
 
 static void parse_break_stmt(Parser *p)
 {
-  Checkpoint    checkpoint = open(p);
+  Checkpoint    break_stmt = open(p);
   unsigned long offset     = p->offset;
   unsigned long span       = p->span;
   if (expect(p, MPPL_SYNTAX_BREAK_KW) && !p->breakable) {
     diag(p, diag_break_outside_loop_error(offset, span));
   }
-  close(p, MPPL_SYNTAX_BREAK_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_BREAK_STMT, break_stmt);
 }
 
 static void parse_act_param_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint act_params, expr_list, expr_list_elem;
+
+  act_params = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
+  expr_list = open(p);
   while (!check(p, MPPL_SYNTAX_RPAREN_TOKEN) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
+    expr_list_elem = open(p);
     if (check_any(p, first_expr())) {
       parse_expr(p, &kinds);
     } else {
@@ -488,17 +493,21 @@ static void parse_act_param_list(Parser *p, const MpplSyntaxKindSet *recovery)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
 
-    if (!check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+    if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+      null(p);
+    } else {
       expect(p, MPPL_SYNTAX_COMMA_TOKEN);
     }
+    close(p, MPPL_SYNTAX_EXPR_LIST_ELEM, expr_list_elem);
   }
+  close(p, MPPL_SYNTAX_EXPR_LIST, expr_list);
   expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
-  close(p, MPPL_SYNTAX_ACT_PARAM_LIST, checkpoint);
+  close(p, MPPL_SYNTAX_ACT_PARAMS, act_params);
 }
 
 static void parse_call_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint call_stmt = open(p);
   expect(p, MPPL_SYNTAX_CALL_KW);
   expect(p, MPPL_SYNTAX_IDENT_TOKEN);
   if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
@@ -506,25 +515,29 @@ static void parse_call_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
   } else {
     null(p);
   }
-  close(p, MPPL_SYNTAX_CALL_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_CALL_STMT, call_stmt);
 }
 
 static void parse_return_stmt(Parser *p)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint return_stmt = open(p);
   expect(p, MPPL_SYNTAX_RETURN_KW);
-  close(p, MPPL_SYNTAX_RETURN_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_RETURN_STMT, return_stmt);
 }
 
 static void parse_input_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint inputs, expr_list, expr_list_elem;
+
+  inputs = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
+  expr_list = open(p);
   while (!check(p, MPPL_SYNTAX_RPAREN_TOKEN) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
+    expr_list_elem = open(p);
     if (check_any(p, first_expr())) {
       parse_expr(p, &kinds);
     } else {
@@ -533,29 +546,33 @@ static void parse_input_list(Parser *p, const MpplSyntaxKindSet *recovery)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
 
-    if (!check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+    if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+      null(p);
+    } else {
       expect(p, MPPL_SYNTAX_COMMA_TOKEN);
     }
+    close(p, MPPL_SYNTAX_EXPR_LIST_ELEM, expr_list_elem);
   }
+  close(p, MPPL_SYNTAX_EXPR_LIST, expr_list);
   expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
-  close(p, MPPL_SYNTAX_INPUT_LIST, checkpoint);
+  close(p, MPPL_SYNTAX_INPUTS, inputs);
 }
 
 static void parse_input_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint input_stmt = open(p);
   expect_any(p, first_input_stmt());
   if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_input_list(p, recovery);
   } else {
     null(p);
   }
-  close(p, MPPL_SYNTAX_INPUT_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_INPUT_STMT, input_stmt);
 }
 
 static void parse_output_value(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint output_value = open(p);
   {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
@@ -563,19 +580,23 @@ static void parse_output_value(Parser *p, const MpplSyntaxKindSet *recovery)
   }
   if (eat(p, MPPL_SYNTAX_COLON_TOKEN)) {
     expect(p, MPPL_SYNTAX_NUMBER_LIT);
-    close(p, MPPL_SYNTAX_OUTPUT_VALUE, checkpoint);
+    close(p, MPPL_SYNTAX_OUTPUT_VALUE, output_value);
   }
 }
 
 static void parse_output_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint outputs, output_list, output_list_elem;
+
+  outputs = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
+  output_list = open(p);
   while (!check(p, MPPL_SYNTAX_RPAREN_TOKEN) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
+    output_list_elem = open(p);
     if (check_any(p, first_expr())) {
       parse_output_value(p, &kinds);
     } else {
@@ -584,36 +605,44 @@ static void parse_output_list(Parser *p, const MpplSyntaxKindSet *recovery)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
 
-    if (!check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+    if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+      null(p);
+    } else {
       expect(p, MPPL_SYNTAX_COMMA_TOKEN);
     }
+    close(p, MPPL_SYNTAX_OUTPUT_LIST_ELEM, output_list_elem);
   }
+  close(p, MPPL_SYNTAX_OUTPUT_LIST, output_list);
   expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
-  close(p, MPPL_SYNTAX_OUTPUT_LIST, checkpoint);
+  close(p, MPPL_SYNTAX_OUTPUTS, outputs);
 }
 
 static void parse_output_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint output_stmt = open(p);
   expect_any(p, first_output_stmt());
   if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_output_list(p, recovery);
   } else {
     null(p);
   }
-  close(p, MPPL_SYNTAX_OUTPUT_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_OUTPUT_STMT, output_stmt);
 }
 
 static void parse_comp_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint comp_stmt, stmt_list, stmt_list_elem;
+
+  comp_stmt = open(p);
   expect(p, MPPL_SYNTAX_BEGIN_KW);
+  stmt_list = open(p);
   while (!check(p, MPPL_SYNTAX_END_KW) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_END_KW);
 
-    if (check_any(p, first_stmt())) {
+    stmt_list_elem = open(p);
+    if (check_any(p, first_stmt()) || check(p, MPPL_SYNTAX_SEMI_TOKEN)) {
       parse_stmt(p, &kinds);
     } else {
       Checkpoint bogus = open(p);
@@ -621,12 +650,16 @@ static void parse_comp_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
 
-    if (!check(p, MPPL_SYNTAX_END_KW)) {
+    if (check(p, MPPL_SYNTAX_END_KW)) {
+      null(p);
+    } else {
       expect(p, MPPL_SYNTAX_SEMI_TOKEN);
     }
+    close(p, MPPL_SYNTAX_STMT_LIST_ELEM, stmt_list_elem);
   }
+  close(p, MPPL_SYNTAX_STMT_LIST, stmt_list);
   expect(p, MPPL_SYNTAX_END_KW);
-  close(p, MPPL_SYNTAX_COMP_STMT, checkpoint);
+  close(p, MPPL_SYNTAX_COMP_STMT, comp_stmt);
 }
 
 static void parse_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
@@ -656,12 +689,16 @@ static void parse_stmt(Parser *p, const MpplSyntaxKindSet *recovery)
 
 static void parse_var_decl(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint var_decl, ident_list, ident_list_elem;
+
+  var_decl   = open(p);
+  ident_list = open(p);
   while (!check(p, MPPL_SYNTAX_COLON_TOKEN) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
+    ident_list_elem = open(p);
     if (expect(p, MPPL_SYNTAX_IDENT_TOKEN)) {
       /* identifier */
     } else {
@@ -670,37 +707,51 @@ static void parse_var_decl(Parser *p, const MpplSyntaxKindSet *recovery)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
 
-    if (!check(p, MPPL_SYNTAX_COLON_TOKEN)) {
+    if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
+      null(p);
+    } else {
       expect(p, MPPL_SYNTAX_COMMA_TOKEN);
     }
+    close(p, MPPL_SYNTAX_IDENT_LIST_ELEM, ident_list_elem);
   }
+  close(p, MPPL_SYNTAX_IDENT_LIST, ident_list);
   expect(p, MPPL_SYNTAX_COLON_TOKEN);
   parse_type(p);
-  close(p, MPPL_SYNTAX_VAR_DECL, checkpoint);
+  close(p, MPPL_SYNTAX_VAR_DECL, var_decl);
 }
 
 static void parse_var_decl_part(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint checkpoint = open(p);
+  Checkpoint var_decl_part, var_decl_list, var_decl_list_elem;
+
+  var_decl_part = open(p);
   expect(p, MPPL_SYNTAX_VAR_KW);
+  var_decl_list = open(p);
   while (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
 
+    var_decl_list_elem = open(p);
     parse_var_decl(p, &kinds);
     expect(p, MPPL_SYNTAX_SEMI_TOKEN);
+    close(p, MPPL_SYNTAX_VAR_DECL_LIST_ELEM, var_decl_list_elem);
   }
-  close(p, MPPL_SYNTAX_VAR_DECL_PART, checkpoint);
+  close(p, MPPL_SYNTAX_VAR_DECL_LIST, var_decl_list);
+  close(p, MPPL_SYNTAX_VAR_DECL_PART, var_decl_part);
 }
 
 static void parse_fml_param_sec(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint fml_param_sec = open(p);
+  Checkpoint fml_param_sec, ident_list, ident_list_elem;
+
+  fml_param_sec = open(p);
+  ident_list    = open(p);
   while (!check(p, MPPL_SYNTAX_COLON_TOKEN) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
+    ident_list_elem = open(p);
     if (expect(p, MPPL_SYNTAX_IDENT_TOKEN)) {
       /* identifier */
     } else {
@@ -709,10 +760,14 @@ static void parse_fml_param_sec(Parser *p, const MpplSyntaxKindSet *recovery)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
 
-    if (!check(p, MPPL_SYNTAX_COLON_TOKEN)) {
+    if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
+      null(p);
+    } else {
       expect(p, MPPL_SYNTAX_COMMA_TOKEN);
     }
+    close(p, MPPL_SYNTAX_IDENT_LIST_ELEM, ident_list_elem);
   }
+  close(p, MPPL_SYNTAX_IDENT_LIST, ident_list);
   expect(p, MPPL_SYNTAX_COLON_TOKEN);
   parse_type(p);
   close(p, MPPL_SYNTAX_FML_PARAM_SEC, fml_param_sec);
@@ -720,13 +775,17 @@ static void parse_fml_param_sec(Parser *p, const MpplSyntaxKindSet *recovery)
 
 static void parse_fml_param_list(Parser *p, const MpplSyntaxKindSet *recovery)
 {
-  Checkpoint fml_param_list = open(p);
+  Checkpoint fml_params, fml_param_list, fml_param_list_elem;
+
+  fml_params = open(p);
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
+  fml_param_list = open(p);
   while (!check(p, MPPL_SYNTAX_RPAREN_TOKEN) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = *recovery;
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
     bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
 
+    fml_param_list_elem = open(p);
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
       parse_fml_param_sec(p, &kinds);
     } else {
@@ -735,12 +794,16 @@ static void parse_fml_param_list(Parser *p, const MpplSyntaxKindSet *recovery)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
 
-    if (!check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+    if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
+      null(p);
+    } else {
       expect(p, MPPL_SYNTAX_SEMI_TOKEN);
     }
+    close(p, MPPL_SYNTAX_FML_PARAM_LIST_ELEM, fml_param_list_elem);
   }
-  expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
   close(p, MPPL_SYNTAX_FML_PARAM_LIST, fml_param_list);
+  expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
+  close(p, MPPL_SYNTAX_FML_PARAMS, fml_params);
 }
 
 static void parse_proc_decl(Parser *p, const MpplSyntaxKindSet *recovery)
@@ -777,11 +840,14 @@ static void parse_proc_decl(Parser *p, const MpplSyntaxKindSet *recovery)
 
 static void parse_program(Parser *p)
 {
-  Checkpoint program = open(p);
+  Checkpoint program, decl_list;
+
+  program = open(p);
   expect(p, MPPL_SYNTAX_PROGRAM_KW);
   expect(p, MPPL_SYNTAX_IDENT_TOKEN);
   expect(p, MPPL_SYNTAX_SEMI_TOKEN);
 
+  decl_list = open(p);
   while (!check(p, MPPL_SYNTAX_BEGIN_KW) && !is_eof(p)) {
     MpplSyntaxKindSet kinds = bitset_zero();
     bitset_set(&kinds, MPPL_SYNTAX_VAR_KW);
@@ -798,6 +864,7 @@ static void parse_program(Parser *p)
       close(p, MPPL_SYNTAX_BOGUS, bogus);
     }
   }
+  close(p, MPPL_SYNTAX_DECL_LIST, decl_list);
   {
     MpplSyntaxKindSet kinds = bitset_zero();
     bitset_set(&kinds, MPPL_SYNTAX_DOT_TOKEN);

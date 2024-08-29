@@ -77,31 +77,45 @@
   F(BRACES_COMMENT_TRIVIA, TRIVIA, "")  \
   F(C_COMMENT_TRIVIA, TRIVIA, "")       \
   F(PROGRAM, SYNTAX, "")                \
+  F(DECL_LIST, SYNTAX, "")              \
   F(VAR_DECL_PART, SYNTAX, "")          \
+  F(VAR_DECL_LIST_ELEM, SYNTAX, "")     \
+  F(VAR_DECL_LIST, SYNTAX, "")          \
   F(VAR_DECL, SYNTAX, "")               \
   F(ARRAY_TYPE, SYNTAX, "")             \
   F(PROC_DECL, SYNTAX, "")              \
+  F(FML_PARAM_LIST_ELEM, SYNTAX, "")    \
   F(FML_PARAM_LIST, SYNTAX, "")         \
+  F(FML_PARAMS, SYNTAX, "")             \
   F(FML_PARAM_SEC, SYNTAX, "")          \
+  F(STMT_LIST_ELEM, SYNTAX, "")         \
+  F(STMT_LIST, SYNTAX, "")              \
   F(ASSIGN_STMT, SYNTAX, "")            \
   F(IF_STMT, SYNTAX, "")                \
+  F(ELSE_CLAUSE, SYNTAX, "")            \
   F(WHILE_STMT, SYNTAX, "")             \
   F(BREAK_STMT, SYNTAX, "")             \
   F(CALL_STMT, SYNTAX, "")              \
-  F(ACT_PARAM_LIST, SYNTAX, "")         \
+  F(ACT_PARAMS, SYNTAX, "")             \
   F(RETURN_STMT, SYNTAX, "")            \
   F(INPUT_STMT, SYNTAX, "")             \
-  F(INPUT_LIST, SYNTAX, "")             \
+  F(INPUTS, SYNTAX, "")                 \
   F(OUTPUT_STMT, SYNTAX, "")            \
+  F(OUTPUT_LIST_ELEM, SYNTAX, "")       \
   F(OUTPUT_LIST, SYNTAX, "")            \
+  F(OUTPUTS, SYNTAX, "")                \
   F(OUTPUT_VALUE, SYNTAX, "")           \
   F(COMP_STMT, SYNTAX, "")              \
+  F(EXPR_LIST_ELEM, SYNTAX, "")         \
+  F(EXPR_LIST, SYNTAX, "")              \
   F(ENTIRE_VAR, SYNTAX, "")             \
   F(INDEXED_VAR, SYNTAX, "")            \
   F(UNARY_EXPR, SYNTAX, "")             \
   F(BINARY_EXPR, SYNTAX, "")            \
   F(PAREN_EXPR, SYNTAX, "")             \
   F(CAST_EXPR, SYNTAX, "")              \
+  F(IDENT_LIST_ELEM, SYNTAX, "")        \
+  F(IDENT_LIST, SYNTAX, "")             \
   F(BOGUS, BOGUS, "")
 
 #define F(name, kind, string) MPPL_SYNTAX_##name,
