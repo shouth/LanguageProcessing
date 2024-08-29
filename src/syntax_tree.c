@@ -6,59 +6,162 @@
 
 #include "array.h"
 #include "syntax_tree.h"
+#include "term.h"
 #include "utility.h"
 
 /* syntax tree */
 
-static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offset, int depth, RawSyntaxKindPrinter *kind_printer);
-static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, int depth, RawSyntaxKindPrinter *kind_printer);
+static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offset, unsigned long depth, RawSyntaxKindPrinter *kind_printer);
+static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, unsigned long depth, RawSyntaxKindPrinter *kind_printer);
 static void print_spans(FILE *file, RawSyntaxSpan **spans, unsigned long span_count, unsigned long offset, int depth, RawSyntaxKindPrinter *kind_printer);
 
-static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offset, int depth, RawSyntaxKindPrinter *kind_printer)
+static void print_indent(FILE *file, unsigned long depth)
 {
   unsigned long i;
+  TermStyle     style;
+
+  style            = term_default_style();
+  style.foreground = TERM_COLOR_256 | 0x666666;
+  style.intensity  = TERM_INTENSITY_FAINT;
+  term_style(file, &style);
+  for (i = 0; i < depth; ++i) {
+    fprintf(file, "│ ");
+  }
+  term_reset(file);
+}
+
+static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offset, unsigned long depth, RawSyntaxKindPrinter *kind_printer)
+{
+  unsigned long i;
+  TermStyle     style;
+
   for (i = 0; i < trivia->piece_count; ++i) {
-    fprintf(file, "%*.s(", (int) depth * 2, "");
+    print_indent(file, depth);
+
+    style           = term_default_style();
+    style.intensity = TERM_INTENSITY_FAINT;
+    term_print(file, &style, "(");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
     if (kind_printer) {
+      term_style(stdout, &style);
       kind_printer(trivia->pieces[i].kind, file);
+      term_reset(stdout);
     } else {
-      fprintf(file, "TRIVIA(%d)", trivia->pieces[i].kind);
+      term_print(file, &style, "TRIVIA(%d)", trivia->pieces[i].kind);
     }
-    fprintf(file, " @ %ld..%ld)\n", offset, offset + trivia->pieces[i].span.text_length);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, " @ ");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "..");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset + trivia->pieces[i].span.text_length);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, ")\n");
+
     offset += trivia->pieces[i].span.text_length;
   }
 }
 
-static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, int depth, RawSyntaxKindPrinter *kind_printer)
+static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, unsigned long depth, RawSyntaxKindPrinter *kind_printer)
 {
-  fprintf(file, "%*.s", (int) depth * 2, "");
+  TermStyle style;
+
+  print_indent(file, depth);
 
   switch (node->node_kind) {
   case RAW_SYNTAX_TOKEN: {
     RawSyntaxToken *token = (RawSyntaxToken *) node;
+
+    style            = term_default_style();
+    style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
     if (kind_printer) {
+      term_style(stdout, &style);
       kind_printer(token->node.kind, file);
+      term_reset(stdout);
     } else {
-      fprintf(file, "TOKEN(%d)", token->node.kind);
+      term_print(file, &style, "TOKEN(%d)", token->node.kind);
     }
-    fprintf(file, " @ %ld..%ld", offset, offset + token->node.span.text_length);
-    fprintf(file, " \"%s\"\n", token->text);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, " @ ");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "..");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset + token->node.span.text_length);
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_YELLOW;
+    term_print(file, &style, " \"%s\"", token->text);
+
+    fprintf(file, "\n");
     break;
   }
   case RAW_SYNTAX_TREE: {
     RawSyntaxTree *tree = (RawSyntaxTree *) node;
+
+    style            = term_default_style();
+    style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
     if (kind_printer) {
+      term_style(stdout, &style);
       kind_printer(tree->node.kind, file);
+      term_reset(stdout);
     } else {
-      fprintf(file, "TREE(%d)", tree->node.kind);
+      term_print(file, &style, "TREE(%d)", tree->node.kind);
     }
-    fprintf(file, " @ %ld..%ld\n", offset, offset + tree->node.span.text_length);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, " @ ");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "..");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset + tree->node.span.text_length);
+
+    fprintf(file, "\n");
     print_spans(file, tree->children, tree->children_count, offset, depth + 1, kind_printer);
     break;
   }
   case RAW_SYNTAX_EMPTY: {
-    fprintf(file, "[EMPTY]");
-    fprintf(file, " @ %ld..%ld\n", offset, offset);
+    style = term_default_style();
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "[");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_RED;
+    term_print(file, &style, "EMPTY");
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "]");
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, " @ ");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "..");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    fprintf(file, "\n");
     break;
   }
   }
