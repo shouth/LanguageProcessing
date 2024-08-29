@@ -251,6 +251,16 @@ void term_reset(FILE *file)
   fprintf(file, "\033[0m");
 }
 
+void term_print(FILE *file, const TermStyle *style, const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  term_style(file, style);
+  vfprintf(file, format, args);
+  term_reset(file);
+  va_end(args);
+}
+
 /* TermBuf */
 
 typedef struct TermBufCell TermBufCell;

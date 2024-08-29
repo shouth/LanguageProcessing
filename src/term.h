@@ -62,6 +62,7 @@ TermStyle term_default_style(void);
 int       term_use_color(int flag);
 void      term_style(FILE *file, const TermStyle *style);
 void      term_reset(FILE *file);
+void      term_print(FILE *file, const TermStyle *style, const char *format, ...);
 
 /* TermBuf */
 
