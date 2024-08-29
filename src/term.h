@@ -19,6 +19,8 @@
 
 #include <stdio.h>
 
+/* TermStyle */
+
 #define TERM_COLOR_NONE    0ul
 #define TERM_COLOR_BLACK   1ul
 #define TERM_COLOR_RED     2ul
@@ -60,5 +62,18 @@ TermStyle term_default_style(void);
 int       term_use_color(int flag);
 void      term_style(FILE *file, const TermStyle *style);
 void      term_reset(FILE *file);
+
+/* TermBuf */
+
+typedef struct TermBuf TermBuf;
+
+TermBuf      *term_buf_new(void);
+void          term_buf_free(TermBuf *canvas);
+void          term_buf_next_line(TermBuf *canvas);
+void          term_buf_write(TermBuf *canvas, const TermStyle *style, const char *format, ...);
+unsigned long term_buf_line(const TermBuf *canvas);
+unsigned long term_buf_column(const TermBuf *canvas);
+void          term_buf_seek(TermBuf *canvas, unsigned long line, unsigned long column);
+void          term_buf_print(TermBuf *canvas, FILE *stream);
 
 #endif

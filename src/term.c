@@ -1,5 +1,11 @@
+#include <stdarg.h>
+#include <stdio.h>
+
 #include "term.h"
+#include "array.h"
 #include "utility.h"
+
+/* TermStyle */
 
 TermStyle term_default_style(void)
 {
@@ -243,4 +249,146 @@ void term_reset(FILE *file)
   }
 
   fprintf(file, "\033[0m");
+}
+
+/* TermBuf */
+
+typedef struct TermBufCell TermBufCell;
+
+struct TermBufCell {
+  char      character[4];
+  int       size;
+  TermStyle style;
+};
+
+struct TermBuf {
+  Array        *lines;
+  unsigned long current_line;
+  unsigned long current_column;
+};
+
+TermBuf *term_buf_new(void)
+{
+  TermBuf *buf  = malloc(sizeof(TermBuf));
+  Array   *line = array_new(sizeof(TermBufCell));
+  buf->lines    = array_new(sizeof(Array *));
+  array_push(buf->lines, &line);
+  buf->current_line   = 0;
+  buf->current_column = 0;
+  return buf;
+}
+
+void term_buf_free(TermBuf *buf)
+{
+  if (buf) {
+    unsigned long i;
+    for (i = 0; i < array_count(buf->lines); ++i) {
+      Array **line = array_at(buf->lines, i);
+      array_free(*line);
+    }
+    array_free(buf->lines);
+    free(buf);
+  }
+}
+
+#define BUFFER_SIZE 1024
+
+void term_buf_next_line(TermBuf *buf)
+{
+  ++buf->current_line;
+  buf->current_column = 0;
+  if (buf->current_line >= array_count(buf->lines)) {
+    Array *line = array_new(sizeof(TermBufCell));
+    array_push(buf->lines, &line);
+  }
+}
+
+void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ...)
+{
+  va_list args;
+  Array **line  = array_at(buf->lines, buf->current_line);
+  FILE   *file  = tmpfile();
+  long    index = 0;
+  char    buffer[BUFFER_SIZE + 1];
+
+  va_start(args, format);
+  vfprintf(file, format, args);
+  va_end(args);
+  rewind(file);
+  while (fgets(buffer + index, BUFFER_SIZE - index, file)) {
+    while (buffer[index]) {
+      long size = utf8_len(buffer + index, BUFFER_SIZE - index);
+      if (size < 0) {
+        int remain = strlen(buffer + index);
+        memmove(buffer, buffer + index, remain);
+        index = remain;
+        break;
+      }
+
+      {
+        unsigned long initial_line_width = array_count(*line);
+        TermBufCell   cell;
+        cell.style = *style;
+        cell.size  = size;
+        memcpy(cell.character, buffer + index, size);
+        if (buf->current_column < initial_line_width) {
+          memcpy(array_at(*line, buf->current_column), &cell, sizeof(TermBufCell));
+        } else {
+          array_push(*line, &cell);
+        }
+        ++buf->current_column;
+        index += size;
+      }
+    }
+  }
+  fclose(file);
+}
+
+unsigned long term_buf_line(const TermBuf *buf)
+{
+  return buf->current_line;
+}
+
+unsigned long term_buf_column(const TermBuf *buf)
+{
+  return buf->current_column;
+}
+
+void term_buf_seek(TermBuf *buf, unsigned long line, unsigned long column)
+{
+  Array **last_line;
+  buf->current_line   = line;
+  buf->current_column = column;
+
+  while (buf->current_line >= array_count(buf->lines)) {
+    Array *line = array_new(sizeof(TermBufCell));
+    array_push(buf->lines, &line);
+  }
+
+  last_line = array_at(buf->lines, buf->current_line);
+  while (buf->current_column >= array_count(*last_line)) {
+    TermBufCell cell;
+    cell.style = term_default_style();
+    cell.size  = 1;
+    strcpy(cell.character, " ");
+    array_push(*last_line, &cell);
+  }
+}
+
+void term_buf_print(TermBuf *buf, FILE *file)
+{
+  unsigned long line, column;
+  for (line = 0; line < array_count(buf->lines); ++line) {
+    Array **line_array = array_at(buf->lines, line);
+    for (column = 0; column < array_count(*line_array); ++column) {
+      TermBufCell *cell = array_at(*line_array, column);
+      term_style(file, &cell->style);
+      fprintf(file, "%.*s", (int) cell->size, cell->character);
+      term_reset(file);
+    }
+    if (line + 1 < array_count(buf->lines)) {
+      fprintf(file, "\n");
+    }
+  }
+  fflush(file);
 }

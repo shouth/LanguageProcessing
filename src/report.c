@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "array.h"
-#include "canvas.h"
 #include "report.h"
 #include "term.h"
 #include "utility.h"
@@ -227,7 +226,7 @@ static int compare_annotations(const void *left, const void *right)
   }
 }
 
-static void write_head_line(Writer *writer, Canvas *canvas)
+static void write_head_line(Writer *writer, TermBuf *canvas)
 {
   TermStyle style;
 
@@ -236,32 +235,32 @@ static void write_head_line(Writer *writer, Canvas *canvas)
     style            = term_default_style();
     style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
     style.intensity  = TERM_INTENSITY_STRONG;
-    canvas_write(canvas, &style, "[ERROR] ");
+    term_buf_write(canvas, &style, "[ERROR] ");
     break;
 
   case REPORT_KIND_WARN:
     style            = term_default_style();
     style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_YELLOW;
     style.intensity  = TERM_INTENSITY_STRONG;
-    canvas_write(canvas, &style, "[WARN] ");
+    term_buf_write(canvas, &style, "[WARN] ");
     break;
 
   case REPORT_KIND_NOTE:
     style            = term_default_style();
     style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_CYAN;
     style.intensity  = TERM_INTENSITY_STRONG;
-    canvas_write(canvas, &style, "[NOTE] ");
+    term_buf_write(canvas, &style, "[NOTE] ");
     break;
   }
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_WHITE;
-  canvas_write(canvas, &style, "%s", writer->report->message);
+  term_buf_write(canvas, &style, "%s", writer->report->message);
 
-  canvas_next_line(canvas);
+  term_buf_next_line(canvas);
 }
 
-static void write_location_line(Writer *writer, Canvas *canvas)
+static void write_location_line(Writer *writer, TermBuf *canvas)
 {
   TermStyle style;
 
@@ -270,22 +269,22 @@ static void write_location_line(Writer *writer, Canvas *canvas)
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  canvas_write(canvas, &style, " %*.s ╭─[", writer->number_margin, "");
+  term_buf_write(canvas, &style, " %*.s ╭─[", writer->number_margin, "");
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_WHITE | TERM_COLOR_BRIGHT;
-  canvas_write(canvas, &style, "%s:%lu:%lu", writer->source->file_name, location.line + 1, location.column + 1);
+  term_buf_write(canvas, &style, "%s:%lu:%lu", writer->source->file_name, location.line + 1, location.column + 1);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  canvas_write(canvas, &style, "]");
+  term_buf_write(canvas, &style, "]");
 
-  canvas_next_line(canvas);
+  term_buf_next_line(canvas);
 }
 
 static void write_annotation_left(
   Writer                 *writer,
-  Canvas                 *canvas,
+  TermBuf                *canvas,
   unsigned long           line_number,
   unsigned long           line_column,
   const ReportAnnotation *connect,
@@ -302,43 +301,43 @@ static void write_annotation_left(
     ReportAnnotation *annotation = array_at(writer->report->annotations, i);
     if (annotation->start.line != annotation->end.line) {
       if (strike) {
-        canvas_write(canvas, &style, "──");
+        term_buf_write(canvas, &style, "──");
       } else if (line_number < annotation->start.line || line_number > annotation->end.line) {
-        canvas_write(canvas, &style, "  ");
+        term_buf_write(canvas, &style, "  ");
       } else if (line_number == annotation->start.line) {
         if (line_column == -1ul) {
-          canvas_write(canvas, &style, "  ");
+          term_buf_write(canvas, &style, "  ");
         } else if (line_column > annotation->start.column) {
-          canvas_write(canvas, &style, dotted ? "╎ " : "│ ");
+          term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
         } else if (line_column < annotation->start.column) {
-          canvas_write(canvas, &style, "  ");
+          term_buf_write(canvas, &style, "  ");
         } else if (annotation == connect) {
-          canvas_write(canvas, &style, "╭─");
+          term_buf_write(canvas, &style, "╭─");
           strike = annotation;
         } else {
-          canvas_write(canvas, &style, dotted ? "╎ " : "│ ");
+          term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
         }
       } else if (line_number == annotation->end.line) {
         if (line_column == -1ul) {
-          canvas_write(canvas, &style, dotted ? "╎ " : "│ ");
+          term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
         } else if (line_column < annotation->end.column) {
-          canvas_write(canvas, &style, dotted ? "╎ " : "│ ");
+          term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
         } else if (line_column > annotation->end.column) {
-          canvas_write(canvas, &style, "  ");
+          term_buf_write(canvas, &style, "  ");
         } else if (annotation == connect) {
-          canvas_write(canvas, &style, "╰─");
+          term_buf_write(canvas, &style, "╰─");
           strike = annotation;
         } else {
-          canvas_write(canvas, &style, "  ");
+          term_buf_write(canvas, &style, "  ");
         }
       } else {
-        canvas_write(canvas, &style, dotted ? "╎ " : "│ ");
+        term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
       }
     }
   }
 }
 
-static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line_number)
+static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long line_number)
 {
   unsigned long i, j;
   TermStyle     style;
@@ -416,31 +415,31 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  canvas_write(canvas, &style, " %*.lu │ ", writer->number_margin, line_number + 1);
+  term_buf_write(canvas, &style, " %*.lu │ ", writer->number_margin, line_number + 1);
 
   write_annotation_left(writer, canvas, line_number, -1ul, NULL, 0);
-  line_offset   = canvas_line(canvas);
-  column_offset = canvas_column(canvas);
+  line_offset   = term_buf_line(canvas);
+  column_offset = term_buf_column(canvas);
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_WHITE;
-  canvas_write(canvas, &style, "%s", line);
+  term_buf_write(canvas, &style, "%s", line);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
   for (j = 0; j < array_count(nongraphics); ++j) {
     LineSegment *nongraphic = array_at(nongraphics, j);
-    canvas_seek(canvas, line_offset, column_offset + nongraphic->start);
-    canvas_write(canvas, &style, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
+    term_buf_seek(canvas, line_offset, column_offset + nongraphic->start);
+    term_buf_write(canvas, &style, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
   }
 
   for (i = 0; i < array_count(segments); ++i) {
     LineSegment *segment = array_at(segments, i);
-    canvas_seek(canvas, line_offset, column_offset + segment->start);
+    term_buf_seek(canvas, line_offset, column_offset + segment->start);
 
     style            = term_default_style();
     style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
-    canvas_write(canvas, &style, "%.*s", (int) (segment->end - segment->start + 1), line + segment->start);
+    term_buf_write(canvas, &style, "%.*s", (int) (segment->end - segment->start + 1), line + segment->start);
 
     style            = term_default_style();
     style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
@@ -448,19 +447,19 @@ static void write_source_line(Writer *writer, Canvas *canvas, unsigned long line
     for (j = 0; j < array_count(nongraphics); ++j) {
       LineSegment *nongraphic = array_at(nongraphics, j);
       if (nongraphic->start >= segment->start && nongraphic->end <= segment->end) {
-        canvas_seek(canvas, line_offset, column_offset + nongraphic->start);
-        canvas_write(canvas, &style, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
+        term_buf_seek(canvas, line_offset, column_offset + nongraphic->start);
+        term_buf_write(canvas, &style, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
       }
     }
   }
-  canvas_next_line(canvas);
+  term_buf_next_line(canvas);
 
   free(line);
   array_free(nongraphics);
   array_free(segments);
 }
 
-static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long line_number)
+static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long line_number)
 {
   unsigned long i, j;
   TermStyle     style;
@@ -496,37 +495,37 @@ static void write_indicator_line(Writer *writer, Canvas *canvas, unsigned long l
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  canvas_write(canvas, &style, " %*.s │ ", writer->number_margin, "");
+  term_buf_write(canvas, &style, " %*.s │ ", writer->number_margin, "");
 
   write_annotation_left(writer, canvas, line_number, -1ul, NULL, 0);
-  line_offset   = canvas_line(canvas);
-  column_offset = canvas_column(canvas);
+  line_offset   = term_buf_line(canvas);
+  column_offset = term_buf_column(canvas);
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
   for (i = 0; i < array_count(indicators); ++i) {
     Indicator *indicator = array_at(indicators, i);
-    canvas_seek(canvas, line_offset, column_offset + indicator->column);
+    term_buf_seek(canvas, line_offset, column_offset + indicator->column);
     switch (indicator->kind) {
     case INDICATOR_INLINE:
-      canvas_write(canvas, &style, indicator->annotation->message ? "┬" : "─");
+      term_buf_write(canvas, &style, indicator->annotation->message ? "┬" : "─");
       for (j = 1; j < indicator->length; ++j) {
-        canvas_write(canvas, &style, "─");
+        term_buf_write(canvas, &style, "─");
       }
       break;
 
     case INDICATOR_END:
     case INDICATOR_BEGIN:
-      canvas_write(canvas, &style, "▲");
+      term_buf_write(canvas, &style, "▲");
       break;
     }
   }
-  canvas_next_line(canvas);
+  term_buf_next_line(canvas);
 
   array_free(indicators);
 }
 
-static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long line_number)
+static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned long line_number)
 {
   unsigned long i, j;
   TermStyle     style;
@@ -581,22 +580,22 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
     if (connector->multiline || connector->annotation->message) {
       connector->depth = depth;
       if (depth > 0) {
-        canvas_next_line(canvas);
+        term_buf_next_line(canvas);
       }
 
-      canvas_write(canvas, &style, " %*.s │ ", writer->number_margin, "");
+      term_buf_write(canvas, &style, " %*.s │ ", writer->number_margin, "");
       write_annotation_left(writer, canvas, line_number, connector->column, connector->annotation, 0);
       if (depth == 0) {
-        line_offset   = canvas_line(canvas);
-        column_offset = canvas_column(canvas);
+        line_offset   = term_buf_line(canvas);
+        column_offset = term_buf_column(canvas);
       }
-      canvas_next_line(canvas);
-      canvas_write(canvas, &style, " %*.s │ ", writer->number_margin, "");
+      term_buf_next_line(canvas);
+      term_buf_write(canvas, &style, " %*.s │ ", writer->number_margin, "");
       write_annotation_left(writer, canvas, line_number, connector->column, NULL, 0);
       depth += 2;
     }
   }
-  end_line_offset = canvas_line(canvas);
+  end_line_offset = term_buf_line(canvas);
 
   for (i = array_count(connectors); i > 0; --i) {
     Connector *connector = array_at(connectors, i - 1);
@@ -605,8 +604,8 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
     style.foreground = TERM_COLOR_RED | TERM_COLOR_BRIGHT;
     if (connector->depth != -1ul) {
       for (j = 0; j < connector->depth; ++j) {
-        canvas_seek(canvas, line_offset + j, column_offset + connector->column);
-        canvas_write(canvas, &style, "│");
+        term_buf_seek(canvas, line_offset + j, column_offset + connector->column);
+        term_buf_write(canvas, &style, "│");
       }
     }
 
@@ -615,43 +614,43 @@ static void write_annotation_lines(Writer *writer, Canvas *canvas, unsigned long
       style            = term_default_style();
       style.foreground = TERM_COLOR_RED | TERM_COLOR_BRIGHT;
       if (connector->multiline) {
-        canvas_seek(canvas, line_offset + j, column_offset);
+        term_buf_seek(canvas, line_offset + j, column_offset);
         for (j = 0; j < connector->column; ++j) {
-          canvas_write(canvas, &style, "─");
+          term_buf_write(canvas, &style, "─");
         }
-        canvas_write(canvas, &style, connector->annotation->message ? "┴" : "╯");
+        term_buf_write(canvas, &style, connector->annotation->message ? "┴" : "╯");
       } else if (connector->annotation->message) {
-        canvas_seek(canvas, line_offset + j, column_offset + connector->column);
-        canvas_write(canvas, &style, "╰");
+        term_buf_seek(canvas, line_offset + j, column_offset + connector->column);
+        term_buf_write(canvas, &style, "╰");
       }
 
       if (connector->annotation->message) {
         for (j = connector->column + 1; j < label_offset + 3; ++j) {
-          canvas_write(canvas, &style, "─");
+          term_buf_write(canvas, &style, "─");
         }
 
         style            = term_default_style();
         style.foreground = TERM_COLOR_WHITE | TERM_COLOR_BRIGHT;
-        canvas_write(canvas, &style, " %s", connector->annotation->message);
+        term_buf_write(canvas, &style, " %s", connector->annotation->message);
       }
       break;
 
     case CONNECTOR_BEGIN:
       style            = term_default_style();
       style.foreground = TERM_COLOR_RED | TERM_COLOR_BRIGHT;
-      canvas_seek(canvas, line_offset + j, column_offset);
+      term_buf_seek(canvas, line_offset + j, column_offset);
       for (j = 0; j < connector->column; ++j) {
-        canvas_write(canvas, &style, "─");
+        term_buf_write(canvas, &style, "─");
       }
-      canvas_write(canvas, &style, "╯");
+      term_buf_write(canvas, &style, "╯");
       break;
     }
   }
-  canvas_seek(canvas, end_line_offset, 0);
+  term_buf_seek(canvas, end_line_offset, 0);
   array_free(connectors);
 }
 
-static void write_interest_lines(Writer *writer, Canvas *canvas)
+static void write_interest_lines(Writer *writer, TermBuf *canvas)
 {
   unsigned long i, j;
   TermStyle     style;
@@ -678,9 +677,9 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
 
         style           = term_default_style();
         style.intensity = TERM_INTENSITY_FAINT;
-        canvas_write(canvas, &style, " %*.s %s", writer->number_margin, "", dotted ? "╎ " : "│ ");
+        term_buf_write(canvas, &style, " %*.s %s", writer->number_margin, "", dotted ? "╎ " : "│ ");
         write_annotation_left(writer, canvas, i, -1ul, NULL, dotted);
-        canvas_next_line(canvas);
+        term_buf_next_line(canvas);
 
         write_source_line(writer, canvas, i);
         write_indicator_line(writer, canvas, i);
@@ -692,19 +691,19 @@ static void write_interest_lines(Writer *writer, Canvas *canvas)
   }
 }
 
-static void write_tail_line(Writer *writer, Canvas *canvas)
+static void write_tail_line(Writer *writer, TermBuf *canvas)
 {
   int       i;
   TermStyle style;
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  canvas_write(canvas, &style, "─");
+  term_buf_write(canvas, &style, "─");
   for (i = 0; i <= writer->number_margin; ++i) {
-    canvas_write(canvas, &style, "─");
+    term_buf_write(canvas, &style, "─");
   }
-  canvas_write(canvas, &style, "╯");
-  canvas_next_line(canvas);
+  term_buf_write(canvas, &style, "╯");
+  term_buf_next_line(canvas);
 }
 
 static int digits(unsigned long number)
@@ -750,7 +749,7 @@ static void display_location(const Source *source, unsigned long offset, unsigne
 void report_emit(Report *report, const Source *source)
 {
   Writer        writer;
-  Canvas       *canvas = canvas_new();
+  TermBuf      *canvas = term_buf_new();
   unsigned long i;
 
   qsort(array_data(report->annotations), array_count(report->annotations), sizeof(ReportAnnotation), &compare_annotations);
@@ -780,7 +779,7 @@ void report_emit(Report *report, const Source *source)
   write_interest_lines(&writer, canvas);
   write_tail_line(&writer, canvas);
 
-  canvas_print(canvas, stderr);
-  canvas_free(canvas);
+  term_buf_print(canvas, stderr);
+  term_buf_free(canvas);
   report_free(report);
 }
