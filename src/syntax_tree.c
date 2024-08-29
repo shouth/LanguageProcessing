@@ -80,8 +80,14 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
   case RAW_SYNTAX_TOKEN: {
     RawSyntaxToken *token = (RawSyntaxToken *) node;
 
-    style            = term_default_style();
-    style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
+    style = term_default_style();
+    if (token->node.kind) {
+      /* normal token */
+      style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
+    } else {
+      /* ERROR token */
+      style.foreground = TERM_COLOR_256 | MONOKAI_RED;
+    }
     if (kind_printer) {
       term_style(stdout, &style);
       kind_printer(token->node.kind, file);
@@ -145,7 +151,7 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
     style.foreground = TERM_COLOR_NONE;
     term_print(file, &style, "[");
 
-    style.foreground = TERM_COLOR_256 | MONOKAI_RED;
+    style.foreground = TERM_COLOR_256 | MONOKAI_BLUE;
     term_print(file, &style, "EMPTY");
 
     style.foreground = TERM_COLOR_NONE;
