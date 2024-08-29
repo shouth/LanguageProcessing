@@ -39,7 +39,8 @@
         "files.associations": {
           "*.h": "c",
           "*.mpl": "pascal",
-          "*.csl": "casl2"
+          "*.csl": "casl2",
+          ".clang-format": "yaml"
         }
       }
     }
