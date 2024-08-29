@@ -126,7 +126,7 @@ typedef enum {
 
 #undef F
 
-typedef BITSET(MpplSyntaxKindSet, SENTINEL_MPPL_SYNTAX);
+typedef BITSET(SENTINEL_MPPL_SYNTAX) MpplSyntaxKindSet;
 
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size);
 int            mppl_syntax_kind_is_token(MpplSyntaxKind kind);

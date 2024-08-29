@@ -38,10 +38,10 @@ unsigned long popcount(const void *data, unsigned long size);
 
 typedef unsigned long BitSet;
 
-#define BITSET(name, bits)                                \
+#define BITSET(bits)                                      \
   struct {                                                \
     unsigned char data[(bits + CHAR_BIT - 1) / CHAR_BIT]; \
-  } name
+  }
 
 #define bitset_zero()             { 0 }
 #define bitset_set(self, index)   ((self)->data[(index) / CHAR_BIT] |= 1ul << ((index) % CHAR_BIT))
