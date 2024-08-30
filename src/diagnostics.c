@@ -52,7 +52,7 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
 
   count  = bitset_count(expected);
   length = 0;
-  if (count > 1) {
+  if (count > 2) {
     length += fprintf(buffer, "one of ");
   }
 
@@ -94,7 +94,7 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
       if (count > 2) {
         length += fprintf(buffer, ", ");
       } else if (count == 2) {
-        length += fprintf(buffer, " and ");
+        length += fprintf(buffer, " or ");
       }
       --count;
     }
