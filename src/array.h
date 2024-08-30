@@ -14,8 +14,8 @@
    limitations under the License.
 */
 
-#ifndef VECTOR_H
-#define VECTOR_H
+#ifndef ARRAY_H
+#define ARRAY_H
 
 typedef struct Array Array;
 
