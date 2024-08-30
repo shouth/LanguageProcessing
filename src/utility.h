@@ -24,6 +24,23 @@
 
 #define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))
 
+#if defined(__GNUC__) || defined(__clang__)
+
+#define format(archetype, string_index, first_to_check) \
+  __attribute__((format(archetype, string_index, first_to_check)))
+
+#else
+
+#define format(archetype, string_index, first_to_check)
+
+#endif
+
+#define unreachable()                                                                            \
+  do {                                                                                           \
+    fprintf(stderr, "Internal Error: Entered unreachable region [%s:%d]\n", __FILE__, __LINE__); \
+    exit(EXIT_FAILURE);                                                                          \
+  } while (0)
+
 void *xmalloc(unsigned long size);
 void *memdup(const void *ptr, unsigned long length);
 char *strndup(const char *src, unsigned long length);
@@ -80,12 +97,6 @@ long utf8_len(const char *str, long len);
 #define MONOKAI_YELLOW 0xFFD866
 #define MONOKAI_BLUE   0x78DCE8
 #define MONOKAI_PURPLE 0xAB9DF2
-
-#define unreachable()                                                                            \
-  do {                                                                                           \
-    fprintf(stderr, "Internal Error: Entered unreachable region [%s:%d]\n", __FILE__, __LINE__); \
-    exit(EXIT_FAILURE);                                                                          \
-  } while (0)
 
 #define META_EMPTY()
 #define META_SWALLOW(x)

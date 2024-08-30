@@ -17,6 +17,7 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
 
+#include "utility.h"
 #include <stdio.h>
 
 /* TermStyle */
@@ -62,7 +63,7 @@ TermStyle term_default_style(void);
 int       term_use_color(int flag);
 void      term_style(FILE *file, const TermStyle *style);
 void      term_reset(FILE *file);
-void      term_print(FILE *file, const TermStyle *style, const char *format, ...);
+void      term_print(FILE *file, const TermStyle *style, const char *format, ...) format(printf, 3, 4);
 
 /* TermBuf */
 
@@ -71,7 +72,7 @@ typedef struct TermBuf TermBuf;
 TermBuf      *term_buf_new(void);
 void          term_buf_free(TermBuf *canvas);
 void          term_buf_next_line(TermBuf *canvas);
-void          term_buf_write(TermBuf *canvas, const TermStyle *style, const char *format, ...);
+void          term_buf_write(TermBuf *canvas, const TermStyle *style, const char *format, ...) format(printf, 3, 4);
 unsigned long term_buf_line(const TermBuf *canvas);
 unsigned long term_buf_column(const TermBuf *canvas);
 void          term_buf_seek(TermBuf *canvas, unsigned long line, unsigned long column);
