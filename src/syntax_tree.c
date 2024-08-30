@@ -52,6 +52,9 @@ static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offs
     }
 
     style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, ")");
+
+    style.foreground = TERM_COLOR_NONE;
     term_print(file, &style, " @ ");
 
     style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
@@ -63,9 +66,7 @@ static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offs
     style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
     term_print(file, &style, "%ld", offset + trivia->pieces[i].span.text_length);
 
-    style.foreground = TERM_COLOR_NONE;
-    term_print(file, &style, ")\n");
-
+    fprintf(file, "\n");
     offset += trivia->pieces[i].span.text_length;
   }
 }
