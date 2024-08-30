@@ -1,8 +1,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "term.h"
 #include "array.h"
+#include "term.h"
 #include "utility.h"
 
 /* TermStyle */
@@ -25,14 +25,14 @@ TermStyle term_default_style(void)
 #include <stdio.h>
 #include <unistd.h>
 
-static int term_color_supported(FILE *file)
+static int term_has_style_support(FILE *file)
 {
   return isatty(fileno(file));
 }
 
 #else
 
-int term_color_supported(FILE *file)
+static int term_has_style_support(FILE *file)
 {
   return 0;
 }
@@ -44,40 +44,42 @@ int term_color_supported(FILE *file)
 #include <io.h>
 #include <stdio.h>
 
-int term_color_supported(FILE *file)
+static int term_has_style_support(FILE *file)
 {
   return _isatty(_fileno(file));
 }
 
 #else
 
-int term_color_supported(FILE *file)
+static int term_has_style_support(FILE *file)
 {
   return 0;
 }
 
 #endif
 
-int term_use_color(int flag)
+int term_enable_style(TermStyleFlag flag)
 {
-  static int use_color = -1;
-  if (flag < 0) {
-    if (use_color < 0) {
-      use_color = term_color_supported(stdout);
-    }
-  } else {
-    if (flag && term_color_supported(stdout)) {
-      use_color = 1;
-    } else {
-      use_color = 0;
-    }
+  static int use_color = TERM_STYLE_AUTO;
+  if (flag != TERM_STYLE_TEST) {
+    use_color = flag;
   }
   return use_color;
 }
 
+int term_use_style(FILE *file)
+{
+  int use_color = term_enable_style(TERM_STYLE_TEST);
+  if (use_color == TERM_STYLE_AUTO) {
+    return term_has_style_support(file);
+  } else {
+    return use_color;
+  }
+}
+
 void term_style(FILE *file, const TermStyle *style)
 {
-  if (!term_use_color(-1)) {
+  if (!term_use_style(file)) {
     return;
   }
 
@@ -244,7 +246,7 @@ void term_style(FILE *file, const TermStyle *style)
 
 void term_reset(FILE *file)
 {
-  if (!term_use_color(-1)) {
+  if (!term_enable_style(-1)) {
     return;
   }
 

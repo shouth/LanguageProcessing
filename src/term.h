@@ -22,6 +22,11 @@
 
 /* TermStyle */
 
+#define TERM_STYLE_TEST -1
+#define TERM_STYLE_OFF  0
+#define TERM_STYLE_ON   1
+#define TERM_STYLE_AUTO 2
+
 #define TERM_COLOR_NONE    0ul
 #define TERM_COLOR_BLACK   1ul
 #define TERM_COLOR_RED     2ul
@@ -44,11 +49,11 @@
 #define TERM_UNDERLINE_OFF 0
 #define TERM_UNDERLINE_ON  1
 
-typedef unsigned long TermColorStyle;
-typedef unsigned char TermIntensityStyle;
-typedef unsigned char TermItalicStyle;
-typedef unsigned char TermUnderlineStyle;
-
+typedef signed char      TermStyleFlag;
+typedef unsigned long    TermColorStyle;
+typedef unsigned char    TermIntensityStyle;
+typedef unsigned char    TermItalicStyle;
+typedef unsigned char    TermUnderlineStyle;
 typedef struct TermStyle TermStyle;
 
 struct TermStyle {
@@ -60,7 +65,8 @@ struct TermStyle {
 };
 
 TermStyle term_default_style(void);
-int       term_use_color(int flag);
+int       term_enable_style(TermStyleFlag flag);
+int       term_use_style(FILE *file);
 void      term_style(FILE *file, const TermStyle *style);
 void      term_reset(FILE *file);
 void      term_print(FILE *file, const TermStyle *style, const char *format, ...) format(printf, 3, 4);
