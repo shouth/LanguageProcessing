@@ -128,8 +128,12 @@ static void bump(Parser *p)
 
 static int check_any(Parser *p, const MpplSyntaxKindSet *kinds)
 {
-  bitset_insert(&p->expected, kinds);
-  return bitset_get(kinds, p->kind);
+  if (kinds) {
+    bitset_insert(&p->expected, kinds);
+    return bitset_get(kinds, p->kind);
+  } else {
+    return 0;
+  }
 }
 
 static int check(Parser *p, MpplSyntaxKind kind)
@@ -752,8 +756,8 @@ static void parse_fml_param_sec(Parser *p, const MpplSyntaxKindSet *recovery)
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
     ident_list_elem = open(p);
-    if (expect(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      /* identifier */
+    if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+      expect(p, MPPL_SYNTAX_IDENT_TOKEN);
     } else {
       Checkpoint bogus = open(p);
       recover(p, &kinds);
@@ -893,7 +897,13 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
 
   next_nontrivia(&p); /* initialize `p.span` and `p.kind` */
   parse_program(&p);
-  expect(&p, MPPL_SYNTAX_END_OF_FILE);
+  if (check(&p, MPPL_SYNTAX_END_OF_FILE)) {
+    expect(&p, MPPL_SYNTAX_END_OF_FILE);
+  } else {
+    Checkpoint bogus = open(&p);
+    recover(&p, NULL);
+    close(&p, MPPL_SYNTAX_BOGUS, bogus);
+  }
 
   result.root       = raw_syntax_builder_finish(p.builder);
   result.diag_count = array_count(p.diagnostics);
