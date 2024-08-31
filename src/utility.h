@@ -136,8 +136,10 @@ void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 #define buffer_alloc(buffer, new_count) \
   do {                                  \
     unsigned long count = new_count;    \
+    (buffer)->ptr       = NULL;         \
+    (buffer)->count     = 0;            \
+    (buffer)->used      = count;        \
     buffer_reserve(buffer, count);      \
-    (buffer)->used = count;             \
   } while (0)
 
 #define buffer_free(buffer)      \
