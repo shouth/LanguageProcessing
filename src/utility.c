@@ -65,7 +65,7 @@ unsigned long splice(
   }
 
   if (src1) {
-    memcpy(dest, (char *) src1, offset * size);
+    memcpy(dest, src1, offset * size);
   }
 
   if (offset + src2_count < dest_count) {
