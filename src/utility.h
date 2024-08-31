@@ -84,6 +84,7 @@ void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
       self_data[i] |= other_data[i];                 \
     }                                                \
   } while (0)
+
 #define bitset_erase(self, other)                    \
   do {                                               \
     unsigned long        i;                          \
@@ -132,10 +133,11 @@ void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     unsigned long used;  \
   }
 
-#define buffer_alloc(buffer, capacity) \
-  do {                                 \
-    slice_alloc(buffer, capacity);     \
-    (buffer)->used = 0;                \
+#define buffer_alloc(buffer, new_count) \
+  do {                                  \
+    unsigned long count = new_count;    \
+    buffer_reserve(buffer, count);      \
+    (buffer)->used = count;             \
   } while (0)
 
 #define buffer_free(buffer)      \
@@ -143,24 +145,27 @@ void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     slice_free(&(buffer)->data); \
   } while (0)
 
-#define buffer_splice(buffer, offset, span, other_ptr, other_count)    \
-  do {                                                                 \
-    unsigned long new_count = (buffer)->used + (other_count) - (span); \
-    if (new_count > (buffer)->count) {                                 \
-      unsigned long i;                                                 \
-      unsigned long new_capacity = new_count;                          \
-      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {                 \
-        new_capacity |= new_capacity >> i;                             \
-      }                                                                \
-      ++new_capacity;                                                  \
-      slice_splice(buffer, (buffer)->count, 0, NULL, new_capacity);    \
-    }                                                                  \
-    splice(                                                            \
-      (buffer)->ptr, (buffer)->count,                                  \
-      NULL, (buffer)->used,                                            \
-      sizeof(*(buffer)->ptr), offset, span,                            \
-      other_ptr, other_count);                                         \
-    (buffer)->used = new_count;                                        \
+#define buffer_reserve(buffer, new_capacity)                    \
+  do {                                                          \
+    unsigned long capacity = new_capacity;                      \
+    if (capacity > (buffer)->count) {                           \
+      unsigned long i;                                          \
+      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {          \
+        capacity |= capacity >> i;                              \
+      }                                                         \
+      ++capacity;                                               \
+      slice_splice(buffer, (buffer)->count, 0, NULL, capacity); \
+    }                                                           \
+  } while (0)
+
+#define buffer_splice(buffer, offset, span, other_ptr, other_count)  \
+  do {                                                               \
+    buffer_reserve(buffer, (buffer)->used + (other_count) - (span)); \
+    (buffer)->used = splice(                                         \
+      (buffer)->ptr, (buffer)->count,                                \
+      NULL, (buffer)->used,                                          \
+      sizeof(*(buffer)->ptr), offset, span,                          \
+      other_ptr, other_count);                                       \
   } while (0)
 
 #define buffer_push(buffer, other_ptr, other_count) \
