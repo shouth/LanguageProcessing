@@ -45,6 +45,18 @@ void *xmalloc(unsigned long size);
 void *memdup(const void *ptr, unsigned long length);
 char *strndup(const char *src, unsigned long length);
 
+unsigned long splice(
+  void *dest, unsigned long dest_count,
+  const void *src1, unsigned long src1_count,
+  unsigned long size, unsigned long offset, unsigned long span,
+  const void *src2, unsigned long src2_count);
+
+void *splice_alloc(
+  const void *src1, unsigned long src1_count,
+  unsigned long size, unsigned long offset, unsigned long span,
+  const void *src2, unsigned long src2_count,
+  unsigned long *result_count);
+
 typedef unsigned long Hash;
 
 #define HASH_FNV1A_INIT 0x811C9DC5ul
