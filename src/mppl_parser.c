@@ -204,7 +204,9 @@ static void close(Parser *p, MpplSyntaxKind kind, Checkpoint checkpoint)
 static void parse_bogus(Parser *p, const MpplSyntaxKindSet *kinds)
 {
   Checkpoint bogus = open(p);
-  error_unexpected(p);
+  if (!p->recovery) {
+    error_unexpected(p);
+  }
   while (!check_any(p, kinds) && !is_eof(p)) {
     p->kind = MPPL_SYNTAX_ERROR;
     bump(p);
