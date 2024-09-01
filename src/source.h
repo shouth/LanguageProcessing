@@ -23,6 +23,8 @@ typedef struct SourceLocation SourceLocation;
 typedef struct SourceRange    SourceRange;
 typedef struct Source         Source;
 
+typedef Seq(SourceRange) SourceRangeSeq;
+
 struct SourceLocation {
   unsigned long line;
   unsigned long column;
@@ -32,8 +34,6 @@ struct SourceRange {
   unsigned long offset;
   unsigned long span;
 };
-
-typedef Seq(SourceRange) SourceRangeSeq;
 
 struct Source {
   CharSeq        filename;
