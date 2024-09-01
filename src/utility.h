@@ -233,7 +233,7 @@ long utf8_len(const char *str, long len);
 
 /* Miscellaneous */
 
-#define nolint(x) /* NOLINTBEGIN rules */ x /* NOLINTEND */
+#define nolint(x) /* NOLINTBEGIN */ x /* NOLINTEND */
 
 #define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))
 
