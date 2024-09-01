@@ -56,7 +56,7 @@ static int run_compiler(void)
       continue;
     }
 
-    parse_result = mppl_parse(source->text, source->text_length);
+    parse_result = mppl_parse(source->text.ptr, source->text.count);
     if (dump_syntax) {
       raw_syntax_root_print(parse_result.root, stdout, &mppl_syntax_kind_print);
     }

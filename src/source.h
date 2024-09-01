@@ -17,7 +17,10 @@
 #ifndef SOURCE_H
 #define SOURCE_H
 
+#include "utility.h"
+
 typedef struct SourceLocation SourceLocation;
+typedef struct SourceRange    SourceRange;
 typedef struct Source         Source;
 
 struct SourceLocation {
@@ -25,17 +28,20 @@ struct SourceLocation {
   unsigned long column;
 };
 
-struct Source {
-  char          *file_name;
-  unsigned long  file_name_length;
-  char          *text;
-  unsigned long  text_length;
-  unsigned long *line_offsets;
-  unsigned long *line_lengths;
-  unsigned long  line_count;
+struct SourceRange {
+  unsigned long offset;
+  unsigned long span;
 };
 
-Source *source_new(const char *file_name, unsigned long file_name_length);
+typedef Seq(SourceRange) SourceRangeSeq;
+
+struct Source {
+  CharSeq        filename;
+  CharSeq        text;
+  SourceRangeSeq lines;
+};
+
+Source *source_new(const char *filename, unsigned long filename_len);
 void    source_free(Source *source);
 int     source_location(const Source *source, unsigned long offset, SourceLocation *location);
 

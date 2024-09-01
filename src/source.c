@@ -22,18 +22,16 @@
 #include "source.h"
 #include "utility.h"
 
-Source *source_new(const char *file_name, unsigned long file_name_length)
+Source *source_new(const char *filename, unsigned long filename_len)
 {
   Source *source = xmalloc(sizeof(Source));
-  {
-    source->file_name = xmalloc(file_name_length + 1);
-    strncpy(source->file_name, file_name, file_name_length);
-    source->file_name[file_name_length] = '\0';
-    source->file_name_length            = file_name_length;
-  }
+
+  seq_alloc(&source->filename, filename_len + 1);
+  strncpy(source->filename.ptr, filename, filename_len);
+  source->filename.ptr[filename_len] = '\0';
 
   {
-    FILE *file = fopen(source->file_name, "rb");
+    FILE *file = fopen(source->filename.ptr, "rb");
     if (file) {
       CharVec       text;
       char          buffer[4096];
@@ -46,54 +44,54 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
       buffer[0] = '\0';
       vec_push(&text, buffer, 1);
 
-      source->text        = text.ptr;
-      source->text_length = text.used - 1;
+      source->text.ptr   = text.ptr;
+      source->text.count = text.used - 1;
 
       fflush(stdout);
       fclose(file);
     } else {
-      source->text        = NULL;
-      source->text_length = -1ul;
+      source->text.ptr   = NULL;
+      source->text.count = 0;
     }
   }
 
-  if (source->text) {
-    ULongVec line_offsets;
-    ULongVec line_lengths;
+  if (source->text.ptr) {
+    typedef Vec(SourceRange) SourceRangeVec;
 
     unsigned long offset = 0;
 
-    vec_alloc(&line_offsets, 0);
-    vec_alloc(&line_lengths, 0);
+    SourceRangeVec lines;
+    vec_alloc(&lines, 0);
 
-    vec_push(&line_offsets, &offset, 1);
-    while (offset <= source->text_length) {
-      unsigned long length = strcspn(source->text + offset, "\r\n");
-      if (source->text[offset + length] == '\0') {
-        ++length;
+    while (offset <= source->text.count) {
+      SourceRange line;
+
+      unsigned long span = strcspn(source->text.ptr + offset, "\r\n");
+      if (source->text.ptr[offset + span] == '\0') {
+        ++span;
       }
-      vec_push(&line_lengths, &length, 1);
-      offset += length;
 
-      if (offset < source->text_length) {
-        if (!strncmp(source->text + offset, "\r\n", 2) || !strncmp(source->text + offset, "\n\r", 2)) {
+      line.offset = offset;
+      line.span   = span;
+      vec_push(&lines, &line, 1);
+
+      offset += span;
+      if (offset < source->text.count) {
+        if (!strncmp(source->text.ptr + offset, "\r\n", 2) || !strncmp(source->text.ptr + offset, "\n\r", 2)) {
           offset += 2;
         } else {
           offset += 1;
         }
-        vec_push(&line_offsets, &offset, 1);
       }
     }
-    source->line_count   = line_offsets.used;
-    source->line_offsets = line_offsets.ptr;
-    source->line_lengths = line_lengths.ptr;
+    source->lines.ptr   = lines.ptr;
+    source->lines.count = lines.used;
   } else {
-    source->line_count   = -1ul;
-    source->line_offsets = NULL;
-    source->line_lengths = NULL;
+    source->lines.ptr   = NULL;
+    source->lines.count = 0;
   }
 
-  if (source->file_name && source->text && source->line_offsets) {
+  if (source->filename.ptr && source->text.ptr && source->lines.ptr) {
     return source;
   } else {
     source_free(source);
@@ -104,24 +102,23 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
 void source_free(Source *source)
 {
   if (source) {
-    free(source->file_name);
-    free(source->text);
-    free(source->line_offsets);
-    free(source->line_lengths);
+    seq_free(&source->filename);
+    seq_free(&source->text);
+    seq_free(&source->lines);
     free(source);
   }
 }
 
 int source_location(const Source *source, unsigned long offset, SourceLocation *location)
 {
-  if (offset > source->text_length) {
+  if (offset > source->text.count) {
     return 0;
   } else {
     unsigned long left  = 0;
-    unsigned long right = source->line_count;
+    unsigned long right = source->lines.count;
     while (right - left > 1) {
       unsigned long middle = (right - left) / 2 + left;
-      if (offset < source->line_offsets[middle]) {
+      if (offset < source->lines.ptr[middle].offset) {
         right = middle;
       } else {
         left = middle;
@@ -129,7 +126,7 @@ int source_location(const Source *source, unsigned long offset, SourceLocation *
     }
     if (location) {
       location->line   = left;
-      location->column = offset - source->line_offsets[left];
+      location->column = offset - source->lines.ptr[left].offset;
     }
     return 1;
   }

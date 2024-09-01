@@ -273,7 +273,7 @@ static void write_location_line(Writer *writer, TermBuf *canvas)
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_WHITE | TERM_COLOR_BRIGHT;
-  term_buf_write(canvas, &style, "%s:%lu:%lu", writer->source->file_name, location.line + 1, location.column + 1);
+  term_buf_write(canvas, &style, "%s:%lu:%lu", writer->source->filename.ptr, location.line + 1, location.column + 1);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -352,17 +352,8 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
   Array *nongraphics = array_new(sizeof(LineSegment));
 
   line_width = 0;
-  for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
-    char c;
-    if (writer->source->line_offsets[line_number] + i > writer->source->text_length) {
-      printf("text_length: %lu\n", writer->source->text_length);
-      printf("line_number: %lu\n", line_number);
-      printf("line_offsets: %lu\n", writer->source->line_offsets[line_number]);
-      printf("line_lengths: %lu\n", writer->source->line_lengths[line_number]);
-      printf("i: %lu\n", i);
-      assert(0);
-    }
-    c = writer->source->text[writer->source->line_offsets[line_number] + i];
+  for (i = 0; i < writer->source->lines.ptr[line_number].span; ++i) {
+    char c = writer->source->text.ptr[writer->source->lines.ptr[line_number].offset + i];
     if (c == '\t') {
       line_width += writer->tab_width - (line_width % writer->tab_width);
     } else if (!is_graphic(c)) {
@@ -374,8 +365,8 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
 
   line        = malloc(line_width + 1);
   line_offset = 0;
-  for (i = 0; i < writer->source->line_lengths[line_number]; ++i) {
-    char c = writer->source->text[writer->source->line_offsets[line_number] + i];
+  for (i = 0; i < writer->source->lines.ptr[line_number].span; ++i) {
+    char c = writer->source->text.ptr[writer->source->lines.ptr[line_number].offset + i];
     if (c == '\t') {
       unsigned long adjusted_width = writer->tab_width - (line_offset % writer->tab_width);
       line_offset += sprintf(line + line_offset, "%*.s", (int) adjusted_width, "");
@@ -730,7 +721,7 @@ static void display_location(const Source *source, unsigned long offset, unsigne
   }
 
   for (i = 0; i < location->column; ++i) {
-    char c = source->text[source->line_offsets[location->line] + i];
+    char c = source->text.ptr[source->lines.ptr[location->line].offset + i];
     if (c == '\t') {
       column += tab_width - (column % tab_width);
     } else if (!is_graphic(c)) {
