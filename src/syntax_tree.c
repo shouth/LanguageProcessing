@@ -368,7 +368,7 @@ void raw_syntax_builder_token(RawSyntaxBuilder *self, RawSyntaxKind kind, const 
 
 RawSyntaxCheckpoint raw_syntax_builder_open(RawSyntaxBuilder *self)
 {
-  return self->spans.count;
+  return self->spans.used;
 }
 
 void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyntaxCheckpoint checkpoint)
@@ -376,9 +376,9 @@ void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyn
   RawSyntaxTree *tree = xmalloc(sizeof(RawSyntaxTree));
 
   assert(checkpoint % 2 == 0);
-  assert(self->spans.count % 2 == 0);
+  assert(self->spans.used % 2 == 0);
 
-  if (checkpoint == self->spans.count) {
+  if (checkpoint == self->spans.used) {
     seq_alloc(&tree->children, 0);
     push_trivia(self);
   } else {
@@ -401,7 +401,7 @@ RawSyntaxRoot *raw_syntax_builder_finish(RawSyntaxBuilder *self)
 {
   RawSyntaxRoot *root = xmalloc(sizeof(RawSyntaxRoot));
 
-  assert(self->spans.count % 2 == 0);
+  assert(self->spans.used % 2 == 0);
   push_trivia(self);
 
   seq_alloc(&root->children, self->spans.used);
