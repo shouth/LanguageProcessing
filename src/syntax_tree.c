@@ -27,7 +27,7 @@ static void print_indent(FILE *file, unsigned long depth)
   for (i = 0; i < depth; ++i) {
     fprintf(file, "│ ");
   }
-  term_reset(file);
+  term_style(file, NULL);
 }
 
 static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offset, unsigned long depth, RawSyntaxKindPrinter *kind_printer)
@@ -44,9 +44,9 @@ static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offs
 
     style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
     if (kind_printer) {
-      term_style(stdout, &style);
+      term_style(file, &style);
       kind_printer(trivia->pieces[i].kind, file);
-      term_reset(stdout);
+      term_style(file, NULL);
     } else {
       term_print(file, &style, "TRIVIA(%d)", trivia->pieces[i].kind);
     }
@@ -90,9 +90,9 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
       style.foreground = TERM_COLOR_256 | MONOKAI_RED;
     }
     if (kind_printer) {
-      term_style(stdout, &style);
+      term_style(file, &style);
       kind_printer(token->node.kind, file);
-      term_reset(stdout);
+      term_style(file, NULL);
     } else {
       term_print(file, &style, "TOKEN(%d)", token->node.kind);
     }
@@ -123,9 +123,9 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
     style            = term_default_style();
     style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
     if (kind_printer) {
-      term_style(stdout, &style);
+      term_style(file, &style);
       kind_printer(tree->node.kind, file);
-      term_reset(stdout);
+      term_style(file, NULL);
     } else {
       term_print(file, &style, "TREE(%d)", tree->node.kind);
     }

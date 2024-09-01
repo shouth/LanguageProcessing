@@ -82,6 +82,11 @@ void term_style(FILE *file, const TermStyle *style)
     return;
   }
 
+  if (!style) {
+    fprintf(file, "\033[0m");
+    return;
+  }
+
   switch (style->intensity) {
   case TERM_INTENSITY_NORMAL:
     /* Do nothing */
@@ -243,22 +248,13 @@ void term_style(FILE *file, const TermStyle *style)
   }
 }
 
-void term_reset(FILE *file)
-{
-  if (!term_enable_style(-1)) {
-    return;
-  }
-
-  fprintf(file, "\033[0m");
-}
-
 void term_print(FILE *file, const TermStyle *style, const char *format, ...)
 {
   va_list args;
   va_start(args, format);
   term_style(file, style);
   vfprintf(file, format, args);
-  term_reset(file);
+  term_style(file, NULL);
   va_end(args);
 }
 
@@ -398,7 +394,7 @@ void term_buf_print(TermBuf *buf, FILE *file)
       TermBufCell *cell = &buf->lines.ptr[line].ptr[column];
       term_style(file, &cell->style);
       fprintf(file, "%.*s", (int) cell->size, cell->character);
-      term_reset(file);
+      term_style(file, NULL);
     }
     if (line + 1 < buf->lines.used) {
       fprintf(file, "\n");
