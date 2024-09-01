@@ -170,6 +170,7 @@ typedef Vec(unsigned long) ULongVec;
     unsigned long capacity = new_capacity;              \
     if (capacity > (vec)->count) {                      \
       unsigned long i;                                  \
+      --capacity;                                       \
       for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {  \
         capacity |= capacity >> i;                      \
       }                                                 \
