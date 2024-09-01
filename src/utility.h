@@ -110,10 +110,10 @@ typedef Seq(unsigned int) UIntSeq;
 typedef Seq(long) LongSeq;
 typedef Seq(unsigned long) ULongSeq;
 
-#define seq_alloc(seq, new_count)                              \
-  do {                                                         \
-    (seq)->ptr   = xmalloc(sizeof(*(seq)->ptr) * (new_count)); \
-    (seq)->count = new_count;                                  \
+#define seq_alloc(seq, new_count)                                      \
+  do {                                                                 \
+    (seq)->ptr   = xmalloc(nolint(sizeof(*(seq)->ptr)) * (new_count)); \
+    (seq)->count = new_count;                                          \
   } while (0)
 
 #define seq_free(seq) \
@@ -126,7 +126,7 @@ typedef Seq(unsigned long) ULongSeq;
     void *old_ptr = (seq)->ptr;                               \
     (seq)->ptr    = splice_alloc(                             \
       old_ptr, (seq)->count,                               \
-      sizeof(*(seq)->ptr), offset, span,                   \
+      nolint(sizeof(*(seq)->ptr)), offset, span,           \
       other_ptr, other_count, &(seq)->count);              \
     free(old_ptr);                                            \
   } while (0)
@@ -180,7 +180,7 @@ typedef Vec(unsigned long) ULongVec;
     (vec)->used = splice(                                     \
       (vec)->ptr, (vec)->count,                               \
       NULL, (vec)->used,                                      \
-      sizeof(*(vec)->ptr), offset, span,                      \
+      nolint(sizeof(*(vec)->ptr)), offset, span,              \
       other_ptr, other_count);                                \
   } while (0)
 
@@ -232,6 +232,8 @@ long utf8_len(const char *str, long len);
 #define META_DETECT_PROBE )(?, META_TRUE
 
 /* Miscellaneous */
+
+#define nolint(x) /* NOLINTBEGIN rules */ x /* NOLINTEND */
 
 #define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))
 
