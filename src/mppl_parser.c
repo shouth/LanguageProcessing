@@ -16,7 +16,6 @@
 
 #include <stddef.h>
 
-#include "array.h"
 #include "diagnostics.h"
 #include "mppl_passes.h"
 #include "mppl_syntax.h"
@@ -37,14 +36,14 @@ struct Parser {
 
   RawSyntaxBuilder *builder;
   MpplSyntaxKindSet expected;
-  Array            *diagnostics;
+  Diags             diags;
   unsigned long     breakable;
   int               recovery;
 };
 
 static void diag(Parser *p, Diag *diagnostics)
 {
-  array_push(p->diagnostics, &diagnostics);
+  vec_push(&p->diags, &diagnostics, 1);
 }
 
 static void next_token(Parser *p)
@@ -97,16 +96,20 @@ static void next_token(Parser *p)
 
 static void next_nontrivia(Parser *p)
 {
+  typedef Vec(RawSyntaxTriviaPiece) TriviaPieces;
+
+  TriviaPieces  trivia_pieces;
   unsigned long trivia_offset = p->offset + p->span;
-  Array        *trivia_pieces = array_new(sizeof(RawSyntaxTriviaPiece));
+
+  vec_alloc(&trivia_pieces, 0);
   while (next_token(p), mppl_syntax_kind_is_trivia(p->kind)) {
     RawSyntaxTriviaPiece piece;
     piece.kind             = p->kind;
     piece.span.text_length = p->span;
-    array_push(trivia_pieces, &piece);
+    vec_push(&trivia_pieces, &piece, 1);
   }
-  raw_syntax_builder_trivia(p->builder, p->text + trivia_offset, array_data(trivia_pieces), array_count(trivia_pieces));
-  array_free(trivia_pieces);
+  raw_syntax_builder_trivia(p->builder, p->text + trivia_offset, trivia_pieces.ptr, trivia_pieces.used);
+  vec_free(&trivia_pieces);
 }
 
 static int is_eof(Parser *p)
@@ -880,9 +883,9 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
 
   p.builder = raw_syntax_builder_new();
   bitset_clear(&p.expected);
-  p.diagnostics = array_new(sizeof(Diag *));
-  p.breakable   = 0;
-  p.recovery    = 0;
+  vec_alloc(&p.diags, 0);
+  p.breakable = 0;
+  p.recovery  = 0;
 
   next_nontrivia(&p); /* initialize `p.span` and `p.kind` */
   parse_program(&p);
@@ -893,8 +896,8 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
   }
 
   result.root       = raw_syntax_builder_finish(p.builder);
-  result.diag_count = array_count(p.diagnostics);
-  result.diags      = array_steal(p.diagnostics);
+  result.diag_count = p.diags.used;
+  result.diags      = p.diags.ptr;
 
   return result;
 }

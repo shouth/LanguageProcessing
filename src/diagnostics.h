@@ -3,8 +3,10 @@
 
 #include "mppl_syntax.h"
 #include "report.h"
+#include "utility.h"
 
 typedef struct Diag Diag;
+typedef Vec(Diag *) Diags;
 
 void    diag_free(Diag *diag);
 Report *diag_to_report(const Diag *diag);
