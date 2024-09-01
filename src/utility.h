@@ -95,92 +95,106 @@ void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     }                                                \
   } while (0)
 
-/* Slice */
+/* Seq */
 
-#define SLICE(type)      \
+#define Seq(type)        \
   struct {               \
     type         *ptr;   \
     unsigned long count; \
   }
 
-#define slice_alloc(slice, new_count)                              \
-  do {                                                             \
-    (slice)->ptr   = xmalloc(sizeof(*(slice)->ptr) * (new_count)); \
-    (slice)->count = new_count;                                    \
+typedef Seq(char) CharSeq;
+typedef Seq(unsigned char) UCharSeq;
+typedef Seq(int) IntSeq;
+typedef Seq(unsigned int) UIntSeq;
+typedef Seq(long) LongSeq;
+typedef Seq(unsigned long) ULongSeq;
+
+#define seq_alloc(seq, new_count)                              \
+  do {                                                         \
+    (seq)->ptr   = xmalloc(sizeof(*(seq)->ptr) * (new_count)); \
+    (seq)->count = new_count;                                  \
   } while (0)
 
-#define slice_free(slice) \
-  do {                    \
-    free((slice)->ptr);   \
+#define seq_free(seq) \
+  do {                \
+    free((seq)->ptr); \
   } while (0)
 
-#define slice_splice(slice, offset, span, other_ptr, other_count) \
-  do {                                                            \
-    void *old_ptr = (slice)->ptr;                                 \
-    (slice)->ptr  = splice_alloc(                                 \
-      old_ptr, (slice)->count,                                   \
-      sizeof(*(slice)->ptr), offset, span,                       \
-      other_ptr, other_count, &(slice)->count);                  \
-    free(old_ptr);                                                \
+#define seq_splice(seq, offset, span, other_ptr, other_count) \
+  do {                                                        \
+    void *old_ptr = (seq)->ptr;                               \
+    (seq)->ptr    = splice_alloc(                             \
+      old_ptr, (seq)->count,                               \
+      sizeof(*(seq)->ptr), offset, span,                   \
+      other_ptr, other_count, &(seq)->count);              \
+    free(old_ptr);                                            \
   } while (0)
 
-/* Buffer */
+/* Vec */
 
-#define BUFFER(type)     \
+#define Vec(type)        \
   struct {               \
     type         *ptr;   \
     unsigned long count; \
     unsigned long used;  \
   }
 
-#define buffer_alloc(buffer, new_count) \
-  do {                                  \
-    unsigned long count = new_count;    \
-    (buffer)->ptr       = NULL;         \
-    (buffer)->count     = 0;            \
-    (buffer)->used      = count;        \
-    buffer_reserve(buffer, count);      \
+typedef Vec(char) CharVec;
+typedef Vec(unsigned char) UCharVec;
+typedef Vec(int) IntVec;
+typedef Vec(unsigned int) UIntVec;
+typedef Vec(long) LongVec;
+typedef Vec(unsigned long) ULongVec;
+
+#define vec_alloc(vec, new_count)    \
+  do {                               \
+    unsigned long count = new_count; \
+    (vec)->ptr          = NULL;      \
+    (vec)->count        = 0;         \
+    (vec)->used         = count;     \
+    vec_reserve(vec, count);         \
   } while (0)
 
-#define buffer_free(buffer) \
+#define vec_free(vec) \
+  do {                \
+    seq_free(vec);    \
+  } while (0)
+
+#define vec_reserve(vec, new_capacity)                  \
+  do {                                                  \
+    unsigned long capacity = new_capacity;              \
+    if (capacity > (vec)->count) {                      \
+      unsigned long i;                                  \
+      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {  \
+        capacity |= capacity >> i;                      \
+      }                                                 \
+      ++capacity;                                       \
+      seq_splice(vec, (vec)->count, 0, NULL, capacity); \
+    }                                                   \
+  } while (0)
+
+#define vec_splice(vec, offset, span, other_ptr, other_count) \
+  do {                                                        \
+    vec_reserve(vec, (vec)->used + (other_count) - (span));   \
+    (vec)->used = splice(                                     \
+      (vec)->ptr, (vec)->count,                               \
+      NULL, (vec)->used,                                      \
+      sizeof(*(vec)->ptr), offset, span,                      \
+      other_ptr, other_count);                                \
+  } while (0)
+
+#define vec_push(vec, other_ptr, other_count) \
+  vec_splice(vec, (vec)->used, 0, other_ptr, other_count)
+
+#define vec_pop(vec, count) \
   do {                      \
-    slice_free(buffer);     \
+    (vec)->used -= (count); \
   } while (0)
 
-#define buffer_reserve(buffer, new_capacity)                    \
-  do {                                                          \
-    unsigned long capacity = new_capacity;                      \
-    if (capacity > (buffer)->count) {                           \
-      unsigned long i;                                          \
-      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {          \
-        capacity |= capacity >> i;                              \
-      }                                                         \
-      ++capacity;                                               \
-      slice_splice(buffer, (buffer)->count, 0, NULL, capacity); \
-    }                                                           \
-  } while (0)
-
-#define buffer_splice(buffer, offset, span, other_ptr, other_count)  \
-  do {                                                               \
-    buffer_reserve(buffer, (buffer)->used + (other_count) - (span)); \
-    (buffer)->used = splice(                                         \
-      (buffer)->ptr, (buffer)->count,                                \
-      NULL, (buffer)->used,                                          \
-      sizeof(*(buffer)->ptr), offset, span,                          \
-      other_ptr, other_count);                                       \
-  } while (0)
-
-#define buffer_push(buffer, other_ptr, other_count) \
-  buffer_splice(buffer, (buffer)->used, 0, other_ptr, other_count)
-
-#define buffer_pop(buffer, count) \
-  do {                            \
-    (buffer)->used -= (count);    \
-  } while (0)
-
-#define buffer_clear(buffer) \
-  do {                       \
-    (buffer)->used = 0;      \
+#define vec_clear(vec) \
+  do {                 \
+    (vec)->used = 0;   \
   } while (0)
 
 /* Character */
