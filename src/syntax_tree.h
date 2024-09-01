@@ -1,6 +1,7 @@
 #ifndef MPPL_TREE_H
 #define MPPL_TREE_H
 
+#include "utility.h"
 #include <stdio.h>
 
 /* raw syntax tree */
@@ -20,14 +21,16 @@ typedef struct RawSyntaxTrivia      RawSyntaxTrivia;
 typedef struct RawSyntaxTriviaPiece RawSyntaxTriviaPiece;
 typedef unsigned int                RawSyntaxKind;
 
+typedef Seq(RawSyntaxSpan *) RawSyntaxChildren;
+typedef Seq(RawSyntaxTriviaPiece) RawSyntaxTriviaPieceSeq;
+
 struct RawSyntaxSpan {
   unsigned long text_length;
 };
 
 struct RawSyntaxRoot {
-  RawSyntaxSpan   span;
-  unsigned long   children_count;
-  RawSyntaxSpan **children;
+  RawSyntaxSpan     span;
+  RawSyntaxChildren children;
 };
 
 struct RawSyntaxNode {
@@ -37,9 +40,8 @@ struct RawSyntaxNode {
 };
 
 struct RawSyntaxTree {
-  RawSyntaxNode   node;
-  unsigned long   children_count;
-  RawSyntaxSpan **children;
+  RawSyntaxNode     node;
+  RawSyntaxChildren children;
 };
 
 struct RawSyntaxToken {
@@ -48,10 +50,9 @@ struct RawSyntaxToken {
 };
 
 struct RawSyntaxTrivia {
-  RawSyntaxSpan         span;
-  char                 *text;
-  unsigned long         piece_count;
-  RawSyntaxTriviaPiece *pieces;
+  RawSyntaxSpan           span;
+  char                   *text;
+  RawSyntaxTriviaPieceSeq pieces;
 };
 
 struct RawSyntaxTriviaPiece {
