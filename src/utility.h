@@ -110,10 +110,12 @@ typedef Seq(unsigned int) UIntSeq;
 typedef Seq(long) LongSeq;
 typedef Seq(unsigned long) ULongSeq;
 
-#define seq_alloc(seq, new_count)                                      \
-  do {                                                                 \
-    (seq)->ptr   = xmalloc(nolint(sizeof(*(seq)->ptr)) * (new_count)); \
-    (seq)->count = new_count;                                          \
+#define seq_alloc(seq, new_count)                              \
+  do {                                                         \
+    /* NOLINTBEGIN(bugprone-sizeof-expression) */              \
+    (seq)->ptr   = xmalloc(sizeof(*(seq)->ptr) * (new_count)); \
+    (seq)->count = new_count;                                  \
+    /* NOLINTEND(bugprone-sizeof-expression) */                \
   } while (0)
 
 #define seq_free(seq) \
@@ -123,12 +125,14 @@ typedef Seq(unsigned long) ULongSeq;
 
 #define seq_splice(seq, offset, span, other_ptr, other_count) \
   do {                                                        \
+    /* NOLINTBEGIN(bugprone-sizeof-expression) */             \
     void *old_ptr = (seq)->ptr;                               \
     (seq)->ptr    = splice_alloc(                             \
       old_ptr, (seq)->count,                               \
-      nolint(sizeof(*(seq)->ptr)), offset, span,           \
+      sizeof(*(seq)->ptr), offset, span,                   \
       other_ptr, other_count, &(seq)->count);              \
     free(old_ptr);                                            \
+    /* NOLINTEND(bugprone-sizeof-expression) */               \
   } while (0)
 
 /* Vec */
@@ -176,12 +180,14 @@ typedef Vec(unsigned long) ULongVec;
 
 #define vec_splice(vec, offset, span, other_ptr, other_count) \
   do {                                                        \
+    /* NOLINTBEGIN(bugprone-sizeof-expression) */             \
     vec_reserve(vec, (vec)->used + (other_count) - (span));   \
     (vec)->used = splice(                                     \
       (vec)->ptr, (vec)->count,                               \
       NULL, (vec)->used,                                      \
-      nolint(sizeof(*(vec)->ptr)), offset, span,              \
+      sizeof(*(vec)->ptr), offset, span,                      \
       other_ptr, other_count);                                \
+    /* NOLINTEND(bugprone-sizeof-expression) */               \
   } while (0)
 
 #define vec_push(vec, other_ptr, other_count) \
@@ -232,8 +238,6 @@ long utf8_len(const char *str, long len);
 #define META_DETECT_PROBE )(?, META_TRUE
 
 /* Miscellaneous */
-
-#define nolint(x) /* NOLINTBEGIN */ x /* NOLINTEND */
 
 #define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))
 
