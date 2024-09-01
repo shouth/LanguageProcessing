@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "array.h"
 #include "syntax_tree.h"
 #include "term.h"
 #include "utility.h"
@@ -196,8 +195,6 @@ void raw_syntax_root_print(const RawSyntaxRoot *syntax, FILE *file, RawSyntaxKin
   print_spans(file, syntax->children.ptr, syntax->children.count, 0, 0, kind_printer);
 }
 
-static void free_trivia(RawSyntaxTrivia *trivia);
-static void free_node(RawSyntaxNode *node, int depth);
 static void free_spans(RawSyntaxSpan **spans, unsigned long span_count, int depth);
 
 static void free_trivia(RawSyntaxTrivia *trivia)
@@ -277,13 +274,13 @@ const RawSyntaxTrivia *raw_syntax_tree_trivia(const RawSyntaxTree *syntax, unsig
 typedef Vec(RawSyntaxSpan *) RawSyntaxChildrenVec;
 
 struct RawSyntaxBuilder {
-  RawSyntaxTrivia *trivia;
-  Array           *spans; /* RawSyntaxSpan */
+  RawSyntaxTrivia     *trivia;
+  RawSyntaxChildrenVec spans;
 };
 
 static void push_span(RawSyntaxBuilder *self, RawSyntaxSpan *span)
 {
-  array_push(self->spans, &span);
+  vec_push(&self->spans, &span, 1);
 }
 
 static void push_trivia(RawSyntaxBuilder *self)
@@ -309,14 +306,18 @@ RawSyntaxBuilder *raw_syntax_builder_new(void)
 {
   RawSyntaxBuilder *builder = xmalloc(sizeof(RawSyntaxBuilder));
   builder->trivia           = NULL;
-  builder->spans            = array_new(sizeof(RawSyntaxSpan *));
+  vec_alloc(&builder->spans, 0);
   return builder;
 }
 
 void raw_syntax_builder_free(RawSyntaxBuilder *self)
 {
+  /* TODO: update functions to free memories even if building is not finished */
   if (self) {
-    array_free(self->spans);
+    if (self->trivia) {
+      free_trivia(self->trivia);
+    }
+    vec_free(&self->spans);
     free(self);
   }
 }
@@ -367,7 +368,7 @@ void raw_syntax_builder_token(RawSyntaxBuilder *self, RawSyntaxKind kind, const 
 
 RawSyntaxCheckpoint raw_syntax_builder_open(RawSyntaxBuilder *self)
 {
-  return array_count(self->spans);
+  return self->spans.count;
 }
 
 void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyntaxCheckpoint checkpoint)
@@ -375,19 +376,19 @@ void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyn
   RawSyntaxTree *tree = xmalloc(sizeof(RawSyntaxTree));
 
   assert(checkpoint % 2 == 0);
-  assert(array_count(self->spans) % 2 == 0);
+  assert(self->spans.count % 2 == 0);
 
-  if (checkpoint == array_count(self->spans)) {
+  if (checkpoint == self->spans.count) {
     seq_alloc(&tree->children, 0);
     push_trivia(self);
   } else {
     unsigned long start = checkpoint + 1;
-    unsigned long end   = array_count(self->spans);
+    unsigned long end   = self->spans.used;
 
     seq_alloc(&tree->children, end - start);
-    memcpy(tree->children.ptr, array_at(self->spans, start), sizeof(RawSyntaxSpan *) * tree->children.count);
+    memcpy(tree->children.ptr, self->spans.ptr + start, sizeof(RawSyntaxSpan *) * tree->children.count);
 
-    array_pop_count(self->spans, tree->children.count);
+    vec_pop(&self->spans, tree->children.count);
   }
 
   tree->node.kind             = kind;
@@ -400,15 +401,14 @@ RawSyntaxRoot *raw_syntax_builder_finish(RawSyntaxBuilder *self)
 {
   RawSyntaxRoot *root = xmalloc(sizeof(RawSyntaxRoot));
 
-  assert(array_count(self->spans) % 2 == 0);
+  assert(self->spans.count % 2 == 0);
   push_trivia(self);
 
-  array_fit(self->spans);
-  root->children.count   = array_count(self->spans);
-  root->children.ptr     = array_steal(self->spans);
+  seq_alloc(&root->children, self->spans.used);
+  memcpy(root->children.ptr, self->spans.ptr, sizeof(RawSyntaxSpan *) * root->children.count);
+  vec_pop(&self->spans, root->children.count);
   root->span.text_length = syntax_span_sum(root->children.ptr, root->children.count);
 
-  self->spans = NULL;
   raw_syntax_builder_free(self);
 
   return root;
