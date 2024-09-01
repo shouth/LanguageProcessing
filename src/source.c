@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "array.h"
 #include "source.h"
 #include "utility.h"
 
@@ -36,35 +35,44 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
   {
     FILE *file = fopen(source->file_name, "rb");
     if (file) {
-      Array        *text = array_new(sizeof(char));
+      CharVec       text;
       char          buffer[4096];
       unsigned long length;
+
+      vec_alloc(&text, 0);
       while ((length = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
-        array_push_count(text, buffer, length);
+        vec_push(&text, buffer, length);
       }
       buffer[0] = '\0';
-      array_push(text, buffer);
-      array_fit(text);
-      source->text_length = array_count(text) - 1;
-      source->text        = array_steal(text);
+      vec_push(&text, buffer, 1);
+
+      source->text        = text.ptr;
+      source->text_length = text.used - 1;
+
+      fflush(stdout);
       fclose(file);
     } else {
-      source->text_length = -1ul;
       source->text        = NULL;
+      source->text_length = -1ul;
     }
   }
 
   if (source->text) {
-    Array        *line_offsets = array_new(sizeof(unsigned long));
-    Array        *line_lengths = array_new(sizeof(unsigned long));
-    unsigned long offset       = 0;
-    array_push(line_offsets, &offset);
+    ULongVec line_offsets;
+    ULongVec line_lengths;
+
+    unsigned long offset = 0;
+
+    vec_alloc(&line_offsets, 0);
+    vec_alloc(&line_lengths, 0);
+
+    vec_push(&line_offsets, &offset, 1);
     while (offset <= source->text_length) {
       unsigned long length = strcspn(source->text + offset, "\r\n");
       if (source->text[offset + length] == '\0') {
         ++length;
       }
-      array_push(line_lengths, &length);
+      vec_push(&line_lengths, &length, 1);
       offset += length;
 
       if (offset < source->text_length) {
@@ -73,12 +81,12 @@ Source *source_new(const char *file_name, unsigned long file_name_length)
         } else {
           offset += 1;
         }
-        array_push(line_offsets, &offset);
+        vec_push(&line_offsets, &offset, 1);
       }
     }
-    source->line_count   = array_count(line_offsets);
-    source->line_offsets = array_steal(line_offsets);
-    source->line_lengths = array_steal(line_lengths);
+    source->line_count   = line_offsets.used;
+    source->line_offsets = line_offsets.ptr;
+    source->line_lengths = line_lengths.ptr;
   } else {
     source->line_count   = -1ul;
     source->line_offsets = NULL;
