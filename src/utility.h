@@ -142,9 +142,9 @@ void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     buffer_reserve(buffer, count);      \
   } while (0)
 
-#define buffer_free(buffer)      \
-  do {                           \
-    slice_free(buffer); \
+#define buffer_free(buffer) \
+  do {                      \
+    slice_free(buffer);     \
   } while (0)
 
 #define buffer_reserve(buffer, new_capacity)                    \
