@@ -46,9 +46,7 @@ unsigned long popcount(const void *data, unsigned long size);
 
 typedef unsigned long Hash;
 
-#define HASH_FNV1A_INIT 0x811C9DC5ul
-
-void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
+Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 
 /* BitSet */
 

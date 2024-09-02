@@ -113,15 +113,15 @@ void *splice_alloc(
   return result;
 }
 
-void hash_fnv1a(Hash *hash, const void *ptr, unsigned long len)
+Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len)
 {
-  const unsigned char *data  = ptr;
-  const unsigned char *end   = data + len;
-  const unsigned long  prime = 0x01000193ul;
+  unsigned long i;
 
-  for (; data < end; ++data) {
-    *hash = 0xFFFFFFFFul & ((*hash ^ *data) * prime);
+  Hash result = hash ? *hash : 0x811C9DC5ul;
+  for (i = 0; i < len; ++i) {
+    result = 0xFFFFFFFFul & ((result ^ *(unsigned char *) ptr) * 0x01000193ul);
   }
+  return *hash = result;
 }
 
 unsigned long popcount(const void *data, unsigned long count)
