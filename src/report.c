@@ -26,9 +26,6 @@
 
 /* Report */
 
-typedef Vec(ReportAnnotation) ReportAnnotationVec;
-typedef Vec(char *) NoteVec;
-
 struct ReportAnnotation {
   unsigned long  start_offset;
   unsigned long  end_offset;
@@ -38,11 +35,11 @@ struct ReportAnnotation {
 };
 
 struct Report {
-  ReportKind          kind;
-  unsigned long       offset;
-  char               *message;
-  ReportAnnotationVec annotations;
-  NoteVec             notes;
+  ReportKind    kind;
+  unsigned long offset;
+  char         *message;
+  Vec(ReportAnnotation) annotations;
+  Vec(char *) notes;
 };
 
 static char *vformat(const char *format, va_list args)
@@ -135,10 +132,6 @@ typedef struct LineSegment LineSegment;
 typedef struct Indicator   Indicator;
 typedef struct Connector   Connector;
 typedef struct Writer      Writer;
-
-typedef Vec(LineSegment) LineSegmentVec;
-typedef Vec(Indicator) IndicatorVec;
-typedef Vec(Connector) ConnectorVec;
 
 typedef enum {
   INDICATOR_INLINE,
@@ -357,8 +350,8 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
   unsigned long line_offset;
   unsigned long column_offset;
 
-  LineSegmentVec segments;
-  LineSegmentVec nongraphics;
+  Vec(LineSegment) segments;
+  Vec(LineSegment) nongraphics;
 
   vec_alloc(&segments, 0);
   vec_alloc(&nongraphics, 0);
@@ -470,7 +463,8 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
   unsigned long line_offset;
   unsigned long column_offset;
 
-  IndicatorVec indicators;
+  Vec(Indicator) indicators;
+
   vec_alloc(&indicators, 0);
 
   for (i = 0; i < writer->report->annotations.used; ++i) {
@@ -541,7 +535,8 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
   unsigned long end_line_offset;
   unsigned long depth;
 
-  ConnectorVec connectors;
+  Vec(Connector) connectors;
+
   vec_alloc(&connectors, 0);
 
   for (i = 0; i < writer->report->annotations.used; ++i) {

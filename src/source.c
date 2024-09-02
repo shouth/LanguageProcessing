@@ -33,10 +33,10 @@ Source *source_new(const char *filename, unsigned long filename_len)
   {
     FILE *file = fopen(source->filename.ptr, "rb");
     if (file) {
-      CharVec       text;
       char          buffer[4096];
       unsigned long length;
 
+      Vec(char) text;
       vec_alloc(&text, 0);
       while ((length = fread(buffer, sizeof(char), sizeof(buffer), file)) > 0) {
         vec_push(&text, buffer, length);
@@ -56,11 +56,9 @@ Source *source_new(const char *filename, unsigned long filename_len)
   }
 
   if (source->text.ptr) {
-    typedef Vec(SourceRange) SourceRangeVec;
-
     unsigned long offset = 0;
 
-    SourceRangeVec lines;
+    Vec(SourceRange) lines;
     vec_alloc(&lines, 0);
 
     while (offset <= source->text.count) {

@@ -101,13 +101,6 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     unsigned long count; \
   }
 
-typedef Seq(char) CharSeq;
-typedef Seq(unsigned char) UCharSeq;
-typedef Seq(int) IntSeq;
-typedef Seq(unsigned int) UIntSeq;
-typedef Seq(long) LongSeq;
-typedef Seq(unsigned long) ULongSeq;
-
 #define seq_alloc(seq, new_count)                              \
   do {                                                         \
     /* NOLINTBEGIN(bugprone-sizeof-expression) */              \
@@ -141,13 +134,6 @@ typedef Seq(unsigned long) ULongSeq;
     unsigned long count; \
     unsigned long used;  \
   }
-
-typedef Vec(char) CharVec;
-typedef Vec(unsigned char) UCharVec;
-typedef Vec(int) IntVec;
-typedef Vec(unsigned int) UIntVec;
-typedef Vec(long) LongVec;
-typedef Vec(unsigned long) ULongVec;
 
 #define vec_alloc(vec, new_count)    \
   do {                               \

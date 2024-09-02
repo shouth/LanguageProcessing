@@ -26,11 +26,9 @@
 #include "syntax_tree.h"
 #include "utility.h"
 
-typedef Vec(const char *) FileNameVec;
-
 const char *program;
 
-FileNameVec filenames;
+Vec(const char *) filenames;
 
 int dump_syntax  = 0;
 int pretty_print = 0;

@@ -271,11 +271,9 @@ const RawSyntaxTrivia *raw_syntax_tree_trivia(const RawSyntaxTree *syntax, unsig
 
 /* syntax builder */
 
-typedef Vec(RawSyntaxSpan *) RawSyntaxChildrenVec;
-
 struct RawSyntaxBuilder {
-  RawSyntaxTrivia     *trivia;
-  RawSyntaxChildrenVec spans;
+  RawSyntaxTrivia *trivia;
+  Vec(RawSyntaxSpan *) spans;
 };
 
 static void push_span(RawSyntaxBuilder *self, RawSyntaxSpan *span)

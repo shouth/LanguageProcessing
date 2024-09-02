@@ -36,8 +36,8 @@ struct SourceRange {
 };
 
 struct Source {
-  CharSeq        filename;
-  CharSeq        text;
+  Seq(char) filename;
+  Seq(char) text;
   SourceRangeSeq lines;
 };
 

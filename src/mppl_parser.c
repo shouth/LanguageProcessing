@@ -36,9 +36,9 @@ struct Parser {
 
   RawSyntaxBuilder *builder;
   MpplSyntaxKindSet expected;
-  Diags             diags;
-  unsigned long     breakable;
-  int               recovery;
+  Vec(Diag *) diags;
+  unsigned long breakable;
+  int           recovery;
 };
 
 static void diag(Parser *p, Diag *diagnostics)
@@ -96,9 +96,7 @@ static void next_token(Parser *p)
 
 static void next_nontrivia(Parser *p)
 {
-  typedef Vec(RawSyntaxTriviaPiece) TriviaPieces;
-
-  TriviaPieces  trivia_pieces;
+  Vec(RawSyntaxTriviaPiece) trivia_pieces;
   unsigned long trivia_offset = p->offset + p->span;
 
   vec_alloc(&trivia_pieces, 0);

@@ -262,7 +262,7 @@ void term_print(FILE *file, const TermStyle *style, const char *format, ...)
 
 typedef struct TermBufCell TermBufCell;
 typedef Vec(TermBufCell) TermBufLine;
-typedef Vec(TermBufLine) TermBufLines;
+typedef Vec(TermBufLine) TermBufScreen;
 
 struct TermBufCell {
   char      character[4];
@@ -271,7 +271,7 @@ struct TermBufCell {
 };
 
 struct TermBuf {
-  TermBufLines  lines;
+  TermBufScreen screen;
   unsigned long current_line;
   unsigned long current_column;
 };
@@ -281,9 +281,9 @@ TermBuf *term_buf_new(void)
   TermBufLine line;
 
   TermBuf *buf = malloc(sizeof(TermBuf));
-  vec_alloc(&buf->lines, 0);
+  vec_alloc(&buf->screen, 0);
   vec_alloc(&line, 0);
-  vec_push(&buf->lines, &line, 1);
+  vec_push(&buf->screen, &line, 1);
 
   buf->current_line   = 0;
   buf->current_column = 0;
@@ -294,10 +294,10 @@ void term_buf_free(TermBuf *buf)
 {
   if (buf) {
     unsigned long i;
-    for (i = 0; i < buf->lines.used; ++i) {
-      vec_free(&buf->lines.ptr[i]);
+    for (i = 0; i < buf->screen.used; ++i) {
+      vec_free(&buf->screen.ptr[i]);
     }
-    vec_free(&buf->lines);
+    vec_free(&buf->screen);
     free(buf);
   }
 }
@@ -308,10 +308,10 @@ void term_buf_next_line(TermBuf *buf)
 {
   ++buf->current_line;
   buf->current_column = 0;
-  if (buf->current_line >= buf->lines.used) {
+  if (buf->current_line >= buf->screen.used) {
     TermBufLine line;
     vec_alloc(&line, 0);
-    vec_push(&buf->lines, &line, 1);
+    vec_push(&buf->screen, &line, 1);
   }
 }
 
@@ -338,15 +338,15 @@ void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ..
       }
 
       {
-        unsigned long initial_line_width = buf->lines.ptr[buf->current_line].used;
+        unsigned long initial_line_width = buf->screen.ptr[buf->current_line].used;
         TermBufCell   cell;
         cell.style = style ? *style : term_default_style();
         cell.size  = size;
         memcpy(cell.character, buffer + index, size);
         if (buf->current_column < initial_line_width) {
-          buf->lines.ptr[buf->current_line].ptr[buf->current_column] = cell;
+          buf->screen.ptr[buf->current_line].ptr[buf->current_column] = cell;
         } else {
-          vec_push(&buf->lines.ptr[buf->current_line], &cell, 1);
+          vec_push(&buf->screen.ptr[buf->current_line], &cell, 1);
         }
         ++buf->current_column;
         index += size;
@@ -371,32 +371,32 @@ void term_buf_seek(TermBuf *buf, unsigned long line, unsigned long column)
   buf->current_line   = line;
   buf->current_column = column;
 
-  while (buf->current_line >= buf->lines.used) {
+  while (buf->current_line >= buf->screen.used) {
     TermBufLine line;
     vec_alloc(&line, 0);
-    vec_push(&buf->lines, &line, 1);
+    vec_push(&buf->screen, &line, 1);
   }
 
-  while (buf->current_column >= buf->lines.ptr[buf->current_line].used) {
+  while (buf->current_column >= buf->screen.ptr[buf->current_line].used) {
     TermBufCell cell;
     cell.style = term_default_style();
     cell.size  = 1;
     strcpy(cell.character, " ");
-    vec_push(&buf->lines.ptr[buf->current_line], &cell, 1);
+    vec_push(&buf->screen.ptr[buf->current_line], &cell, 1);
   }
 }
 
 void term_buf_print(TermBuf *buf, FILE *file)
 {
   unsigned long line, column;
-  for (line = 0; line < buf->lines.used; ++line) {
-    for (column = 0; column < buf->lines.ptr[line].used; ++column) {
-      TermBufCell *cell = &buf->lines.ptr[line].ptr[column];
+  for (line = 0; line < buf->screen.used; ++line) {
+    for (column = 0; column < buf->screen.ptr[line].used; ++column) {
+      TermBufCell *cell = &buf->screen.ptr[line].ptr[column];
       term_style(file, &cell->style);
       fprintf(file, "%.*s", (int) cell->size, cell->character);
       term_style(file, NULL);
     }
-    if (line + 1 < buf->lines.used) {
+    if (line + 1 < buf->screen.used) {
       fprintf(file, "\n");
     }
   }
