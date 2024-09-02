@@ -39,9 +39,7 @@ struct Map {
 
 static Hash map_default_hasher(const void *value)
 {
-  Hash hash = HASH_FNV1A_INIT;
-  hash_fnv1a(&hash, &value, sizeof(value));
-  return hash;
+  return hash_fnv1a(NULL, &value, sizeof(value));
 }
 
 static int map_default_comparator(const void *left, const void *right)
