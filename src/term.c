@@ -294,7 +294,7 @@ void term_buf_free(TermBuf *buf)
 {
   if (buf) {
     unsigned long i;
-    for (i = 0; i < buf->screen.used; ++i) {
+    for (i = 0; i < buf->screen.count; ++i) {
       vec_free(&buf->screen.ptr[i]);
     }
     vec_free(&buf->screen);
@@ -308,7 +308,7 @@ void term_buf_next_line(TermBuf *buf)
 {
   ++buf->current_line;
   buf->current_column = 0;
-  if (buf->current_line >= buf->screen.used) {
+  if (buf->current_line >= buf->screen.count) {
     TermBufLine line;
     vec_alloc(&line, 0);
     vec_push(&buf->screen, &line, 1);
@@ -338,7 +338,7 @@ void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ..
       }
 
       {
-        unsigned long initial_line_width = buf->screen.ptr[buf->current_line].used;
+        unsigned long initial_line_width = buf->screen.ptr[buf->current_line].count;
         TermBufCell   cell;
         cell.style = style ? *style : term_default_style();
         cell.size  = size;
@@ -371,13 +371,13 @@ void term_buf_seek(TermBuf *buf, unsigned long line, unsigned long column)
   buf->current_line   = line;
   buf->current_column = column;
 
-  while (buf->current_line >= buf->screen.used) {
+  while (buf->current_line >= buf->screen.count) {
     TermBufLine line;
     vec_alloc(&line, 0);
     vec_push(&buf->screen, &line, 1);
   }
 
-  while (buf->current_column >= buf->screen.ptr[buf->current_line].used) {
+  while (buf->current_column >= buf->screen.ptr[buf->current_line].count) {
     TermBufCell cell;
     cell.style = term_default_style();
     cell.size  = 1;
@@ -389,14 +389,14 @@ void term_buf_seek(TermBuf *buf, unsigned long line, unsigned long column)
 void term_buf_print(TermBuf *buf, FILE *file)
 {
   unsigned long line, column;
-  for (line = 0; line < buf->screen.used; ++line) {
-    for (column = 0; column < buf->screen.ptr[line].used; ++column) {
+  for (line = 0; line < buf->screen.count; ++line) {
+    for (column = 0; column < buf->screen.ptr[line].count; ++column) {
       TermBufCell *cell = &buf->screen.ptr[line].ptr[column];
       term_style(file, &cell->style);
       fprintf(file, "%.*s", (int) cell->size, cell->character);
       term_style(file, NULL);
     }
-    if (line + 1 < buf->screen.used) {
+    if (line + 1 < buf->screen.count) {
       fprintf(file, "\n");
     }
   }

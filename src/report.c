@@ -70,12 +70,12 @@ void report_free(Report *report)
     unsigned long i;
     free(report->message);
 
-    for (i = 0; i < report->notes.used; ++i) {
+    for (i = 0; i < report->notes.count; ++i) {
       free(report->notes.ptr[i]);
     }
     vec_free(&report->notes);
 
-    for (i = 0; i < report->annotations.used; ++i) {
+    for (i = 0; i < report->annotations.count; ++i) {
       free(report->annotations.ptr[i].message);
     }
     vec_free(&report->annotations);
@@ -299,7 +299,7 @@ static void write_annotation_left(
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
-  for (i = 0; i < writer->report->annotations.used; ++i) {
+  for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
     if (annotation->start.line != annotation->end.line) {
       if (strike) {
@@ -389,7 +389,7 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
   }
   line[line_width] = '\0';
 
-  for (i = 0; i < writer->report->annotations.used; ++i) {
+  for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
     LineSegment       segment;
     segment.annotation = annotation;
@@ -407,7 +407,7 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
     }
     vec_push(&segments, &segment, 1);
   }
-  qsort(segments.ptr, segments.used, sizeof(LineSegment), &compare_line_segments);
+  qsort(segments.ptr, segments.count, sizeof(LineSegment), &compare_line_segments);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -423,13 +423,13 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  for (j = 0; j < nongraphics.used; ++j) {
+  for (j = 0; j < nongraphics.count; ++j) {
     LineSegment *nongraphic = &nongraphics.ptr[j];
     term_buf_seek(canvas, line_offset, column_offset + nongraphic->start);
     term_buf_write(canvas, &style, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
   }
 
-  for (i = 0; i < segments.used; ++i) {
+  for (i = 0; i < segments.count; ++i) {
     LineSegment *segment = &segments.ptr[i];
     term_buf_seek(canvas, line_offset, column_offset + segment->start);
 
@@ -440,7 +440,7 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
     style            = term_default_style();
     style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
     style.intensity  = TERM_INTENSITY_FAINT;
-    for (j = 0; j < nongraphics.used; ++j) {
+    for (j = 0; j < nongraphics.count; ++j) {
       LineSegment *nongraphic = &nongraphics.ptr[j];
       if (nongraphic->start >= segment->start && nongraphic->end <= segment->end) {
         term_buf_seek(canvas, line_offset, column_offset + nongraphic->start);
@@ -467,7 +467,7 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
 
   vec_alloc(&indicators, 0);
 
-  for (i = 0; i < writer->report->annotations.used; ++i) {
+  for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
     Indicator         indicator;
     if (annotation->start.line == line_number && annotation->end.line == line_number) {
@@ -490,7 +490,7 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
     }
     vec_push(&indicators, &indicator, 1);
   }
-  qsort(indicators.ptr, indicators.used, sizeof(Indicator), &compare_indicators);
+  qsort(indicators.ptr, indicators.count, sizeof(Indicator), &compare_indicators);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -502,7 +502,7 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
-  for (i = 0; i < indicators.used; ++i) {
+  for (i = 0; i < indicators.count; ++i) {
     Indicator *indicator = &indicators.ptr[i];
     term_buf_seek(canvas, line_offset, column_offset + indicator->column);
     switch (indicator->kind) {
@@ -539,7 +539,7 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
 
   vec_alloc(&connectors, 0);
 
-  for (i = 0; i < writer->report->annotations.used; ++i) {
+  for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
     Connector         connector;
     connector.annotation = annotation;
@@ -572,13 +572,13 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
 
     vec_push(&connectors, &connector, 1);
   }
-  qsort(connectors.ptr, connectors.used, sizeof(Connector), &compare_connectors);
+  qsort(connectors.ptr, connectors.count, sizeof(Connector), &compare_connectors);
 
   depth = 0;
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  for (i = 0; i < connectors.used; ++i) {
+  for (i = 0; i < connectors.count; ++i) {
     Connector *connector = &connectors.ptr[i];
     if (connector->multiline || connector->annotation->message) {
       connector->depth = depth;
@@ -600,7 +600,7 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
   }
   end_line_offset = term_buf_line(canvas);
 
-  for (i = connectors.used; i > 0; --i) {
+  for (i = connectors.count; i > 0; --i) {
     Connector *connector = &connectors.ptr[i - 1];
 
     style            = term_default_style();
@@ -663,7 +663,7 @@ static void write_interest_lines(Writer *writer, TermBuf *canvas)
   unsigned long end_line      = 0;
   unsigned long previous_line = -1ul;
 
-  for (i = 0; i < writer->report->annotations.used; ++i) {
+  for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
     if (start_line > annotation->start.line) {
       start_line = annotation->start.line;
@@ -674,7 +674,7 @@ static void write_interest_lines(Writer *writer, TermBuf *canvas)
   }
 
   for (i = start_line; i <= end_line; ++i) {
-    for (j = 0; j < writer->report->annotations.used; ++j) {
+    for (j = 0; j < writer->report->annotations.count; ++j) {
       ReportAnnotation *annotation = &writer->report->annotations.ptr[j];
       if (i == annotation->start.line || i == annotation->end.line) {
         int dotted = previous_line != -1ul && previous_line + 1 != i;
@@ -756,13 +756,13 @@ void report_emit(Report *report, const Source *source)
   TermBuf      *canvas = term_buf_new();
   unsigned long i;
 
-  qsort(report->annotations.ptr, report->annotations.used, sizeof(ReportAnnotation), &compare_annotations);
+  qsort(report->annotations.ptr, report->annotations.count, sizeof(ReportAnnotation), &compare_annotations);
 
   writer.report        = report;
   writer.source        = source;
   writer.tab_width     = 4;
   writer.number_margin = 0;
-  for (i = 0; i < report->annotations.count; ++i) {
+  for (i = 0; i < report->annotations.span; ++i) {
     int               margin;
     ReportAnnotation *annotation = &report->annotations.ptr[i];
     display_location(source, annotation->start_offset, writer.tab_width, 1, &annotation->start);

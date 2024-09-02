@@ -106,7 +106,7 @@ static void next_nontrivia(Parser *p)
     piece.span.text_length = p->span;
     vec_push(&trivia_pieces, &piece, 1);
   }
-  raw_syntax_builder_trivia(p->builder, p->text + trivia_offset, trivia_pieces.ptr, trivia_pieces.used);
+  raw_syntax_builder_trivia(p->builder, p->text + trivia_offset, trivia_pieces.ptr, trivia_pieces.count);
   vec_free(&trivia_pieces);
 }
 
@@ -894,7 +894,7 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
   }
 
   result.root       = raw_syntax_builder_finish(p.builder);
-  result.diag_count = p.diags.used;
+  result.diag_count = p.diags.count;
   result.diags      = p.diags.ptr;
 
   return result;

@@ -34,7 +34,7 @@ static void print_trivia(FILE *file, RawSyntaxTrivia *trivia, unsigned long offs
   unsigned long i;
   TermStyle     style;
 
-  for (i = 0; i < trivia->pieces.count; ++i) {
+  for (i = 0; i < trivia->pieces.span; ++i) {
     print_indent(file, depth);
 
     style           = term_default_style();
@@ -142,7 +142,7 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
     term_print(file, &style, "%ld", offset + tree->node.span.text_length);
 
     fprintf(file, "\n");
-    print_spans(file, tree->children.ptr, tree->children.count, offset, depth + 1, kind_printer);
+    print_spans(file, tree->children.ptr, tree->children.span, offset, depth + 1, kind_printer);
     break;
   }
   case RAW_SYNTAX_EMPTY: {
@@ -192,7 +192,7 @@ static void print_spans(FILE *file, RawSyntaxSpan **spans, unsigned long span_co
 
 void raw_syntax_root_print(const RawSyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer)
 {
-  print_spans(file, syntax->children.ptr, syntax->children.count, 0, 0, kind_printer);
+  print_spans(file, syntax->children.ptr, syntax->children.span, 0, 0, kind_printer);
 }
 
 static void free_spans(RawSyntaxSpan **spans, unsigned long span_count, int depth);
@@ -216,7 +216,7 @@ static void free_node(RawSyntaxNode *node, int depth)
   }
   case RAW_SYNTAX_TREE: {
     RawSyntaxTree *tree = (RawSyntaxTree *) node;
-    free_spans(tree->children.ptr, tree->children.count, depth + 1);
+    free_spans(tree->children.ptr, tree->children.span, depth + 1);
     break;
   }
   case RAW_SYNTAX_EMPTY:
@@ -244,7 +244,7 @@ static void free_spans(RawSyntaxSpan **spans, unsigned long span_count, int dept
 void raw_syntax_root_free(RawSyntaxRoot *syntax)
 {
   if (syntax) {
-    free_spans(syntax->children.ptr, syntax->children.count, 0);
+    free_spans(syntax->children.ptr, syntax->children.span, 0);
     free(syntax);
   }
 }
@@ -335,7 +335,7 @@ void raw_syntax_builder_trivia(RawSyntaxBuilder *self, const char *text, RawSynt
   }
 
   self->trivia->span.text_length = 0;
-  for (i = 0; i < self->trivia->pieces.count; ++i) {
+  for (i = 0; i < self->trivia->pieces.span; ++i) {
     self->trivia->span.text_length += self->trivia->pieces.ptr[i].span.text_length;
   }
   self->trivia->text = strndup(text, self->trivia->span.text_length);
@@ -366,7 +366,7 @@ void raw_syntax_builder_token(RawSyntaxBuilder *self, RawSyntaxKind kind, const 
 
 RawSyntaxCheckpoint raw_syntax_builder_open(RawSyntaxBuilder *self)
 {
-  return self->spans.used;
+  return self->spans.count;
 }
 
 void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyntaxCheckpoint checkpoint)
@@ -374,24 +374,24 @@ void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyn
   RawSyntaxTree *tree = xmalloc(sizeof(RawSyntaxTree));
 
   assert(checkpoint % 2 == 0);
-  assert(self->spans.used % 2 == 0);
+  assert(self->spans.count % 2 == 0);
 
-  if (checkpoint == self->spans.used) {
+  if (checkpoint == self->spans.count) {
     seq_alloc(&tree->children, 0);
     push_trivia(self);
   } else {
     unsigned long start = checkpoint + 1;
-    unsigned long end   = self->spans.used;
+    unsigned long end   = self->spans.count;
 
     seq_alloc(&tree->children, end - start);
-    memcpy(tree->children.ptr, self->spans.ptr + start, sizeof(RawSyntaxSpan *) * tree->children.count);
+    memcpy(tree->children.ptr, self->spans.ptr + start, sizeof(RawSyntaxSpan *) * tree->children.span);
 
-    vec_pop(&self->spans, tree->children.count);
+    vec_pop(&self->spans, tree->children.span);
   }
 
   tree->node.kind             = kind;
   tree->node.node_kind        = RAW_SYNTAX_TREE;
-  tree->node.span.text_length = syntax_span_sum(tree->children.ptr, tree->children.count);
+  tree->node.span.text_length = syntax_span_sum(tree->children.ptr, tree->children.span);
   push_span(self, (RawSyntaxSpan *) tree);
 }
 
@@ -399,13 +399,13 @@ RawSyntaxRoot *raw_syntax_builder_finish(RawSyntaxBuilder *self)
 {
   RawSyntaxRoot *root = xmalloc(sizeof(RawSyntaxRoot));
 
-  assert(self->spans.used % 2 == 0);
+  assert(self->spans.count % 2 == 0);
   push_trivia(self);
 
-  seq_alloc(&root->children, self->spans.used);
-  memcpy(root->children.ptr, self->spans.ptr, sizeof(RawSyntaxSpan *) * root->children.count);
-  vec_pop(&self->spans, root->children.count);
-  root->span.text_length = syntax_span_sum(root->children.ptr, root->children.count);
+  seq_alloc(&root->children, self->spans.count);
+  memcpy(root->children.ptr, self->spans.ptr, sizeof(RawSyntaxSpan *) * root->children.span);
+  vec_pop(&self->spans, root->children.span);
+  root->span.text_length = syntax_span_sum(root->children.ptr, root->children.span);
 
   raw_syntax_builder_free(self);
 
