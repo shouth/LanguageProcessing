@@ -762,7 +762,7 @@ void report_emit(Report *report, const Source *source)
   writer.source        = source;
   writer.tab_width     = 4;
   writer.number_margin = 0;
-  for (i = 0; i < report->annotations.span; ++i) {
+  for (i = 0; i < report->annotations.count; ++i) {
     int               margin;
     ReportAnnotation *annotation = &report->annotations.ptr[i];
     display_location(source, annotation->start_offset, writer.tab_width, 1, &annotation->start);
