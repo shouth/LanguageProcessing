@@ -218,7 +218,7 @@ int hopscotch_next(Hopscotch *hopscotch, HopscotchEntry *entry)
 
 int hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, HopscotchEntry *entry)
 {
-  if (hopscotch->hops.span == 0 || entry->bucket >= hopscotch->hops.span) {
+  if (entry->bucket >= hopscotch->hops.span) {
     return 0;
   } else if (entry->slot < BUCKET_SIZE) {
     return -1;
@@ -247,8 +247,7 @@ int hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, Hopsc
 
     while (empty - entry->bucket >= BUCKET_SIZE) {
       for (bucket = empty - (BUCKET_SIZE - 1ul); bucket < empty; ++bucket) {
-        printf("%lu %lu %lu %lx\n", bucket, empty, hopscotch->hops.span, hopscotch->hops.ptr[bucket]);
-        if (hopscotch->hops.ptr[bucket] & ((1ul << (empty - bucket)) - 1ul)) {
+        if (bucket < hopscotch->hops.span && hopscotch->hops.ptr[bucket] & ((1ul << (empty - bucket)) - 1ul)) {
           break;
         }
       }
@@ -265,7 +264,7 @@ int hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, Hopsc
 
       hopscotch->hops.ptr[bucket] &= ~(1ul << slot);
       hopscotch->hops.ptr[bucket] |= 1ul << (empty - bucket);
-      memcpy((char *) data + (bucket + slot) * size, (char *) data + empty * size, size);
+      memcpy((char *) data + empty * size, (char *) data + (bucket + slot) * size, size);
       empty = bucket + slot;
     }
 
