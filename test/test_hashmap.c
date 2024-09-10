@@ -13,25 +13,37 @@ int int_eq(const void *a, const void *b)
 
 int main(void)
 {
-  int i;
+  int           i;
+  unsigned long prev_capacity = 0;
+  unsigned long prev_count    = 0;
 
-  HashMap(int, int) map;
+  HashMap(int, int *) map;
   hashmap_alloc(&map, &int_hash, &int_eq);
 
-#define TEST_SIZE 100
+#define TEST_SIZE 20000000
 
   for (i = 0; i < TEST_SIZE; ++i) {
+    int         *value = malloc(sizeof(int));
     HashMapEntry entry;
+
     hashmap_entry(&map, &i, &entry);
-    hashmap_update(&map, &entry, &i, &i);
+    *value = i;
+    hashmap_update(&map, &entry, &i, &value);
+
+    if (prev_capacity > 0 && prev_capacity < map.span) {
+      printf("Reserve: %lu / %lu (%lf)\n", prev_count, prev_capacity, (double) prev_count / prev_capacity);
+    }
+
+    prev_count    = map.count;
+    prev_capacity = map.span;
   }
 
-  printf("Size: %lu\n", map.count);
-
   for (i = 0; i < TEST_SIZE; ++i) {
     HashMapEntry entry;
 
-    if (!hashmap_entry(&map, &i, &entry)) {
+    if (hashmap_entry(&map, &i, &entry)) {
+      free(*hashmap_value(&map, &entry));
+    } else {
       printf("Error: %d\n", i);
     }
   }
