@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
 #ifndef DIAGNOSTICS_H
 #define DIAGNOSTICS_H
 

@@ -1,8 +1,11 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
 #ifndef MPPL_TREE_H
 #define MPPL_TREE_H
 
-#include "utility.h"
 #include <stdio.h>
+
+#include "utility.h"
 
 /* raw syntax tree */
 
