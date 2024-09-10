@@ -146,7 +146,7 @@ unsigned long hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len
 
   unsigned long result = hash ? *hash : 0x811C9DC5ul;
   for (i = 0; i < len; ++i) {
-    result = 0xFFFFFFFFul & ((result ^ *(unsigned char *) ptr) * 0x01000193ul);
+    result = 0xFFFFFFFFul & ((result ^ *((unsigned char *) ptr + i)) * 0x01000193ul);
   }
   if (hash) {
     *hash = result;
