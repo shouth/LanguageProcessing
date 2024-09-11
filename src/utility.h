@@ -197,69 +197,68 @@ typedef HopscotchEntry HashMapEntry;
       } key;                          \
       value_type value;               \
     }            *ptr;                \
-    unsigned long span;               \
     unsigned long count;              \
   }
 
 #define hashmap_alloc(map, hash, eq)                \
   do {                                              \
     hopscotch_alloc(&(map)->metadata, 0, hash, eq); \
-    slice_alloc(map, 0);                            \
+    (map)->ptr   = NULL;                            \
     (map)->count = 0;                               \
   } while (0)
 
 #define hashmap_free(map)             \
   do {                                \
     hopscotch_free(&(map)->metadata); \
-    slice_free(map);                  \
+    free((map)->ptr);                 \
   } while (0)
 
-#define hashmap_reserve(map, new_capacity)                                                      \
-  do {                                                                                          \
-    unsigned long capacity = new_capacity;                                                      \
-    if (capacity + sizeof(unsigned long) * CHAR_BIT - 1 > (map)->span) {                        \
-      void         *old_ptr  = (map)->ptr;                                                      \
-      unsigned long old_span = (map)->span;                                                     \
-      Hopscotch     metadata = (map)->metadata;                                                 \
-      int           finished = 0;                                                               \
-      unsigned long i, hop;                                                                     \
-                                                                                                \
-      --capacity;                                                                               \
-      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {                                          \
-        capacity |= capacity >> i;                                                              \
-      }                                                                                         \
-      ++capacity;                                                                               \
-                                                                                                \
-      while (!finished) {                                                                       \
-        hopscotch_alloc(&(map)->metadata, capacity, metadata.hash, metadata.eq);                \
-        slice_alloc(map, capacity + sizeof(unsigned long) * CHAR_BIT - 1);                      \
-                                                                                                \
-        finished = 1;                                                                           \
-        hop      = 0;                                                                           \
-        for (i = 0; i < old_span; ++i) {                                                        \
-          hop >>= 1;                                                                            \
-          if (i < metadata.hops.span) {                                                         \
-            hop |= metadata.hops.ptr[i];                                                        \
-          }                                                                                     \
-          if (hop & 1ul) {                                                                      \
-            const void    *kv = (char *) old_ptr + i * sizeof(*(map)->ptr);                     \
-            HopscotchEntry entry;                                                               \
-            hopscotch_unchecked(&(map)->metadata, kv, &entry);                                  \
-            if (!hopscotch_occupy(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), &entry)) { \
-              finished = 0;                                                                     \
-              capacity *= 2;                                                                    \
-              hopscotch_free(&(map)->metadata);                                                 \
-              slice_free(map);                                                                  \
-              break;                                                                            \
-            }                                                                                   \
-            memcpy((map)->ptr + (entry.bucket + entry.slot), kv, sizeof(*(map)->ptr));          \
-          }                                                                                     \
-        }                                                                                       \
-      }                                                                                         \
-                                                                                                \
-      free(old_ptr);                                                                            \
-      hopscotch_free(&metadata);                                                                \
-    }                                                                                           \
+#define hashmap_reserve(map, new_capacity)                                                             \
+  do {                                                                                                 \
+    unsigned long capacity = new_capacity;                                                             \
+    if (capacity > (map)->metadata.hops.count) {                                                       \
+      void         *old_ptr  = (map)->ptr;                                                             \
+      unsigned long old_span = (map)->metadata.hops.count + sizeof(unsigned long) * CHAR_BIT - 1;      \
+      Hopscotch     metadata = (map)->metadata;                                                        \
+      int           finished = 0;                                                                      \
+      unsigned long i, hop;                                                                            \
+                                                                                                       \
+      --capacity;                                                                                      \
+      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {                                                 \
+        capacity |= capacity >> i;                                                                     \
+      }                                                                                                \
+      ++capacity;                                                                                      \
+                                                                                                       \
+      while (!finished) {                                                                              \
+        hopscotch_alloc(&(map)->metadata, capacity, metadata.hash, metadata.eq);                       \
+        (map)->ptr = xmalloc(sizeof(*(map)->ptr) * (capacity + sizeof(unsigned long) * CHAR_BIT - 1)); \
+                                                                                                       \
+        finished = 1;                                                                                  \
+        hop      = 0;                                                                                  \
+        for (i = 0; i < old_span; ++i) {                                                               \
+          hop >>= 1;                                                                                   \
+          if (i < metadata.hops.count) {                                                               \
+            hop |= metadata.hops.ptr[i];                                                               \
+          }                                                                                            \
+          if (hop & 1ul) {                                                                             \
+            const void    *kv = (char *) old_ptr + i * sizeof(*(map)->ptr);                            \
+            HopscotchEntry entry;                                                                      \
+            hopscotch_unchecked(&(map)->metadata, kv, &entry);                                         \
+            if (!hopscotch_occupy(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), &entry)) {        \
+              finished = 0;                                                                            \
+              capacity *= 2;                                                                           \
+              hopscotch_free(&(map)->metadata);                                                        \
+              free((map)->ptr);                                                                        \
+              break;                                                                                   \
+            }                                                                                          \
+            memcpy((map)->ptr + (entry.bucket + entry.slot), kv, sizeof(*(map)->ptr));                 \
+          }                                                                                            \
+        }                                                                                              \
+      }                                                                                                \
+                                                                                                       \
+      free(old_ptr);                                                                                   \
+      hopscotch_free(&metadata);                                                                       \
+    }                                                                                                  \
   } while (0);
 
 #define hashmap_entry(map, key, entry)                                                 \
@@ -267,14 +266,14 @@ typedef HopscotchEntry HashMapEntry;
       ? hopscotch_entry(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), key, entry) \
       : (hopscotch_unchecked(&(map)->metadata, NULL, entry), 0))
 
-#define hashmap_key(map, entry)                                                      \
-  ((entry)->bucket < (map)->span && (entry)->slot < sizeof(unsigned long) * CHAR_BIT \
-      ? &(map)->ptr[(entry)->bucket + (entry)->slot].key.readonly                    \
+#define hashmap_key(map, entry)                                                                     \
+  ((entry)->bucket < (map)->metadata.hops.count && (entry)->slot < sizeof(unsigned long) * CHAR_BIT \
+      ? &(map)->ptr[(entry)->bucket + (entry)->slot].key.readonly                                   \
       : NULL)
 
-#define hashmap_value(map, entry)                                                    \
-  ((entry)->bucket < (map)->span && (entry)->slot < sizeof(unsigned long) * CHAR_BIT \
-      ? &(map)->ptr[(entry)->bucket + (entry)->slot].value                           \
+#define hashmap_value(map, entry)                                                                   \
+  ((entry)->bucket < (map)->metadata.hops.count && (entry)->slot < sizeof(unsigned long) * CHAR_BIT \
+      ? &(map)->ptr[(entry)->bucket + (entry)->slot].value                                          \
       : NULL)
 
 #define hashmap_next(map, entry) \
@@ -284,7 +283,7 @@ typedef HopscotchEntry HashMapEntry;
   do {                                                                                                 \
     int status;                                                                                        \
     while (!(status = hopscotch_occupy(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), (entry)))) { \
-      hashmap_reserve(map, (map)->metadata.hops.span ? (map)->metadata.hops.span * 2 : 1);             \
+      hashmap_reserve(map, (map)->metadata.hops.count ? (map)->metadata.hops.count * 2 : 1);           \
       hopscotch_unchecked(&(map)->metadata, (new_key), (entry));                                       \
     }                                                                                                  \
     if (status == 1) {                                                                                 \

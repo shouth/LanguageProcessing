@@ -1,5 +1,8 @@
-#include "utility.h"
+/* SPDX-License-Identifier: Apache-2.0 */
+
 #include <stdio.h>
+
+#include "utility.h"
 
 unsigned long int_hash(const void *key)
 {
@@ -30,12 +33,12 @@ int main(void)
     *value = i;
     hashmap_update(&map, &entry, &i, &value);
 
-    if (prev_capacity > 0 && prev_capacity < map.span) {
+    if (prev_capacity > 0 && prev_capacity < map.metadata.hops.count + sizeof(unsigned long) * CHAR_BIT - 1) {
       printf("Reserve: %lu / %lu (%lf)\n", prev_count, prev_capacity, (double) prev_count / prev_capacity);
     }
 
     prev_count    = map.count;
-    prev_capacity = map.span;
+    prev_capacity = map.metadata.hops.count + sizeof(unsigned long) * CHAR_BIT - 1;
   }
 
   for (i = 0; i < TEST_SIZE; ++i) {
