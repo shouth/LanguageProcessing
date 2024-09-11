@@ -8,7 +8,7 @@ MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long s
 {
   MpplSyntaxKind kind;
 
-  for (kind = MPPL_SYNTAX_PROGRAM_KW; kind <= MPPL_SYNTAX_BREAK_KW; ++kind) {
+  for (kind = BEGIN_MPPL_KEYWORD; kind <= END_MPPL_KEYWORD; ++kind) {
     const char *lexeme = mppl_syntax_kind_static_lexeme(kind);
     if (strncmp(lexeme, string, size) == 0 && !lexeme[size]) {
       return kind;
@@ -16,16 +16,6 @@ MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long s
   }
 
   return MPPL_SYNTAX_ERROR;
-}
-
-int mppl_syntax_kind_is_token(MpplSyntaxKind kind)
-{
-  return kind <= MPPL_SYNTAX_C_COMMENT_TRIVIA;
-}
-
-int mppl_syntax_kind_is_trivia(MpplSyntaxKind kind)
-{
-  return kind >= MPPL_SYNTAX_SPACE_TRIVIA && kind <= MPPL_SYNTAX_C_COMMENT_TRIVIA;
 }
 
 const char *mppl_syntax_kind_static_lexeme(MpplSyntaxKind kind)
@@ -321,8 +311,5 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "IDENT_LIST";
   case MPPL_SYNTAX_BOGUS:
     return "BOGUS";
-
-  case SENTINEL_MPPL_SYNTAX:
-    unreachable();
   }
 }

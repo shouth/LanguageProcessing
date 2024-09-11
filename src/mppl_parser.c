@@ -86,7 +86,7 @@ static void next_nontrivia(Parser *p)
   unsigned long trivia_offset = p->offset + p->span;
 
   vec_alloc(&trivia_pieces, 0);
-  while (next_token(p), mppl_syntax_kind_is_trivia(p->kind)) {
+  while (next_token(p), p->kind >= BEGIN_MPPL_TRIVIA && p->kind <= END_MPPL_TRIVIA) {
     RawSyntaxTriviaPiece piece;
     piece.kind             = p->kind;
     piece.span.text_length = p->span;
