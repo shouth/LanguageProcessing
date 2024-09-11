@@ -310,23 +310,6 @@ long utf8_len(const char *str, long len);
 #define MONOKAI_BLUE   0x78DCE8
 #define MONOKAI_PURPLE 0xAB9DF2
 
-/* Meta programming */
-
-#define META_EMPTY()
-#define META_SWALLOW(x)
-#define META_EXPAND(x)   x
-#define META_DEFER(x)    x META_EMPTY()
-#define META_OBSTRUCT(x) x META_DEFER(META_EMPTY)()
-
-#define META_TRUE(p, q)  p
-#define META_FALSE(p, q) q
-#define META_AND(p, q)   p(q, META_FALSE)
-#define META_OR(p, q)    p(META_TRUE, q)
-#define META_NOT(p)      p(META_FALSE, META_TRUE)
-
-#define META_DETECT(x) META_EXPAND(META_EXPAND(META_FALSE META_DEFER(META_SWALLOW)(x)))
-#define META_DETECT_PROBE )(?, META_TRUE
-
 /* Miscellaneous */
 
 #define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))

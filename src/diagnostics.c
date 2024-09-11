@@ -60,38 +60,29 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
 
   for (kind = 0; kind < SENTINEL_MPPL_SYNTAX; kind++) {
     if (bitset_get(expected, kind)) {
-#define PROBE_PUNCT   META_DETECT_PROBE
-#define PROBE_KEYWORD META_DETECT_PROBE
-#define PRINT_QUOTED(name, string)             \
-  case MPPL_SYNTAX_##name:                     \
-    length += fprintf(buffer, "`%s`", string); \
-    break;
-#define F(name, kind, string) META_DETECT(PROBE_##kind)(PRINT_QUOTED(name, string), META_EMPTY())
+      const char *lexeme = mppl_syntax_kind_static_lexeme(kind);
 
-      switch (kind) {
-      case MPPL_SYNTAX_END_OF_FILE:
-        length += fprintf(buffer, "end of file");
-        break;
-      case MPPL_SYNTAX_NUMBER_LIT:
-        length += fprintf(buffer, "number");
-        break;
-      case MPPL_SYNTAX_STRING_LIT:
-        length += fprintf(buffer, "string");
-        break;
-      case MPPL_SYNTAX_IDENT_TOKEN:
-        length += fprintf(buffer, "identifier");
-        break;
+      if (lexeme) {
+        length += fprintf(buffer, "`%s`", lexeme);
+      } else {
+        switch (kind) {
+        case MPPL_SYNTAX_END_OF_FILE:
+          length += fprintf(buffer, "end of file");
+          break;
+        case MPPL_SYNTAX_NUMBER_LIT:
+          length += fprintf(buffer, "number");
+          break;
+        case MPPL_SYNTAX_STRING_LIT:
+          length += fprintf(buffer, "string");
+          break;
+        case MPPL_SYNTAX_IDENT_TOKEN:
+          length += fprintf(buffer, "identifier");
+          break;
 
-        MPPL_SYNTAX_FOR_EACH(F)
-
-      default:
-        unreachable();
+        default:
+          unreachable();
+        }
       }
-
-#undef F
-#undef PRINT_QUOTED
-#undef PROBE_KEYWORD
-#undef PROBE_PUNCT
 
       if (count > 2) {
         length += fprintf(buffer, ", ");
