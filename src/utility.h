@@ -11,7 +11,6 @@
 /* Memory */
 
 void *xmalloc(unsigned long size);
-void *memdup(const void *ptr, unsigned long length);
 char *strndup(const char *src, unsigned long length);
 
 unsigned long splice(
@@ -220,7 +219,6 @@ typedef HopscotchEntry HashMapEntry;
       void         *old_ptr  = (map)->ptr;                                                             \
       unsigned long old_span = (map)->metadata.hops.count + sizeof(unsigned long) * CHAR_BIT - 1;      \
       Hopscotch     metadata = (map)->metadata;                                                        \
-      int           finished = 0;                                                                      \
       unsigned long i, hop;                                                                            \
                                                                                                        \
       --capacity;                                                                                      \
@@ -229,12 +227,11 @@ typedef HopscotchEntry HashMapEntry;
       }                                                                                                \
       ++capacity;                                                                                      \
                                                                                                        \
-      while (!finished) {                                                                              \
+      while (1) {                                                                                      \
         hopscotch_alloc(&(map)->metadata, capacity, metadata.hash, metadata.eq);                       \
         (map)->ptr = xmalloc(sizeof(*(map)->ptr) * (capacity + sizeof(unsigned long) * CHAR_BIT - 1)); \
                                                                                                        \
-        finished = 1;                                                                                  \
-        hop      = 0;                                                                                  \
+        hop = 0;                                                                                       \
         for (i = 0; i < old_span; ++i) {                                                               \
           hop >>= 1;                                                                                   \
           if (i < metadata.hops.count) {                                                               \
@@ -245,15 +242,19 @@ typedef HopscotchEntry HashMapEntry;
             HopscotchEntry entry;                                                                      \
             hopscotch_unchecked(&(map)->metadata, kv, &entry);                                         \
             if (!hopscotch_occupy(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), &entry)) {        \
-              finished = 0;                                                                            \
-              capacity *= 2;                                                                           \
-              hopscotch_free(&(map)->metadata);                                                        \
-              free((map)->ptr);                                                                        \
               break;                                                                                   \
             }                                                                                          \
             memcpy((map)->ptr + (entry.bucket + entry.slot), kv, sizeof(*(map)->ptr));                 \
           }                                                                                            \
         }                                                                                              \
+                                                                                                       \
+        if (i == old_span) {                                                                           \
+          break;                                                                                       \
+        }                                                                                              \
+                                                                                                       \
+        capacity *= 2;                                                                                 \
+        hopscotch_free(&(map)->metadata);                                                              \
+        free((map)->ptr);                                                                              \
       }                                                                                                \
                                                                                                        \
       free(old_ptr);                                                                                   \

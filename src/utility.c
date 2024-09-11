@@ -19,17 +19,6 @@ void *xmalloc(unsigned long size)
   return result;
 }
 
-void *memdup(const void *ptr, unsigned long length)
-{
-  if (length == 0) {
-    return NULL;
-  } else {
-    void *result = xmalloc(length);
-    memcpy(result, ptr, length);
-    return result;
-  }
-}
-
 char *strndup(const char *src, unsigned long length)
 {
   if (length == 0) {
