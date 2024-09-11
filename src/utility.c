@@ -119,37 +119,48 @@ unsigned long hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len
 
 /* Hopscotch */
 
-#define BUCKET_SIZE (sizeof(unsigned long) * CHAR_BIT)
-
-void hopscotch_alloc(Hopscotch *hopscotch, unsigned long span, HopscotchHash *hash, HopscotchEq *eq)
+void hopscotch_alloc(Hopscotch *hopscotch, unsigned long base_count, HopscotchHash *hash, HopscotchEq *eq)
 {
-  slice_alloc(&hopscotch->hops, span);
-  memset(hopscotch->hops.ptr, 0, span * sizeof(unsigned long));
+  hopscotch->count = base_count;
+  if (hopscotch->count > 0) {
+    unsigned long i;
+
+    --hopscotch->count;
+    for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {
+      hopscotch->count |= hopscotch->count >> i;
+    }
+    ++hopscotch->count;
+
+    hopscotch->hops = xmalloc((hopscotch->count + HOPSCOTCH_BUCKET_SIZE) * sizeof(unsigned long));
+    memset(hopscotch->hops, 0, (hopscotch->count + HOPSCOTCH_BUCKET_SIZE) * sizeof(unsigned long));
+  } else {
+    hopscotch->hops = NULL;
+  }
   hopscotch->hash = hash;
   hopscotch->eq   = eq;
 }
 
 void hopscotch_free(Hopscotch *hopscotch)
 {
-  slice_free(&hopscotch->hops);
+  free(hopscotch->hops);
 }
 
 void hopscotch_unchecked(Hopscotch *hopscotch, const void *key, HopscotchEntry *entry)
 {
-  if (key && hopscotch->hops.count > 0) {
-    entry->bucket = hopscotch->hash(key) % hopscotch->hops.count;
+  if (key && hopscotch->count > 0) {
+    entry->bucket = hopscotch->hash(key) & (hopscotch->count - 1);
   } else {
-    entry->bucket = hopscotch->hops.count;
+    entry->bucket = hopscotch->count;
   }
-  entry->slot = BUCKET_SIZE;
+  entry->slot = HOPSCOTCH_BUCKET_SIZE;
 }
 
 int hopscotch_entry(Hopscotch *hopscotch, void *data, unsigned long size, const void *key, HopscotchEntry *entry)
 {
   hopscotch_unchecked(hopscotch, key, entry);
-  if (entry->bucket < hopscotch->hops.count) {
-    for (entry->slot = 0; entry->slot < BUCKET_SIZE; ++entry->slot) {
-      if (hopscotch->hops.ptr[entry->bucket] & (1ul << entry->slot)) {
+  if (entry->bucket < hopscotch->count) {
+    for (entry->slot = 0; entry->slot < HOPSCOTCH_BUCKET_SIZE; ++entry->slot) {
+      if (hopscotch->hops[entry->bucket] & (1ul << entry->slot)) {
         if (hopscotch->eq((char *) data + (entry->bucket + entry->slot) * size, key)) {
           return 1;
         }
@@ -161,16 +172,16 @@ int hopscotch_entry(Hopscotch *hopscotch, void *data, unsigned long size, const 
 
 int hopscotch_next(Hopscotch *hopscotch, HopscotchEntry *entry)
 {
-  if (entry->bucket < hopscotch->hops.count) {
+  if (entry->bucket < hopscotch->count) {
     ++entry->slot;
   } else {
     entry->bucket = 0;
     entry->slot   = 0;
   }
 
-  for (; entry->bucket < hopscotch->hops.count; ++entry->bucket) {
-    for (; entry->slot < BUCKET_SIZE; ++entry->slot) {
-      if (hopscotch->hops.ptr[entry->bucket] & (1ul << entry->slot)) {
+  for (; entry->bucket < hopscotch->count; ++entry->bucket) {
+    for (; entry->slot < HOPSCOTCH_BUCKET_SIZE; ++entry->slot) {
+      if (hopscotch->hops[entry->bucket] & (1ul << entry->slot)) {
         return 1;
       }
     }
@@ -181,36 +192,38 @@ int hopscotch_next(Hopscotch *hopscotch, HopscotchEntry *entry)
 
 int hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, HopscotchEntry *entry)
 {
-  if (entry->bucket >= hopscotch->hops.count) {
+  if (entry->bucket >= hopscotch->count) {
     return 0;
-  } else if (entry->slot < BUCKET_SIZE) {
+  } else if (entry->slot < HOPSCOTCH_BUCKET_SIZE) {
     return -1;
-  } else if (hopscotch->hops.ptr[entry->bucket] + 1 == 0) {
+  } else if (hopscotch->hops[entry->bucket] + 1 == 0) {
     return 0;
   } else {
-    unsigned long bucket, slot;
-    unsigned long occupied = 0;
-    unsigned long empty    = -1ul;
+    unsigned long empty = -1ul;
 
-    bucket = entry->bucket > BUCKET_SIZE - 1ul ? entry->bucket - (BUCKET_SIZE - 1ul) : 0ul;
-    for (; bucket < entry->bucket + BUCKET_SIZE * 8ul; ++bucket) {
-      occupied >>= 1ul;
-      if (bucket < hopscotch->hops.count) {
-        occupied |= hopscotch->hops.ptr[bucket];
+    {
+      unsigned long bucket   = entry->bucket > HOPSCOTCH_BUCKET_SIZE - 1ul ? entry->bucket - (HOPSCOTCH_BUCKET_SIZE - 1ul) : 0ul;
+      unsigned long sentinel = entry->bucket + HOPSCOTCH_BUCKET_SIZE * 8ul;
+      unsigned long occupied = 0;
+
+      for (; bucket < sentinel; ++bucket) {
+        occupied = (occupied >> 1) | hopscotch->hops[bucket];
+        if (bucket >= entry->bucket && ~occupied & 1ul) {
+          empty = bucket;
+          break;
+        }
       }
-      if (bucket >= entry->bucket && ~occupied & 1ul) {
-        empty = bucket;
-        break;
+
+      if (bucket == sentinel) {
+        return 0;
       }
     }
 
-    if (empty == -1ul) {
-      return 0;
-    }
+    while (empty - entry->bucket >= HOPSCOTCH_BUCKET_SIZE) {
+      unsigned long bucket, next;
 
-    while (empty - entry->bucket >= BUCKET_SIZE) {
-      for (bucket = empty - (BUCKET_SIZE - 1ul); bucket < empty; ++bucket) {
-        if (bucket < hopscotch->hops.count && hopscotch->hops.ptr[bucket] & ((1ul << (empty - bucket)) - 1ul)) {
+      for (bucket = empty - (HOPSCOTCH_BUCKET_SIZE - 1ul); bucket < empty; ++bucket) {
+        if (bucket < hopscotch->count && hopscotch->hops[bucket] & ((1ul << (empty - bucket)) - 1ul)) {
           break;
         }
       }
@@ -219,32 +232,30 @@ int hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, Hopsc
         return 0;
       }
 
-      for (slot = 0; bucket + slot < empty; ++slot) {
-        if (hopscotch->hops.ptr[bucket] & (1ul << slot)) {
+      for (next = bucket; next < empty; ++next) {
+        if (hopscotch->hops[bucket] & (1ul << (next - bucket))) {
           break;
         }
       }
 
-      hopscotch->hops.ptr[bucket] &= ~(1ul << slot);
-      hopscotch->hops.ptr[bucket] |= 1ul << (empty - bucket);
-      memcpy((char *) data + empty * size, (char *) data + (bucket + slot) * size, size);
-      empty = bucket + slot;
+      hopscotch->hops[bucket] &= ~(1ul << (next - bucket));
+      hopscotch->hops[bucket] |= 1ul << (empty - bucket);
+      memcpy((char *) data + empty * size, (char *) data + next * size, size);
+      empty = next;
     }
 
     entry->slot = empty - entry->bucket;
-    hopscotch->hops.ptr[entry->bucket] |= 1ul << entry->slot;
+    hopscotch->hops[entry->bucket] |= 1ul << entry->slot;
     return 1;
   }
 }
 
 void hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry)
 {
-  if (entry->bucket < hopscotch->hops.count && entry->slot < BUCKET_SIZE) {
-    hopscotch->hops.ptr[entry->bucket] &= ~(1ul << entry->slot);
+  if (entry->bucket < hopscotch->count && entry->slot < HOPSCOTCH_BUCKET_SIZE) {
+    hopscotch->hops[entry->bucket] &= ~(1ul << entry->slot);
   }
 }
-
-#undef BUCKET_SIZE
 
 /* Charactor */
 

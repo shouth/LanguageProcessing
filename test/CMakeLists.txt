@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
+set(_POSIX_C_SOURCE 200112L CACHE STRING "POSIX version to use")
+
 set(gnu_like "$<C_COMPILER_ID:GNU,Clang>")
 set(gnu_like_debug "$<AND:${gnu_like},$<CONFIG:Debug>>")
 
