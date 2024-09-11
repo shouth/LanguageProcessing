@@ -30,14 +30,14 @@ Source *source_new(const char *filename, unsigned long filename_len)
       buffer[0] = '\0';
       vec_push(&text, buffer, 1);
 
-      source->text.ptr  = text.ptr;
-      source->text.span = text.count - 1;
+      source->text.ptr   = text.ptr;
+      source->text.count = text.count - 1;
 
       fflush(stdout);
       fclose(file);
     } else {
-      source->text.ptr  = NULL;
-      source->text.span = 0;
+      source->text.ptr   = NULL;
+      source->text.count = 0;
     }
   }
 
@@ -47,7 +47,7 @@ Source *source_new(const char *filename, unsigned long filename_len)
     Vec(SourceRange) lines;
     vec_alloc(&lines, 0);
 
-    while (offset <= source->text.span) {
+    while (offset <= source->text.count) {
       SourceRange line;
 
       unsigned long span = strcspn(source->text.ptr + offset, "\r\n");
@@ -60,7 +60,7 @@ Source *source_new(const char *filename, unsigned long filename_len)
       vec_push(&lines, &line, 1);
 
       offset += span;
-      if (offset < source->text.span) {
+      if (offset < source->text.count) {
         if (!strncmp(source->text.ptr + offset, "\r\n", 2) || !strncmp(source->text.ptr + offset, "\n\r", 2)) {
           offset += 2;
         } else {
@@ -68,11 +68,11 @@ Source *source_new(const char *filename, unsigned long filename_len)
         }
       }
     }
-    source->lines.ptr  = lines.ptr;
-    source->lines.span = lines.count;
+    source->lines.ptr   = lines.ptr;
+    source->lines.count = lines.count;
   } else {
-    source->lines.ptr  = NULL;
-    source->lines.span = 0;
+    source->lines.ptr   = NULL;
+    source->lines.count = 0;
   }
 
   if (source->filename.ptr && source->text.ptr && source->lines.ptr) {
@@ -95,11 +95,11 @@ void source_free(Source *source)
 
 int source_location(const Source *source, unsigned long offset, SourceLocation *location)
 {
-  if (offset > source->text.span) {
+  if (offset > source->text.count) {
     return 0;
   } else {
     unsigned long left  = 0;
-    unsigned long right = source->lines.span;
+    unsigned long right = source->lines.count;
     while (right - left > 1) {
       unsigned long middle = (right - left) / 2 + left;
       if (offset < source->lines.ptr[middle].offset) {

@@ -75,18 +75,18 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 
 /* Slice */
 
-#define Slice(type)     \
-  struct {              \
-    type         *ptr;  \
-    unsigned long span; \
+#define Slice(type)      \
+  struct {               \
+    type         *ptr;   \
+    unsigned long count; \
   }
 
-#define slice_alloc(seq, new_count)                           \
-  do {                                                        \
-    /* NOLINTBEGIN(bugprone-sizeof-expression) */             \
-    (seq)->ptr  = xmalloc(sizeof(*(seq)->ptr) * (new_count)); \
-    (seq)->span = new_count;                                  \
-    /* NOLINTEND(bugprone-sizeof-expression) */               \
+#define slice_alloc(seq, new_count)                            \
+  do {                                                         \
+    /* NOLINTBEGIN(bugprone-sizeof-expression) */              \
+    (seq)->ptr   = xmalloc(sizeof(*(seq)->ptr) * (new_count)); \
+    (seq)->count = new_count;                                  \
+    /* NOLINTEND(bugprone-sizeof-expression) */                \
   } while (0)
 
 #define slice_free(seq) \
