@@ -96,18 +96,18 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 
 /* Vec */
 
-#define Vec(type)        \
-  struct {               \
-    type         *ptr;   \
-    unsigned long span;  \
-    unsigned long count; \
+#define Vec(type)           \
+  struct {                  \
+    type         *ptr;      \
+    unsigned long count;    \
+    unsigned long capacity; \
   }
 
 #define vec_alloc(vec, new_count)   \
   do {                              \
-    (vec)->ptr   = NULL;            \
-    (vec)->span  = 0;               \
-    (vec)->count = new_count;       \
+    (vec)->ptr      = NULL;         \
+    (vec)->capacity = 0;            \
+    (vec)->count    = new_count;    \
     vec_reserve(vec, (vec)->count); \
   } while (0)
 
@@ -116,44 +116,36 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     slice_free(vec);  \
   } while (0)
 
-#define vec_reserve(vec, new_capacity)                                   \
-  do {                                                                   \
-    /* NOLINTBEGIN(bugprone-sizeof-expression) */                        \
-    unsigned long capacity = new_capacity;                               \
-    if (capacity > (vec)->span) {                                        \
-      void         *old_ptr = (vec)->ptr;                                \
-      unsigned long i;                                                   \
-                                                                         \
-      --capacity;                                                        \
-      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {                   \
-        capacity |= capacity >> i;                                       \
-      }                                                                  \
-      ++capacity;                                                        \
-                                                                         \
-      (vec)->span = capacity;                                            \
-      (vec)->ptr  = xmalloc(sizeof(*(vec)->ptr) * ((vec)->span));        \
-      if ((vec)->count) {                                                \
-        memcpy((vec)->ptr, old_ptr, sizeof(*(vec)->ptr) * (vec)->count); \
-      }                                                                  \
-      free(old_ptr);                                                     \
-      /* NOLINTEND(bugprone-sizeof-expression) */                        \
-    }                                                                    \
+#define vec_reserve(vec, new_capacity)                                    \
+  do {                                                                    \
+    /* NOLINTBEGIN(bugprone-sizeof-expression) */                         \
+    unsigned long capacity = new_capacity;                                \
+    if (capacity > (vec)->capacity) {                                     \
+      void         *old_ptr = (vec)->ptr;                                 \
+      unsigned long i;                                                    \
+                                                                          \
+      --capacity;                                                         \
+      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {                    \
+        capacity |= capacity >> i;                                        \
+      }                                                                   \
+      ++capacity;                                                         \
+                                                                          \
+      (vec)->capacity = capacity;                                         \
+      (vec)->ptr      = xmalloc(sizeof(*(vec)->ptr) * ((vec)->capacity)); \
+      if ((vec)->count) {                                                 \
+        memcpy((vec)->ptr, old_ptr, sizeof(*(vec)->ptr) * (vec)->count);  \
+      }                                                                   \
+      free(old_ptr);                                                      \
+      /* NOLINTEND(bugprone-sizeof-expression) */                         \
+    }                                                                     \
   } while (0)
 
-#define vec_splice(vec, offset, delete_span, other_ptr, other_count) \
-  do {                                                               \
-    /* NOLINTBEGIN(bugprone-sizeof-expression) */                    \
-    vec_reserve(vec, (vec)->count + (other_count) - (delete_span));  \
-    (vec)->count = splice(                                           \
-      (vec)->ptr, (vec)->span,                                       \
-      NULL, (vec)->count,                                            \
-      sizeof(*(vec)->ptr), offset, delete_span,                      \
-      other_ptr, other_count);                                       \
-    /* NOLINTEND(bugprone-sizeof-expression) */                      \
+#define vec_push(vec, other_ptr, other_count)                                            \
+  do {                                                                                   \
+    vec_reserve(vec, (vec)->count + (other_count));                                      \
+    memcpy((vec)->ptr + (vec)->count, (other_ptr), sizeof(*(vec)->ptr) * (other_count)); \
+    (vec)->count += (other_count);                                                       \
   } while (0)
-
-#define vec_push(vec, other_ptr, other_count) \
-  vec_splice(vec, (vec)->count, 0, other_ptr, other_count)
 
 #define vec_pop(vec, delete_count)  \
   do {                              \
