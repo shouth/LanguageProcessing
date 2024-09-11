@@ -203,7 +203,7 @@ static void free_trivia(RawSyntaxTrivia *trivia)
 {
   if (trivia) {
     free(trivia->text);
-    seq_free(&trivia->pieces);
+    slice_free(&trivia->pieces);
     free(trivia);
   }
 }
@@ -331,7 +331,7 @@ void raw_syntax_builder_trivia(RawSyntaxBuilder *self, const char *text, RawSynt
   }
   self->trivia = xmalloc(sizeof(RawSyntaxTrivia));
 
-  seq_alloc(&self->trivia->pieces, piece_count);
+  slice_alloc(&self->trivia->pieces, piece_count);
   if (piece_count > 0) {
     memcpy(self->trivia->pieces.ptr, pieces, sizeof(RawSyntaxTriviaPiece) * piece_count);
   }
@@ -379,13 +379,13 @@ void raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyn
   assert(self->spans.count % 2 == 0);
 
   if (checkpoint == self->spans.count) {
-    seq_alloc(&tree->children, 0);
+    slice_alloc(&tree->children, 0);
     push_trivia(self);
   } else {
     unsigned long start = checkpoint + 1;
     unsigned long end   = self->spans.count;
 
-    seq_alloc(&tree->children, end - start);
+    slice_alloc(&tree->children, end - start);
     memcpy(tree->children.ptr, self->spans.ptr + start, sizeof(RawSyntaxSpan *) * tree->children.span);
 
     vec_pop(&self->spans, tree->children.span);
@@ -404,7 +404,7 @@ RawSyntaxRoot *raw_syntax_builder_finish(RawSyntaxBuilder *self)
   assert(self->spans.count % 2 == 0);
   push_trivia(self);
 
-  seq_alloc(&root->children, self->spans.count);
+  slice_alloc(&root->children, self->spans.count);
   memcpy(root->children.ptr, self->spans.ptr, sizeof(RawSyntaxSpan *) * root->children.span);
   vec_pop(&self->spans, root->children.span);
   root->span.text_length = syntax_span_sum(root->children.ptr, root->children.span);

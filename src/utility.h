@@ -20,12 +20,6 @@ unsigned long splice(
   unsigned long size, unsigned long offset, unsigned long span,
   const void *src2, unsigned long src2_count);
 
-void *splice_alloc(
-  const void *src1, unsigned long src1_count,
-  unsigned long size, unsigned long offset, unsigned long span,
-  const void *src2, unsigned long src2_count,
-  unsigned long *result_count);
-
 unsigned long popcount(const void *data, unsigned long size);
 
 /* Hash */
@@ -79,15 +73,15 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     }                                                \
   } while (0)
 
-/* Seq */
+/* Slice */
 
-#define Seq(type)       \
+#define Slice(type)     \
   struct {              \
     type         *ptr;  \
     unsigned long span; \
   }
 
-#define seq_alloc(seq, new_count)                             \
+#define slice_alloc(seq, new_count)                           \
   do {                                                        \
     /* NOLINTBEGIN(bugprone-sizeof-expression) */             \
     (seq)->ptr  = xmalloc(sizeof(*(seq)->ptr) * (new_count)); \
@@ -95,21 +89,9 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     /* NOLINTEND(bugprone-sizeof-expression) */               \
   } while (0)
 
-#define seq_free(seq) \
-  do {                \
-    free((seq)->ptr); \
-  } while (0)
-
-#define seq_splice(seq, offset, delete_span, other_ptr, other_count) \
-  do {                                                               \
-    /* NOLINTBEGIN(bugprone-sizeof-expression) */                    \
-    void *old_ptr = (seq)->ptr;                                      \
-    (seq)->ptr    = splice_alloc(                                    \
-      old_ptr, (seq)->span,                                       \
-      sizeof(*(seq)->ptr), offset, delete_span,                   \
-      other_ptr, other_count, &(seq)->span);                      \
-    free(old_ptr);                                                   \
-    /* NOLINTEND(bugprone-sizeof-expression) */                      \
+#define slice_free(seq) \
+  do {                  \
+    free((seq)->ptr);   \
   } while (0)
 
 /* Vec */
@@ -131,21 +113,31 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 
 #define vec_free(vec) \
   do {                \
-    seq_free(vec);    \
+    slice_free(vec);  \
   } while (0)
 
-#define vec_reserve(vec, new_capacity)                 \
-  do {                                                 \
-    unsigned long capacity = new_capacity;             \
-    if (capacity > (vec)->span) {                      \
-      unsigned long i;                                 \
-      --capacity;                                      \
-      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) { \
-        capacity |= capacity >> i;                     \
-      }                                                \
-      ++capacity;                                      \
-      seq_splice(vec, (vec)->span, 0, NULL, capacity); \
-    }                                                  \
+#define vec_reserve(vec, new_capacity)                                   \
+  do {                                                                   \
+    /* NOLINTBEGIN(bugprone-sizeof-expression) */                        \
+    unsigned long capacity = new_capacity;                               \
+    if (capacity > (vec)->span) {                                        \
+      void         *old_ptr = (vec)->ptr;                                \
+      unsigned long i;                                                   \
+                                                                         \
+      --capacity;                                                        \
+      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {                   \
+        capacity |= capacity >> i;                                       \
+      }                                                                  \
+      ++capacity;                                                        \
+                                                                         \
+      (vec)->span = capacity;                                            \
+      (vec)->ptr  = xmalloc(sizeof(*(vec)->ptr) * ((vec)->span));        \
+      if ((vec)->count) {                                                \
+        memcpy((vec)->ptr, old_ptr, sizeof(*(vec)->ptr) * (vec)->count); \
+      }                                                                  \
+      free(old_ptr);                                                     \
+      /* NOLINTEND(bugprone-sizeof-expression) */                        \
+    }                                                                    \
   } while (0)
 
 #define vec_splice(vec, offset, delete_span, other_ptr, other_count) \
@@ -186,7 +178,7 @@ struct HopscotchEntry {
 };
 
 struct Hopscotch {
-  Seq(unsigned long) hops;
+  Slice(unsigned long) hops;
   HopscotchHash *hash;
   HopscotchEq   *eq;
 };
@@ -220,14 +212,14 @@ typedef HopscotchEntry HashMapEntry;
 #define hashmap_alloc(map, hash, eq)                \
   do {                                              \
     hopscotch_alloc(&(map)->metadata, 0, hash, eq); \
-    seq_alloc(map, 0);                              \
+    slice_alloc(map, 0);                            \
     (map)->count = 0;                               \
   } while (0)
 
 #define hashmap_free(map)             \
   do {                                \
     hopscotch_free(&(map)->metadata); \
-    seq_free(map);                    \
+    slice_free(map);                  \
   } while (0)
 
 #define hashmap_reserve(map, new_capacity)                                                      \
@@ -248,7 +240,7 @@ typedef HopscotchEntry HashMapEntry;
                                                                                                 \
       while (!finished) {                                                                       \
         hopscotch_alloc(&(map)->metadata, capacity, metadata.hash, metadata.eq);                \
-        seq_alloc(map, capacity + sizeof(unsigned long) * CHAR_BIT - 1);                        \
+        slice_alloc(map, capacity + sizeof(unsigned long) * CHAR_BIT - 1);                      \
                                                                                                 \
         finished = 1;                                                                           \
         hop      = 0;                                                                           \
@@ -265,7 +257,7 @@ typedef HopscotchEntry HashMapEntry;
               finished = 0;                                                                     \
               capacity *= 2;                                                                    \
               hopscotch_free(&(map)->metadata);                                                 \
-              seq_free(map);                                                                    \
+              slice_free(map);                                                                  \
               break;                                                                            \
             }                                                                                   \
             memcpy((map)->ptr + (entry.bucket + entry.slot), kv, sizeof(*(map)->ptr));          \

@@ -90,18 +90,6 @@ unsigned long splice(
   return result_count;
 }
 
-void *splice_alloc(
-  const void *src1, unsigned long src1_count,
-  unsigned long size, unsigned long offset, unsigned long span,
-  const void *src2, unsigned long src2_count,
-  unsigned long *result_count)
-{
-  unsigned long count  = src1_count + src2_count - span;
-  void         *result = xmalloc(count * size);
-  *result_count        = splice(result, count, src1, src1_count, size, offset, span, src2, src2_count);
-  return result;
-}
-
 unsigned long popcount(const void *data, unsigned long count)
 {
 #define B2(n) n, n + 1, n + 1, n + 2
@@ -146,7 +134,7 @@ unsigned long hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len
 
 void hopscotch_alloc(Hopscotch *hopscotch, unsigned long span, HopscotchHash *hash, HopscotchEq *eq)
 {
-  seq_alloc(&hopscotch->hops, span);
+  slice_alloc(&hopscotch->hops, span);
   memset(hopscotch->hops.ptr, 0, span * sizeof(unsigned long));
   hopscotch->hash = hash;
   hopscotch->eq   = eq;
@@ -154,7 +142,7 @@ void hopscotch_alloc(Hopscotch *hopscotch, unsigned long span, HopscotchHash *ha
 
 void hopscotch_free(Hopscotch *hopscotch)
 {
-  seq_free(&hopscotch->hops);
+  slice_free(&hopscotch->hops);
 }
 
 void hopscotch_unchecked(Hopscotch *hopscotch, const void *key, HopscotchEntry *entry)

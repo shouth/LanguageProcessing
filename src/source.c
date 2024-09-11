@@ -12,7 +12,7 @@ Source *source_new(const char *filename, unsigned long filename_len)
 {
   Source *source = xmalloc(sizeof(Source));
 
-  seq_alloc(&source->filename, filename_len + 1);
+  slice_alloc(&source->filename, filename_len + 1);
   strncpy(source->filename.ptr, filename, filename_len);
   source->filename.ptr[filename_len] = '\0';
 
@@ -86,9 +86,9 @@ Source *source_new(const char *filename, unsigned long filename_len)
 void source_free(Source *source)
 {
   if (source) {
-    seq_free(&source->filename);
-    seq_free(&source->text);
-    seq_free(&source->lines);
+    slice_free(&source->filename);
+    slice_free(&source->text);
+    slice_free(&source->lines);
     free(source);
   }
 }

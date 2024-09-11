@@ -24,8 +24,8 @@ typedef struct RawSyntaxTrivia      RawSyntaxTrivia;
 typedef struct RawSyntaxTriviaPiece RawSyntaxTriviaPiece;
 typedef unsigned int                RawSyntaxKind;
 
-typedef Seq(RawSyntaxSpan *) RawSyntaxChildren;
-typedef Seq(RawSyntaxTriviaPiece) RawSyntaxTriviaPieceSeq;
+typedef Slice(RawSyntaxSpan *) RawSyntaxChildren;
+typedef Slice(RawSyntaxTriviaPiece) RawSyntaxTriviaPieceSlice;
 
 struct RawSyntaxSpan {
   unsigned long text_length;
@@ -53,9 +53,9 @@ struct RawSyntaxToken {
 };
 
 struct RawSyntaxTrivia {
-  RawSyntaxSpan           span;
-  char                   *text;
-  RawSyntaxTriviaPieceSeq pieces;
+  RawSyntaxSpan             span;
+  char                     *text;
+  RawSyntaxTriviaPieceSlice pieces;
 };
 
 struct RawSyntaxTriviaPiece {

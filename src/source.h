@@ -9,7 +9,7 @@ typedef struct SourceLocation SourceLocation;
 typedef struct SourceRange    SourceRange;
 typedef struct Source         Source;
 
-typedef Seq(SourceRange) SourceRangeSeq;
+typedef Slice(SourceRange) SourceRangeSlice;
 
 struct SourceLocation {
   unsigned long line;
@@ -22,9 +22,9 @@ struct SourceRange {
 };
 
 struct Source {
-  Seq(char) filename;
-  Seq(char) text;
-  SourceRangeSeq lines;
+  Slice(char) filename;
+  Slice(char) text;
+  SourceRangeSlice lines;
 };
 
 Source *source_new(const char *filename, unsigned long filename_len);
