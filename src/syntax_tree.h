@@ -87,4 +87,41 @@ RawSyntaxCheckpoint raw_syntax_builder_open(RawSyntaxBuilder *self);
 void                raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyntaxCheckpoint checkpoint);
 RawSyntaxRoot      *raw_syntax_builder_finish(RawSyntaxBuilder *self);
 
+/* syntax tree */
+
+typedef struct SyntaxSpan   SyntaxSpan;
+typedef struct SyntaxNode   SyntaxNode;
+typedef struct SyntaxTree   SyntaxTree;
+typedef struct SyntaxToken  SyntaxToken;
+typedef struct SyntaxTrivia SyntaxTrivia;
+typedef struct SyntaxRoot   SyntaxRoot;
+
+struct SyntaxSpan {
+  unsigned long offset;
+};
+
+struct SyntaxNode {
+  SyntaxSpan        span;
+  const SyntaxNode *parent;
+};
+
+struct SyntaxTree {
+  SyntaxNode           node;
+  const RawSyntaxTree *raw;
+};
+
+struct SyntaxToken {
+  SyntaxNode            node;
+  const RawSyntaxToken *raw;
+};
+
+struct SyntaxTrivia {
+  SyntaxSpan             span;
+  const RawSyntaxTrivia *raw;
+};
+
+struct SyntaxRoot {
+  SyntaxNode node;
+};
+
 #endif /* MPPL_TREE_H */

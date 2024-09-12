@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef MPPL_SYNTAX_KIND_H
-#define MPPL_SYNTAX_KIND_H
+#ifndef MPPL_SYNTAX_H
+#define MPPL_SYNTAX_H
 
+#include "syntax_tree.h"
 #include "utility.h"
 
 /* mppl syntax kind */
@@ -134,5 +135,680 @@ const char    *mppl_syntax_kind_static_lexeme(MpplSyntaxKind kind);
 const char    *mppl_syntax_kind_to_string(MpplSyntaxKind kind);
 
 /* mppl syntax */
+
+typedef enum {
+  MPPL_DECL_VAR,
+  MPPL_DECL_PROC
+} MpplDeclKind;
+
+typedef enum {
+  MPPL_TYPE_INTEGER,
+  MPPL_TYPE_CHAR,
+  MPPL_TYPE_BOOLEAN,
+  MPPL_TYPE_ARRAY
+} MpplTypeKind;
+
+typedef enum {
+  MPPL_STMT_ASSIGN,
+  MPPL_STMT_IF,
+  MPPL_STMT_WHILE,
+  MPPL_STMT_BREAK,
+  MPPL_STMT_CALL,
+  MPPL_STMT_RETURN,
+  MPPL_STMT_INPUT,
+  MPPL_STMT_OUTPUT,
+  MPPL_STMT_COMP
+} MpplStmtKind;
+
+typedef enum {
+  MPPL_EXPR_ENTIRE_VAR,
+  MPPL_EXPR_INDEXED_VAR,
+  MPPL_EXPR_UNARY,
+  MPPL_EXPR_BINARY,
+  MPPL_EXPR_PAREN,
+  MPPL_EXPR_CAST
+} MpplExprKind;
+
+typedef enum {
+  MPPL_UNARY_NOT,
+  MPPL_UNARY_PLUS,
+  MPPL_UNARY_MINUS
+} MpplUnaryOpKind;
+
+typedef enum {
+  MPPL_BINARY_PLUS,
+  MPPL_BINARY_MINUS,
+  MPPL_BINARY_STAR,
+  MPPL_BINARY_DIV,
+  MPPL_BINARY_EQUAL,
+  MPPL_BINARY_NOTEQ,
+  MPPL_BINARY_LESS,
+  MPPL_BINARY_LESSEQ,
+  MPPL_BINARY_GREATER,
+  MPPL_BINARY_GREATEREQ,
+  MPPL_BINARY_AND,
+  MPPL_BINARY_OR
+} MpplBinaryOpKind;
+
+typedef struct MpplErrorToken          MpplErrorToken;
+typedef struct MpplEndOfFileToken      MpplEndOfFileToken;
+typedef struct MpplIdentToken          MpplIdentToken;
+typedef struct MpplNumberLit           MpplNumberLit;
+typedef struct MpplStringLit           MpplStringLit;
+typedef struct MpplPlusToken           MpplPlusToken;
+typedef struct MpplMinusToken          MpplMinusToken;
+typedef struct MpplStarToken           MpplStarToken;
+typedef struct MpplEqualToken          MpplEqualToken;
+typedef struct MpplNotEqToken          MpplNotEqToken;
+typedef struct MpplLessToken           MpplLessToken;
+typedef struct MpplLessEqToken         MpplLessEqToken;
+typedef struct MpplGreaterToken        MpplGreaterToken;
+typedef struct MpplGreaterEqToken      MpplGreaterEqToken;
+typedef struct MpplLParenToken         MpplLParenToken;
+typedef struct MpplRParenToken         MpplRParenToken;
+typedef struct MpplLBracketToken       MpplLBracketToken;
+typedef struct MpplRBracketToken       MpplRBracketToken;
+typedef struct MpplAssignToken         MpplAssignToken;
+typedef struct MpplDotToken            MpplDotToken;
+typedef struct MpplCommaToken          MpplCommaToken;
+typedef struct MpplColonToken          MpplColonToken;
+typedef struct MpplSemiToken           MpplSemiToken;
+typedef struct MpplProgramKw           MpplProgramKw;
+typedef struct MpplVarKw               MpplVarKw;
+typedef struct MpplArrayKw             MpplArrayKw;
+typedef struct MpplOfKw                MpplOfKw;
+typedef struct MpplBeginKw             MpplBeginKw;
+typedef struct MpplEndKw               MpplEndKw;
+typedef struct MpplIfKw                MpplIfKw;
+typedef struct MpplThenKw              MpplThenKw;
+typedef struct MpplElseKw              MpplElseKw;
+typedef struct MpplProcedureKw         MpplProcedureKw;
+typedef struct MpplReturnKw            MpplReturnKw;
+typedef struct MpplCallKw              MpplCallKw;
+typedef struct MpplWhileKw             MpplWhileKw;
+typedef struct MpplDoKw                MpplDoKw;
+typedef struct MpplNotKw               MpplNotKw;
+typedef struct MpplOrKw                MpplOrKw;
+typedef struct MpplDivKw               MpplDivKw;
+typedef struct MpplAndKw               MpplAndKw;
+typedef struct MpplCharKw              MpplCharKw;
+typedef struct MpplIntegerKw           MpplIntegerKw;
+typedef struct MpplBooleanKw           MpplBooleanKw;
+typedef struct MpplReadKw              MpplReadKw;
+typedef struct MpplWriteKw             MpplWriteKw;
+typedef struct MpplReadLnKw            MpplReadLnKw;
+typedef struct MpplWriteLnKw           MpplWriteLnKw;
+typedef struct MpplTrueKw              MpplTrueKw;
+typedef struct MpplFalseKw             MpplFalseKw;
+typedef struct MpplBreakKw             MpplBreakKw;
+typedef struct MpplSpaceTrivia         MpplSpaceTrivia;
+typedef struct MpplBracesCommentTrivia MpplBracesCommentTrivia;
+typedef struct MpplCCommentTrivia      MpplCCommentTrivia;
+
+typedef struct MpplProgram          MpplProgram;
+typedef struct MpplDeclList         MpplDeclList;
+typedef struct MpplVarDeclPart      MpplVarDeclPart;
+typedef struct MpplVarDeclListElem  MpplVarDeclListElem;
+typedef struct MpplVarDeclList      MpplVarDeclList;
+typedef struct MpplVarDecl          MpplVarDecl;
+typedef struct MpplArrayType        MpplArrayType;
+typedef struct MpplProcDecl         MpplProcDecl;
+typedef struct MpplFmlParamListElem MpplFmlParamListElem;
+typedef struct MpplFmlParamList     MpplFmlParamList;
+typedef struct MpplFmlParams        MpplFmlParams;
+typedef struct MpplFmlParamSec      MpplFmlParamSec;
+typedef struct MpplStmtListElem     MpplStmtListElem;
+typedef struct MpplStmtList         MpplStmtList;
+typedef struct MpplAssignStmt       MpplAssignStmt;
+typedef struct MpplIfStmt           MpplIfStmt;
+typedef struct MpplElseClause       MpplElseClause;
+typedef struct MpplWhileStmt        MpplWhileStmt;
+typedef struct MpplBreakStmt        MpplBreakStmt;
+typedef struct MpplCallStmt         MpplCallStmt;
+typedef struct MpplActParams        MpplActParams;
+typedef struct MpplReturnStmt       MpplReturnStmt;
+typedef struct MpplInputStmt        MpplInputStmt;
+typedef struct MpplInputs           MpplInputs;
+typedef struct MpplOutputStmt       MpplOutputStmt;
+typedef struct MpplOutputListElem   MpplOutputListElem;
+typedef struct MpplOutputList       MpplOutputList;
+typedef struct MpplOutputs          MpplOutputs;
+typedef struct MpplOutputValue      MpplOutputValue;
+typedef struct MpplCompStmt         MpplCompStmt;
+typedef struct MpplExprListElem     MpplExprListElem;
+typedef struct MpplExprList         MpplExprList;
+typedef struct MpplEntireVar        MpplEntireVar;
+typedef struct MpplIndexedVar       MpplIndexedVar;
+typedef struct MpplUnaryExpr        MpplUnaryExpr;
+typedef struct MpplBinaryExpr       MpplBinaryExpr;
+typedef struct MpplParenExpr        MpplParenExpr;
+typedef struct MpplCastExpr         MpplCastExpr;
+typedef struct MpplIdentListElem    MpplIdentListElem;
+typedef struct MpplIdentList        MpplIdentList;
+typedef struct MpplBogus            MpplBogus;
+
+typedef union AnyMpplDecl     AnyMpplDecl;
+typedef union AnyMpplType     AnyMpplType;
+typedef union AnyMpplStmt     AnyMpplStmt;
+typedef union AnyMpplExpr     AnyMpplExpr;
+typedef union AnyMpplUnaryOp  AnyMpplUnaryOp;
+typedef union AnyMpplBinaryOp AnyMpplBinaryOp;
+
+struct MpplErrorToken {
+  SyntaxToken token;
+};
+
+struct MpplEndOfFileToken {
+  SyntaxToken token;
+};
+
+struct MpplIdentToken {
+  SyntaxToken token;
+};
+
+struct MpplNumberLit {
+  SyntaxToken token;
+};
+
+struct MpplStringLit {
+  SyntaxToken token;
+};
+
+struct MpplPlusToken {
+  SyntaxToken token;
+};
+
+struct MpplMinusToken {
+  SyntaxToken token;
+};
+
+struct MpplStarToken {
+  SyntaxToken token;
+};
+
+struct MpplEqualToken {
+  SyntaxToken token;
+};
+
+struct MpplNotEqToken {
+  SyntaxToken token;
+};
+
+struct MpplLessToken {
+  SyntaxToken token;
+};
+
+struct MpplLessEqToken {
+  SyntaxToken token;
+};
+
+struct MpplGreaterToken {
+  SyntaxToken token;
+};
+
+struct MpplGreaterEqToken {
+  SyntaxToken token;
+};
+
+struct MpplLParenToken {
+  SyntaxToken token;
+};
+
+struct MpplRParenToken {
+  SyntaxToken token;
+};
+
+struct MpplLBracketToken {
+  SyntaxToken token;
+};
+
+struct MpplRBracketToken {
+  SyntaxToken token;
+};
+
+struct MpplAssignToken {
+  SyntaxToken token;
+};
+
+struct MpplDotToken {
+  SyntaxToken token;
+};
+
+struct MpplCommaToken {
+  SyntaxToken token;
+};
+
+struct MpplColonToken {
+  SyntaxToken token;
+};
+
+struct MpplSemiToken {
+  SyntaxToken token;
+};
+
+struct MpplProgramKw {
+  SyntaxToken token;
+};
+
+struct MpplVarKw {
+  SyntaxToken token;
+};
+
+struct MpplArrayKw {
+  SyntaxToken token;
+};
+
+struct MpplOfKw {
+  SyntaxToken token;
+};
+
+struct MpplBeginKw {
+  SyntaxToken token;
+};
+
+struct MpplEndKw {
+  SyntaxToken token;
+};
+
+struct MpplIfKw {
+  SyntaxToken token;
+};
+
+struct MpplThenKw {
+  SyntaxToken token;
+};
+
+struct MpplElseKw {
+  SyntaxToken token;
+};
+
+struct MpplProcedureKw {
+  SyntaxToken token;
+};
+
+struct MpplReturnKw {
+  SyntaxToken token;
+};
+
+struct MpplCallKw {
+  SyntaxToken token;
+};
+
+struct MpplWhileKw {
+  SyntaxToken token;
+};
+
+struct MpplDoKw {
+  SyntaxToken token;
+};
+
+struct MpplNotKw {
+  SyntaxToken token;
+};
+
+struct MpplOrKw {
+  SyntaxToken token;
+};
+
+struct MpplDivKw {
+  SyntaxToken token;
+};
+
+struct MpplAndKw {
+  SyntaxToken token;
+};
+
+struct MpplCharKw {
+  SyntaxToken token;
+};
+
+struct MpplIntegerKw {
+  SyntaxToken token;
+};
+
+struct MpplBooleanKw {
+  SyntaxToken token;
+};
+
+struct MpplReadKw {
+  SyntaxToken token;
+};
+
+struct MpplWriteKw {
+  SyntaxToken token;
+};
+
+struct MpplReadLnKw {
+  SyntaxToken token;
+};
+
+struct MpplWriteLnKw {
+  SyntaxToken token;
+};
+
+struct MpplTrueKw {
+  SyntaxToken token;
+};
+
+struct MpplFalseKw {
+  SyntaxToken token;
+};
+
+struct MpplBreakKw {
+  SyntaxToken token;
+};
+
+struct MpplProgram {
+  SyntaxTree      tree;
+  MpplProgramKw  *program_token;
+  MpplIdentToken *name;
+  MpplSemiToken  *semi_token;
+  MpplDeclList   *decl_list;
+  MpplCompStmt   *comp_stmt;
+  MpplDotToken   *dot_token;
+};
+
+struct MpplDeclList {
+  SyntaxTree tree;
+  Slice(AnyMpplDecl) elems;
+};
+
+struct MpplVarDeclPart {
+  SyntaxTree       tree;
+  MpplVarKw       *var_token;
+  MpplVarDeclList *var_decl_list;
+};
+
+struct MpplVarDeclListElem {
+  SyntaxTree     tree;
+  MpplVarDecl   *var_decl;
+  MpplSemiToken *semi_token;
+};
+
+struct MpplVarDeclList {
+  SyntaxTree tree;
+  Slice(MpplVarDeclListElem) elems;
+};
+
+struct MpplVarDecl {
+  SyntaxTree      tree;
+  MpplIdentList  *ident_list;
+  MpplColonToken *colon_token;
+  AnyMpplType    *type;
+};
+
+struct MpplArrayType {
+  SyntaxTree         tree;
+  MpplArrayKw       *array_token;
+  MpplLBracketToken *lbracket_token;
+  MpplNumberLit     *number_lit;
+  MpplRBracketToken *rbracket_token;
+  MpplOfKw          *of_token;
+  AnyMpplType       *type;
+};
+
+struct MpplProcDecl {
+  SyntaxTree       tree;
+  MpplProcedureKw *proc_token;
+  MpplIdentToken  *name;
+  MpplFmlParams   *fml_params;
+  MpplSemiToken   *first_semi_token;
+  MpplVarDeclPart *var_decl_part;
+  MpplCompStmt    *comp_stmt;
+  MpplSemiToken   *second_semi_token;
+};
+
+struct MpplFmlParamListElem {
+  SyntaxTree       tree;
+  MpplFmlParamSec *fml_param_sec;
+  MpplSemiToken   *semi_token;
+};
+
+struct MpplFmlParamList {
+  SyntaxTree tree;
+  Slice(MpplFmlParamListElem) elems;
+};
+
+struct MpplFmlParams {
+  SyntaxTree        tree;
+  MpplLParenToken  *lparen_token;
+  MpplFmlParamList *fml_param_list;
+  MpplRParenToken  *rparen_token;
+};
+
+struct MpplFmlParamSec {
+  SyntaxTree      tree;
+  MpplIdentList  *ident_list;
+  MpplColonToken *colon_token;
+  AnyMpplType    *type;
+};
+
+struct MpplStmtListElem {
+  SyntaxTree     tree;
+  AnyMpplStmt   *stmt;
+  MpplSemiToken *semi_token;
+};
+
+struct MpplStmtList {
+  SyntaxTree tree;
+  Slice(MpplStmtListElem) elems;
+};
+
+struct MpplAssignStmt {
+  SyntaxTree       tree;
+  AnyMpplExpr     *lhs;
+  MpplAssignToken *assign_token;
+  AnyMpplExpr     *rhs;
+};
+
+struct MpplIfStmt {
+  SyntaxTree      tree;
+  MpplIfKw       *if_token;
+  AnyMpplExpr    *cond;
+  MpplThenKw     *then_token;
+  AnyMpplStmt    *then_stmt;
+  MpplElseClause *else_clause;
+};
+
+struct MpplElseClause {
+  SyntaxTree   tree;
+  MpplElseKw  *else_token;
+  AnyMpplStmt *stmt;
+};
+
+struct MpplWhileStmt {
+  SyntaxTree   tree;
+  MpplWhileKw *while_token;
+  AnyMpplExpr *cond;
+  MpplDoKw    *do_token;
+  AnyMpplStmt *stmt;
+};
+
+struct MpplBreakStmt {
+  SyntaxTree   tree;
+  MpplBreakKw *break_token;
+};
+
+struct MpplCallStmt {
+  SyntaxTree      tree;
+  MpplCallKw     *call_token;
+  MpplIdentToken *name;
+  MpplActParams  *act_params;
+};
+
+struct MpplActParams {
+  SyntaxTree       tree;
+  MpplLParenToken *lparen_token;
+  MpplExprList    *expr_list;
+  MpplRParenToken *rparen_token;
+};
+
+struct MpplReturnStmt {
+  SyntaxTree    tree;
+  MpplReturnKw *return_token;
+};
+
+struct MpplInputStmt {
+  SyntaxTree  tree;
+  MpplReadKw *read_token;
+  MpplInputs *inputs;
+};
+
+struct MpplInputs {
+  SyntaxTree       tree;
+  MpplLParenToken *lparen_token;
+  MpplExprList    *expr_list;
+  MpplRParenToken *rparen_token;
+};
+
+struct MpplOutputStmt {
+  SyntaxTree   tree;
+  MpplWriteKw *write_token;
+  MpplOutputs *outputs;
+};
+
+struct MpplOutputListElem {
+  SyntaxTree       tree;
+  MpplOutputValue *output_value;
+  MpplCommaToken  *comma_token;
+};
+
+struct MpplOutputList {
+  SyntaxTree tree;
+  Slice(MpplOutputListElem) elems;
+};
+
+struct MpplOutputs {
+  SyntaxTree       tree;
+  MpplLParenToken *lparen_token;
+  MpplOutputList  *output_list;
+  MpplRParenToken *rparen_token;
+};
+
+struct MpplOutputValue {
+  SyntaxTree      tree;
+  AnyMpplExpr    *expr;
+  MpplColonToken *colon_token;
+  MpplNumberLit  *number_lit;
+};
+
+struct MpplCompStmt {
+  SyntaxTree    tree;
+  MpplBeginKw  *begin_token;
+  MpplStmtList *stmt_list;
+  MpplEndKw    *end_token;
+};
+
+struct MpplExprListElem {
+  SyntaxTree      tree;
+  AnyMpplExpr    *expr;
+  MpplCommaToken *comma_token;
+};
+
+struct MpplExprList {
+  SyntaxTree tree;
+  Slice(MpplExprListElem) elems;
+};
+
+struct MpplEntireVar {
+  SyntaxTree      tree;
+  MpplIdentToken *name;
+};
+
+struct MpplIndexedVar {
+  SyntaxTree         tree;
+  MpplIdentToken    *name;
+  MpplLBracketToken *lbracket_token;
+  AnyMpplExpr       *index;
+  MpplRBracketToken *rbracket_token;
+};
+
+struct MpplUnaryExpr {
+  SyntaxTree      tree;
+  AnyMpplUnaryOp *op;
+  AnyMpplExpr    *expr;
+};
+
+struct MpplBinaryExpr {
+  SyntaxTree       tree;
+  AnyMpplExpr     *lhs;
+  AnyMpplBinaryOp *op;
+  AnyMpplExpr     *rhs;
+};
+
+struct MpplParenExpr {
+  SyntaxTree       tree;
+  MpplLParenToken *lparen_token;
+  AnyMpplExpr     *expr;
+  MpplRParenToken *rparen_token;
+};
+
+struct MpplCastExpr {
+  SyntaxTree       tree;
+  AnyMpplType     *type;
+  MpplLParenToken *lparen_token;
+  AnyMpplExpr     *expr;
+  MpplRParenToken *rparen_token;
+};
+
+struct MpplIdentListElem {
+  SyntaxTree      tree;
+  MpplIdentToken *ident;
+  MpplCommaToken *comma_token;
+};
+
+struct MpplIdentList {
+  SyntaxTree tree;
+  Slice(MpplIdentListElem) elems;
+};
+
+struct MpplBogus {
+  SyntaxTree tree;
+  Slice(MpplErrorToken) elems;
+};
+
+union AnyMpplDecl {
+  SyntaxNode   node;
+  MpplVarDecl  var_decl;
+  MpplProcDecl proc_decl;
+};
+
+union AnyMpplType {
+  SyntaxNode    node;
+  MpplArrayType array_type;
+  MpplIntegerKw integer_kw;
+  MpplBooleanKw boolean_kw;
+  MpplCharKw    char_kw;
+};
+
+union AnyMpplStmt {
+  SyntaxNode     node;
+  MpplAssignStmt assign_stmt;
+  MpplIfStmt     if_stmt;
+  MpplWhileStmt  while_stmt;
+  MpplBreakStmt  break_stmt;
+  MpplCallStmt   call_stmt;
+  MpplReturnStmt return_stmt;
+  MpplInputStmt  input_stmt;
+  MpplOutputStmt output_stmt;
+  MpplCompStmt   comp_stmt;
+};
+
+union AnyMpplExpr {
+  SyntaxNode     node;
+  MpplEntireVar  entire_var;
+  MpplIndexedVar indexed_var;
+  MpplUnaryExpr  unary_expr;
+  MpplBinaryExpr binary_expr;
+  MpplParenExpr  paren_expr;
+  MpplCastExpr   cast_expr;
+};
+
+union AnyMpplUnaryOp {
+  SyntaxNode     node;
+  MpplNotKw      not_kw;
+  MpplPlusToken  plus_token;
+  MpplMinusToken minus_token;
+};
 
 #endif
