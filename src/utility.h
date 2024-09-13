@@ -13,12 +13,6 @@
 void *xmalloc(unsigned long size);
 char *strndup(const char *src, unsigned long length);
 
-unsigned long splice(
-  void *dest, unsigned long dest_count,
-  const void *src1, unsigned long src1_count,
-  unsigned long size, unsigned long offset, unsigned long span,
-  const void *src2, unsigned long src2_count);
-
 unsigned long popcount(const void *data, unsigned long size);
 
 /* Hash */
@@ -29,7 +23,7 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
 
 /* BitSet */
 
-#define BITSET(bits)                                      \
+#define BitSet(bits)                                      \
   struct {                                                \
     unsigned char data[(bits + CHAR_BIT - 1) / CHAR_BIT]; \
   }

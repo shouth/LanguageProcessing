@@ -31,54 +31,6 @@ char *strndup(const char *src, unsigned long length)
   }
 }
 
-unsigned long splice(
-  void *dest, unsigned long dest_count,
-  const void *src1, unsigned long src1_count,
-  unsigned long size, unsigned long offset, unsigned long span,
-  const void *src2, unsigned long src2_count)
-{
-  unsigned long result_count = src1_count + src2_count - span;
-  if (result_count > dest_count) {
-    result_count = dest_count;
-  }
-
-  if (src1) {
-    memcpy(dest, src1, offset * size);
-  }
-
-  if (offset + src2_count < dest_count) {
-    unsigned long remain = dest_count - (offset + src2_count);
-    unsigned long count  = src1_count - (offset + span);
-    if (count > remain) {
-      count = remain;
-    }
-
-    if (count > 0) {
-      if (src1) {
-        memcpy((char *) dest + (offset + src2_count) * size, (char *) src1 + (offset + span) * size, count * size);
-      } else {
-        memmove((char *) dest + (offset + src2_count) * size, (char *) dest + (offset + span) * size, count * size);
-      }
-    }
-  }
-
-  {
-    unsigned long remain = dest_count - offset;
-    unsigned long count  = src2_count;
-    if (count > remain) {
-      count = remain;
-    }
-
-    if (count > 0) {
-      if (src2) {
-        memcpy((char *) dest + offset * size, (char *) src2, count * size);
-      }
-    }
-  }
-
-  return result_count;
-}
-
 unsigned long popcount(const void *data, unsigned long count)
 {
 #define B2(n) n, n + 1, n + 1, n + 2

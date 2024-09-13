@@ -128,7 +128,7 @@ typedef enum {
 
 #define SENTINEL_MPPL_SYNTAX MPPL_SYNTAX_BOGUS
 
-typedef BITSET(SENTINEL_MPPL_SYNTAX) MpplSyntaxKindSet;
+typedef BitSet(SENTINEL_MPPL_SYNTAX) MpplSyntaxKindSet;
 
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size);
 const char    *mppl_syntax_kind_static_lexeme(MpplSyntaxKind kind);
