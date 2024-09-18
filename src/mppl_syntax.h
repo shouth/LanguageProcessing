@@ -287,12 +287,12 @@ typedef struct MpplIdentListElem    MpplIdentListElem;
 typedef struct MpplIdentList        MpplIdentList;
 typedef struct MpplBogus            MpplBogus;
 
-typedef union AnyMpplDecl     AnyMpplDecl;
-typedef union AnyMpplType     AnyMpplType;
-typedef union AnyMpplStmt     AnyMpplStmt;
-typedef union AnyMpplExpr     AnyMpplExpr;
-typedef union AnyMpplUnaryOp  AnyMpplUnaryOp;
-typedef union AnyMpplBinaryOp AnyMpplBinaryOp;
+typedef struct AnyMpplDecl     AnyMpplDecl;
+typedef struct AnyMpplType     AnyMpplType;
+typedef struct AnyMpplStmt     AnyMpplStmt;
+typedef struct AnyMpplExpr     AnyMpplExpr;
+typedef struct AnyMpplUnaryOp  AnyMpplUnaryOp;
+typedef struct AnyMpplBinaryOp AnyMpplBinaryOp;
 
 struct MpplErrorToken {
   SyntaxToken token;
@@ -510,7 +510,7 @@ struct MpplProgram {
 
 struct MpplDeclList {
   SyntaxTree tree;
-  Slice(AnyMpplDecl) elems;
+  Slice(AnyMpplDecl *) elems;
 };
 
 struct MpplVarDeclPart {
@@ -527,7 +527,7 @@ struct MpplVarDeclListElem {
 
 struct MpplVarDeclList {
   SyntaxTree tree;
-  Slice(MpplVarDeclListElem) elems;
+  Slice(MpplVarDeclListElem *) elems;
 };
 
 struct MpplVarDecl {
@@ -566,7 +566,7 @@ struct MpplFmlParamListElem {
 
 struct MpplFmlParamList {
   SyntaxTree tree;
-  Slice(MpplFmlParamListElem) elems;
+  Slice(MpplFmlParamListElem *) elems;
 };
 
 struct MpplFmlParams {
@@ -591,7 +591,7 @@ struct MpplStmtListElem {
 
 struct MpplStmtList {
   SyntaxTree tree;
-  Slice(MpplStmtListElem) elems;
+  Slice(MpplStmtListElem *) elems;
 };
 
 struct MpplAssignStmt {
@@ -675,7 +675,7 @@ struct MpplOutputListElem {
 
 struct MpplOutputList {
   SyntaxTree tree;
-  Slice(MpplOutputListElem) elems;
+  Slice(MpplOutputListElem *) elems;
 };
 
 struct MpplOutputs {
@@ -707,7 +707,7 @@ struct MpplExprListElem {
 
 struct MpplExprList {
   SyntaxTree tree;
-  Slice(MpplExprListElem) elems;
+  Slice(MpplExprListElem *) elems;
 };
 
 struct MpplEntireVar {
@@ -759,56 +759,36 @@ struct MpplIdentListElem {
 
 struct MpplIdentList {
   SyntaxTree tree;
-  Slice(MpplIdentListElem) elems;
+  Slice(MpplIdentListElem *) elems;
 };
 
 struct MpplBogus {
   SyntaxTree tree;
-  Slice(MpplErrorToken) elems;
+  Slice(MpplErrorToken *) elems;
 };
 
-union AnyMpplDecl {
-  SyntaxNode   node;
-  MpplVarDecl  var_decl;
-  MpplProcDecl proc_decl;
+struct AnyMpplDecl {
+  SyntaxNode node;
 };
 
-union AnyMpplType {
-  SyntaxNode    node;
-  MpplArrayType array_type;
-  MpplIntegerKw integer_kw;
-  MpplBooleanKw boolean_kw;
-  MpplCharKw    char_kw;
+struct AnyMpplType {
+  SyntaxNode node;
 };
 
-union AnyMpplStmt {
-  SyntaxNode     node;
-  MpplAssignStmt assign_stmt;
-  MpplIfStmt     if_stmt;
-  MpplWhileStmt  while_stmt;
-  MpplBreakStmt  break_stmt;
-  MpplCallStmt   call_stmt;
-  MpplReturnStmt return_stmt;
-  MpplInputStmt  input_stmt;
-  MpplOutputStmt output_stmt;
-  MpplCompStmt   comp_stmt;
+struct AnyMpplStmt {
+  SyntaxNode node;
 };
 
-union AnyMpplExpr {
-  SyntaxNode     node;
-  MpplEntireVar  entire_var;
-  MpplIndexedVar indexed_var;
-  MpplUnaryExpr  unary_expr;
-  MpplBinaryExpr binary_expr;
-  MpplParenExpr  paren_expr;
-  MpplCastExpr   cast_expr;
+struct AnyMpplExpr {
+  SyntaxNode node;
 };
 
-union AnyMpplUnaryOp {
-  SyntaxNode     node;
-  MpplNotKw      not_kw;
-  MpplPlusToken  plus_token;
-  MpplMinusToken minus_token;
+struct AnyMpplUnaryOp {
+  SyntaxNode node;
+};
+
+struct AnyMpplBinaryOp {
+  SyntaxNode node;
 };
 
 #endif
