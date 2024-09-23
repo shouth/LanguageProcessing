@@ -45,7 +45,7 @@ static int run_compiler(void)
 
     parse_result = mppl_parse(source->text.ptr, source->text.count);
     if (dump_syntax) {
-      raw_syntax_root_print(parse_result.root, stdout, &mppl_syntax_kind_print);
+      syntax_root_print(parse_result.root, stdout, &mppl_syntax_kind_print);
     }
 
     for (j = 0; j < parse_result.diag_count; ++j) {
@@ -57,7 +57,7 @@ static int run_compiler(void)
     free(parse_result.diags);
 
     source_free(source);
-    raw_syntax_root_free(parse_result.root);
+    syntax_root_free(parse_result.root);
   }
   return result;
 }

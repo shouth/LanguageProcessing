@@ -21,9 +21,9 @@ MpplLexResult mppl_lex(const char *text, unsigned long length);
 typedef struct MpplParseResult MpplParseResult;
 
 struct MpplParseResult {
-  RawSyntaxRoot *root;
-  Diag         **diags;
-  unsigned long  diag_count;
+  SyntaxRoot   *root;
+  Diag        **diags;
+  unsigned long diag_count;
 };
 
 MpplParseResult mppl_parse(const char *text, unsigned long length);

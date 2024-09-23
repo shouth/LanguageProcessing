@@ -12,7 +12,8 @@
 typedef enum {
   RAW_SYNTAX_EMPTY,
   RAW_SYNTAX_TOKEN,
-  RAW_SYNTAX_TREE
+  RAW_SYNTAX_TREE,
+  RAW_SYNTAX_ROOT
 } RawSyntaxNodeKind;
 
 typedef struct RawSyntaxSpan        RawSyntaxSpan;
@@ -31,15 +32,15 @@ struct RawSyntaxSpan {
   unsigned long text_length;
 };
 
-struct RawSyntaxRoot {
-  RawSyntaxSpan     span;
-  RawSyntaxChildren children;
-};
-
 struct RawSyntaxNode {
   RawSyntaxSpan     span;
   RawSyntaxKind     kind;
   RawSyntaxNodeKind node_kind;
+};
+
+struct RawSyntaxRoot {
+  RawSyntaxNode     node;
+  RawSyntaxChildren children;
 };
 
 struct RawSyntaxTree {
@@ -65,28 +66,6 @@ struct RawSyntaxTriviaPiece {
 
 typedef void RawSyntaxKindPrinter(RawSyntaxKind kind, FILE *file);
 
-void                   raw_syntax_root_print(const RawSyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
-void                   raw_syntax_root_free(RawSyntaxRoot *syntax);
-const RawSyntaxNode   *raw_syntax_root_node(const RawSyntaxRoot *syntax, unsigned long index);
-const RawSyntaxTrivia *raw_syntax_root_trivia(const RawSyntaxRoot *syntax, unsigned long index);
-
-const RawSyntaxNode   *raw_syntax_tree_node(const RawSyntaxTree *syntax, unsigned long index);
-const RawSyntaxTrivia *raw_syntax_tree_trivia(const RawSyntaxTree *syntax, unsigned long index);
-
-/* raw syntax tree builder */
-
-typedef struct RawSyntaxBuilder RawSyntaxBuilder;
-typedef unsigned long           RawSyntaxCheckpoint;
-
-RawSyntaxBuilder   *raw_syntax_builder_new(void);
-void                raw_syntax_builder_free(RawSyntaxBuilder *self);
-void                raw_syntax_builder_empty(RawSyntaxBuilder *self);
-void                raw_syntax_builder_trivia(RawSyntaxBuilder *self, const char *text, RawSyntaxTriviaPiece *pieces, unsigned long piece_count);
-void                raw_syntax_builder_token(RawSyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length);
-RawSyntaxCheckpoint raw_syntax_builder_open(RawSyntaxBuilder *self);
-void                raw_syntax_builder_close(RawSyntaxBuilder *self, RawSyntaxKind kind, RawSyntaxCheckpoint checkpoint);
-RawSyntaxRoot      *raw_syntax_builder_finish(RawSyntaxBuilder *self);
-
 /* syntax tree */
 
 typedef struct SyntaxSpan   SyntaxSpan;
@@ -98,6 +77,7 @@ typedef struct SyntaxRoot   SyntaxRoot;
 
 struct SyntaxSpan {
   unsigned long offset;
+  unsigned long ref;
 };
 
 struct SyntaxNode {
@@ -105,14 +85,19 @@ struct SyntaxNode {
   const SyntaxNode *parent;
 };
 
+struct SyntaxToken {
+  SyntaxNode            node;
+  const RawSyntaxToken *raw;
+};
+
 struct SyntaxTree {
   SyntaxNode           node;
   const RawSyntaxTree *raw;
 };
 
-struct SyntaxToken {
-  SyntaxNode            node;
-  const RawSyntaxToken *raw;
+struct SyntaxRoot {
+  SyntaxNode     node;
+  RawSyntaxRoot *raw;
 };
 
 struct SyntaxTrivia {
@@ -120,8 +105,35 @@ struct SyntaxTrivia {
   const RawSyntaxTrivia *raw;
 };
 
-struct SyntaxRoot {
-  SyntaxNode node;
-};
+void syntax_root_free(SyntaxRoot *self);
+void syntax_tree_free(SyntaxTree *self);
+void syntax_token_free(SyntaxToken *self);
+
+void syntax_root_print(const SyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
+void syntax_tree_print(const SyntaxTree *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
+void syntax_token_print(const SyntaxToken *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
+
+SyntaxTree  *syntax_root_child_tree(const SyntaxRoot *self, unsigned long index);
+SyntaxToken *syntax_root_child_token(const SyntaxRoot *self, unsigned long index);
+
+SyntaxTree  *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index);
+SyntaxToken *syntax_tree_child_token(const SyntaxTree *self, unsigned long index);
+
+SyntaxTrivia *syntax_node_leading_trivia(const SyntaxNode *self);
+SyntaxTrivia *syntax_node_trailing_trivia(const SyntaxNode *self);
+
+/* syntax tree builder */
+
+typedef struct SyntaxBuilder SyntaxBuilder;
+typedef unsigned long        SyntaxCheckpoint;
+
+SyntaxBuilder   *syntax_builder_new(void);
+void             syntax_builder_free(SyntaxBuilder *self);
+void             syntax_builder_empty(SyntaxBuilder *self);
+void             syntax_builder_trivia(SyntaxBuilder *self, const char *text, RawSyntaxTriviaPiece *pieces, unsigned long piece_count);
+void             syntax_builder_token(SyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length);
+SyntaxCheckpoint syntax_builder_open(SyntaxBuilder *self);
+void             syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpoint checkpoint);
+SyntaxRoot      *syntax_builder_finish(SyntaxBuilder *self);
 
 #endif /* MPPL_TREE_H */

@@ -10,8 +10,8 @@
 #include "syntax_tree.h"
 #include "utility.h"
 
-typedef RawSyntaxCheckpoint Checkpoint;
-typedef struct Parser       Parser;
+typedef SyntaxCheckpoint Checkpoint;
+typedef struct Parser    Parser;
 
 struct Parser {
   const char    *text;
@@ -20,7 +20,7 @@ struct Parser {
   MpplSyntaxKind kind;
   unsigned long  span;
 
-  RawSyntaxBuilder *builder;
+  SyntaxBuilder    *builder;
   MpplSyntaxKindSet expected;
   Vec(Diag *) diags;
   unsigned long breakable;
@@ -92,7 +92,7 @@ static void next_nontrivia(Parser *p)
     piece.span.text_length = p->span;
     vec_push(&trivia_pieces, &piece, 1);
   }
-  raw_syntax_builder_trivia(p->builder, p->text + trivia_offset, trivia_pieces.ptr, trivia_pieces.count);
+  syntax_builder_trivia(p->builder, p->text + trivia_offset, trivia_pieces.ptr, trivia_pieces.count);
   vec_free(&trivia_pieces);
 }
 
@@ -103,12 +103,12 @@ static int is_eof(Parser *p)
 
 static void null(Parser *p)
 {
-  raw_syntax_builder_empty(p->builder);
+  syntax_builder_empty(p->builder);
 }
 
 static void bump(Parser *p)
 {
-  raw_syntax_builder_token(p->builder, p->kind, p->text + p->offset, p->span);
+  syntax_builder_token(p->builder, p->kind, p->text + p->offset, p->span);
   bitset_clear(&p->expected);
   next_nontrivia(p);
 }
@@ -180,12 +180,12 @@ static int expect(Parser *p, MpplSyntaxKind kind)
 
 static Checkpoint open(Parser *p)
 {
-  return raw_syntax_builder_open(p->builder);
+  return syntax_builder_open(p->builder);
 }
 
 static void close(Parser *p, MpplSyntaxKind kind, Checkpoint checkpoint)
 {
-  raw_syntax_builder_close(p->builder, kind, checkpoint);
+  syntax_builder_close(p->builder, kind, checkpoint);
 }
 
 static void parse_bogus(Parser *p, const MpplSyntaxKindSet *kinds)
@@ -865,7 +865,7 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
   p.kind   = MPPL_SYNTAX_ERROR; /* dummy */
   p.span   = 0; /* dummy */
 
-  p.builder = raw_syntax_builder_new();
+  p.builder = syntax_builder_new();
   bitset_clear(&p.expected);
   vec_alloc(&p.diags, 0);
   p.breakable = 0;
@@ -879,7 +879,7 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
     parse_bogus(&p, NULL);
   }
 
-  result.root       = raw_syntax_builder_finish(p.builder);
+  result.root       = syntax_builder_finish(p.builder);
   result.diag_count = p.diags.count;
   result.diags      = p.diags.ptr;
 
