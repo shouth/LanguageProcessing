@@ -31,14 +31,10 @@ static void free_node(RawSyntaxNode *node)
     free(token->text);
     break;
   }
+  case RAW_SYNTAX_ROOT:
   case RAW_SYNTAX_TREE: {
     RawSyntaxTree *tree = (RawSyntaxTree *) node;
     free_spans(tree->children.ptr, tree->children.count);
-    break;
-  }
-  case RAW_SYNTAX_ROOT: {
-    RawSyntaxRoot *root = (RawSyntaxRoot *) node;
-    free_spans(root->children.ptr, root->children.count);
     break;
   }
   case RAW_SYNTAX_EMPTY:
@@ -72,17 +68,12 @@ static void syntax_node_free(SyntaxNode *self)
       /* reference count is zero, free memory */
       if (!self->parent) {
         /* root node, free raw syntax */
-        RawSyntaxRoot *root = ((SyntaxRoot *) self)->raw;
+        const RawSyntaxTree *root = ((SyntaxTree *) self)->raw;
         free_node((RawSyntaxNode *) root);
       }
       free(self);
     }
   }
-}
-
-void syntax_root_free(SyntaxRoot *self)
-{
-  syntax_node_free((SyntaxNode *) self);
 }
 
 void syntax_tree_free(SyntaxTree *self)
@@ -227,7 +218,7 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
     break;
   }
   case RAW_SYNTAX_ROOT: {
-    RawSyntaxRoot *root = (RawSyntaxRoot *) node;
+    RawSyntaxTree *root = (RawSyntaxTree *) node;
 
     print_spans(file, root->children.ptr, root->children.count, offset, depth, kind_printer);
     break;
@@ -282,11 +273,6 @@ static void print_spans(FILE *file, RawSyntaxSpan **spans, unsigned long span_co
     }
     offset += spans[i]->text_length;
   }
-}
-
-void syntax_root_print(const SyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer)
-{
-  print_node(file, (RawSyntaxNode *) syntax->raw, syntax->node.span.offset, 0, kind_printer);
 }
 
 void syntax_tree_print(const SyntaxTree *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer)
@@ -431,15 +417,14 @@ void syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpo
   push_span(self, (RawSyntaxSpan *) tree);
 }
 
-SyntaxRoot *syntax_builder_finish(SyntaxBuilder *self)
+SyntaxTree *syntax_builder_finish(SyntaxBuilder *self)
 {
-  SyntaxRoot *root = xmalloc(sizeof(SyntaxRoot));
+  SyntaxTree    *root = xmalloc(sizeof(SyntaxTree));
+  RawSyntaxTree *raw  = xmalloc(sizeof(RawSyntaxTree));
 
   root->node.parent      = NULL;
   root->node.span.offset = 0;
   root->node.span.ref    = 1;
-
-  root->raw = xmalloc(sizeof(RawSyntaxRoot));
 
   assert(self->spans.count % 2 == 1);
 
@@ -448,13 +433,15 @@ SyntaxRoot *syntax_builder_finish(SyntaxBuilder *self)
     push_empty(self);
   }
 
-  slice_alloc(&root->raw->children, self->spans.count);
-  memcpy(root->raw->children.ptr, self->spans.ptr, sizeof(RawSyntaxSpan *) * root->raw->children.count);
-  vec_pop(&self->spans, root->raw->children.count);
+  slice_alloc(&raw->children, self->spans.count);
+  memcpy(raw->children.ptr, self->spans.ptr, sizeof(RawSyntaxSpan *) * raw->children.count);
+  vec_pop(&self->spans, raw->children.count);
 
-  root->raw->node.span.text_length = syntax_span_sum(root->raw->children.ptr, root->raw->children.count);
-  root->raw->node.kind             = -1;
-  root->raw->node.node_kind        = RAW_SYNTAX_ROOT;
+  raw->node.span.text_length = syntax_span_sum(raw->children.ptr, raw->children.count);
+  raw->node.kind             = -1;
+  raw->node.node_kind        = RAW_SYNTAX_ROOT;
+
+  root->raw = raw;
 
   syntax_builder_free(self);
 

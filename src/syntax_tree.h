@@ -17,7 +17,6 @@ typedef enum {
 } RawSyntaxNodeKind;
 
 typedef struct RawSyntaxSpan        RawSyntaxSpan;
-typedef struct RawSyntaxRoot        RawSyntaxRoot;
 typedef struct RawSyntaxNode        RawSyntaxNode;
 typedef struct RawSyntaxTree        RawSyntaxTree;
 typedef struct RawSyntaxToken       RawSyntaxToken;
@@ -36,11 +35,6 @@ struct RawSyntaxNode {
   RawSyntaxSpan     span;
   RawSyntaxKind     kind;
   RawSyntaxNodeKind node_kind;
-};
-
-struct RawSyntaxRoot {
-  RawSyntaxNode     node;
-  RawSyntaxChildren children;
 };
 
 struct RawSyntaxTree {
@@ -73,7 +67,6 @@ typedef struct SyntaxNode   SyntaxNode;
 typedef struct SyntaxTree   SyntaxTree;
 typedef struct SyntaxToken  SyntaxToken;
 typedef struct SyntaxTrivia SyntaxTrivia;
-typedef struct SyntaxRoot   SyntaxRoot;
 
 struct SyntaxSpan {
   unsigned long offset;
@@ -95,26 +88,16 @@ struct SyntaxTree {
   const RawSyntaxTree *raw;
 };
 
-struct SyntaxRoot {
-  SyntaxNode     node;
-  RawSyntaxRoot *raw;
-};
-
 struct SyntaxTrivia {
   SyntaxSpan             span;
   const RawSyntaxTrivia *raw;
 };
 
-void syntax_root_free(SyntaxRoot *self);
 void syntax_tree_free(SyntaxTree *self);
 void syntax_token_free(SyntaxToken *self);
 
-void syntax_root_print(const SyntaxRoot *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
 void syntax_tree_print(const SyntaxTree *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
 void syntax_token_print(const SyntaxToken *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
-
-SyntaxTree  *syntax_root_child_tree(const SyntaxRoot *self, unsigned long index);
-SyntaxToken *syntax_root_child_token(const SyntaxRoot *self, unsigned long index);
 
 SyntaxTree  *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index);
 SyntaxToken *syntax_tree_child_token(const SyntaxTree *self, unsigned long index);
@@ -134,6 +117,6 @@ void             syntax_builder_trivia(SyntaxBuilder *self, const char *text, Ra
 void             syntax_builder_token(SyntaxBuilder *self, RawSyntaxKind kind, const char *text, unsigned long text_length);
 SyntaxCheckpoint syntax_builder_open(SyntaxBuilder *self);
 void             syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpoint checkpoint);
-SyntaxRoot      *syntax_builder_finish(SyntaxBuilder *self);
+SyntaxTree      *syntax_builder_finish(SyntaxBuilder *self);
 
 #endif /* MPPL_TREE_H */
