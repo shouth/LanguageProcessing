@@ -2,11 +2,11 @@
 
 #include <string.h>
 
-#include "diagnostics.h"
+#include "diag.h"
 #include "mppl_syntax.h"
 #include "report.h"
 #include "stdio.h"
-#include "utility.h"
+#include "util.h"
 
 typedef Report *(DiagToReport) (const Diag *diag);
 typedef void(DiagFree)(Diag *diag);

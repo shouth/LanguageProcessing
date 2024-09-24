@@ -4,7 +4,7 @@
 
 #include "mppl_passes.h"
 #include "mppl_syntax.h"
-#include "utility.h"
+#include "util.h"
 
 typedef struct Lexer Lexer;
 

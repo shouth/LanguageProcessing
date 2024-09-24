@@ -8,7 +8,7 @@
 
 #include "report.h"
 #include "term.h"
-#include "utility.h"
+#include "util.h"
 
 /* Report */
 

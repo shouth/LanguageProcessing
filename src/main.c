@@ -10,7 +10,7 @@
 #include "report.h"
 #include "source.h"
 #include "syntax_tree.h"
-#include "utility.h"
+#include "util.h"
 
 const char *program;
 

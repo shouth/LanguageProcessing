@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef TERMINAL_H
-#define TERMINAL_H
+#ifndef TERM_H
+#define TERM_H
 
 #include <stdio.h>
 
-#include "utility.h"
+#include "util.h"
 
 /* TermStyle */
 
@@ -70,4 +70,4 @@ unsigned long term_buf_column(const TermBuf *canvas);
 void          term_buf_seek(TermBuf *canvas, unsigned long line, unsigned long column);
 void          term_buf_print(TermBuf *canvas, FILE *stream);
 
-#endif
+#endif /* TERM_H */

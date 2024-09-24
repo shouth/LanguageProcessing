@@ -8,7 +8,7 @@
 
 #include "syntax_tree.h"
 #include "term.h"
-#include "utility.h"
+#include "util.h"
 
 /* syntax tree */
 

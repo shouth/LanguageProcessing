@@ -3,7 +3,7 @@
 #ifndef SOURCE_H
 #define SOURCE_H
 
-#include "utility.h"
+#include "util.h"
 
 typedef struct SourceLocation SourceLocation;
 typedef struct SourceRange    SourceRange;
@@ -31,4 +31,4 @@ Source *source_new(const char *filename, unsigned long filename_len);
 void    source_free(Source *source);
 int     source_location(const Source *source, unsigned long offset, SourceLocation *location);
 
-#endif
+#endif /* SOURCE_H */

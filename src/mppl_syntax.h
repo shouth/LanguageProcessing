@@ -4,7 +4,7 @@
 #define MPPL_SYNTAX_H
 
 #include "syntax_tree.h"
-#include "utility.h"
+#include "util.h"
 
 /* mppl syntax kind */
 
@@ -792,4 +792,4 @@ struct AnyMpplBinaryOp {
   SyntaxNode node;
 };
 
-#endif
+#endif /* MPPL_SYNTAX_H */

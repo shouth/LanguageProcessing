@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef MPPL_TREE_H
-#define MPPL_TREE_H
+#ifndef SYNTAX_TREE_H
+#define SYNTAX_TREE_H
 
 #include <stdio.h>
 
-#include "utility.h"
+#include "util.h"
 
 #define SYNTAX_TOKEN 0u
 #define SYNTAX_TREE  1u
@@ -121,4 +121,4 @@ SyntaxCheckpoint syntax_builder_open(SyntaxBuilder *self);
 void             syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpoint checkpoint);
 SyntaxTree      *syntax_builder_finish(SyntaxBuilder *self);
 
-#endif /* MPPL_TREE_H */
+#endif /* SYNTAX_TREE_H */

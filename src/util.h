@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef UTILITY_H
-#define UTILITY_H
+#ifndef UTIL_H
+#define UTIL_H
 
 #include <limits.h>
 #include <stdio.h>
@@ -325,4 +325,4 @@ long utf8_len(const char *str, long len);
     exit(EXIT_FAILURE);                                                                          \
   } while (0)
 
-#endif
+#endif /* UTIL_H */

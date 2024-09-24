@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef COMPILER_H
-#define COMPILER_H
+#ifndef MPPL_PASSES_H
+#define MPPL_PASSES_H
 
-#include "diagnostics.h"
+#include "diag.h"
 #include "mppl_syntax.h"
 #include "syntax_tree.h"
-#include "utility.h"
+#include "util.h"
 
 typedef struct MpplLexResult MpplLexResult;
 
@@ -28,4 +28,4 @@ struct MpplParseResult {
 
 MpplParseResult mppl_parse(const char *text, unsigned long length);
 
-#endif
+#endif /* MPPL_PASSES_H */

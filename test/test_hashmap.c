@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "utility.h"
+#include "util.h"
 
 unsigned long int_hash(const void *key)
 {

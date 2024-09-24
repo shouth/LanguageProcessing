@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef MESSAGE_H
-#define MESSAGE_H
+#ifndef REPORT_H
+#define REPORT_H
 
 #include <stdarg.h>
 
@@ -25,4 +25,4 @@ void    report_note(Report *report, const char *format, ...);
 void    report_note_with_args(Report *report, const char *format, va_list args);
 void    report_emit(Report *report, const Source *source);
 
-#endif
+#endif /* REPORT_H */

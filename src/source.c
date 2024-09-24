@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "source.h"
-#include "utility.h"
+#include "util.h"
 
 Source *source_new(const char *filename, unsigned long filename_len)
 {

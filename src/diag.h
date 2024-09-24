@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef DIAGNOSTICS_H
-#define DIAGNOSTICS_H
+#ifndef DIAG_H
+#define DIAG_H
 
 #include "mppl_syntax.h"
 #include "report.h"
