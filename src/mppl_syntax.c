@@ -311,5 +311,7 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "IDENT_LIST";
   case MPPL_SYNTAX_BOGUS:
     return "BOGUS";
+  default:
+    unreachable();
   }
 }

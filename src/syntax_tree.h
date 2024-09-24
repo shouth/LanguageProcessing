@@ -17,6 +17,7 @@ typedef enum {
 } RawSyntaxNodeKind;
 
 typedef struct RawSyntaxSpan        RawSyntaxSpan;
+typedef struct RawSyntaxSlot        RawSyntaxSlot;
 typedef struct RawSyntaxNode        RawSyntaxNode;
 typedef struct RawSyntaxTree        RawSyntaxTree;
 typedef struct RawSyntaxToken       RawSyntaxToken;
@@ -24,11 +25,13 @@ typedef struct RawSyntaxTrivia      RawSyntaxTrivia;
 typedef struct RawSyntaxTriviaPiece RawSyntaxTriviaPiece;
 typedef unsigned int                RawSyntaxKind;
 
-typedef Slice(RawSyntaxSpan *) RawSyntaxChildren;
-typedef Slice(RawSyntaxTriviaPiece) RawSyntaxTriviaPieceSlice;
-
 struct RawSyntaxSpan {
   unsigned long text_length;
+};
+
+struct RawSyntaxSlot {
+  RawSyntaxNode *node;
+  unsigned long  offset;
 };
 
 struct RawSyntaxNode {
@@ -38,8 +41,8 @@ struct RawSyntaxNode {
 };
 
 struct RawSyntaxTree {
-  RawSyntaxNode     node;
-  RawSyntaxChildren children;
+  RawSyntaxNode node;
+  Slice(RawSyntaxSlot) children;
 };
 
 struct RawSyntaxToken {
@@ -48,9 +51,9 @@ struct RawSyntaxToken {
 };
 
 struct RawSyntaxTrivia {
-  RawSyntaxSpan             span;
-  char                     *text;
-  RawSyntaxTriviaPieceSlice pieces;
+  RawSyntaxSpan span;
+  char         *text;
+  Slice(RawSyntaxTriviaPiece) pieces;
 };
 
 struct RawSyntaxTriviaPiece {
@@ -69,13 +72,13 @@ typedef struct SyntaxToken  SyntaxToken;
 typedef struct SyntaxTrivia SyntaxTrivia;
 
 struct SyntaxSpan {
-  unsigned long offset;
-  unsigned long ref;
+  unsigned long     offset;
+  unsigned long     ref;
+  const SyntaxNode *parent;
 };
 
 struct SyntaxNode {
-  SyntaxSpan        span;
-  const SyntaxNode *parent;
+  SyntaxSpan span;
 };
 
 struct SyntaxToken {
