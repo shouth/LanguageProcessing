@@ -879,9 +879,9 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
     parse_bogus(&p, NULL);
   }
 
-  result.root       = syntax_builder_finish(p.builder);
-  result.diag_count = p.diags.count;
-  result.diags      = p.diags.ptr;
+  result.root        = syntax_builder_finish(p.builder);
+  result.diags.count = p.diags.count;
+  result.diags.ptr   = p.diags.ptr;
 
   return result;
 }

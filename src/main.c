@@ -48,16 +48,16 @@ static int run_compiler(void)
       syntax_tree_print(parse_result.root, stdout, &mppl_syntax_kind_print);
     }
 
-    for (j = 0; j < parse_result.diag_count; ++j) {
-      Diag   *diag   = parse_result.diags[j];
+    for (j = 0; j < parse_result.diags.count; ++j) {
+      Diag   *diag   = parse_result.diags.ptr[j];
       Report *report = diag_to_report(diag);
       report_emit(report, source);
       diag_free(diag);
     }
-    free(parse_result.diags);
 
     source_free(source);
     syntax_tree_free(parse_result.root);
+    slice_free(&parse_result.diags);
   }
   return result;
 }

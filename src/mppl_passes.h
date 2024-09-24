@@ -6,6 +6,7 @@
 #include "diagnostics.h"
 #include "mppl_syntax.h"
 #include "syntax_tree.h"
+#include "utility.h"
 
 typedef struct MpplLexResult MpplLexResult;
 
@@ -21,9 +22,8 @@ MpplLexResult mppl_lex(const char *text, unsigned long length);
 typedef struct MpplParseResult MpplParseResult;
 
 struct MpplParseResult {
-  SyntaxTree   *root;
-  Diag        **diags;
-  unsigned long diag_count;
+  SyntaxTree *root;
+  Slice(Diag *) diags;
 };
 
 MpplParseResult mppl_parse(const char *text, unsigned long length);
