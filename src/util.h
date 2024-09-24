@@ -11,7 +11,6 @@
 /* Memory */
 
 void *xmalloc(unsigned long size);
-char *strndup(const char *src, unsigned long length);
 
 unsigned long popcount(const void *data, unsigned long size);
 

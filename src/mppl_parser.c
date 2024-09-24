@@ -152,7 +152,9 @@ static void error_unexpected(Parser *p)
   if (p->kind == MPPL_SYNTAX_ERROR) {
     diag(p, diag_stray_char_error(p->offset, p->text[p->offset], p->expected));
   } else {
-    char *found = strndup(p->text + p->offset, p->span);
+    char *found = xmalloc(p->span + 1);
+    memcpy(found, p->text + p->offset, p->span);
+    found[p->span] = '\0';
     diag(p, diag_unexpected_token_error(p->offset, p->span, found, p->expected));
   }
 }

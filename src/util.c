@@ -19,18 +19,6 @@ void *xmalloc(unsigned long size)
   return result;
 }
 
-char *strndup(const char *src, unsigned long length)
-{
-  if (length == 0) {
-    return NULL;
-  } else {
-    char *dest = xmalloc(length + 1);
-    strncpy(dest, src, length);
-    dest[length] = '\0';
-    return dest;
-  }
-}
-
 unsigned long popcount(const void *data, unsigned long count)
 {
 #define B2(n) n, n + 1, n + 1, n + 2
