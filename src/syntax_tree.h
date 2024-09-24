@@ -68,13 +68,13 @@ typedef struct SyntaxToken  SyntaxToken;
 typedef struct SyntaxTrivia SyntaxTrivia;
 
 struct SyntaxSpan {
-  unsigned long     offset;
-  unsigned long     ref;
-  const SyntaxNode *parent;
+  unsigned long offset;
+  unsigned long ref;
 };
 
 struct SyntaxNode {
-  SyntaxSpan span;
+  SyntaxSpan        span;
+  const SyntaxTree *parent;
 };
 
 struct SyntaxToken {
@@ -89,6 +89,7 @@ struct SyntaxTree {
 
 struct SyntaxTrivia {
   SyntaxSpan             span;
+  const SyntaxNode      *adjacent;
   const RawSyntaxTrivia *raw;
 };
 
@@ -98,11 +99,13 @@ void syntax_token_free(SyntaxToken *self);
 void syntax_tree_print(const SyntaxTree *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
 void syntax_token_print(const SyntaxToken *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
 
-SyntaxTree  *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index);
-SyntaxToken *syntax_tree_child_token(const SyntaxTree *self, unsigned long index);
+SyntaxTree   *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index);
+SyntaxToken  *syntax_tree_child_token(const SyntaxTree *self, unsigned long index);
+SyntaxTrivia *syntax_tree_leading_trivia(const SyntaxTree *self);
+SyntaxTrivia *syntax_tree_trailing_trivia(const SyntaxTree *self);
 
-SyntaxTrivia *syntax_node_leading_trivia(const SyntaxNode *self);
-SyntaxTrivia *syntax_node_trailing_trivia(const SyntaxNode *self);
+SyntaxTrivia *syntax_token_leading_trivia(const SyntaxToken *self);
+SyntaxTrivia *syntax_token_trailing_trivia(const SyntaxToken *self);
 
 /* syntax tree builder */
 
