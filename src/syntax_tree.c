@@ -23,32 +23,25 @@ static void free_trivia(RawSyntaxTrivia *trivia)
 
 static void free_node(RawSyntaxNode *node)
 {
-  switch (node->node_kind) {
-  case RAW_SYNTAX_TOKEN: {
-    RawSyntaxToken *token = (RawSyntaxToken *) node;
-    free(token->text);
-    break;
-  }
-  case RAW_SYNTAX_ROOT:
-  case RAW_SYNTAX_TREE: {
-    unsigned long i;
+  if (node) {
+    if (node->kind >> 8 == SYNTAX_TOKEN) {
+      RawSyntaxToken *token = (RawSyntaxToken *) node;
+      free(token->text);
+    } else {
+      RawSyntaxTree *tree = (RawSyntaxTree *) node;
+      unsigned long  i;
 
-    RawSyntaxTree *tree = (RawSyntaxTree *) node;
-    for (i = 0; i < tree->children.count; ++i) {
-      RawSyntaxSlot *slot = tree->children.ptr + i;
-      if (i % 2 == 1) {
-        free_trivia((RawSyntaxTrivia *) slot->node);
-      } else {
-        free_node((RawSyntaxNode *) slot->node);
+      for (i = 0; i < tree->children.count; ++i) {
+        if (i % 2 == 1) {
+          free_trivia((RawSyntaxTrivia *) tree->children.ptr[i].node);
+        } else {
+          free_node((RawSyntaxNode *) tree->children.ptr[i].node);
+        }
       }
+      slice_free(&tree->children);
     }
-    slice_free(&tree->children);
-    break;
   }
-  case RAW_SYNTAX_EMPTY:
-    /* Nothing to do */
-    break;
-  }
+
   free(node);
 }
 
@@ -143,8 +136,63 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
 {
   print_indent(file, depth);
 
-  switch (node->node_kind) {
-  case RAW_SYNTAX_TOKEN: {
+  if (!node) {
+    TermStyle style = term_default_style();
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "[");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_BLUE;
+    term_print(file, &style, "EMPTY");
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "]");
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, " @ ");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "..");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    fprintf(file, "\n");
+  } else if (node->kind >> 8 == SYNTAX_ROOT) {
+    RawSyntaxTree *root = (RawSyntaxTree *) node;
+
+    print_slots(file, root->children.ptr, root->children.count, offset, depth, kind_printer);
+  } else if (node->kind >> 8 == SYNTAX_TREE) {
+    RawSyntaxTree *tree = (RawSyntaxTree *) node;
+
+    TermStyle style  = term_default_style();
+    style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
+    if (kind_printer) {
+      term_style(file, &style);
+      kind_printer(tree->node.kind, file);
+      term_style(file, NULL);
+    } else {
+      term_print(file, &style, "TREE(%d)", tree->node.kind);
+    }
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, " @ ");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset);
+
+    style.foreground = TERM_COLOR_NONE;
+    term_print(file, &style, "..");
+
+    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
+    term_print(file, &style, "%ld", offset + tree->node.span.text_length);
+
+    fprintf(file, "\n");
+    print_slots(file, tree->children.ptr, tree->children.count, offset, depth + 1, kind_printer);
+  } else {
     RawSyntaxToken *token = (RawSyntaxToken *) node;
 
     TermStyle style = term_default_style();
@@ -181,70 +229,6 @@ static void print_node(FILE *file, RawSyntaxNode *node, unsigned long offset, un
     }
 
     fprintf(file, "\n");
-    break;
-  }
-  case RAW_SYNTAX_TREE: {
-    RawSyntaxTree *tree = (RawSyntaxTree *) node;
-
-    TermStyle style  = term_default_style();
-    style.foreground = TERM_COLOR_256 | MONOKAI_GREEN;
-    if (kind_printer) {
-      term_style(file, &style);
-      kind_printer(tree->node.kind, file);
-      term_style(file, NULL);
-    } else {
-      term_print(file, &style, "TREE(%d)", tree->node.kind);
-    }
-
-    style.foreground = TERM_COLOR_NONE;
-    term_print(file, &style, " @ ");
-
-    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
-    term_print(file, &style, "%ld", offset);
-
-    style.foreground = TERM_COLOR_NONE;
-    term_print(file, &style, "..");
-
-    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
-    term_print(file, &style, "%ld", offset + tree->node.span.text_length);
-
-    fprintf(file, "\n");
-    print_slots(file, tree->children.ptr, tree->children.count, offset, depth + 1, kind_printer);
-    break;
-  }
-  case RAW_SYNTAX_ROOT: {
-    RawSyntaxTree *root = (RawSyntaxTree *) node;
-
-    print_slots(file, root->children.ptr, root->children.count, offset, depth, kind_printer);
-    break;
-  }
-  case RAW_SYNTAX_EMPTY: {
-    TermStyle style = term_default_style();
-
-    style.foreground = TERM_COLOR_NONE;
-    term_print(file, &style, "[");
-
-    style.foreground = TERM_COLOR_256 | MONOKAI_BLUE;
-    term_print(file, &style, "EMPTY");
-
-    style.foreground = TERM_COLOR_NONE;
-    term_print(file, &style, "]");
-
-    style.foreground = TERM_COLOR_NONE;
-    term_print(file, &style, " @ ");
-
-    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
-    term_print(file, &style, "%ld", offset);
-
-    style.foreground = TERM_COLOR_NONE;
-    term_print(file, &style, "..");
-
-    style.foreground = TERM_COLOR_256 | MONOKAI_PURPLE;
-    term_print(file, &style, "%ld", offset);
-
-    fprintf(file, "\n");
-    break;
-  }
   }
 }
 
@@ -302,11 +286,7 @@ static void push_trivia(SyntaxBuilder *self)
 
 static void push_empty(SyntaxBuilder *self)
 {
-  RawSyntaxNode *node    = xmalloc(sizeof(RawSyntaxNode));
-  node->span.text_length = 0;
-  node->node_kind        = RAW_SYNTAX_EMPTY;
-  node->kind             = -1;
-
+  RawSyntaxNode *node = NULL;
   push_span(self, (RawSyntaxSpan *) node);
 }
 
@@ -363,7 +343,6 @@ void syntax_builder_token(SyntaxBuilder *self, RawSyntaxKind kind, const char *t
   RawSyntaxToken *token        = xmalloc(sizeof(RawSyntaxToken));
   token->node.span.text_length = text_length;
   token->node.kind             = kind;
-  token->node.node_kind        = RAW_SYNTAX_TOKEN;
   token->text                  = strndup(text, text_length);
 
   push_trivia(self);
@@ -382,8 +361,7 @@ void syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpo
   assert(checkpoint % 2 == 0);
   assert(self->spans.count % 2 == 1);
 
-  tree->node.kind      = kind;
-  tree->node.node_kind = RAW_SYNTAX_TREE;
+  tree->node.kind = kind;
 
   if (checkpoint > self->spans.count) {
     tree->node.span.text_length = 0;
@@ -399,7 +377,9 @@ void syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpo
       RawSyntaxSpan *span          = self->spans.ptr[checkpoint + i];
       tree->children.ptr[i].node   = (RawSyntaxNode *) span;
       tree->children.ptr[i].offset = offset;
-      offset += span->text_length;
+      if (span) {
+        offset += span->text_length;
+      }
     }
     tree->node.span.text_length = offset;
     vec_pop(&self->spans, count);
@@ -424,9 +404,9 @@ SyntaxTree *syntax_builder_finish(SyntaxBuilder *self)
   syntax_builder_close(self, -1, 0);
 
   {
-    RawSyntaxTree *raw  = (RawSyntaxTree *) self->spans.ptr[0];
-    raw->node.node_kind = RAW_SYNTAX_ROOT;
-    root->raw           = raw;
+    RawSyntaxTree *raw = (RawSyntaxTree *) self->spans.ptr[0];
+    raw->node.kind     = SYNTAX_ROOT << 8;
+    root->raw          = raw;
   }
 
   syntax_builder_free(self);

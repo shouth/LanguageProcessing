@@ -7,16 +7,11 @@
 
 #include "utility.h"
 
-#define SYNTAX_KIND_TREE (1 << 8)
+#define SYNTAX_TOKEN 0u
+#define SYNTAX_TREE  1u
+#define SYNTAX_ROOT  2u
 
 /* raw syntax tree */
-
-typedef enum {
-  RAW_SYNTAX_EMPTY,
-  RAW_SYNTAX_TOKEN,
-  RAW_SYNTAX_TREE,
-  RAW_SYNTAX_ROOT
-} RawSyntaxNodeKind;
 
 typedef struct RawSyntaxSpan        RawSyntaxSpan;
 typedef struct RawSyntaxSlot        RawSyntaxSlot;
@@ -37,9 +32,8 @@ struct RawSyntaxSlot {
 };
 
 struct RawSyntaxNode {
-  RawSyntaxSpan     span;
-  RawSyntaxKind     kind;
-  RawSyntaxNodeKind node_kind;
+  RawSyntaxSpan span;
+  RawSyntaxKind kind;
 };
 
 struct RawSyntaxTree {
