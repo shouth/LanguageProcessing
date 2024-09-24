@@ -8,7 +8,7 @@ MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long s
 {
   MpplSyntaxKind kind;
 
-  for (kind = BEGIN_MPPL_KEYWORD; kind <= END_MPPL_KEYWORD; ++kind) {
+  for (kind = MPPL_BEGIN_KEYWORD; kind <= MPPL_END_KEYWORD; ++kind) {
     const char *lexeme = mppl_syntax_kind_static_lexeme(kind);
     if (strncmp(lexeme, string, size) == 0 && !lexeme[size]) {
       return kind;

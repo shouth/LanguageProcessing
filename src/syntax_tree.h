@@ -7,6 +7,8 @@
 
 #include "utility.h"
 
+#define SYNTAX_KIND_TREE (1 << 8)
+
 /* raw syntax tree */
 
 typedef enum {

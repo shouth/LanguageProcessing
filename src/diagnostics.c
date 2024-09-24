@@ -40,7 +40,7 @@ Report *diag_to_report(const Diag *diag)
 
 /* utility */
 
-char *expected_set_to_string(const MpplSyntaxKindSet *expected)
+char *expected_set_to_string(const MpplTokenKindSet *expected)
 {
   MpplSyntaxKind kind;
   unsigned long  count;
@@ -58,9 +58,9 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
     length += fprintf(buffer, "one of ");
   }
 
-  for (kind = 0; kind < SENTINEL_MPPL_SYNTAX; kind++) {
+  for (kind = MPPL_BEGIN_TOKEN; kind < MPPL_END_TOKEN; kind++) {
     if (bitset_get(expected, kind)) {
-      const char *lexeme = mppl_syntax_kind_static_lexeme(kind);
+      const char *lexeme = mppl_syntax_kind_static_lexeme(kind - MPPL_BEGIN_TOKEN);
 
       if (lexeme) {
         length += fprintf(buffer, "`%s`", lexeme);
@@ -106,10 +106,10 @@ char *expected_set_to_string(const MpplSyntaxKindSet *expected)
 typedef struct StrayCharError StrayCharError;
 
 struct StrayCharError {
-  Diag              interface;
-  unsigned long     offset;
-  int               stray;
-  MpplSyntaxKindSet expected;
+  Diag             interface;
+  unsigned long    offset;
+  int              stray;
+  MpplTokenKindSet expected;
 };
 
 static Report *report_stray_char_error(const Diag *diag)
@@ -128,7 +128,7 @@ static Report *report_stray_char_error(const Diag *diag)
   return report;
 }
 
-Diag *diag_stray_char_error(unsigned long offset, int stray, MpplSyntaxKindSet expected)
+Diag *diag_stray_char_error(unsigned long offset, int stray, MpplTokenKindSet expected)
 {
   StrayCharError *e = xmalloc(sizeof(StrayCharError));
   e->interface      = diag(&report_stray_char_error, NULL);
@@ -247,11 +247,11 @@ Diag *diag_too_big_number_error(unsigned long offset, unsigned long length)
 typedef struct UnexpectedTokenError UnexpectedTokenError;
 
 struct UnexpectedTokenError {
-  Diag              interface;
-  unsigned long     offset;
-  unsigned long     length;
-  char             *found;
-  MpplSyntaxKindSet expected;
+  Diag             interface;
+  unsigned long    offset;
+  unsigned long    length;
+  char            *found;
+  MpplTokenKindSet expected;
 };
 
 static Report *report_diag_unexpected_token_error(const Diag *diag)
@@ -280,7 +280,7 @@ static void free_unexpected_token_error(Diag *diag)
   }
 }
 
-Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, char *found, MpplSyntaxKindSet expected)
+Diag *diag_unexpected_token_error(unsigned long offset, unsigned long length, char *found, MpplTokenKindSet expected)
 {
   UnexpectedTokenError *e = xmalloc(sizeof(UnexpectedTokenError));
   e->interface            = diag(&report_diag_unexpected_token_error, &free_unexpected_token_error);
