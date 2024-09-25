@@ -418,7 +418,14 @@ void syntax_builder_trivia(SyntaxBuilder *self, const char *text, RawSyntaxTrivi
   for (i = 0; i < self->trivia->pieces.count; ++i) {
     self->trivia->span.text_length += self->trivia->pieces.ptr[i].span.text_length;
   }
-  self->trivia->text = strndup(text, self->trivia->span.text_length);
+
+  if (text) {
+    self->trivia->text = xmalloc(self->trivia->span.text_length + 1);
+    memcpy(self->trivia->text, text, self->trivia->span.text_length);
+    self->trivia->text[self->trivia->span.text_length] = '\0';
+  } else {
+    self->trivia->text = NULL;
+  }
 }
 
 void syntax_builder_empty(SyntaxBuilder *self)
@@ -432,7 +439,14 @@ void syntax_builder_token(SyntaxBuilder *self, RawSyntaxKind kind, const char *t
   RawSyntaxToken *token        = xmalloc(sizeof(RawSyntaxToken));
   token->node.span.text_length = text_length;
   token->node.kind             = kind;
-  token->text                  = strndup(text, text_length);
+
+  if (text) {
+    token->text = xmalloc(text_length + 1);
+    memcpy(token->text, text, text_length);
+    token->text[text_length] = '\0';
+  } else {
+    token->text = NULL;
+  }
 
   push_trivia(self);
   push_span(self, (RawSyntaxSpan *) token);
