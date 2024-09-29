@@ -47,7 +47,7 @@ void handle_event(MpplSemanticsBuilder *builder, const MpplSemanticEvent *events
     }
 
     case MPPL_SEMANTIC_NOT_FOUND:
-      vec_push(&builder->unresolved, &event->declared_at, 1);
+      vec_push(&builder->unresolved, &event->used_at, 1);
       break;
     }
   }
