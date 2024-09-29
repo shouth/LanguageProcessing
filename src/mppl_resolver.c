@@ -16,7 +16,6 @@ struct Binding {
   Name          name;
   unsigned long depth;
   unsigned long declared_at;
-  unsigned long text_length;
 };
 
 struct Scope {
@@ -56,7 +55,6 @@ Binding binding_alloc(const char *name, unsigned long depth, unsigned long decla
   Binding binding;
   binding.depth       = depth;
   binding.declared_at = declared_at;
-  binding.text_length = text_length;
   slice_alloc(&binding.name, text_length + 1);
   memcpy(binding.name.ptr, name, text_length);
   binding.name.ptr[text_length] = '\0';
