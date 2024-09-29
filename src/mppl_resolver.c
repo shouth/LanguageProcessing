@@ -55,9 +55,8 @@ Binding binding_alloc(const char *name, unsigned long depth, unsigned long decla
   Binding binding;
   binding.depth       = depth;
   binding.declared_at = declared_at;
-  slice_alloc(&binding.name, text_length + 1);
+  slice_alloc(&binding.name, text_length);
   memcpy(binding.name.ptr, name, text_length);
-  binding.name.ptr[text_length] = '\0';
   return binding;
 }
 
@@ -195,7 +194,7 @@ void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
 
   for (i = 0; i * 2 < syntax->raw->children.count; ++i) {
     if ((tree = syntax_tree_child_tree(syntax, i))) {
-      if (tree->raw->node.kind == MPPL_SYNTAX_PROGRAM || tree->raw->node.kind == MPPL_SYNTAX_PROC_DECL) {
+      if (tree->raw->node.kind == MPPL_SYNTAX_PROGRAM || tree->raw->node.kind == MPPL_SYNTAX_PROC_BODY) {
         push_scope(resolver);
         do_resolve(resolver, tree);
         pop_scope(resolver);
