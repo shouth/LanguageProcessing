@@ -41,9 +41,9 @@ Hash name_hash(const void *key)
 
 int name_eq(const void *a, const void *b)
 {
-  const Name *name_a = a;
-  const Name *name_b = b;
-  return name_a->count == name_b->count && memcmp(name_a->ptr, name_b->ptr, name_a->count) == 0;
+  const Name *l = a;
+  const Name *r = b;
+  return l->count == r->count && memcmp(l->ptr, r->ptr, l->count) == 0;
 }
 
 void diag(Resolver *resolver, Report *report)
@@ -57,7 +57,9 @@ Binding binding_alloc(const char *name, unsigned long depth, unsigned long decla
   binding.depth       = depth;
   binding.declared_at = declared_at;
   binding.text_length = text_length;
-  slice_alloc(&binding.name, strlen(name));
+  slice_alloc(&binding.name, text_length + 1);
+  memcpy(binding.name.ptr, name, text_length);
+  binding.name.ptr[text_length] = '\0';
   return binding;
 }
 
