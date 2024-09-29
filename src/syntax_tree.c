@@ -48,13 +48,12 @@ static void free_node(RawSyntaxNode *node)
 static void syntax_node_free(SyntaxNode *self)
 {
   if (self) {
+    /* reference count is zero, free memory */
     if (--self->span.ref == 0) {
       if (self->parent) {
         /* remove from parent */
         syntax_node_free((SyntaxNode *) self->parent);
-      }
-      /* reference count is zero, free memory */
-      if (!self->parent) {
+      } else {
         /* root node, free raw syntax */
         const RawSyntaxTree *root = ((SyntaxTree *) self)->raw;
         free_node((RawSyntaxNode *) root);
