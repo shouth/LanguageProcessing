@@ -24,7 +24,7 @@ typedef struct MpplParseResult MpplParseResult;
 
 struct MpplParseResult {
   SyntaxTree *root;
-  Slice(Diag *) diags;
+  Slice(Report *) diags;
 };
 
 MpplParseResult mppl_parse(const char *text, unsigned long length);
@@ -33,7 +33,7 @@ typedef struct MpplResolveResult MpplResolveResult;
 
 struct MpplResolveResult {
   MpplSemantics *semantics;
-  Slice(Diag *) diags;
+  Slice(Report *) diags;
 };
 
 MpplResolveResult mppl_resolve(const SyntaxTree *tree);

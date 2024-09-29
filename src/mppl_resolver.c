@@ -30,7 +30,7 @@ struct Resolver {
   Scope *scope;
   HashMap(Name, Binding) bindings;
   Vec(MpplSemanticEvent) events;
-  Vec(Diag *) diags;
+  Vec(Report *) diags;
 };
 
 Binding binding_alloc(const char *name, unsigned long depth, unsigned long declared_at, unsigned long text_length)

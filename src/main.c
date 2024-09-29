@@ -49,10 +49,7 @@ static int run_compiler(void)
     }
 
     for (j = 0; j < parse_result.diags.count; ++j) {
-      Diag   *diag   = parse_result.diags.ptr[j];
-      Report *report = diag_to_report(diag);
-      report_emit(report, source);
-      diag_free(diag);
+      report_emit(parse_result.diags.ptr[j], source);
     }
 
     source_free(source);

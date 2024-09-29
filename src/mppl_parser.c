@@ -22,12 +22,12 @@ struct Parser {
 
   SyntaxBuilder   *builder;
   MpplTokenKindSet expected;
-  Vec(Diag *) diags;
+  Vec(Report *) diags;
   unsigned long breakable;
   int           recovery;
 };
 
-static void diag(Parser *p, Diag *diagnostics)
+static void diag(Parser *p, Report *diagnostics)
 {
   vec_push(&p->diags, &diagnostics, 1);
 }
@@ -152,10 +152,7 @@ static void error_unexpected(Parser *p)
   if (p->kind == MPPL_SYNTAX_ERROR) {
     diag(p, diag_stray_char_error(p->offset, p->text[p->offset], p->expected));
   } else {
-    char *found = xmalloc(p->span + 1);
-    memcpy(found, p->text + p->offset, p->span);
-    found[p->span] = '\0';
-    diag(p, diag_unexpected_token_error(p->offset, p->span, found, p->expected));
+    diag(p, diag_unexpected_token_error(p->offset, p->span, p->text + p->offset, p->expected));
   }
 }
 
