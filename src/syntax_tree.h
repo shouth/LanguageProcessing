@@ -73,8 +73,8 @@ struct SyntaxSpan {
 };
 
 struct SyntaxNode {
-  SyntaxSpan        span;
-  const SyntaxTree *parent;
+  SyntaxSpan  span;
+  SyntaxTree *parent;
 };
 
 struct SyntaxToken {
@@ -99,11 +99,13 @@ void syntax_token_free(SyntaxToken *self);
 void syntax_tree_print(const SyntaxTree *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
 void syntax_token_print(const SyntaxToken *syntax, FILE *file, RawSyntaxKindPrinter *kind_printer);
 
+SyntaxTree   *syntax_tree_shared(const SyntaxTree *self);
 SyntaxTree   *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index);
 SyntaxToken  *syntax_tree_child_token(const SyntaxTree *self, unsigned long index);
 SyntaxTrivia *syntax_tree_leading_trivia(const SyntaxTree *self);
 SyntaxTrivia *syntax_tree_trailing_trivia(const SyntaxTree *self);
 
+SyntaxToken  *syntax_token_shared(const SyntaxToken *self);
 SyntaxTrivia *syntax_token_leading_trivia(const SyntaxToken *self);
 SyntaxTrivia *syntax_token_trailing_trivia(const SyntaxToken *self);
 

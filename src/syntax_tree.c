@@ -48,11 +48,11 @@ static void free_node(RawSyntaxNode *node)
 static void syntax_node_free(SyntaxNode *self)
 {
   if (self) {
-    if (self->parent) {
-      /* remove from parent */
-      syntax_node_free((SyntaxNode *) self->parent);
-    }
     if (--self->span.ref == 0) {
+      if (self->parent) {
+        /* remove from parent */
+        syntax_node_free((SyntaxNode *) self->parent);
+      }
       /* reference count is zero, free memory */
       if (!self->parent) {
         /* root node, free raw syntax */
@@ -263,13 +263,29 @@ void syntax_token_print(const SyntaxToken *syntax, FILE *file, RawSyntaxKindPrin
   print_node(file, (RawSyntaxNode *) syntax->raw, syntax->node.span.offset, 0, kind_printer);
 }
 
+static SyntaxNode *share_node(SyntaxNode *self)
+{
+  ++self->span.ref;
+  return self;
+}
+
+SyntaxTree *syntax_tree_shared(const SyntaxTree *self)
+{
+  return (SyntaxTree *) share_node((SyntaxNode *) self);
+}
+
+SyntaxToken *syntax_token_shared(const SyntaxToken *self)
+{
+  return (SyntaxToken *) share_node((SyntaxNode *) self);
+}
+
 SyntaxTree *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index)
 {
   RawSyntaxNode *child = self->raw->children.ptr[index * 2].node;
 
   if (child && child->kind >> 8 == SYNTAX_TREE) {
     SyntaxTree *tree       = xmalloc(sizeof(SyntaxTree));
-    tree->node.parent      = self;
+    tree->node.parent      = syntax_tree_shared(self);
     tree->node.span.offset = self->node.span.offset + self->raw->children.ptr[index * 2].offset;
     tree->node.span.ref    = 1;
     tree->raw              = (RawSyntaxTree *) child;
@@ -285,7 +301,7 @@ SyntaxToken *syntax_tree_child_token(const SyntaxTree *self, unsigned long index
 
   if (child && child->kind >> 8 == SYNTAX_TOKEN) {
     SyntaxToken *token      = xmalloc(sizeof(SyntaxToken));
-    token->node.parent      = self;
+    token->node.parent      = syntax_tree_shared(self);
     token->node.span.offset = self->node.span.offset + self->raw->children.ptr[index * 2].offset;
     token->node.span.ref    = 1;
     token->raw              = (RawSyntaxToken *) child;
@@ -324,7 +340,7 @@ static SyntaxTrivia *syntax_node_adjacent_trivia(const SyntaxNode *self, const R
     SyntaxTrivia *adjacent = xmalloc(sizeof(SyntaxTrivia));
     adjacent->span.offset  = self->parent->node.span.offset + slot->offset;
     adjacent->span.ref     = 1;
-    adjacent->adjacent     = self;
+    adjacent->adjacent     = share_node((SyntaxNode *) self->parent);
     adjacent->raw          = (const RawSyntaxTrivia *) slot->node;
     return adjacent;
   } else {
