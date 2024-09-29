@@ -33,6 +33,24 @@ struct Resolver {
   Vec(Report *) diags;
 };
 
+Hash name_hash(const void *key)
+{
+  const Name *name = key;
+  return hash_fnv1a(NULL, name->ptr, name->count);
+}
+
+int name_eq(const void *a, const void *b)
+{
+  const Name *name_a = a;
+  const Name *name_b = b;
+  return name_a->count == name_b->count && memcmp(name_a->ptr, name_b->ptr, name_a->count) == 0;
+}
+
+void diag(Resolver *resolver, Report *report)
+{
+  vec_push(&resolver->diags, &report, 1);
+}
+
 Binding binding_alloc(const char *name, unsigned long depth, unsigned long declared_at, unsigned long text_length)
 {
   Binding binding;
@@ -66,6 +84,7 @@ void enter_binding_use(Resolver *resolver, const SyntaxToken *token)
   } else {
     event.kind    = MPPL_SEMANTIC_NOT_FOUND;
     event.used_at = token->node.span.offset;
+    diag(resolver, diag_not_found_error(token->node.span.offset, token->raw->node.span.text_length, token->raw->text));
   }
   vec_push(&resolver->events, &event, 1);
 }
@@ -84,12 +103,13 @@ void enter_binding_decl(Resolver *resolver, const SyntaxToken *token)
   if (hashmap_entry(&resolver->bindings, &binding.name, &entry)) {
     Binding *shadowed = hashmap_value(&resolver->bindings, &entry);
     if (shadowed->depth == binding.depth) {
-      /* TODO: handle name conflict */
+      diag(resolver,
+        diag_multiple_definition_error(token->node.span.offset, token->raw->node.span.text_length, token->raw->text, shadowed->declared_at));
       binding_free(&binding);
     } else {
       vec_push(&resolver->scope->shadowed, shadowed, 1);
+      hashmap_update(&resolver->bindings, &entry, &binding.name, &binding);
     }
-    hashmap_update(&resolver->bindings, &entry, &binding.name, &binding);
   }
 
   event.kind        = MPPL_SEMANTIC_DEFINE;
@@ -110,11 +130,14 @@ void enter_ident(Resolver *resolver, const SyntaxToken *token)
       enter_binding_use(resolver, token);
       return;
 
-    case MPPL_SYNTAX_PROGRAM:
     case MPPL_SYNTAX_VAR_DECL:
     case MPPL_SYNTAX_PROC_DECL:
     case MPPL_SYNTAX_FML_PARAM_SEC:
       enter_binding_decl(resolver, token);
+      return;
+
+    case MPPL_SYNTAX_PROGRAM:
+      /* do nothing */
       return;
 
     default:
@@ -159,6 +182,45 @@ void pop_scope(Resolver *resolver)
   free(scope);
 }
 
+void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
+{
+  SyntaxTree   *tree;
+  SyntaxToken  *token;
+  unsigned long i;
+
+  for (i = 0; i < syntax->raw->children.count; i++) {
+    if ((tree = syntax_tree_child_tree(syntax, i))) {
+      if (tree->raw->node.kind == MPPL_SYNTAX_PROGRAM || tree->raw->node.kind == MPPL_SYNTAX_PROC_DECL) {
+        push_scope(resolver);
+        do_resolve(resolver, tree);
+        pop_scope(resolver);
+      } else {
+        do_resolve(resolver, tree);
+      }
+      syntax_tree_free(tree);
+    } else if ((token = syntax_tree_child_token(syntax, i))) {
+      if (token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN) {
+        enter_ident(resolver, token);
+      }
+      syntax_token_free(token);
+    }
+  }
+}
+
 MpplResolveResult mppl_resolve(const SyntaxTree *tree)
 {
+  MpplResolveResult result;
+
+  Resolver resolver;
+  resolver.scope = NULL;
+  hashmap_alloc(&resolver.bindings, &name_hash, &name_eq);
+  vec_alloc(&resolver.events, 0);
+  vec_alloc(&resolver.diags, 0);
+
+  do_resolve(&resolver, tree);
+
+  result.diags.ptr   = resolver.diags.ptr;
+  result.diags.count = resolver.diags.count;
+
+  return result;
 }

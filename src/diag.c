@@ -152,3 +152,20 @@ Report *diag_break_outside_loop_error(unsigned long offset, unsigned long length
   report_annotation(report, offset, offset + length, NULL);
   return report;
 }
+
+/* resolver */
+
+Report *diag_multiple_definition_error(unsigned long offset, unsigned long length, const char *name, unsigned long previous_offset)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "multiple definitions of `%.*s`", (int) length, name);
+  report_annotation(report, offset, offset + length, NULL);
+  report_annotation(report, previous_offset, previous_offset + length, "previous definition");
+  return report;
+}
+
+Report *diag_not_found_error(unsigned long offset, unsigned long length, const char *name)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "`%.*s` not found", (int) length, name);
+  report_annotation(report, offset, offset + length, NULL);
+  return report;
+}

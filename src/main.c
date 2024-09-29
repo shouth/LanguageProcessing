@@ -33,28 +33,36 @@ static int run_compiler(void)
   int           result = EXIT_SUCCESS;
 
   for (i = 0; i < filenames.count; ++i) {
-    const char     *filename = filenames.ptr[i];
-    Source         *source   = source_new(filename, strlen(filename));
-    MpplParseResult parse_result;
+    const char *filename = filenames.ptr[i];
+    Source     *source   = source_new(filename, strlen(filename));
 
     if (!source) {
       fprintf(stderr, "Cannot open file: %s\n", filename);
       result = EXIT_FAILURE;
       continue;
-    }
+    } else {
+      MpplParseResult parse_result = mppl_parse(source->text.ptr, source->text.count);
+      if (dump_syntax) {
+        syntax_tree_print(parse_result.root, stdout, &mppl_syntax_kind_print);
+      }
 
-    parse_result = mppl_parse(source->text.ptr, source->text.count);
-    if (dump_syntax) {
-      syntax_tree_print(parse_result.root, stdout, &mppl_syntax_kind_print);
-    }
+      if (parse_result.diags.count > 0) {
+        for (j = 0; j < parse_result.diags.count; ++j) {
+          report_emit(parse_result.diags.ptr[j], source);
+        }
+      } else {
+        MpplResolveResult resolve_result = mppl_resolve(parse_result.root);
 
-    for (j = 0; j < parse_result.diags.count; ++j) {
-      report_emit(parse_result.diags.ptr[j], source);
+        for (j = 0; j < resolve_result.diags.count; ++j) {
+          report_emit(resolve_result.diags.ptr[j], source);
+        }
+      }
+
+      syntax_tree_free(parse_result.root);
+      slice_free(&parse_result.diags);
     }
 
     source_free(source);
-    syntax_tree_free(parse_result.root);
-    slice_free(&parse_result.diags);
   }
   return result;
 }
