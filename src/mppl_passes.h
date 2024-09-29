@@ -4,6 +4,7 @@
 #define MPPL_PASSES_H
 
 #include "diag.h"
+#include "mppl_semantic.h"
 #include "mppl_syntax.h"
 #include "syntax_tree.h"
 #include "util.h"
@@ -27,5 +28,14 @@ struct MpplParseResult {
 };
 
 MpplParseResult mppl_parse(const char *text, unsigned long length);
+
+typedef struct MpplResolveResult MpplResolveResult;
+
+struct MpplResolveResult {
+  MpplSemantics *semantics;
+  Slice(Diag *) diags;
+};
+
+MpplResolveResult mppl_resolve(const SyntaxTree *tree);
 
 #endif /* MPPL_PASSES_H */

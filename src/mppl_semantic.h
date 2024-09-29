@@ -6,26 +6,33 @@
 
 /* mppl semantics */
 
-typedef struct MpplRef       MpplRef;
-typedef struct MpplDef       MpplDef;
-typedef struct MpplSemantics MpplSemantics;
+typedef enum {
+  MPPL_SEMANTIC_DEFINE,
+  MPPL_SEMANTIC_USE,
+  MPPL_SEMANTIC_NOT_FOUND
+} MpplSemanticEventKind;
 
-struct MpplRef {
-  unsigned long declared_at;
-  unsigned long used_at;
+typedef struct MpplSemanticEvent MpplSemanticEvent;
+typedef struct MpplBinding       MpplBinding;
+typedef struct MpplSemantics     MpplSemantics;
+
+struct MpplSemanticEvent {
+  MpplSemanticEventKind kind;
+  unsigned long         declared_at;
+  unsigned long         used_at;
 };
 
-struct MpplDef {
-  MpplIdentToken *binding;
+struct MpplBinding {
+  SyntaxToken *binding;
   Slice(unsigned long) refs;
 };
 
 struct MpplSemantics {
-  Slice(MpplDef) defs;
-  HashMap(unsigned long, const MpplDef *) ref;
+  Slice(MpplBinding) bindings;
+  HashMap(unsigned long, const MpplBinding *) ref;
 };
 
-MpplSemantics *mppl_semantics_new(const MpplSyntax *syntax, const MpplRef *refs, unsigned long refs_count);
+MpplSemantics *mppl_semantics_new(const MpplSyntax *syntax, const MpplSemanticEvent *events, unsigned long event_count);
 void           mppl_semantics_free(MpplSemantics *semantics);
 
 #endif /* SEMANTIC_MODEL_H */
