@@ -68,61 +68,61 @@ void enter_binding_use(Resolver *resolver, const SyntaxToken *token)
   vec_push(&resolver->events, &event, 1);
 }
 
-void enter_binding_decl(Resolver *resolver, const SyntaxToken *token)
+void enter_binding_decl(Resolver *resolver, const SyntaxToken *token, MpplSyntaxKind kind)
 {
-  MpplSemanticEvent event;
-  HashMapEntry      entry;
-  Binding           binding;
-
   assert(token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN);
 
-  binding.name        = token->raw;
-  binding.depth       = resolver->scope->depth;
-  binding.declared_at = token->node.span.offset;
+  if (kind != MPPL_SYNTAX_PROGRAM) {
+    HashMapEntry entry;
+    Binding      binding;
+    binding.name        = token->raw;
+    binding.depth       = resolver->scope->depth;
+    binding.declared_at = token->node.span.offset;
 
-  if (hashmap_entry(&resolver->bindings, &binding.name, &entry)) {
-    Binding *shadowed = hashmap_value(&resolver->bindings, &entry);
-    if (shadowed->depth == binding.depth) {
-      diag(resolver,
-        diag_multiple_definition_error(token->node.span.offset, token->raw->node.span.text_length, token->raw->text, shadowed->declared_at));
+    if (hashmap_entry(&resolver->bindings, &binding.name, &entry)) {
+      Binding *shadowed = hashmap_value(&resolver->bindings, &entry);
+      if (shadowed->depth == binding.depth) {
+        diag(resolver,
+          diag_multiple_definition_error(token->node.span.offset, token->raw->node.span.text_length, token->raw->text, shadowed->declared_at));
+      } else {
+        vec_push(&resolver->scope->shadowed, shadowed, 1);
+        vec_push(&resolver->scope->bindings, &binding, 1);
+        hashmap_occupy(&resolver->bindings, &entry, &binding.name);
+        *hashmap_value(&resolver->bindings, &entry) = binding;
+      }
     } else {
-      vec_push(&resolver->scope->shadowed, shadowed, 1);
       vec_push(&resolver->scope->bindings, &binding, 1);
       hashmap_occupy(&resolver->bindings, &entry, &binding.name);
       *hashmap_value(&resolver->bindings, &entry) = binding;
     }
-  } else {
-    vec_push(&resolver->scope->bindings, &binding, 1);
-    hashmap_occupy(&resolver->bindings, &entry, &binding.name);
-    *hashmap_value(&resolver->bindings, &entry) = binding;
   }
 
-  event.kind        = MPPL_SEMANTIC_DEFINE;
-  event.declared_at = token->node.span.offset;
-  vec_push(&resolver->events, &event, 1);
+  {
+    MpplSemanticEvent event;
+    event.kind        = MPPL_SEMANTIC_DEFINE;
+    event.declared_at = token->node.span.offset;
+    vec_push(&resolver->events, &event, 1);
+  }
 }
 
 void enter_ident(Resolver *resolver, const SyntaxToken *token)
 {
-  const SyntaxTree *tree;
+  const SyntaxTree *parent;
 
   assert(token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN);
-  for (tree = token->node.parent; tree; tree = tree->node.parent) {
-    switch (tree->raw->node.kind) {
+  for (parent = token->node.parent; parent; parent = parent->node.parent) {
+    switch (parent->raw->node.kind) {
     case MPPL_SYNTAX_ENTIRE_VAR:
     case MPPL_SYNTAX_INDEXED_VAR:
     case MPPL_SYNTAX_CALL_STMT:
       enter_binding_use(resolver, token);
       return;
 
+    case MPPL_SYNTAX_PROGRAM:
     case MPPL_SYNTAX_VAR_DECL:
     case MPPL_SYNTAX_PROC_DECL:
     case MPPL_SYNTAX_FML_PARAM_SEC:
-      enter_binding_decl(resolver, token);
-      return;
-
-    case MPPL_SYNTAX_PROGRAM:
-      /* do nothing */
+      enter_binding_decl(resolver, token, parent->raw->node.kind);
       return;
 
     default:
