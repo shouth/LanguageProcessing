@@ -1,10 +1,8 @@
 #ifndef SEMANTIC_MODEL_H
 #define SEMANTIC_MODEL_H
 
-#include "mppl_syntax.h"
+#include "syntax_tree.h"
 #include "util.h"
-
-/* mppl semantics */
 
 typedef enum {
   MPPL_SEMANTIC_DEFINE,
@@ -30,9 +28,10 @@ struct MpplBinding {
 struct MpplSemantics {
   Slice(MpplBinding) bindings;
   HashMap(unsigned long, const MpplBinding *) ref;
+  Slice(unsigned long) unresolved;
 };
 
-MpplSemantics *mppl_semantics_new(const MpplSyntax *syntax, const MpplSemanticEvent *events, unsigned long event_count);
-void           mppl_semantics_free(MpplSemantics *semantics);
+MpplSemantics mppl_semantics_alloc(const SyntaxTree *syntax, const MpplSemanticEvent *events, unsigned long event_count);
+void          mppl_semantics_free(MpplSemantics *semantics);
 
 #endif /* SEMANTIC_MODEL_H */
