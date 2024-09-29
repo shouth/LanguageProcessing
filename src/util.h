@@ -3,6 +3,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -251,20 +252,14 @@ typedef HopscotchEntry HashMapEntry;
     }                                                                                                    \
   } while (0);
 
-#define hashmap_entry(map, key, entry)                                                 \
-  (key                                                                                 \
-      ? hopscotch_entry(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), key, entry) \
-      : (hopscotch_unchecked(&(map)->metadata, NULL, entry), 0))
+#define hashmap_entry(map, key, entry) \
+  hopscotch_entry(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), key, entry)
 
-#define hashmap_key(map, entry)                                                     \
-  ((entry)->bucket < (map)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE \
-      ? &(map)->ptr[(entry)->bucket + (entry)->slot].key                            \
-      : NULL)
+#define hashmap_key(map, entry) \
+  (assert((entry)->bucket < (map)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE), &(map)->ptr[(entry)->bucket + (entry)->slot].key)
 
-#define hashmap_value(map, entry)                                                   \
-  ((entry)->bucket < (map)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE \
-      ? &(map)->ptr[(entry)->bucket + (entry)->slot].value                          \
-      : NULL)
+#define hashmap_value(map, entry) \
+  (assert((entry)->bucket < (map)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE), &(map)->ptr[(entry)->bucket + (entry)->slot].value)
 
 #define hashmap_next(map, entry) \
   hopscotch_next(&(map)->metadata, entry)
