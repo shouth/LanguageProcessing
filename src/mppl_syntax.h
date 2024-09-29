@@ -170,7 +170,7 @@ typedef enum {
   MPPL_EXPR_UNARY,
   MPPL_EXPR_BINARY,
   MPPL_EXPR_PAREN,
-  MPPL_EXPR_alloc
+  MPPL_EXPR_CAST
 } MpplExprKind;
 
 typedef enum {
