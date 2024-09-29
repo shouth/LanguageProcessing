@@ -47,19 +47,17 @@ static void free_node(RawSyntaxNode *node)
 
 static void syntax_node_free(SyntaxNode *self)
 {
-  if (self) {
+  if (self && --self->span.ref == 0) {
     /* reference count is zero, free memory */
-    if (--self->span.ref == 0) {
-      if (self->parent) {
-        /* remove from parent */
-        syntax_node_free((SyntaxNode *) self->parent);
-      } else {
-        /* root node, free raw syntax */
-        const RawSyntaxTree *root = ((SyntaxTree *) self)->raw;
-        free_node((RawSyntaxNode *) root);
-      }
-      free(self);
+    if (self->parent) {
+      /* remove from parent */
+      syntax_node_free((SyntaxNode *) self->parent);
+    } else {
+      /* root node, free raw syntax */
+      const RawSyntaxTree *root = ((SyntaxTree *) self)->raw;
+      free_node((RawSyntaxNode *) root);
     }
+    free(self);
   }
 }
 
