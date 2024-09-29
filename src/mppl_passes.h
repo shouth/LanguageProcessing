@@ -32,7 +32,7 @@ MpplParseResult mppl_parse(const char *text, unsigned long length);
 typedef struct MpplResolveResult MpplResolveResult;
 
 struct MpplResolveResult {
-  MpplSemantics *semantics;
+  MpplSemantics semantics;
   Slice(Report *) diags;
 };
 

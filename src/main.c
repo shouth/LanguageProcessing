@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "mppl_passes.h"
+#include "mppl_semantic.h"
 #include "mppl_syntax.h"
 #include "report.h"
 #include "source.h"
@@ -56,6 +57,8 @@ static int run_compiler(void)
         for (j = 0; j < resolve_result.diags.count; ++j) {
           report_emit(resolve_result.diags.ptr[j], source);
         }
+
+        mppl_semantics_free(&resolve_result.semantics);
         slice_free(&resolve_result.diags);
       }
 

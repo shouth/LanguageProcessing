@@ -4,6 +4,7 @@
 #include "mppl_passes.h"
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
+#include "stdio.h"
 #include "syntax_tree.h"
 #include "util.h"
 
@@ -205,6 +206,7 @@ MpplResolveResult mppl_resolve(const SyntaxTree *tree)
 
   do_resolve(&resolver, tree);
 
+  result.semantics   = mppl_semantics_alloc(tree, resolver.events.ptr, resolver.events.count);
   result.diags.ptr   = resolver.diags.ptr;
   result.diags.count = resolver.diags.count;
 
