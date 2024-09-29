@@ -110,8 +110,12 @@ void enter_binding_decl(Resolver *resolver, const SyntaxToken *token)
       binding_free(&binding);
     } else {
       vec_push(&resolver->scope->shadowed, shadowed, 1);
+      vec_push(&resolver->scope->bindings, &binding, 1);
       hashmap_update(&resolver->bindings, &entry, &binding.name, &binding);
     }
+  } else {
+    vec_push(&resolver->scope->bindings, &binding, 1);
+    hashmap_update(&resolver->bindings, &entry, &binding.name, &binding);
   }
 
   event.kind        = MPPL_SEMANTIC_DEFINE;
@@ -154,6 +158,7 @@ void push_scope(Resolver *resolver)
 {
   Scope *scope  = malloc(sizeof(Scope));
   scope->parent = resolver->scope;
+  scope->depth  = scope->parent ? scope->parent->depth + 1 : 0;
   vec_alloc(&scope->bindings, 0);
   vec_alloc(&scope->shadowed, 0);
   resolver->scope = scope;
@@ -190,7 +195,7 @@ void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
   SyntaxToken  *token;
   unsigned long i;
 
-  for (i = 0; i < syntax->raw->children.count; i++) {
+  for (i = 0; i * 2 < syntax->raw->children.count; ++i) {
     if ((tree = syntax_tree_child_tree(syntax, i))) {
       if (tree->raw->node.kind == MPPL_SYNTAX_PROGRAM || tree->raw->node.kind == MPPL_SYNTAX_PROC_DECL) {
         push_scope(resolver);
@@ -223,6 +228,9 @@ MpplResolveResult mppl_resolve(const SyntaxTree *tree)
 
   result.diags.ptr   = resolver.diags.ptr;
   result.diags.count = resolver.diags.count;
+
+  hashmap_free(&resolver.bindings);
+  vec_free(&resolver.events);
 
   return result;
 }
