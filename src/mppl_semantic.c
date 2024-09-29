@@ -18,7 +18,7 @@ static int mppl_semantics_offset_equal(const void *a, const void *b)
 void mppl_semantics_free(MpplSemantics *semantics)
 {
   if (semantics) {
-    slice_free(&semantics->defs);
+    slice_free(&semantics->bindings);
     hashmap_free(&semantics->ref);
     free(semantics);
   }
