@@ -231,8 +231,8 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "C_COMMENT_TRIVIA";
   case MPPL_SYNTAX_PROGRAM:
     return "PROGRAM";
-  case MPPL_SYNTAX_DECL_LIST:
-    return "DECL_LIST";
+  case MPPL_SYNTAX_DECL_PART_LIST:
+    return "DECL_PART_LIST";
   case MPPL_SYNTAX_VAR_DECL_PART:
     return "VAR_DECL_PART";
   case MPPL_SYNTAX_VAR_DECL_LIST_ELEM:
@@ -243,6 +243,12 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "VAR_DECL";
   case MPPL_SYNTAX_ARRAY_TYPE:
     return "ARRAY_TYPE";
+  case MPPL_SYNTAX_PROC_DECL_PART:
+    return "PROC_DECL_PART";
+  case MPPL_SYNTAX_PROC_HEADING:
+    return "PROC_HEADING";
+  case MPPL_SYNTAX_PROC_BODY:
+    return "PROC_BODY";
   case MPPL_SYNTAX_PROC_DECL:
     return "PROC_DECL";
   case MPPL_SYNTAX_FML_PARAM_LIST_ELEM:

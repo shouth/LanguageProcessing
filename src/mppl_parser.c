@@ -787,36 +787,46 @@ static void parse_fml_param_list(Parser *p, const MpplTokenKindSet *recovery)
   close(p, MPPL_SYNTAX_FML_PARAMS, fml_params);
 }
 
-static void parse_proc_decl(Parser *p, const MpplTokenKindSet *recovery)
+static void parse_proc_decl_part(Parser *p, const MpplTokenKindSet *recovery)
 {
-  Checkpoint proc_decl = open(p);
-  expect(p, MPPL_SYNTAX_PROCEDURE_KW);
-  expect(p, MPPL_SYNTAX_IDENT_TOKEN);
-  if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
-    MpplTokenKindSet kinds = *recovery;
-    bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
-    bitset_set(&kinds, MPPL_SYNTAX_VAR_KW);
-    bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
-    parse_fml_param_list(p, &kinds);
-  } else {
-    null(p);
-  }
-  expect(p, MPPL_SYNTAX_SEMI_TOKEN);
-  if (check(p, MPPL_SYNTAX_VAR_KW)) {
-    MpplTokenKindSet kinds = *recovery;
-    bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
-    bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
-    parse_var_decl_part(p, &kinds);
-  } else {
-    null(p);
-  }
+  Checkpoint proc_decl_part = open(p);
+  Checkpoint proc_decl      = open(p);
   {
-    MpplTokenKindSet kinds = *recovery;
-    bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
-    parse_comp_stmt(p, &kinds);
+    Checkpoint proc_head = open(p);
+    expect(p, MPPL_SYNTAX_PROCEDURE_KW);
+    expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+    if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
+      MpplTokenKindSet kinds = *recovery;
+      bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
+      bitset_set(&kinds, MPPL_SYNTAX_VAR_KW);
+      bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
+      parse_fml_param_list(p, &kinds);
+    } else {
+      null(p);
+    }
+    close(p, MPPL_SYNTAX_PROC_HEADING, proc_head);
   }
   expect(p, MPPL_SYNTAX_SEMI_TOKEN);
+  {
+    Checkpoint proc_body = open(p);
+    if (check(p, MPPL_SYNTAX_VAR_KW)) {
+      MpplTokenKindSet kinds = *recovery;
+      bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
+      bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
+      parse_var_decl_part(p, &kinds);
+    } else {
+      null(p);
+    }
+    {
+      MpplTokenKindSet kinds = *recovery;
+      bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
+      parse_comp_stmt(p, &kinds);
+    }
+    close(p, MPPL_SYNTAX_PROC_BODY, proc_body);
+  }
   close(p, MPPL_SYNTAX_PROC_DECL, proc_decl);
+  expect(p, MPPL_SYNTAX_SEMI_TOKEN);
+  close(p, MPPL_SYNTAX_PROC_DECL_PART, proc_decl_part);
 }
 
 static void parse_program(Parser *p)
@@ -838,12 +848,12 @@ static void parse_program(Parser *p)
     if (check(p, MPPL_SYNTAX_VAR_KW)) {
       parse_var_decl_part(p, &kinds);
     } else if (check(p, MPPL_SYNTAX_PROCEDURE_KW)) {
-      parse_proc_decl(p, &kinds);
+      parse_proc_decl_part(p, &kinds);
     } else {
       parse_bogus(p, &kinds);
     }
   }
-  close(p, MPPL_SYNTAX_DECL_LIST, decl_list);
+  close(p, MPPL_SYNTAX_DECL_PART_LIST, decl_list);
   {
     MpplTokenKindSet kinds = bitset_zero();
     bitset_set(&kinds, MPPL_SYNTAX_DOT_TOKEN);
