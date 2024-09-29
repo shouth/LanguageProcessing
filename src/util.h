@@ -176,7 +176,7 @@ void hopscotch_unchecked(Hopscotch *hopscotch, const void *key, HopscotchEntry *
 int  hopscotch_entry(Hopscotch *hopscotch, void *data, unsigned long size, const void *key, HopscotchEntry *entry);
 int  hopscotch_next(Hopscotch *hopscotch, HopscotchEntry *entry);
 int  hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, HopscotchEntry *entry);
-void hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry);
+int  hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry);
 
 /* HashMap */
 
@@ -284,6 +284,13 @@ typedef HopscotchEntry HashMapEntry;
     }                                                                                                  \
     (map)->ptr[(entry)->bucket + (entry)->slot].key.mutable = *(new_key);                              \
     (map)->ptr[(entry)->bucket + (entry)->slot].value       = *(new_value);                            \
+  } while (0)
+
+#define hashmap_erase(map, entry)                     \
+  do {                                                \
+    if (hopscotch_release(&(map)->metadata, entry)) { \
+      --(map)->count;                                 \
+    }                                                 \
   } while (0)
 
 /* Character */

@@ -190,10 +190,13 @@ int hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, Hopsc
   }
 }
 
-void hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry)
+int hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry)
 {
   if (entry->bucket < hopscotch->count && entry->slot < HOPSCOTCH_BUCKET_SIZE) {
     hopscotch->hops[entry->bucket] &= ~(1ul << entry->slot);
+    return 1;
+  } else {
+    return 0;
   }
 }
 
