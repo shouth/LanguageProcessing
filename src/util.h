@@ -186,10 +186,7 @@ typedef HopscotchEntry HashMapEntry;
   struct {                            \
     Hopscotch metadata;               \
     struct {                          \
-      union {                         \
-        key_type mutable;             \
-        key_type const readonly;      \
-      } key;                          \
+      key_type   key;                 \
       value_type value;               \
     }            *ptr;                \
     unsigned long count;              \
@@ -261,7 +258,7 @@ typedef HopscotchEntry HashMapEntry;
 
 #define hashmap_key(map, entry)                                                     \
   ((entry)->bucket < (map)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE \
-      ? &(map)->ptr[(entry)->bucket + (entry)->slot].key.readonly                   \
+      ? &(map)->ptr[(entry)->bucket + (entry)->slot].key                            \
       : NULL)
 
 #define hashmap_value(map, entry)                                                   \
@@ -272,7 +269,7 @@ typedef HopscotchEntry HashMapEntry;
 #define hashmap_next(map, entry) \
   hopscotch_next(&(map)->metadata, entry)
 
-#define hashmap_update(map, entry, new_key, new_value)                                                 \
+#define hashmap_occupy(map, entry, new_key)                                                            \
   do {                                                                                                 \
     int status;                                                                                        \
     while (!(status = hopscotch_occupy(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), (entry)))) { \
@@ -282,8 +279,7 @@ typedef HopscotchEntry HashMapEntry;
     if (status == 1) {                                                                                 \
       ++(map)->count;                                                                                  \
     }                                                                                                  \
-    (map)->ptr[(entry)->bucket + (entry)->slot].key.mutable = *(new_key);                              \
-    (map)->ptr[(entry)->bucket + (entry)->slot].value       = *(new_value);                            \
+    (map)->ptr[(entry)->bucket + (entry)->slot].key = *(new_key);                                      \
   } while (0)
 
 #define hashmap_erase(map, entry)                     \

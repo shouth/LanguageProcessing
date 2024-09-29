@@ -88,11 +88,13 @@ void enter_binding_decl(Resolver *resolver, const SyntaxToken *token)
     } else {
       vec_push(&resolver->scope->shadowed, shadowed, 1);
       vec_push(&resolver->scope->bindings, &binding, 1);
-      hashmap_update(&resolver->bindings, &entry, &binding.name, &binding);
+      hashmap_occupy(&resolver->bindings, &entry, &binding.name);
+      *hashmap_value(&resolver->bindings, &entry) = binding;
     }
   } else {
     vec_push(&resolver->scope->bindings, &binding, 1);
-    hashmap_update(&resolver->bindings, &entry, &binding.name, &binding);
+    hashmap_occupy(&resolver->bindings, &entry, &binding.name);
+    *hashmap_value(&resolver->bindings, &entry) = binding;
   }
 
   event.kind        = MPPL_SEMANTIC_DEFINE;
@@ -156,7 +158,8 @@ void pop_scope(Resolver *resolver)
   for (i = 0; i < scope->shadowed.count; i++) {
     Binding *binding = &scope->shadowed.ptr[i];
     hashmap_entry(&resolver->bindings, &binding->name, &entry);
-    hashmap_update(&resolver->bindings, &entry, &binding->name, binding);
+    hashmap_occupy(&resolver->bindings, &entry, &binding->name);
+    *hashmap_value(&resolver->bindings, &entry) = *binding;
   }
 
   vec_free(&scope->bindings);
