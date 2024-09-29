@@ -56,6 +56,7 @@ static int run_compiler(void)
         for (j = 0; j < resolve_result.diags.count; ++j) {
           report_emit(resolve_result.diags.ptr[j], source);
         }
+        slice_free(&resolve_result.diags);
       }
 
       syntax_tree_free(parse_result.root);
