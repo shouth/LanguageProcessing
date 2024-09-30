@@ -3,9 +3,9 @@
 #ifndef MPPL_PASSES_H
 #define MPPL_PASSES_H
 
-#include "diag.h"
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
+#include "report.h"
 #include "syntax_tree.h"
 #include "util.h"
 
