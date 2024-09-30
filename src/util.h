@@ -277,7 +277,7 @@ typedef HopscotchEntry HashMapEntry;
     (map)->ptr[(entry)->bucket + (entry)->slot].key = *(new_key);                                      \
   } while (0)
 
-#define hashmap_erase(map, entry)                     \
+#define hashmap_release(map, entry)                   \
   do {                                                \
     if (hopscotch_release(&(map)->metadata, entry)) { \
       --(map)->count;                                 \

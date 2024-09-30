@@ -155,7 +155,7 @@ void pop_scope(Resolver *resolver)
   for (i = 0; i < scope->bindings.count; i++) {
     Binding *binding = &scope->bindings.ptr[i];
     hashmap_entry(&resolver->bindings, &binding->name, &entry);
-    hashmap_erase(&resolver->bindings, &entry);
+    hashmap_release(&resolver->bindings, &entry);
   }
 
   for (i = 0; i < scope->shadowed.count; i++) {
