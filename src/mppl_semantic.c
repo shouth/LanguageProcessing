@@ -172,7 +172,7 @@ void mppl_semantics_free(MpplSemantics *semantics)
 
 void mppl_semantics_print(const MpplSemantics *semantics, const Source *source)
 {
-  unsigned long i;
+  unsigned long i, j;
 
   for (i = 0; i < semantics->bindings.count; ++i) {
     SyntaxTree    *parent;
@@ -222,8 +222,8 @@ void mppl_semantics_print(const MpplSemantics *semantics, const Source *source)
     printf("definition: %lu:%lu\n", location.line + 1, location.column + 1);
 
     printf("reference: ");
-    for (i = 0; i < binding->refs.count; ++i) {
-      source_location(source, binding->refs.ptr[i], &location);
+    for (j = 0; j < binding->refs.count; ++j) {
+      source_location(source, binding->refs.ptr[j], &location);
       printf("%lu:%lu ", location.line, location.column);
     }
     printf("\n");
