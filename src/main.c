@@ -17,11 +17,12 @@ const char *program;
 
 Vec(const char *) filenames;
 
-int dump_syntax  = 0;
-int pretty_print = 0;
-int syntax_only  = 0;
-int emit_llvm    = 0;
-int emit_casl2   = 0;
+int dump_syntax   = 0;
+int dump_crossref = 0;
+int pretty_print  = 0;
+int syntax_only   = 0;
+int emit_llvm     = 0;
+int emit_casl2    = 0;
 
 void mppl_syntax_kind_print(RawSyntaxKind kind, FILE *file)
 {
@@ -53,6 +54,9 @@ static int run_compiler(void)
         }
       } else {
         MpplResolveResult resolve_result = mppl_resolve(parse_result.root);
+        if (dump_crossref) {
+          mppl_semantics_print(&resolve_result.semantics, source);
+        }
 
         for (j = 0; j < resolve_result.diags.count; ++j) {
           report_emit(resolve_result.diags.ptr[j], source);
@@ -76,12 +80,13 @@ static void print_help(void)
   printf(
     "Usage: %s [OPTIONS] INPUT\n"
     "Options:\n"
-    "    --dump-syntax   Dump syntax tree\n"
-    "    --pretty-print  Pretty print the input file\n"
-    "    --syntax-only   Check syntax only\n"
-    "    --emit-llvm     Emit LLVM IR\n"
-    "    --emit-casl2    Emit CASL2\n"
-    "    --help          Print this help message\n",
+    "    --dump-syntax    Dump syntax tree\n"
+    "    --dump-crossref  Dump cross reference\n"
+    "    --pretty-print   Pretty print the input file\n"
+    "    --syntax-only    Check syntax only\n"
+    "    --emit-llvm      Emit LLVM IR\n"
+    "    --emit-casl2     Emit CASL2\n"
+    "    --help           Print this help message\n",
     program);
   fflush(stdout);
 }
@@ -109,6 +114,8 @@ static void init(int argc, const char **argv)
     for (i = 1; i < argc; ++i) {
       if (strcmp(argv[i], "--dump-syntax") == 0) {
         dump_syntax = 1;
+      } else if (strcmp(argv[i], "--dump-crossref") == 0) {
+        dump_crossref = 1;
       } else if (strcmp(argv[i], "--pretty-print") == 0) {
         pretty_print = 1;
       } else if (strcmp(argv[i], "--syntax-only") == 0) {

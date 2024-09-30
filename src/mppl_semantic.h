@@ -1,6 +1,7 @@
 #ifndef SEMANTIC_MODEL_H
 #define SEMANTIC_MODEL_H
 
+#include "source.h"
 #include "syntax_tree.h"
 #include "util.h"
 
@@ -33,5 +34,6 @@ struct MpplSemantics {
 
 MpplSemantics mppl_semantics_alloc(const SyntaxTree *syntax, const MpplSemanticEvent *events, unsigned long event_count);
 void          mppl_semantics_free(MpplSemantics *semantics);
+void          mppl_semantics_print(const MpplSemantics *semantics, const Source *source);
 
 #endif /* SEMANTIC_MODEL_H */

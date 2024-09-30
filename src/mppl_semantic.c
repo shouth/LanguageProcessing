@@ -169,3 +169,63 @@ void mppl_semantics_free(MpplSemantics *semantics)
     slice_free(&semantics->unresolved);
   }
 }
+
+void mppl_semantics_print(const MpplSemantics *semantics, const Source *source)
+{
+  unsigned long i;
+
+  for (i = 0; i < semantics->bindings.count; ++i) {
+    SyntaxTree    *parent;
+    SourceLocation location;
+
+    MpplBinding *binding = &semantics->bindings.ptr[i];
+
+    if (i > 0) {
+      printf("\n");
+    }
+
+    printf("name: %.*s\n", (int) binding->binding->raw->node.span.text_length, binding->binding->raw->text);
+
+    printf("type: ");
+    for (parent = binding->binding->node.parent; parent; parent = parent->node.parent) {
+      switch (parent->raw->node.kind) {
+      case MPPL_SYNTAX_PROGRAM:
+        printf("program");
+        break;
+
+      case MPPL_SYNTAX_VAR_DECL:
+        printf("variable");
+        break;
+
+      case MPPL_SYNTAX_PROC_DECL:
+        printf("procedure");
+        break;
+
+      case MPPL_SYNTAX_FML_PARAM_SEC:
+        printf("formal parameter");
+        break;
+
+      case MPPL_SYNTAX_ENTIRE_VAR:
+      case MPPL_SYNTAX_INDEXED_VAR:
+      case MPPL_SYNTAX_CALL_STMT:
+        /* do nothing */
+        break;
+
+      default:
+        continue;
+      }
+      break;
+    }
+    printf("\n");
+
+    source_location(source, binding->binding->node.span.offset, &location);
+    printf("definition: %lu:%lu\n", location.line + 1, location.column + 1);
+
+    printf("reference: ");
+    for (i = 0; i < binding->refs.count; ++i) {
+      source_location(source, binding->refs.ptr[i], &location);
+      printf("%lu:%lu ", location.line, location.column);
+    }
+    printf("\n");
+  }
+}
