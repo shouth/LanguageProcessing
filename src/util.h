@@ -193,6 +193,15 @@ typedef HopscotchEntry HashMapEntry;
     unsigned long count;              \
   }
 
+#define HashSet(key_type) \
+  struct {                \
+    Hopscotch metadata;   \
+    struct {              \
+      key_type key;       \
+    }            *ptr;    \
+    unsigned long count;  \
+  }
+
 #define hashmap_alloc(map, hash, eq)                \
   do {                                              \
     hopscotch_alloc(&(map)->metadata, 0, hash, eq); \
