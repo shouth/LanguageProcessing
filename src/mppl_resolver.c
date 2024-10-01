@@ -34,25 +34,25 @@ struct Resolver {
   Vec(Report *) diags;
 };
 
-Hash name_hash(const void *key)
+static Hash name_hash(const void *key)
 {
   const RawSyntaxToken *name = *(RawSyntaxToken *const *) key;
   return hash_fnv1a(NULL, name->text, name->node.span.text_length);
 }
 
-int name_eq(const void *a, const void *b)
+static int name_eq(const void *a, const void *b)
 {
   const RawSyntaxToken *l = *(RawSyntaxToken *const *) a;
   const RawSyntaxToken *r = *(RawSyntaxToken *const *) b;
   return l->node.span.text_length == r->node.span.text_length && memcmp(l->text, r->text, l->node.span.text_length) == 0;
 }
 
-void diag(Resolver *resolver, Report *report)
+static void diag(Resolver *resolver, Report *report)
 {
   vec_push(&resolver->diags, &report, 1);
 }
 
-void enter_binding_use(Resolver *resolver, const SyntaxToken *token)
+static void enter_binding_use(Resolver *resolver, const SyntaxToken *token)
 {
   MpplSemanticEvent event;
   HashMapEntry      entry;
@@ -71,7 +71,7 @@ void enter_binding_use(Resolver *resolver, const SyntaxToken *token)
   vec_push(&resolver->events, &event, 1);
 }
 
-void enter_binding_decl(Resolver *resolver, const SyntaxToken *token, MpplSyntaxKind kind)
+static void enter_binding_decl(Resolver *resolver, const SyntaxToken *token, MpplSyntaxKind kind)
 {
   assert(token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN);
 
@@ -108,7 +108,7 @@ void enter_binding_decl(Resolver *resolver, const SyntaxToken *token, MpplSyntax
   }
 }
 
-void enter_ident(Resolver *resolver, const SyntaxToken *token)
+static void enter_ident(Resolver *resolver, const SyntaxToken *token)
 {
   const SyntaxTree *parent;
 
@@ -136,7 +136,7 @@ void enter_ident(Resolver *resolver, const SyntaxToken *token)
   unreachable();
 }
 
-void push_scope(Resolver *resolver)
+static void push_scope(Resolver *resolver)
 {
   Scope *scope  = malloc(sizeof(Scope));
   scope->parent = resolver->scope;
@@ -146,7 +146,7 @@ void push_scope(Resolver *resolver)
   resolver->scope = scope;
 }
 
-void pop_scope(Resolver *resolver)
+static void pop_scope(Resolver *resolver)
 {
   unsigned long i;
   HashMapEntry  entry;
@@ -171,7 +171,7 @@ void pop_scope(Resolver *resolver)
   free(scope);
 }
 
-void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
+static void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
 {
   SyntaxTree   *tree;
   SyntaxToken  *token;

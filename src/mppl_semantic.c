@@ -27,7 +27,7 @@ static int offset_equal(const void *a, const void *b)
   return *(unsigned long *) a == *(unsigned long *) b;
 }
 
-void handle_event(MpplSemanticsBuilder *builder, const MpplSemanticEvent *events, unsigned long event_count)
+static void handle_event(MpplSemanticsBuilder *builder, const MpplSemanticEvent *events, unsigned long event_count)
 {
   unsigned long i;
 
@@ -55,7 +55,7 @@ void handle_event(MpplSemanticsBuilder *builder, const MpplSemanticEvent *events
   }
 }
 
-void handle_binding(MpplSemanticsBuilder *builder, const SyntaxToken *token)
+static void handle_binding(MpplSemanticsBuilder *builder, const SyntaxToken *token)
 {
   SyntaxTree  *parent;
   HashMapEntry entry;
@@ -85,7 +85,7 @@ void handle_binding(MpplSemanticsBuilder *builder, const SyntaxToken *token)
   }
 }
 
-void handle_syntax(MpplSemanticsBuilder *builder, const SyntaxTree *syntax)
+static void handle_syntax(MpplSemanticsBuilder *builder, const SyntaxTree *syntax)
 {
   unsigned long i;
 
@@ -104,7 +104,7 @@ void handle_syntax(MpplSemanticsBuilder *builder, const SyntaxTree *syntax)
   }
 }
 
-MpplSemantics build(MpplSemanticsBuilder *builder)
+static MpplSemantics build(MpplSemanticsBuilder *builder)
 {
   unsigned long i;
   HashMapEntry  entry;
