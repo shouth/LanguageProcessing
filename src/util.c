@@ -43,11 +43,11 @@ unsigned long popcount(const void *data, unsigned long count)
 
 /* Hash */
 
-unsigned long hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len)
+Hash hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len)
 {
   unsigned long i;
 
-  unsigned long result = hash ? *hash : 0x811C9DC5ul;
+  Hash result = hash ? *hash : 0x811C9DC5ul;
   for (i = 0; i < len; ++i) {
     result = 0xFFFFFFFFul & ((result ^ *((unsigned char *) ptr + i)) * 0x01000193ul);
   }
