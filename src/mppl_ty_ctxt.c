@@ -159,6 +159,12 @@ MpplTyCtxt *mppl_ty_ctxt_alloc(void)
   MpplTyCtxt *ctxt = xmalloc(sizeof(*ctxt));
   hashmap_alloc(&ctxt->interner, &ty_hash, &ty_eq);
   hashmap_alloc(&ctxt->type, &ptr_hash, &ptr_eq);
+
+  ty_intern(ctxt, (MpplTy *) mppl_ty_integer());
+  ty_intern(ctxt, (MpplTy *) mppl_ty_boolean());
+  ty_intern(ctxt, (MpplTy *) mppl_ty_char());
+  ty_intern(ctxt, (MpplTy *) mppl_ty_string());
+
   return ctxt;
 }
 
