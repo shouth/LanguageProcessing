@@ -10,18 +10,15 @@ struct MpplTyCtxt {
   HashMap(const RawSyntaxNode *, const MpplTy *) type;
 };
 
-static void ty_free(void *ty)
+static void ty_free(MpplTy *ty)
 {
-  switch (((MpplTy *) ty)->kind) {
-  case MPPL_TY_PROC:
-    slice_free(&((MpplProcTy *) ty)->params);
-    break;
-
-  default:
-    /* do nothing */
-    break;
+  if (ty) {
+    if (ty->kind == MPPL_TY_PROC) {
+      MpplProcTy *proc = (MpplProcTy *) ty;
+      slice_free(&proc->params);
+    }
+    free(ty);
   }
-  free(ty);
 }
 
 const MpplTy *mppl_ty_integer(void)
@@ -167,6 +164,12 @@ MpplTyCtxt *mppl_ty_ctxt_alloc(void)
 
 void mppl_ty_ctxt_free(MpplTyCtxt *ctxt)
 {
+  HashMapEntry entry;
+  hashmap_entry(&ctxt->interner, NULL, &entry);
+  while (hashmap_next(&ctxt->interner, &entry)) {
+    ty_free(*hashmap_key(&ctxt->interner, &entry));
+  }
+
   hashmap_free(&ctxt->interner);
   hashmap_free(&ctxt->type);
   free(ctxt);
