@@ -686,12 +686,7 @@ static void parse_var_decl(Parser *p, const MpplTokenKindSet *recovery)
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
     ident_list_elem = open(p);
-    if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      expect(p, MPPL_SYNTAX_IDENT_TOKEN);
-    } else {
-      parse_bogus(p, &kinds);
-    }
-
+    expect(p, MPPL_SYNTAX_IDENT_TOKEN);
     if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
       null(p);
     } else {
@@ -737,12 +732,7 @@ static void parse_fml_param_sec(Parser *p, const MpplTokenKindSet *recovery)
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
     ident_list_elem = open(p);
-    if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      expect(p, MPPL_SYNTAX_IDENT_TOKEN);
-    } else {
-      parse_bogus(p, &kinds);
-    }
-
+    expect(p, MPPL_SYNTAX_IDENT_TOKEN);
     if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
       null(p);
     } else {
