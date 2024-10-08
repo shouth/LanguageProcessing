@@ -537,7 +537,7 @@ static void parse_input_stmt(Parser *p, const MpplTokenKindSet *recovery)
   close(p, MPPL_SYNTAX_INPUT_STMT, input_stmt);
 }
 
-static void parse_output_value(Parser *p, const MpplTokenKindSet *recovery)
+static void parse_output_value(Parser *p)
 {
   Checkpoint output_value = open(p);
   parse_expr(p);
@@ -555,14 +555,13 @@ static void parse_output_list(Parser *p, const MpplTokenKindSet *recovery)
   expect(p, MPPL_SYNTAX_LPAREN_TOKEN);
   output_list = open(p);
   while (!check(p, MPPL_SYNTAX_RPAREN_TOKEN) && !is_eof(p)) {
-    MpplTokenKindSet kinds = *recovery;
-    bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
-    bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
-
     output_list_elem = open(p);
     if (check_any(p, first_expr())) {
-      parse_output_value(p, &kinds);
+      parse_output_value(p);
     } else {
+      MpplTokenKindSet kinds = *recovery;
+      bitset_set(&kinds, MPPL_SYNTAX_COMMA_TOKEN);
+      bitset_set(&kinds, MPPL_SYNTAX_RPAREN_TOKEN);
       parse_bogus(p, MPPL_SYNTAX_BOGUS_OUTPUT_VALUE, &kinds);
     }
 
