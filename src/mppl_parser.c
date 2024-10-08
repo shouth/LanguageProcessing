@@ -98,7 +98,7 @@ static void next_nontrivia(Parser *p)
 
 static int is_eof(Parser *p)
 {
-  return p->kind == MPPL_SYNTAX_END_OF_FILE;
+  return p->kind == MPPL_SYNTAX_EOF;
 }
 
 static void null(Parser *p)
@@ -187,7 +187,7 @@ static void close(Parser *p, MpplSyntaxKind kind, Checkpoint checkpoint)
   syntax_builder_close(p->builder, kind, checkpoint);
 }
 
-static void parse_bogus(Parser *p, const MpplTokenKindSet *kinds)
+static void parse_bogus(Parser *p, MpplSyntaxKind kind, const MpplTokenKindSet *kinds)
 {
   Checkpoint bogus = open(p);
   if (!p->recovery) {
@@ -198,7 +198,7 @@ static void parse_bogus(Parser *p, const MpplTokenKindSet *kinds)
     bump(p);
   }
   p->recovery = is_eof(p);
-  close(p, MPPL_SYNTAX_BOGUS, bogus);
+  close(p, kind, bogus);
 }
 
 static const MpplTokenKindSet *first_std_type(void)
@@ -483,7 +483,7 @@ static void parse_act_param_list(Parser *p, const MpplTokenKindSet *recovery)
     if (check_any(p, first_expr())) {
       parse_expr(p, &kinds);
     } else {
-      parse_bogus(p, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_EXPR, &kinds);
     }
 
     if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
@@ -534,7 +534,7 @@ static void parse_input_list(Parser *p, const MpplTokenKindSet *recovery)
     if (check_any(p, first_expr())) {
       parse_expr(p, &kinds);
     } else {
-      parse_bogus(p, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_EXPR, &kinds);
     }
 
     if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
@@ -591,7 +591,7 @@ static void parse_output_list(Parser *p, const MpplTokenKindSet *recovery)
     if (check_any(p, first_expr())) {
       parse_output_value(p, &kinds);
     } else {
-      parse_bogus(p, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_OUTPUT_VALUE, &kinds);
     }
 
     if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
@@ -634,7 +634,7 @@ static void parse_comp_stmt(Parser *p, const MpplTokenKindSet *recovery)
     if (check_any(p, first_stmt()) || check(p, MPPL_SYNTAX_SEMI_TOKEN)) {
       parse_stmt(p, &kinds);
     } else {
-      parse_bogus(p, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_STMT, &kinds);
     }
 
     if (check(p, MPPL_SYNTAX_END_KW)) {
@@ -686,7 +686,12 @@ static void parse_var_decl(Parser *p, const MpplTokenKindSet *recovery)
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
     ident_list_elem = open(p);
-    expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+    if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+      expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+    } else {
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_IDENT, &kinds);
+    }
+
     if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
       null(p);
     } else {
@@ -712,7 +717,12 @@ static void parse_var_decl_part(Parser *p, const MpplTokenKindSet *recovery)
     bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
 
     var_decl_list_elem = open(p);
-    parse_var_decl(p, &kinds);
+    if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+      parse_var_decl(p, &kinds);
+    } else {
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_VAR_DECL, &kinds);
+    }
+
     expect(p, MPPL_SYNTAX_SEMI_TOKEN);
     close(p, MPPL_SYNTAX_VAR_DECL_LIST_ELEM, var_decl_list_elem);
   }
@@ -732,7 +742,12 @@ static void parse_fml_param_sec(Parser *p, const MpplTokenKindSet *recovery)
     bitset_set(&kinds, MPPL_SYNTAX_COLON_TOKEN);
 
     ident_list_elem = open(p);
-    expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+    if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+      expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+    } else {
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_IDENT, &kinds);
+    }
+
     if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
       null(p);
     } else {
@@ -762,7 +777,7 @@ static void parse_fml_param_list(Parser *p, const MpplTokenKindSet *recovery)
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
       parse_fml_param_sec(p, &kinds);
     } else {
-      parse_bogus(p, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_FML_PARAM_SEC, &kinds);
     }
 
     if (check(p, MPPL_SYNTAX_RPAREN_TOKEN)) {
@@ -840,7 +855,7 @@ static void parse_program(Parser *p)
     } else if (check(p, MPPL_SYNTAX_PROCEDURE_KW)) {
       parse_proc_decl_part(p, &kinds);
     } else {
-      parse_bogus(p, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_DECL_PART, &kinds);
     }
   }
   close(p, MPPL_SYNTAX_DECL_PART_LIST, decl_list);
@@ -872,10 +887,10 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
 
   next_nontrivia(&p); /* initialize `p.span` and `p.kind` */
   parse_program(&p);
-  if (check(&p, MPPL_SYNTAX_END_OF_FILE)) {
-    expect(&p, MPPL_SYNTAX_END_OF_FILE);
+  if (check(&p, MPPL_SYNTAX_EOF)) {
+    expect(&p, MPPL_SYNTAX_EOF);
   } else {
-    parse_bogus(&p, NULL);
+    parse_bogus(&p, MPPL_SYNTAX_BOGUS_EOF, NULL);
   }
 
   result.root        = syntax_builder_finish(p.builder);

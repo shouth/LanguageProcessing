@@ -123,7 +123,7 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
   switch (kind) {
   case MPPL_SYNTAX_ERROR:
     return "ERROR";
-  case MPPL_SYNTAX_END_OF_FILE:
+  case MPPL_SYNTAX_EOF:
     return "END_OF_FILE";
   case MPPL_SYNTAX_IDENT_TOKEN:
     return "IDENT_TOKEN";
