@@ -13,11 +13,25 @@ struct MpplTyCtxt {
 static void ty_free(MpplTy *ty)
 {
   if (ty) {
-    if (ty->kind == MPPL_TY_PROC) {
+    switch (ty->kind) {
+    case MPPL_TY_INTEGER:
+    case MPPL_TY_BOOLEAN:
+    case MPPL_TY_CHAR:
+    case MPPL_TY_STRING:
+      /* do nothing. allocated statically */
+      break;
+
+    case MPPL_TY_ARRAY:
+      free(ty);
+      break;
+
+    case MPPL_TY_PROC: {
       MpplProcTy *proc = (MpplProcTy *) ty;
       slice_free(&proc->params);
+      free(ty);
+      break;
     }
-    free(ty);
+    }
   }
 }
 
