@@ -315,8 +315,22 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "IDENT_LIST_ELEM";
   case MPPL_SYNTAX_IDENT_LIST:
     return "IDENT_LIST";
-  case MPPL_SYNTAX_BOGUS:
-    return "BOGUS";
+  case MPPL_SYNTAX_BOGUS_EOF:
+    return "BOGUS_EOF";
+  case MPPL_SYNTAX_BOGUS_DECL_PART:
+    return "BOGUS_DECL_PART";
+  case MPPL_SYNTAX_BOGUS_VAR_DECL:
+    return "BOGUS_VAR_DECL";
+  case MPPL_SYNTAX_BOGUS_FML_PARAM_SEC:
+    return "BOGUS_FML_PARAM_SEC";
+  case MPPL_SYNTAX_BOGUS_STMT:
+    return "BOGUS_STMT";
+  case MPPL_SYNTAX_BOGUS_OUTPUT_VALUE:
+    return "BOGUS_OUTPUT_VALUE";
+  case MPPL_SYNTAX_BOGUS_EXPR:
+    return "BOGUS_EXPR";
+  case MPPL_SYNTAX_BOGUS_IDENT:
+    return "BOGUS_IDENT";
   default:
     unreachable();
   }
