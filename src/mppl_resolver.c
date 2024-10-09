@@ -196,7 +196,7 @@ static void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
   }
 }
 
-MpplResolveResult mppl_resolve(const SyntaxTree *tree)
+MpplResolveResult mppl_resolve(const MpplRootSyntax *syntax)
 {
   MpplResolveResult result;
 
@@ -206,9 +206,9 @@ MpplResolveResult mppl_resolve(const SyntaxTree *tree)
   vec_alloc(&resolver.events, 0);
   vec_alloc(&resolver.diags, 0);
 
-  do_resolve(&resolver, tree);
+  do_resolve(&resolver, &syntax->syntax);
 
-  result.semantics   = mppl_semantics_alloc(tree, resolver.events.ptr, resolver.events.count);
+  result.semantics   = mppl_semantics_alloc(&syntax->syntax, resolver.events.ptr, resolver.events.count);
   result.diags.ptr   = resolver.diags.ptr;
   result.diags.count = resolver.diags.count;
 
