@@ -352,454 +352,264 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
 
 /* MPPL syntax */
 
-MpplRootSyntax *mppl_root_syntax_alloc(SyntaxTree *syntax)
+static void *try_cast(SyntaxTree *syntax, int condition)
 {
-  if (!syntax->node.parent) {
-    return (MpplRootSyntax *) syntax;
+  if (condition) {
+    return syntax;
   } else {
+    syntax_tree_free(syntax);
     return NULL;
   }
+}
+
+MpplRootSyntax *mppl_root_syntax_alloc(SyntaxTree *syntax)
+{
+  return try_cast(syntax, syntax->node.parent == NULL);
 }
 
 MpplProgramSyntax *mppl_program_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_PROGRAM) {
-    return (MpplProgramSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_PROGRAM);
 }
 
 MpplEofSyntax *mppl_eof_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_EOF) {
-    return (MpplEofSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_EOF);
 }
 
 MpplDeclPartListSyntax *mppl_decl_part_list_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_DECL_PART_LIST) {
-    return (MpplDeclPartListSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_DECL_PART_LIST);
 }
 
 MpplBindIdentListElemSyntax *mppl_bind_ident_list_elem_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT_LIST_ELEM) {
-    return (MpplBindIdentListElemSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT_LIST_ELEM);
 }
 
 MpplBindIdentListSyntax *mppl_bind_ident_list_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT_LIST) {
-    return (MpplBindIdentListSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT_LIST);
 }
 
 MpplBindIdentSyntax *mppl_bind_ident_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT) {
-    return (MpplBindIdentSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT);
 }
 
 MpplVarDeclPartSyntax *mppl_var_decl_part_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL_PART) {
-    return (MpplVarDeclPartSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL_PART);
 }
 
 MpplVarDeclListElemSyntax *mppl_var_decl_list_elem_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL_LIST_ELEM) {
-    return (MpplVarDeclListElemSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL_LIST_ELEM);
 }
 
 MpplVarDeclListSyntax *mppl_var_decl_list_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL_LIST) {
-    return (MpplVarDeclListSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL_LIST);
 }
 
 MpplVarDeclSyntax *mppl_var_decl_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL) {
-    return (MpplVarDeclSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_VAR_DECL);
 }
 
 MpplIntegerTypeSyntax *mppl_integer_type_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_INTEGER_TYPE) {
-    return (MpplIntegerTypeSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_INTEGER_TYPE);
 }
 
 MpplCharTypeSyntax *mppl_char_type_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_CHAR_TYPE) {
-    return (MpplCharTypeSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_CHAR_TYPE);
 }
 
 MpplBooleanTypeSyntax *mppl_boolean_type_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOOLEAN_TYPE) {
-    return (MpplBooleanTypeSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOOLEAN_TYPE);
 }
 
 MpplArrayTypeSyntax *mppl_array_type_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_ARRAY_TYPE) {
-    return (MpplArrayTypeSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_ARRAY_TYPE);
 }
 
 MpplProcDeclPartSyntax *mppl_proc_decl_part_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_PROC_DECL_PART) {
-    return (MpplProcDeclPartSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_PROC_DECL_PART);
 }
 
 MpplProcHeadingSyntax *mppl_proc_heading_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_PROC_HEADING) {
-    return (MpplProcHeadingSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_PROC_HEADING);
 }
 
 MpplProcBodySyntax *mppl_proc_body_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_PROC_BODY) {
-    return (MpplProcBodySyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_PROC_BODY);
 }
 
 MpplProcDeclSyntax *mppl_proc_decl_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_PROC_DECL) {
-    return (MpplProcDeclSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_PROC_DECL);
 }
 
 MpplFmlParamListElemSyntax *mppl_fml_param_list_elem_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_LIST_ELEM) {
-    return (MpplFmlParamListElemSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_LIST_ELEM);
 }
 
 MpplFmlParamListSyntax *mppl_fml_param_list_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_LIST) {
-    return (MpplFmlParamListSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_LIST);
 }
 
 MpplFmlParamsSyntax *mppl_fml_params_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAMS) {
-    return (MpplFmlParamsSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAMS);
 }
 
 MpplFmlParamSecSyntax *mppl_fml_param_sec_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_SEC) {
-    return (MpplFmlParamSecSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_SEC);
 }
 
 MpplStmtListElemSyntax *mppl_stmt_list_elem_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_STMT_LIST_ELEM) {
-    return (MpplStmtListElemSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_STMT_LIST_ELEM);
 }
 
 MpplStmtListSyntax *mppl_stmt_list_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_STMT_LIST) {
-    return (MpplStmtListSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_STMT_LIST);
 }
 
 MpplAssignStmtSyntax *mppl_assign_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_ASSIGN_STMT) {
-    return (MpplAssignStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_ASSIGN_STMT);
 }
 
 MpplIfStmtSyntax *mppl_if_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_IF_STMT) {
-    return (MpplIfStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_IF_STMT);
 }
 
 MpplElseClauseSyntax *mppl_else_clause_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_ELSE_CLAUSE) {
-    return (MpplElseClauseSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_ELSE_CLAUSE);
 }
 
 MpplWhileStmtSyntax *mppl_while_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_WHILE_STMT) {
-    return (MpplWhileStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_WHILE_STMT);
 }
 
 MpplBreakStmtSyntax *mppl_break_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BREAK_STMT) {
-    return (MpplBreakStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BREAK_STMT);
 }
 
 MpplCallStmtSyntax *mppl_call_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_CALL_STMT) {
-    return (MpplCallStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_CALL_STMT);
 }
 
 MpplActParamsSyntax *mppl_act_params_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_ACT_PARAMS) {
-    return (MpplActParamsSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_ACT_PARAMS);
 }
 
 MpplReturnStmtSyntax *mppl_return_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_RETURN_STMT) {
-    return (MpplReturnStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_RETURN_STMT);
 }
 
 MpplInputStmtSyntax *mppl_input_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_INPUT_STMT) {
-    return (MpplInputStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_INPUT_STMT);
 }
 
 MpplInputsSyntax *mppl_inputs_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_INPUTS) {
-    return (MpplInputsSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_INPUTS);
 }
 
 MpplOutputStmtSyntax *mppl_output_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_STMT) {
-    return (MpplOutputStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_STMT);
 }
 
 MpplOutputListElemSyntax *mppl_output_list_elem_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_LIST_ELEM) {
-    return (MpplOutputListElemSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_LIST_ELEM);
 }
 
 MpplOutputListSyntax *mppl_output_list_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_LIST) {
-    return (MpplOutputListSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_LIST);
 }
 
 MpplOutputsSyntax *mppl_outputs_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_OUTPUTS) {
-    return (MpplOutputsSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_OUTPUTS);
 }
 
 MpplOutputValueSyntax *mppl_output_value_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_VALUE) {
-    return (MpplOutputValueSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_OUTPUT_VALUE);
 }
 
 MpplCompStmtSyntax *mppl_comp_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_COMP_STMT) {
-    return (MpplCompStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_COMP_STMT);
 }
 
 MpplExprListElemSyntax *mppl_expr_list_elem_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_EXPR_LIST_ELEM) {
-    return (MpplExprListElemSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_EXPR_LIST_ELEM);
 }
 
 MpplExprListSyntax *mppl_expr_list_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_EXPR_LIST) {
-    return (MpplExprListSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_EXPR_LIST);
 }
 
 MpplRefIdentSyntax *mppl_ref_ident_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_REF_IDENT) {
-    return (MpplRefIdentSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_REF_IDENT);
 }
 
 MpplEntireVarSyntax *mppl_entire_var_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_ENTIRE_VAR) {
-    return (MpplEntireVarSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_ENTIRE_VAR);
 }
 
 MpplIndexedVarSyntax *mppl_indexed_var_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_INDEXED_VAR) {
-    return (MpplIndexedVarSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_INDEXED_VAR);
 }
 
 MpplUnaryExprSyntax *mppl_unary_expr_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_UNARY_EXPR) {
-    return (MpplUnaryExprSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_UNARY_EXPR);
 }
 
 MpplBinaryExprSyntax *mppl_binary_expr_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BINARY_EXPR) {
-    return (MpplBinaryExprSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BINARY_EXPR);
 }
 
 MpplParenExprSyntax *mppl_paren_expr_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_PAREN_EXPR) {
-    return (MpplParenExprSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_PAREN_EXPR);
 }
 
 MpplCastExprSyntax *mppl_cast_expr_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_CAST_EXPR) {
-    return (MpplCastExprSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_CAST_EXPR);
 }
 
 void mppl_root_syntax_free(MpplRootSyntax *root)
@@ -1054,74 +864,42 @@ void mppl_cast_expr_syntax_free(MpplCastExprSyntax *cast_expr)
 
 BogusMpplEofSyntax *bogus_mppl_eof_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_EOF) {
-    return (BogusMpplEofSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_EOF);
 }
 
 BogusMpplDeclPartSyntax *bogus_mppl_decl_part_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_DECL_PART) {
-    return (BogusMpplDeclPartSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_DECL_PART);
 }
 
 BogusMpplVarDeclSyntax *bogus_mppl_var_decl_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_VAR_DECL) {
-    return (BogusMpplVarDeclSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_VAR_DECL);
 }
 
 BogusMpplFmlParamSecSyntax *bogus_mppl_fml_param_sec_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_FML_PARAM_SEC) {
-    return (BogusMpplFmlParamSecSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_FML_PARAM_SEC);
 }
 
 BogusMpplStmtSyntax *bogus_mppl_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_STMT) {
-    return (BogusMpplStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_STMT);
 }
 
 BogusMpplOutputValueSyntax *bogus_mppl_output_value_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_OUTPUT_VALUE) {
-    return (BogusMpplOutputValueSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_OUTPUT_VALUE);
 }
 
 BogusMpplExprSyntax *bogus_mppl_expr_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_EXPR) {
-    return (BogusMpplExprSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_EXPR);
 }
 
 BogusMpplBindIdentSyntax *bogus_mppl_bind_ident_syntax_alloc(SyntaxTree *syntax)
 {
-  if (syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_BIND_IDENT) {
-    return (BogusMpplBindIdentSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, syntax->raw->node.kind == MPPL_SYNTAX_BOGUS_BIND_IDENT);
 }
 
 void bogus_mppl_eof_syntax_free(BogusMpplEofSyntax *bogus_eof)
@@ -1329,101 +1107,57 @@ static int bind_ident_kind(const SyntaxTree *syntax)
 
 AnyMpplEofSyntax *any_mppl_eof_syntax_alloc(SyntaxTree *syntax)
 {
-  if (eof_kind(syntax) != -1) {
-    return (AnyMpplEofSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, eof_kind(syntax) != -1);
 }
 
 AnyMpplDeclPartSyntax *any_mppl_decl_part_syntax_alloc(SyntaxTree *syntax)
 {
-  if (decl_part_kind(syntax) != -1) {
-    return (AnyMpplDeclPartSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, decl_part_kind(syntax) != -1);
 }
 
 AnyMpplTypeSyntax *any_mppl_type_syntax_alloc(SyntaxTree *syntax)
 {
-  if (type_kind(syntax) != -1) {
-    return (AnyMpplTypeSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, type_kind(syntax) != -1);
 }
 
 AnyMpplVarDeclSyntax *any_mppl_var_decl_syntax_alloc(SyntaxTree *syntax)
 {
-  if (var_decl_kind(syntax) != -1) {
-    return (AnyMpplVarDeclSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, var_decl_kind(syntax) != -1);
 }
 
 AnyMpplFmlParamSecSyntax *any_mppl_fml_param_sec_syntax_alloc(SyntaxTree *syntax)
 {
-  if (fml_param_sec_kind(syntax) != -1) {
-    return (AnyMpplFmlParamSecSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, fml_param_sec_kind(syntax) != -1);
 }
 
 AnyMpplStmtSyntax *any_mppl_stmt_syntax_alloc(SyntaxTree *syntax)
 {
-  if (stmt_kind(syntax) != -1) {
-    return (AnyMpplStmtSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, stmt_kind(syntax) != -1);
 }
 
 AnyMpplOutputSyntax *any_mppl_output_syntax_alloc(SyntaxTree *syntax)
 {
-  if (output_kind(syntax) != -1) {
-    return (AnyMpplOutputSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, output_kind(syntax) != -1);
 }
 
 AnyMpplOutputValueSyntax *any_mppl_output_value_syntax_alloc(SyntaxTree *syntax)
 {
-  if (output_value_kind(syntax) != -1) {
-    return (AnyMpplOutputValueSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, output_value_kind(syntax) != -1);
 }
 
 AnyMpplVarSyntax *any_mppl_var_syntax_alloc(SyntaxTree *syntax)
 {
-  if (var_kind(syntax) != -1) {
-    return (AnyMpplVarSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, var_kind(syntax) != -1);
 }
 
 AnyMpplExprSyntax *any_mppl_expr_syntax_alloc(SyntaxTree *syntax)
 {
-  if (expr_kind(syntax) != -1) {
-    return (AnyMpplExprSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, expr_kind(syntax) != -1);
 }
 
 AnyMpplBindIdentSyntax *any_mppl_bind_ident_syntax_alloc(SyntaxTree *syntax)
 {
-  if (bind_ident_kind(syntax) != -1) {
-    return (AnyMpplBindIdentSyntax *) syntax;
-  } else {
-    return NULL;
-  }
+  return try_cast(syntax, bind_ident_kind(syntax) != -1);
 }
 
 void any_mppl_eof_syntax_free(AnyMpplEofSyntax *any_eof)
