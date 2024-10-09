@@ -7,7 +7,6 @@
 #include "mppl_syntax.h"
 #include "mppl_ty_ctxt.h"
 #include "report.h"
-#include "syntax_tree.h"
 #include "util.h"
 
 typedef struct MpplLexResult MpplLexResult;
