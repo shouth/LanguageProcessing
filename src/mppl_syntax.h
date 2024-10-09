@@ -562,8 +562,8 @@ struct MpplIfStmtSyntaxFields {
 };
 
 struct MpplElseClauseSyntaxFields {
-  SyntaxToken        *else_kw;
-  MpplCompStmtSyntax *else_stmt;
+  SyntaxToken       *else_kw;
+  AnyMpplStmtSyntax *else_stmt;
 };
 
 struct MpplWhileStmtSyntaxFields {
@@ -594,7 +594,7 @@ struct MpplReturnStmtSyntaxFields {
 };
 
 struct MpplInputStmtSyntaxFields {
-  SyntaxToken      *read_op;
+  SyntaxToken      *read_op_token;
   MpplInputsSyntax *inputs;
 };
 
@@ -605,7 +605,7 @@ struct MpplInputsSyntaxFields {
 };
 
 struct MpplOutputStmtSyntaxFields {
-  SyntaxToken       *write_op;
+  SyntaxToken       *write_op_token;
   MpplOutputsSyntax *outputs;
 };
 
@@ -661,13 +661,13 @@ struct MpplIndexedVarSyntaxFields {
 };
 
 struct MpplUnaryExprSyntaxFields {
-  SyntaxToken       *op;
+  SyntaxToken       *op_token;
   AnyMpplExprSyntax *expr;
 };
 
 struct MpplBinaryExprSyntaxFields {
   AnyMpplExprSyntax *lhs;
-  SyntaxToken       *op;
+  SyntaxToken       *op_token;
   AnyMpplExprSyntax *rhs;
 };
 
@@ -906,8 +906,8 @@ void mppl_var_decl_list_syntax_fields_free(MpplVarDeclListSyntaxFields *fields);
 void mppl_var_decl_syntax_fields_free(MpplVarDeclSyntaxFields *fields);
 void mppl_integer_type_syntax_fields_free(MpplIntegerTypeSyntaxFields *fields);
 void mppl_char_type_syntax_fields_free(MpplCharTypeSyntaxFields *fields);
-void mppl_boolean_type_syntax_fields_free(MpplArrayTypeSyntaxFields *fields);
-void mppl_array_type_syntax_fields_free(MpplBooleanTypeSyntaxFields *fields);
+void mppl_boolean_type_syntax_fields_free(MpplBooleanTypeSyntaxFields *fields);
+void mppl_array_type_syntax_fields_free(MpplArrayTypeSyntaxFields *fields);
 void mppl_proc_decl_part_syntax_fields_free(MpplProcDeclPartSyntaxFields *fields);
 void mppl_proc_heading_syntax_fields_free(MpplProcHeadingSyntaxFields *fields);
 void mppl_proc_body_syntax_fields_free(MpplProcBodySyntaxFields *fields);

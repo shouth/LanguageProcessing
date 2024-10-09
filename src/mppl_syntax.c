@@ -4,6 +4,7 @@
 
 #include "mppl_syntax.h"
 #include "syntax_tree.h"
+#include "util.h"
 
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size)
 {
@@ -1555,102 +1556,875 @@ MpplProgramSyntaxFields mppl_program_syntax_fields_alloc(const MpplProgramSyntax
   return fields;
 }
 
-MpplEofSyntaxFields               mppl_eof_syntax_fields_alloc(const MpplEofSyntax *eof);
-MpplDeclPartListSyntaxFields      mppl_decl_part_list_syntax_fields_alloc(const MpplDeclPartListSyntax *decl_part_list);
-MpplBindIdentListElemSyntaxFields mppl_bind_ident_list_elem_syntax_fields_alloc(const MpplBindIdentListElemSyntax *bind_ident_list_elem);
-MpplBindIdentListSyntaxFields     mppl_bind_ident_list_syntax_fields_alloc(const MpplBindIdentListSyntax *bind_ident_list);
-MpplBindIdentSyntaxFields         mppl_bind_ident_syntax_fields_alloc(const MpplBindIdentSyntax *bind_ident);
-MpplVarDeclPartSyntaxFields       mppl_var_decl_part_syntax_fields_alloc(const MpplVarDeclPartSyntax *var_decl_part);
-MpplVarDeclListElemSyntaxFields   mppl_var_decl_list_elem_syntax_fields_alloc(const MpplVarDeclListElemSyntax *var_decl_list_elem);
-MpplVarDeclListSyntaxFields       mppl_var_decl_list_syntax_fields_alloc(const MpplVarDeclListSyntax *var_decl_list);
-MpplVarDeclSyntaxFields           mppl_var_decl_syntax_fields_alloc(const MpplVarDeclSyntax *var_decl);
-MpplIntegerTypeSyntaxFields       mppl_integer_type_syntax_fields_alloc(const MpplArrayTypeSyntax *integer_type);
-MpplCharTypeSyntaxFields          mppl_char_type_syntax_fields_alloc(const MpplArrayTypeSyntax *char_type);
-MpplBooleanTypeSyntaxFields       mppl_boolean_type_syntax_fields_alloc(const MpplArrayTypeSyntax *boolean_type);
-MpplArrayTypeSyntaxFields         mppl_array_type_syntax_fields_alloc(const MpplArrayTypeSyntax *array_type);
-MpplProcDeclPartSyntaxFields      mppl_proc_decl_part_syntax_fields_alloc(const MpplProcDeclPartSyntax *proc_decl_part);
-MpplProcHeadingSyntaxFields       mppl_proc_heading_syntax_fields_alloc(const MpplProcHeadingSyntax *proc_heading);
-MpplProcBodySyntaxFields          mppl_proc_body_syntax_fields_alloc(const MpplProcBodySyntax *proc_body);
-MpplProcDeclSyntaxFields          mppl_proc_decl_syntax_fields_alloc(const MpplProcDeclSyntax *proc_decl);
-MpplFmlParamListElemSyntaxFields  mppl_fml_param_list_elem_syntax_fields_alloc(const MpplFmlParamListElemSyntax *fml_param_list_elem);
-MpplFmlParamListSyntaxFields      mppl_fml_param_list_syntax_fields_alloc(const MpplFmlParamListSyntax *fml_param_list);
-MpplFmlParamsSyntaxFields         mppl_fml_params_syntax_fields_alloc(const MpplFmlParamsSyntax *fml_params);
-MpplFmlParamSecSyntaxFields       mppl_fml_param_sec_syntax_fields_alloc(const MpplFmlParamSecSyntax *fml_param_sec);
-MpplStmtListElemSyntaxFields      mppl_stmt_list_elem_syntax_fields_alloc(const MpplStmtListElemSyntax *stmt_list_elem);
-MpplStmtListSyntaxFields          mppl_stmt_list_syntax_fields_alloc(const MpplStmtListSyntax *stmt_list);
-MpplAssignStmtSyntaxFields        mppl_assign_stmt_syntax_fields_alloc(const MpplAssignStmtSyntax *assign_stmt);
-MpplIfStmtSyntaxFields            mppl_if_stmt_syntax_fields_alloc(const MpplIfStmtSyntax *if_stmt);
-MpplElseClauseSyntaxFields        mppl_else_clause_syntax_fields_alloc(const MpplElseClauseSyntax *else_clause);
-MpplWhileStmtSyntaxFields         mppl_while_stmt_syntax_fields_alloc(const MpplWhileStmtSyntax *while_stmt);
-MpplBreakStmtSyntaxFields         mppl_break_stmt_syntax_fields_alloc(const MpplBreakStmtSyntax *break_stmt);
-MpplCallStmtSyntaxFields          mppl_call_stmt_syntax_fields_alloc(const MpplCallStmtSyntax *call_stmt);
-MpplActParamsSyntaxFields         mppl_act_params_syntax_fields_alloc(const MpplActParamsSyntax *act_params);
-MpplReturnStmtSyntaxFields        mppl_return_stmt_syntax_fields_alloc(const MpplReturnStmtSyntax *return_stmt);
-MpplInputStmtSyntaxFields         mppl_input_stmt_syntax_fields_alloc(const MpplInputStmtSyntax *input_stmt);
-MpplInputsSyntaxFields            mppl_inputs_syntax_fields_alloc(const MpplInputsSyntax *inputs);
-MpplOutputStmtSyntaxFields        mppl_output_stmt_syntax_fields_alloc(const MpplOutputStmtSyntax *output_stmt);
-MpplOutputListElemSyntaxFields    mppl_output_list_elem_syntax_fields_alloc(const MpplOutputListElemSyntax *output_list_elem);
-MpplOutputListSyntaxFields        mppl_output_list_syntax_fields_alloc(const MpplOutputListSyntax *output_list);
-MpplOutputsSyntaxFields           mppl_outputs_syntax_fields_alloc(const MpplOutputsSyntax *outputs);
-MpplOutputValueSyntaxFields       mppl_output_value_syntax_fields_alloc(const MpplOutputValueSyntax *output_value);
-MpplCompStmtSyntaxFields          mppl_comp_stmt_syntax_fields_alloc(const MpplCompStmtSyntax *comp_stmt);
-MpplExprListElemSyntaxFields      mppl_expr_list_elem_syntax_fields_alloc(const MpplExprListElemSyntax *expr_list_elem);
-MpplExprListSyntaxFields          mppl_expr_list_syntax_fields_alloc(const MpplExprListSyntax *expr_list);
-MpplRefIdentSyntaxFields          mppl_ref_ident_syntax_fields_alloc(const MpplRefIdentSyntax *ref_ident);
-MpplEntireVarSyntaxFields         mppl_entire_var_syntax_fields_alloc(const MpplEntireVarSyntax *entire_var);
-MpplIndexedVarSyntaxFields        mppl_indexed_var_syntax_fields_alloc(const MpplIndexedVarSyntax *indexed_var);
-MpplUnaryExprSyntaxFields         mppl_unary_expr_syntax_fields_alloc(const MpplUnaryExprSyntax *unary_expr);
-MpplBinaryExprSyntaxFields        mppl_binary_expr_syntax_fields_alloc(const MpplBinaryExprSyntax *binary_expr);
-MpplParenExprSyntaxFields         mppl_paren_expr_syntax_fields_alloc(const MpplParenExprSyntax *paren_expr);
-MpplCastExprSyntaxFields          mppl_cast_expr_syntax_fields_alloc(const MpplCastExprSyntax *cast_expr);
+MpplEofSyntaxFields mppl_eof_syntax_fields_alloc(const MpplEofSyntax *eof)
+{
+  MpplEofSyntaxFields fields;
+  fields.eof_token = syntax_tree_child_token((const SyntaxTree *) eof, 0);
+  return fields;
+}
 
-void mppl_root_syntax_fields_free(MpplRootSyntaxFields *fields);
-void mppl_eof_syntax_fields_free(MpplEofSyntaxFields *fields);
-void mppl_program_syntax_fields_free(MpplProgramSyntaxFields *fields);
-void mppl_decl_part_list_syntax_fields_free(MpplDeclPartListSyntaxFields *fields);
-void mppl_bind_ident_list_elem_syntax_fields_free(MpplBindIdentListElemSyntaxFields *fields);
-void mppl_bind_ident_list_syntax_fields_free(MpplBindIdentListSyntaxFields *fields);
-void mppl_bind_ident_syntax_fields_free(MpplBindIdentSyntaxFields *fields);
-void mppl_var_decl_part_syntax_fields_free(MpplVarDeclPartSyntaxFields *fields);
-void mppl_var_decl_list_elem_syntax_fields_free(MpplVarDeclListElemSyntaxFields *fields);
-void mppl_var_decl_list_syntax_fields_free(MpplVarDeclListSyntaxFields *fields);
-void mppl_var_decl_syntax_fields_free(MpplVarDeclSyntaxFields *fields);
-void mppl_integer_type_syntax_fields_free(MpplIntegerTypeSyntaxFields *fields);
-void mppl_char_type_syntax_fields_free(MpplCharTypeSyntaxFields *fields);
-void mppl_boolean_type_syntax_fields_free(MpplArrayTypeSyntaxFields *fields);
-void mppl_array_type_syntax_fields_free(MpplBooleanTypeSyntaxFields *fields);
-void mppl_proc_decl_part_syntax_fields_free(MpplProcDeclPartSyntaxFields *fields);
-void mppl_proc_heading_syntax_fields_free(MpplProcHeadingSyntaxFields *fields);
-void mppl_proc_body_syntax_fields_free(MpplProcBodySyntaxFields *fields);
-void mppl_proc_decl_syntax_fields_free(MpplProcDeclSyntaxFields *fields);
-void mppl_fml_param_list_elem_syntax_fields_free(MpplFmlParamListElemSyntaxFields *fields);
-void mppl_fml_param_list_syntax_fields_free(MpplFmlParamListSyntaxFields *fields);
-void mppl_fml_params_syntax_fields_free(MpplFmlParamsSyntaxFields *fields);
-void mppl_fml_param_sec_syntax_fields_free(MpplFmlParamSecSyntaxFields *fields);
-void mppl_stmt_list_elem_syntax_fields_free(MpplStmtListElemSyntaxFields *fields);
-void mppl_stmt_list_syntax_fields_free(MpplStmtListSyntaxFields *fields);
-void mppl_assign_stmt_syntax_fields_free(MpplAssignStmtSyntaxFields *fields);
-void mppl_if_stmt_syntax_fields_free(MpplIfStmtSyntaxFields *fields);
-void mppl_else_clause_syntax_fields_free(MpplElseClauseSyntaxFields *fields);
-void mppl_while_stmt_syntax_fields_free(MpplWhileStmtSyntaxFields *fields);
-void mppl_break_stmt_syntax_fields_free(MpplBreakStmtSyntaxFields *fields);
-void mppl_call_stmt_syntax_fields_free(MpplCallStmtSyntaxFields *fields);
-void mppl_act_params_syntax_fields_free(MpplActParamsSyntaxFields *fields);
-void mppl_return_stmt_syntax_fields_free(MpplReturnStmtSyntaxFields *fields);
-void mppl_input_stmt_syntax_fields_free(MpplInputStmtSyntaxFields *fields);
-void mppl_inputs_syntax_fields_free(MpplInputsSyntaxFields *fields);
-void mppl_output_stmt_syntax_fields_free(MpplOutputStmtSyntaxFields *fields);
-void mppl_output_list_elem_syntax_fields_free(MpplOutputListElemSyntaxFields *fields);
-void mppl_output_list_syntax_fields_free(MpplOutputListSyntaxFields *fields);
-void mppl_outputs_syntax_fields_free(MpplOutputsSyntaxFields *fields);
-void mppl_output_value_syntax_fields_free(MpplOutputValueSyntaxFields *fields);
-void mppl_comp_stmt_syntax_fields_free(MpplCompStmtSyntaxFields *fields);
-void mppl_expr_list_elem_syntax_fields_free(MpplExprListElemSyntaxFields *fields);
-void mppl_expr_list_syntax_fields_free(MpplExprListSyntaxFields *fields);
-void mppl_ref_ident_syntax_fields_free(MpplRefIdentSyntaxFields *fields);
-void mppl_entire_var_syntax_fields_free(MpplEntireVarSyntaxFields *fields);
-void mppl_indexed_var_syntax_fields_free(MpplIndexedVarSyntaxFields *fields);
-void mppl_unary_expr_syntax_fields_free(MpplUnaryExprSyntaxFields *fields);
-void mppl_binary_expr_syntax_fields_free(MpplBinaryExprSyntaxFields *fields);
-void mppl_paren_expr_syntax_fields_free(MpplParenExprSyntaxFields *fields);
-void mppl_cast_expr_syntax_fields_free(MpplCastExprSyntaxFields *fields);
+MpplDeclPartListSyntaxFields mppl_decl_part_list_syntax_fields_alloc(const MpplDeclPartListSyntax *decl_part_list)
+{
+  unsigned long i;
+
+  MpplDeclPartListSyntaxFields fields;
+  slice_alloc(&fields.decl_parts, decl_part_list->syntax.raw->children.count);
+  for (i = 0; i * 2 < decl_part_list->syntax.raw->children.count; ++i) {
+    fields.decl_parts.ptr[i] = any_mppl_decl_part_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) decl_part_list, i));
+  }
+  return fields;
+}
+
+MpplBindIdentListElemSyntaxFields mppl_bind_ident_list_elem_syntax_fields_alloc(const MpplBindIdentListElemSyntax *bind_ident_list_elem)
+{
+  MpplBindIdentListElemSyntaxFields fields;
+  fields.bind_ident  = any_mppl_bind_ident_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) bind_ident_list_elem, 0));
+  fields.comma_token = syntax_tree_child_token((const SyntaxTree *) bind_ident_list_elem, 1);
+  return fields;
+}
+
+MpplBindIdentListSyntaxFields mppl_bind_ident_list_syntax_fields_alloc(const MpplBindIdentListSyntax *bind_ident_list)
+{
+  unsigned long i;
+
+  MpplBindIdentListSyntaxFields fields;
+  slice_alloc(&fields.bind_ident_list_elems, bind_ident_list->syntax.raw->children.count);
+  for (i = 0; i * 2 < bind_ident_list->syntax.raw->children.count; ++i) {
+    fields.bind_ident_list_elems.ptr[i] = mppl_bind_ident_list_elem_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) bind_ident_list, i));
+  }
+  return fields;
+}
+
+MpplBindIdentSyntaxFields mppl_bind_ident_syntax_fields_alloc(const MpplBindIdentSyntax *bind_ident)
+{
+  MpplBindIdentSyntaxFields fields;
+  fields.ident = syntax_tree_child_token((const SyntaxTree *) bind_ident, 0);
+  return fields;
+}
+
+MpplVarDeclPartSyntaxFields mppl_var_decl_part_syntax_fields_alloc(const MpplVarDeclPartSyntax *var_decl_part)
+{
+  MpplVarDeclPartSyntaxFields fields;
+  fields.var_kw        = syntax_tree_child_token((const SyntaxTree *) var_decl_part, 0);
+  fields.var_decl_list = mppl_var_decl_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) var_decl_part, 1));
+  return fields;
+}
+
+MpplVarDeclListElemSyntaxFields mppl_var_decl_list_elem_syntax_fields_alloc(const MpplVarDeclListElemSyntax *var_decl_list_elem)
+{
+  MpplVarDeclListElemSyntaxFields fields;
+  fields.var_decl   = mppl_var_decl_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) var_decl_list_elem, 0));
+  fields.semi_token = syntax_tree_child_token((const SyntaxTree *) var_decl_list_elem, 1);
+  return fields;
+}
+
+MpplVarDeclListSyntaxFields mppl_var_decl_list_syntax_fields_alloc(const MpplVarDeclListSyntax *var_decl_list)
+{
+  unsigned long i;
+
+  MpplVarDeclListSyntaxFields fields;
+  slice_alloc(&fields.var_decl_list_elems, var_decl_list->syntax.raw->children.count);
+  for (i = 0; i * 2 < var_decl_list->syntax.raw->children.count; ++i) {
+    fields.var_decl_list_elems.ptr[i] = mppl_var_decl_list_elem_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) var_decl_list, i));
+  }
+  return fields;
+}
+
+MpplVarDeclSyntaxFields mppl_var_decl_syntax_fields_alloc(const MpplVarDeclSyntax *var_decl)
+{
+  MpplVarDeclSyntaxFields fields;
+  fields.ident_list  = mppl_bind_ident_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) var_decl, 0));
+  fields.colon_token = syntax_tree_child_token((const SyntaxTree *) var_decl, 1);
+  fields.type        = any_mppl_type_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) var_decl, 2));
+  return fields;
+}
+
+MpplIntegerTypeSyntaxFields mppl_integer_type_syntax_fields_alloc(const MpplArrayTypeSyntax *integer_type)
+{
+  MpplIntegerTypeSyntaxFields fields;
+  fields.integer_kw = syntax_tree_child_token((const SyntaxTree *) integer_type, 0);
+  return fields;
+}
+
+MpplCharTypeSyntaxFields mppl_char_type_syntax_fields_alloc(const MpplArrayTypeSyntax *char_type)
+{
+  MpplCharTypeSyntaxFields fields;
+  fields.char_kw = syntax_tree_child_token((const SyntaxTree *) char_type, 0);
+  return fields;
+}
+
+MpplBooleanTypeSyntaxFields mppl_boolean_type_syntax_fields_alloc(const MpplArrayTypeSyntax *boolean_type)
+{
+  MpplBooleanTypeSyntaxFields fields;
+  fields.boolean_kw = syntax_tree_child_token((const SyntaxTree *) boolean_type, 0);
+  return fields;
+}
+
+MpplArrayTypeSyntaxFields mppl_array_type_syntax_fields_alloc(const MpplArrayTypeSyntax *array_type)
+{
+  MpplArrayTypeSyntaxFields fields;
+  fields.array_kw       = syntax_tree_child_token((const SyntaxTree *) array_type, 0);
+  fields.lbracket_token = syntax_tree_child_token((const SyntaxTree *) array_type, 1);
+  fields.number_lit     = syntax_tree_child_token((const SyntaxTree *) array_type, 2);
+  fields.rbracket_token = syntax_tree_child_token((const SyntaxTree *) array_type, 3);
+  fields.of_kw          = syntax_tree_child_token((const SyntaxTree *) array_type, 4);
+  fields.type           = any_mppl_type_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) array_type, 5));
+  return fields;
+}
+
+MpplProcDeclPartSyntaxFields mppl_proc_decl_part_syntax_fields_alloc(const MpplProcDeclPartSyntax *proc_decl_part)
+{
+  MpplProcDeclPartSyntaxFields fields;
+  fields.proc_decl  = mppl_proc_decl_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) proc_decl_part, 0));
+  fields.semi_token = syntax_tree_child_token((const SyntaxTree *) proc_decl_part, 1);
+  return fields;
+}
+
+MpplProcHeadingSyntaxFields mppl_proc_heading_syntax_fields_alloc(const MpplProcHeadingSyntax *proc_heading)
+{
+  MpplProcHeadingSyntaxFields fields;
+  fields.procedure_kw = syntax_tree_child_token((const SyntaxTree *) proc_heading, 0);
+  fields.name         = syntax_tree_child_token((const SyntaxTree *) proc_heading, 1);
+  fields.fml_params   = mppl_fml_params_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) proc_heading, 2));
+  return fields;
+}
+
+MpplProcBodySyntaxFields mppl_proc_body_syntax_fields_alloc(const MpplProcBodySyntax *proc_body)
+{
+  MpplProcBodySyntaxFields fields;
+  fields.var_decl_part = mppl_var_decl_part_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) proc_body, 0));
+  fields.comp_stmt     = mppl_comp_stmt_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) proc_body, 1));
+  return fields;
+}
+
+MpplProcDeclSyntaxFields mppl_proc_decl_syntax_fields_alloc(const MpplProcDeclSyntax *proc_decl)
+{
+  MpplProcDeclSyntaxFields fields;
+  fields.proc_heading = mppl_proc_heading_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) proc_decl, 0));
+  fields.semi_token   = syntax_tree_child_token((const SyntaxTree *) proc_decl, 1);
+  fields.proc_body    = mppl_proc_body_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) proc_decl, 2));
+  return fields;
+}
+
+MpplFmlParamListElemSyntaxFields mppl_fml_param_list_elem_syntax_fields_alloc(const MpplFmlParamListElemSyntax *fml_param_list_elem)
+{
+  MpplFmlParamListElemSyntaxFields fields;
+  fields.fml_param_sec = mppl_fml_param_sec_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) fml_param_list_elem, 0));
+  fields.semi_token    = syntax_tree_child_token((const SyntaxTree *) fml_param_list_elem, 1);
+  return fields;
+}
+
+MpplFmlParamListSyntaxFields mppl_fml_param_list_syntax_fields_alloc(const MpplFmlParamListSyntax *fml_param_list)
+{
+  unsigned long i;
+
+  MpplFmlParamListSyntaxFields fields;
+  slice_alloc(&fields.fml_param_list_elems, fml_param_list->syntax.raw->children.count);
+  for (i = 0; i * 2 < fml_param_list->syntax.raw->children.count; ++i) {
+    fields.fml_param_list_elems.ptr[i] = mppl_fml_param_list_elem_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) fml_param_list, i));
+  }
+  return fields;
+}
+
+MpplFmlParamsSyntaxFields mppl_fml_params_syntax_fields_alloc(const MpplFmlParamsSyntax *fml_params)
+{
+  MpplFmlParamsSyntaxFields fields;
+  fields.lparen_token   = syntax_tree_child_token((const SyntaxTree *) fml_params, 0);
+  fields.fml_param_list = mppl_fml_param_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) fml_params, 1));
+  fields.rparen_token   = syntax_tree_child_token((const SyntaxTree *) fml_params, 2);
+  return fields;
+}
+
+MpplFmlParamSecSyntaxFields mppl_fml_param_sec_syntax_fields_alloc(const MpplFmlParamSecSyntax *fml_param_sec)
+{
+  MpplFmlParamSecSyntaxFields fields;
+  fields.ident_list  = mppl_bind_ident_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) fml_param_sec, 0));
+  fields.colon_token = syntax_tree_child_token((const SyntaxTree *) fml_param_sec, 1);
+  fields.type        = any_mppl_type_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) fml_param_sec, 2));
+  return fields;
+}
+
+MpplStmtListElemSyntaxFields mppl_stmt_list_elem_syntax_fields_alloc(const MpplStmtListElemSyntax *stmt_list_elem)
+{
+  MpplStmtListElemSyntaxFields fields;
+  fields.stmt       = any_mppl_stmt_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) stmt_list_elem, 0));
+  fields.semi_token = syntax_tree_child_token((const SyntaxTree *) stmt_list_elem, 1);
+  return fields;
+}
+
+MpplStmtListSyntaxFields mppl_stmt_list_syntax_fields_alloc(const MpplStmtListSyntax *stmt_list)
+{
+  unsigned long i;
+
+  MpplStmtListSyntaxFields fields;
+  slice_alloc(&fields.stmt_list_elems, stmt_list->syntax.raw->children.count);
+  for (i = 0; i * 2 < stmt_list->syntax.raw->children.count; ++i) {
+    fields.stmt_list_elems.ptr[i] = mppl_stmt_list_elem_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) stmt_list, i));
+  }
+  return fields;
+}
+
+MpplAssignStmtSyntaxFields mppl_assign_stmt_syntax_fields_alloc(const MpplAssignStmtSyntax *assign_stmt)
+{
+  MpplAssignStmtSyntaxFields fields;
+  fields.lhs          = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) assign_stmt, 0));
+  fields.assign_token = syntax_tree_child_token((const SyntaxTree *) assign_stmt, 1);
+  fields.rhs          = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) assign_stmt, 2));
+  return fields;
+}
+
+MpplIfStmtSyntaxFields mppl_if_stmt_syntax_fields_alloc(const MpplIfStmtSyntax *if_stmt)
+{
+  MpplIfStmtSyntaxFields fields;
+  fields.if_kw       = syntax_tree_child_token((const SyntaxTree *) if_stmt, 0);
+  fields.cond        = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) if_stmt, 1));
+  fields.then_kw     = syntax_tree_child_token((const SyntaxTree *) if_stmt, 2);
+  fields.then_stmt   = any_mppl_stmt_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) if_stmt, 3));
+  fields.else_clause = mppl_else_clause_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) if_stmt, 4));
+  return fields;
+}
+
+MpplElseClauseSyntaxFields mppl_else_clause_syntax_fields_alloc(const MpplElseClauseSyntax *else_clause)
+{
+  MpplElseClauseSyntaxFields fields;
+  fields.else_kw   = syntax_tree_child_token((const SyntaxTree *) else_clause, 0);
+  fields.else_stmt = any_mppl_stmt_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) else_clause, 1));
+  return fields;
+}
+
+MpplWhileStmtSyntaxFields mppl_while_stmt_syntax_fields_alloc(const MpplWhileStmtSyntax *while_stmt)
+{
+  MpplWhileStmtSyntaxFields fields;
+  fields.while_kw = syntax_tree_child_token((const SyntaxTree *) while_stmt, 0);
+  fields.cond     = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) while_stmt, 1));
+  fields.do_kw    = syntax_tree_child_token((const SyntaxTree *) while_stmt, 2);
+  fields.stmt     = any_mppl_stmt_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) while_stmt, 3));
+  return fields;
+}
+
+MpplBreakStmtSyntaxFields mppl_break_stmt_syntax_fields_alloc(const MpplBreakStmtSyntax *break_stmt)
+{
+  MpplBreakStmtSyntaxFields fields;
+  fields.break_kw = syntax_tree_child_token((const SyntaxTree *) break_stmt, 0);
+  return fields;
+}
+
+MpplCallStmtSyntaxFields mppl_call_stmt_syntax_fields_alloc(const MpplCallStmtSyntax *call_stmt)
+{
+  MpplCallStmtSyntaxFields fields;
+  fields.call_kw    = syntax_tree_child_token((const SyntaxTree *) call_stmt, 0);
+  fields.name       = syntax_tree_child_token((const SyntaxTree *) call_stmt, 1);
+  fields.act_params = mppl_act_params_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) call_stmt, 2));
+  return fields;
+}
+
+MpplActParamsSyntaxFields mppl_act_params_syntax_fields_alloc(const MpplActParamsSyntax *act_params)
+{
+  MpplActParamsSyntaxFields fields;
+  fields.lparen_token = syntax_tree_child_token((const SyntaxTree *) act_params, 0);
+  fields.expr_list    = mppl_expr_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) act_params, 1));
+  fields.rparen_token = syntax_tree_child_token((const SyntaxTree *) act_params, 2);
+  return fields;
+}
+
+MpplReturnStmtSyntaxFields mppl_return_stmt_syntax_fields_alloc(const MpplReturnStmtSyntax *return_stmt)
+{
+  MpplReturnStmtSyntaxFields fields;
+  fields.return_kw = syntax_tree_child_token((const SyntaxTree *) return_stmt, 0);
+  return fields;
+}
+
+MpplInputStmtSyntaxFields mppl_input_stmt_syntax_fields_alloc(const MpplInputStmtSyntax *input_stmt)
+{
+  MpplInputStmtSyntaxFields fields;
+  fields.read_op_token = syntax_tree_child_token((const SyntaxTree *) input_stmt, 0);
+  fields.inputs        = mppl_inputs_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) input_stmt, 1));
+  return fields;
+}
+
+MpplInputsSyntaxFields mppl_inputs_syntax_fields_alloc(const MpplInputsSyntax *inputs)
+{
+  MpplInputsSyntaxFields fields;
+  fields.lparen_token = syntax_tree_child_token((const SyntaxTree *) inputs, 0);
+  fields.expr_list    = mppl_expr_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) inputs, 1));
+  fields.rparen_token = syntax_tree_child_token((const SyntaxTree *) inputs, 2);
+  return fields;
+}
+
+MpplOutputStmtSyntaxFields mppl_output_stmt_syntax_fields_alloc(const MpplOutputStmtSyntax *output_stmt)
+{
+  MpplOutputStmtSyntaxFields fields;
+  fields.write_op_token = syntax_tree_child_token((const SyntaxTree *) output_stmt, 0);
+  fields.outputs        = mppl_outputs_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) output_stmt, 1));
+  return fields;
+}
+
+MpplOutputListElemSyntaxFields mppl_output_list_elem_syntax_fields_alloc(const MpplOutputListElemSyntax *output_list_elem)
+{
+  MpplOutputListElemSyntaxFields fields;
+  fields.output      = any_mppl_output_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) output_list_elem, 0));
+  fields.comma_token = syntax_tree_child_token((const SyntaxTree *) output_list_elem, 1);
+  return fields;
+}
+
+MpplOutputListSyntaxFields mppl_output_list_syntax_fields_alloc(const MpplOutputListSyntax *output_list)
+{
+  unsigned long i;
+
+  MpplOutputListSyntaxFields fields;
+  slice_alloc(&fields.output_list_elems, output_list->syntax.raw->children.count);
+  for (i = 0; i * 2 < output_list->syntax.raw->children.count; ++i) {
+    fields.output_list_elems.ptr[i] = mppl_output_list_elem_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) output_list, i));
+  }
+  return fields;
+}
+
+MpplOutputsSyntaxFields mppl_outputs_syntax_fields_alloc(const MpplOutputsSyntax *outputs)
+{
+  MpplOutputsSyntaxFields fields;
+  fields.lparen_token = syntax_tree_child_token((const SyntaxTree *) outputs, 0);
+  fields.output_list  = mppl_output_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) outputs, 1));
+  fields.rparen_token = syntax_tree_child_token((const SyntaxTree *) outputs, 2);
+  return fields;
+}
+
+MpplOutputValueSyntaxFields mppl_output_value_syntax_fields_alloc(const MpplOutputValueSyntax *output_value)
+{
+  MpplOutputValueSyntaxFields fields;
+  fields.expr        = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) output_value, 0));
+  fields.colon_token = syntax_tree_child_token((const SyntaxTree *) output_value, 1);
+  fields.number_lit  = syntax_tree_child_token((const SyntaxTree *) output_value, 2);
+  return fields;
+}
+
+MpplCompStmtSyntaxFields mppl_comp_stmt_syntax_fields_alloc(const MpplCompStmtSyntax *comp_stmt)
+{
+  MpplCompStmtSyntaxFields fields;
+  fields.begin_kw  = syntax_tree_child_token((const SyntaxTree *) comp_stmt, 0);
+  fields.stmt_list = mppl_stmt_list_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) comp_stmt, 1));
+  fields.end_kw    = syntax_tree_child_token((const SyntaxTree *) comp_stmt, 2);
+  return fields;
+}
+
+MpplExprListElemSyntaxFields mppl_expr_list_elem_syntax_fields_alloc(const MpplExprListElemSyntax *expr_list_elem)
+{
+  MpplExprListElemSyntaxFields fields;
+  fields.expr        = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) expr_list_elem, 0));
+  fields.comma_token = syntax_tree_child_token((const SyntaxTree *) expr_list_elem, 1);
+  return fields;
+}
+
+MpplExprListSyntaxFields mppl_expr_list_syntax_fields_alloc(const MpplExprListSyntax *expr_list)
+{
+  unsigned long i;
+
+  MpplExprListSyntaxFields fields;
+  slice_alloc(&fields.expr_list_elems, expr_list->syntax.raw->children.count);
+  for (i = 0; i * 2 < expr_list->syntax.raw->children.count; ++i) {
+    fields.expr_list_elems.ptr[i] = mppl_expr_list_elem_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) expr_list, i));
+  }
+  return fields;
+}
+
+MpplRefIdentSyntaxFields mppl_ref_ident_syntax_fields_alloc(const MpplRefIdentSyntax *ref_ident)
+{
+  MpplRefIdentSyntaxFields fields;
+  fields.ident = syntax_tree_child_token((const SyntaxTree *) ref_ident, 0);
+  return fields;
+}
+
+MpplEntireVarSyntaxFields mppl_entire_var_syntax_fields_alloc(const MpplEntireVarSyntax *entire_var)
+{
+  MpplEntireVarSyntaxFields fields;
+  fields.name = mppl_ref_ident_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) entire_var, 0));
+  return fields;
+}
+
+MpplIndexedVarSyntaxFields mppl_indexed_var_syntax_fields_alloc(const MpplIndexedVarSyntax *indexed_var)
+{
+  MpplIndexedVarSyntaxFields fields;
+  fields.name           = mppl_ref_ident_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) indexed_var, 0));
+  fields.lbracket_token = syntax_tree_child_token((const SyntaxTree *) indexed_var, 1);
+  fields.index          = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) indexed_var, 2));
+  fields.rbracket_token = syntax_tree_child_token((const SyntaxTree *) indexed_var, 3);
+  return fields;
+}
+
+MpplUnaryExprSyntaxFields mppl_unary_expr_syntax_fields_alloc(const MpplUnaryExprSyntax *unary_expr)
+{
+  MpplUnaryExprSyntaxFields fields;
+  fields.op_token = syntax_tree_child_token((const SyntaxTree *) unary_expr, 0);
+  fields.expr     = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) unary_expr, 1));
+  return fields;
+}
+
+MpplBinaryExprSyntaxFields mppl_binary_expr_syntax_fields_alloc(const MpplBinaryExprSyntax *binary_expr)
+{
+  MpplBinaryExprSyntaxFields fields;
+  fields.lhs      = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) binary_expr, 0));
+  fields.op_token = syntax_tree_child_token((const SyntaxTree *) binary_expr, 1);
+  fields.rhs      = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) binary_expr, 2));
+  return fields;
+}
+
+MpplParenExprSyntaxFields mppl_paren_expr_syntax_fields_alloc(const MpplParenExprSyntax *paren_expr)
+{
+  MpplParenExprSyntaxFields fields;
+  fields.lparen_token = syntax_tree_child_token((const SyntaxTree *) paren_expr, 0);
+  fields.expr         = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) paren_expr, 1));
+  fields.rparen_token = syntax_tree_child_token((const SyntaxTree *) paren_expr, 2);
+  return fields;
+}
+
+MpplCastExprSyntaxFields mppl_cast_expr_syntax_fields_alloc(const MpplCastExprSyntax *cast_expr)
+{
+  MpplCastExprSyntaxFields fields;
+  fields.type         = any_mppl_type_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) cast_expr, 0));
+  fields.lparen_token = syntax_tree_child_token((const SyntaxTree *) cast_expr, 1);
+  fields.expr         = any_mppl_expr_syntax_alloc(syntax_tree_child_tree((const SyntaxTree *) cast_expr, 2));
+  fields.rparen_token = syntax_tree_child_token((const SyntaxTree *) cast_expr, 3);
+  return fields;
+}
+
+void mppl_root_syntax_fields_free(MpplRootSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_program_syntax_free(fields->program);
+    any_mppl_eof_syntax_free(fields->eof);
+  }
+}
+
+void mppl_eof_syntax_fields_free(MpplEofSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->eof_token);
+  }
+}
+
+void mppl_program_syntax_fields_free(MpplProgramSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->program_kw);
+    syntax_token_free(fields->name);
+    syntax_token_free(fields->semi_token);
+    mppl_decl_part_list_syntax_free(fields->decl_part_list);
+    mppl_comp_stmt_syntax_free(fields->comp_stmt);
+    syntax_token_free(fields->dot_token);
+  }
+}
+
+void mppl_decl_part_list_syntax_fields_free(MpplDeclPartListSyntaxFields *fields)
+{
+  if (fields) {
+    unsigned long i;
+    for (i = 0; i < fields->decl_parts.count; ++i) {
+      any_mppl_decl_part_syntax_free(fields->decl_parts.ptr[i]);
+    }
+    slice_free(&fields->decl_parts);
+  }
+}
+
+void mppl_bind_ident_list_elem_syntax_fields_free(MpplBindIdentListElemSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_bind_ident_syntax_free(fields->bind_ident);
+    syntax_token_free(fields->comma_token);
+  }
+}
+
+void mppl_bind_ident_list_syntax_fields_free(MpplBindIdentListSyntaxFields *fields)
+{
+  if (fields) {
+    unsigned long i;
+    for (i = 0; i < fields->bind_ident_list_elems.count; ++i) {
+      mppl_bind_ident_list_elem_syntax_free(fields->bind_ident_list_elems.ptr[i]);
+    }
+    slice_free(&fields->bind_ident_list_elems);
+  }
+}
+
+void mppl_bind_ident_syntax_fields_free(MpplBindIdentSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->ident);
+  }
+}
+
+void mppl_var_decl_part_syntax_fields_free(MpplVarDeclPartSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->var_kw);
+    mppl_var_decl_list_syntax_free(fields->var_decl_list);
+  }
+}
+
+void mppl_var_decl_list_elem_syntax_fields_free(MpplVarDeclListElemSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_var_decl_syntax_free(fields->var_decl);
+    syntax_token_free(fields->semi_token);
+  }
+}
+
+void mppl_var_decl_list_syntax_fields_free(MpplVarDeclListSyntaxFields *fields)
+{
+  if (fields) {
+    unsigned long i;
+    for (i = 0; i < fields->var_decl_list_elems.count; ++i) {
+      mppl_var_decl_list_elem_syntax_free(fields->var_decl_list_elems.ptr[i]);
+    }
+    slice_free(&fields->var_decl_list_elems);
+  }
+}
+
+void mppl_var_decl_syntax_fields_free(MpplVarDeclSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_bind_ident_list_syntax_free(fields->ident_list);
+    syntax_token_free(fields->colon_token);
+    any_mppl_type_syntax_free(fields->type);
+  }
+}
+
+void mppl_integer_type_syntax_fields_free(MpplIntegerTypeSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->integer_kw);
+  }
+}
+
+void mppl_char_type_syntax_fields_free(MpplCharTypeSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->char_kw);
+  }
+}
+
+void mppl_boolean_type_syntax_fields_free(MpplBooleanTypeSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->boolean_kw);
+  }
+}
+
+void mppl_array_type_syntax_fields_free(MpplArrayTypeSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->array_kw);
+    syntax_token_free(fields->lbracket_token);
+    syntax_token_free(fields->number_lit);
+    syntax_token_free(fields->rbracket_token);
+    syntax_token_free(fields->of_kw);
+    any_mppl_type_syntax_free(fields->type);
+  }
+}
+
+void mppl_proc_decl_part_syntax_fields_free(MpplProcDeclPartSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_proc_decl_syntax_free(fields->proc_decl);
+    syntax_token_free(fields->semi_token);
+  }
+}
+
+void mppl_proc_heading_syntax_fields_free(MpplProcHeadingSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->procedure_kw);
+    syntax_token_free(fields->name);
+    mppl_fml_params_syntax_free(fields->fml_params);
+  }
+}
+
+void mppl_proc_body_syntax_fields_free(MpplProcBodySyntaxFields *fields)
+{
+  if (fields) {
+    mppl_var_decl_part_syntax_free(fields->var_decl_part);
+    mppl_comp_stmt_syntax_free(fields->comp_stmt);
+  }
+}
+
+void mppl_proc_decl_syntax_fields_free(MpplProcDeclSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_proc_heading_syntax_free(fields->proc_heading);
+    syntax_token_free(fields->semi_token);
+    mppl_proc_body_syntax_free(fields->proc_body);
+  }
+}
+
+void mppl_fml_param_list_elem_syntax_fields_free(MpplFmlParamListElemSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_fml_param_sec_syntax_free(fields->fml_param_sec);
+    syntax_token_free(fields->semi_token);
+  }
+}
+
+void mppl_fml_param_list_syntax_fields_free(MpplFmlParamListSyntaxFields *fields)
+{
+  if (fields) {
+    unsigned long i;
+    for (i = 0; i < fields->fml_param_list_elems.count; ++i) {
+      mppl_fml_param_list_elem_syntax_free(fields->fml_param_list_elems.ptr[i]);
+    }
+    slice_free(&fields->fml_param_list_elems);
+  }
+}
+
+void mppl_fml_params_syntax_fields_free(MpplFmlParamsSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->lparen_token);
+    mppl_fml_param_list_syntax_free(fields->fml_param_list);
+    syntax_token_free(fields->rparen_token);
+  }
+}
+
+void mppl_fml_param_sec_syntax_fields_free(MpplFmlParamSecSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_bind_ident_list_syntax_free(fields->ident_list);
+    syntax_token_free(fields->colon_token);
+    any_mppl_type_syntax_free(fields->type);
+  }
+}
+
+void mppl_stmt_list_elem_syntax_fields_free(MpplStmtListElemSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_stmt_syntax_free(fields->stmt);
+    syntax_token_free(fields->semi_token);
+  }
+}
+
+void mppl_stmt_list_syntax_fields_free(MpplStmtListSyntaxFields *fields)
+{
+  if (fields) {
+    unsigned long i;
+    for (i = 0; i < fields->stmt_list_elems.count; ++i) {
+      mppl_stmt_list_elem_syntax_free(fields->stmt_list_elems.ptr[i]);
+    }
+    slice_free(&fields->stmt_list_elems);
+  }
+}
+
+void mppl_assign_stmt_syntax_fields_free(MpplAssignStmtSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_expr_syntax_free(fields->lhs);
+    syntax_token_free(fields->assign_token);
+    any_mppl_expr_syntax_free(fields->rhs);
+  }
+}
+
+void mppl_if_stmt_syntax_fields_free(MpplIfStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->if_kw);
+    any_mppl_expr_syntax_free(fields->cond);
+    syntax_token_free(fields->then_kw);
+    any_mppl_stmt_syntax_free(fields->then_stmt);
+    mppl_else_clause_syntax_free(fields->else_clause);
+  }
+}
+
+void mppl_else_clause_syntax_fields_free(MpplElseClauseSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->else_kw);
+    any_mppl_stmt_syntax_free(fields->else_stmt);
+  }
+}
+
+void mppl_while_stmt_syntax_fields_free(MpplWhileStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->while_kw);
+    any_mppl_expr_syntax_free(fields->cond);
+    syntax_token_free(fields->do_kw);
+    any_mppl_stmt_syntax_free(fields->stmt);
+  }
+}
+
+void mppl_break_stmt_syntax_fields_free(MpplBreakStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->break_kw);
+  }
+}
+
+void mppl_call_stmt_syntax_fields_free(MpplCallStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->call_kw);
+    syntax_token_free(fields->name);
+    mppl_act_params_syntax_free(fields->act_params);
+  }
+}
+
+void mppl_act_params_syntax_fields_free(MpplActParamsSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->lparen_token);
+    mppl_expr_list_syntax_free(fields->expr_list);
+    syntax_token_free(fields->rparen_token);
+  }
+}
+
+void mppl_return_stmt_syntax_fields_free(MpplReturnStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->return_kw);
+  }
+}
+
+void mppl_input_stmt_syntax_fields_free(MpplInputStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->read_op_token);
+    mppl_inputs_syntax_free(fields->inputs);
+  }
+}
+
+void mppl_inputs_syntax_fields_free(MpplInputsSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->lparen_token);
+    mppl_expr_list_syntax_free(fields->expr_list);
+    syntax_token_free(fields->rparen_token);
+  }
+}
+
+void mppl_output_stmt_syntax_fields_free(MpplOutputStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->write_op_token);
+    mppl_outputs_syntax_free(fields->outputs);
+  }
+}
+
+void mppl_output_list_elem_syntax_fields_free(MpplOutputListElemSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_output_syntax_free(fields->output);
+    syntax_token_free(fields->comma_token);
+  }
+}
+
+void mppl_output_list_syntax_fields_free(MpplOutputListSyntaxFields *fields)
+{
+  if (fields) {
+    unsigned long i;
+    for (i = 0; i < fields->output_list_elems.count; ++i) {
+      mppl_output_list_elem_syntax_free(fields->output_list_elems.ptr[i]);
+    }
+    slice_free(&fields->output_list_elems);
+  }
+}
+
+void mppl_outputs_syntax_fields_free(MpplOutputsSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->lparen_token);
+    mppl_output_list_syntax_free(fields->output_list);
+    syntax_token_free(fields->rparen_token);
+  }
+}
+
+void mppl_output_value_syntax_fields_free(MpplOutputValueSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_expr_syntax_free(fields->expr);
+    syntax_token_free(fields->colon_token);
+    syntax_token_free(fields->number_lit);
+  }
+}
+
+void mppl_comp_stmt_syntax_fields_free(MpplCompStmtSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->begin_kw);
+    mppl_stmt_list_syntax_free(fields->stmt_list);
+    syntax_token_free(fields->end_kw);
+  }
+}
+
+void mppl_expr_list_elem_syntax_fields_free(MpplExprListElemSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_expr_syntax_free(fields->expr);
+    syntax_token_free(fields->comma_token);
+  }
+}
+
+void mppl_expr_list_syntax_fields_free(MpplExprListSyntaxFields *fields)
+{
+  if (fields) {
+    unsigned long i;
+    for (i = 0; i < fields->expr_list_elems.count; ++i) {
+      mppl_expr_list_elem_syntax_free(fields->expr_list_elems.ptr[i]);
+    }
+    slice_free(&fields->expr_list_elems);
+  }
+}
+
+void mppl_ref_ident_syntax_fields_free(MpplRefIdentSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->ident);
+  }
+}
+
+void mppl_entire_var_syntax_fields_free(MpplEntireVarSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_ref_ident_syntax_free(fields->name);
+  }
+}
+
+void mppl_indexed_var_syntax_fields_free(MpplIndexedVarSyntaxFields *fields)
+{
+  if (fields) {
+    mppl_ref_ident_syntax_free(fields->name);
+    syntax_token_free(fields->lbracket_token);
+    any_mppl_expr_syntax_free(fields->index);
+    syntax_token_free(fields->rbracket_token);
+  }
+}
+
+void mppl_unary_expr_syntax_fields_free(MpplUnaryExprSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->op_token);
+    any_mppl_expr_syntax_free(fields->expr);
+  }
+}
+
+void mppl_binary_expr_syntax_fields_free(MpplBinaryExprSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_expr_syntax_free(fields->lhs);
+    syntax_token_free(fields->op_token);
+    any_mppl_expr_syntax_free(fields->rhs);
+  }
+}
+
+void mppl_paren_expr_syntax_fields_free(MpplParenExprSyntaxFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->lparen_token);
+    any_mppl_expr_syntax_free(fields->expr);
+    syntax_token_free(fields->rparen_token);
+  }
+}
+
+void mppl_cast_expr_syntax_fields_free(MpplCastExprSyntaxFields *fields)
+{
+  if (fields) {
+    any_mppl_type_syntax_free(fields->type);
+    syntax_token_free(fields->lparen_token);
+    any_mppl_expr_syntax_free(fields->expr);
+    syntax_token_free(fields->rparen_token);
+  }
+}
