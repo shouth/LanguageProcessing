@@ -41,7 +41,6 @@ static int run_compiler(void)
     if (!source) {
       fprintf(stderr, "Cannot open file: %s\n", filename);
       result = EXIT_FAILURE;
-      continue;
     } else {
       MpplParseResult parse_result = mppl_parse(source->text.ptr, source->text.count);
       if (dump_syntax) {
@@ -68,9 +67,8 @@ static int run_compiler(void)
 
       syntax_tree_free(parse_result.root);
       slice_free(&parse_result.diags);
+      source_free(source);
     }
-
-    source_free(source);
   }
   return result;
 }
