@@ -675,7 +675,7 @@ static void parse_var_decl(Parser *p, const MpplTokenKindSet *recovery)
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
       parse_binding_ident(p);
     } else {
-      parse_bogus(p, MPPL_SYNTAX_BOGUS_IDENT, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_BIND_IDENT, &kinds);
     }
 
     if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
@@ -731,7 +731,7 @@ static void parse_fml_param_sec(Parser *p, const MpplTokenKindSet *recovery)
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
       parse_binding_ident(p);
     } else {
-      parse_bogus(p, MPPL_SYNTAX_BOGUS_IDENT, &kinds);
+      parse_bogus(p, MPPL_SYNTAX_BOGUS_BIND_IDENT, &kinds);
     }
 
     if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {

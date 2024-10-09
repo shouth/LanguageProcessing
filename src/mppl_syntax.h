@@ -123,7 +123,7 @@ typedef enum {
   MPPL_SYNTAX_BOGUS_STMT,
   MPPL_SYNTAX_BOGUS_OUTPUT_VALUE,
   MPPL_SYNTAX_BOGUS_EXPR,
-  MPPL_SYNTAX_BOGUS_IDENT
+  MPPL_SYNTAX_BOGUS_BIND_IDENT
 } MpplSyntaxKind;
 
 #define MPPL_BEGIN_PUNCT MPPL_SYNTAX_PLUS_TOKEN
@@ -215,9 +215,9 @@ typedef enum {
 } MpplOutputValueSyntaxKind;
 
 typedef enum {
-  MPPL_IDENT_SYNTAX,
-  MPPL_IDENT_SYNTAX_BOGUS
-} MpplIdentSyntaxKind;
+  MPPL_BIND_IDENT_SYNTAX,
+  MPPL_BIND_IDENT_SYNTAX_BOGUS
+} MpplBindIdentSyntaxKind;
 
 #define MpplSyntax     \
   struct {             \
@@ -225,12 +225,19 @@ typedef enum {
   }
 
 typedef MpplSyntax MpplRootSyntax;
+typedef MpplSyntax MpplEofSyntax;
 typedef MpplSyntax MpplProgramSyntax;
 typedef MpplSyntax MpplDeclPartListSyntax;
+typedef MpplSyntax MpplBindIdentListElemSyntax;
+typedef MpplSyntax MpplBindIdentListSyntax;
+typedef MpplSyntax MpplBindIdentSyntax;
 typedef MpplSyntax MpplVarDeclPartSyntax;
 typedef MpplSyntax MpplVarDeclListElemSyntax;
 typedef MpplSyntax MpplVarDeclListSyntax;
 typedef MpplSyntax MpplVarDeclSyntax;
+typedef MpplSyntax MpplIntegerTypeSyntax;
+typedef MpplSyntax MpplCharTypeSyntax;
+typedef MpplSyntax MpplBooleanTypeSyntax;
 typedef MpplSyntax MpplArrayTypeSyntax;
 typedef MpplSyntax MpplProcDeclPartSyntax;
 typedef MpplSyntax MpplProcHeadingSyntax;
@@ -260,14 +267,13 @@ typedef MpplSyntax MpplOutputValueSyntax;
 typedef MpplSyntax MpplCompStmtSyntax;
 typedef MpplSyntax MpplExprListElemSyntax;
 typedef MpplSyntax MpplExprListSyntax;
+typedef MpplSyntax MpplRefIdentSyntax;
 typedef MpplSyntax MpplEntireVarSyntax;
 typedef MpplSyntax MpplIndexedVarSyntax;
 typedef MpplSyntax MpplUnaryExprSyntax;
 typedef MpplSyntax MpplBinaryExprSyntax;
 typedef MpplSyntax MpplParenExprSyntax;
 typedef MpplSyntax MpplCastExprSyntax;
-typedef MpplSyntax MpplIdentListElemSyntax;
-typedef MpplSyntax MpplIdentListSyntax;
 
 typedef MpplSyntax BogusMpplEofSyntax;
 typedef MpplSyntax BogusMpplDeclPartSyntax;
@@ -276,7 +282,7 @@ typedef MpplSyntax BogusMpplFmlParamSecSyntax;
 typedef MpplSyntax BogusMpplStmtSyntax;
 typedef MpplSyntax BogusMpplOutputValueSyntax;
 typedef MpplSyntax BogusMpplExprSyntax;
-typedef MpplSyntax BogusMpplIdentSyntax;
+typedef MpplSyntax BogusMpplBindIdentSyntax;
 
 typedef union AnyMpplEofSyntax         AnyMpplEofSyntax;
 typedef union AnyMpplDeclPartSyntax    AnyMpplDeclPartSyntax;
@@ -288,57 +294,63 @@ typedef union AnyMpplOutputSyntax      AnyMpplOutputSyntax;
 typedef union AnyMpplOutputValueSyntax AnyMpplOutputValueSyntax;
 typedef union AnyMpplVarSyntax         AnyMpplVarSyntax;
 typedef union AnyMpplExprSyntax        AnyMpplExprSyntax;
-typedef union AnyMpplIdentSyntax       AnyMpplIdentSyntax;
+typedef union AnyMpplBindIdentSyntax   AnyMpplBindIdentSyntax;
 
-typedef struct MpplRootSyntaxFields             MpplRootSyntaxFields;
-typedef struct MpplProgramSyntaxFields          MpplProgramSyntaxFields;
-typedef struct MpplDeclPartListSyntaxFields     MpplDeclPartListSyntaxFields;
-typedef struct MpplVarDeclPartSyntaxFields      MpplVarDeclPartSyntaxFields;
-typedef struct MpplVarDeclListElemSyntaxFields  MpplVarDeclListElemSyntaxFields;
-typedef struct MpplVarDeclListSyntaxFields      MpplVarDeclListSyntaxFields;
-typedef struct MpplVarDeclSyntaxFields          MpplVarDeclSyntaxFields;
-typedef struct MpplArrayTypeSyntaxFields        MpplArrayTypeSyntaxFields;
-typedef struct MpplProcDeclPartSyntaxFields     MpplProcDeclPartSyntaxFields;
-typedef struct MpplProcHeadingSyntaxFields      MpplProcHeadingSyntaxFields;
-typedef struct MpplProcBodySyntaxFields         MpplProcBodySyntaxFields;
-typedef struct MpplProcDeclSyntaxFields         MpplProcDeclSyntaxFields;
-typedef struct MpplFmlParamListElemSyntaxFields MpplFmlParamListElemSyntaxFields;
-typedef struct MpplFmlParamListSyntaxFields     MpplFmlParamListSyntaxFields;
-typedef struct MpplFmlParamsSyntaxFields        MpplFmlParamsSyntaxFields;
-typedef struct MpplFmlParamSecSyntaxFields      MpplFmlParamSecSyntaxFields;
-typedef struct MpplStmtListElemSyntaxFields     MpplStmtListElemSyntaxFields;
-typedef struct MpplStmtListSyntaxFields         MpplStmtListSyntaxFields;
-typedef struct MpplAssignStmtSyntaxFields       MpplAssignStmtSyntaxFields;
-typedef struct MpplIfStmtSyntaxFields           MpplIfStmtSyntaxFields;
-typedef struct MpplElseClauseSyntaxFields       MpplElseClauseSyntaxFields;
-typedef struct MpplWhileStmtSyntaxFields        MpplWhileStmtSyntaxFields;
-typedef struct MpplBreakStmtSyntaxFields        MpplBreakStmtSyntaxFields;
-typedef struct MpplCallStmtSyntaxFields         MpplCallStmtSyntaxFields;
-typedef struct MpplActParamsSyntaxFields        MpplActParamsSyntaxFields;
-typedef struct MpplReturnStmtSyntaxFields       MpplReturnStmtSyntaxFields;
-typedef struct MpplInputStmtSyntaxFields        MpplInputStmtSyntaxFields;
-typedef struct MpplInputsSyntaxFields           MpplInputsSyntaxFields;
-typedef struct MpplOutputStmtSyntaxFields       MpplOutputStmtSyntaxFields;
-typedef struct MpplOutputListElemSyntaxFields   MpplOutputListElemSyntaxFields;
-typedef struct MpplOutputListSyntaxFields       MpplOutputListSyntaxFields;
-typedef struct MpplOutputsSyntaxFields          MpplOutputsSyntaxFields;
-typedef struct MpplOutputValueSyntaxFields      MpplOutputValueSyntaxFields;
-typedef struct MpplCompStmtSyntaxFields         MpplCompStmtSyntaxFields;
-typedef struct MpplExprListElemSyntaxFields     MpplExprListElemSyntaxFields;
-typedef struct MpplExprListSyntaxFields         MpplExprListSyntaxFields;
-typedef struct MpplEntireVarSyntaxFields        MpplEntireVarSyntaxFields;
-typedef struct MpplIndexedVarSyntaxFields       MpplIndexedVarSyntaxFields;
-typedef struct MpplUnaryExprSyntaxFields        MpplUnaryExprSyntaxFields;
-typedef struct MpplBinaryExprSyntaxFields       MpplBinaryExprSyntaxFields;
-typedef struct MpplParenExprSyntaxFields        MpplParenExprSyntaxFields;
-typedef struct MpplCastExprSyntaxFields         MpplCastExprSyntaxFields;
-typedef struct MpplIdentListElemSyntaxFields    MpplIdentListElemSyntaxFields;
-typedef struct MpplIdentListSyntaxFields        MpplIdentListSyntaxFields;
+typedef struct MpplRootSyntaxFields              MpplRootSyntaxFields;
+typedef struct MpplEofSyntaxFields               MpplEofSyntaxFields;
+typedef struct MpplProgramSyntaxFields           MpplProgramSyntaxFields;
+typedef struct MpplDeclPartListSyntaxFields      MpplDeclPartListSyntaxFields;
+typedef struct MpplBindIdentListElemSyntaxFields MpplBindIdentListElemSyntaxFields;
+typedef struct MpplBindIdentListSyntaxFields     MpplBindIdentListSyntaxFields;
+typedef struct MpplBindIdentSyntaxFields         MpplBindIdentSyntaxFields;
+typedef struct MpplVarDeclPartSyntaxFields       MpplVarDeclPartSyntaxFields;
+typedef struct MpplVarDeclListElemSyntaxFields   MpplVarDeclListElemSyntaxFields;
+typedef struct MpplVarDeclListSyntaxFields       MpplVarDeclListSyntaxFields;
+typedef struct MpplVarDeclSyntaxFields           MpplVarDeclSyntaxFields;
+typedef struct MpplIntegerTypeSyntaxFields       MpplIntegerTypeSyntaxFields;
+typedef struct MpplCharTypeSyntaxFields          MpplCharTypeSyntaxFields;
+typedef struct MpplBooleanTypeSyntaxFields       MpplBooleanTypeSyntaxFields;
+typedef struct MpplArrayTypeSyntaxFields         MpplArrayTypeSyntaxFields;
+typedef struct MpplProcDeclPartSyntaxFields      MpplProcDeclPartSyntaxFields;
+typedef struct MpplProcHeadingSyntaxFields       MpplProcHeadingSyntaxFields;
+typedef struct MpplProcBodySyntaxFields          MpplProcBodySyntaxFields;
+typedef struct MpplProcDeclSyntaxFields          MpplProcDeclSyntaxFields;
+typedef struct MpplFmlParamListElemSyntaxFields  MpplFmlParamListElemSyntaxFields;
+typedef struct MpplFmlParamListSyntaxFields      MpplFmlParamListSyntaxFields;
+typedef struct MpplFmlParamsSyntaxFields         MpplFmlParamsSyntaxFields;
+typedef struct MpplFmlParamSecSyntaxFields       MpplFmlParamSecSyntaxFields;
+typedef struct MpplStmtListElemSyntaxFields      MpplStmtListElemSyntaxFields;
+typedef struct MpplStmtListSyntaxFields          MpplStmtListSyntaxFields;
+typedef struct MpplAssignStmtSyntaxFields        MpplAssignStmtSyntaxFields;
+typedef struct MpplIfStmtSyntaxFields            MpplIfStmtSyntaxFields;
+typedef struct MpplElseClauseSyntaxFields        MpplElseClauseSyntaxFields;
+typedef struct MpplWhileStmtSyntaxFields         MpplWhileStmtSyntaxFields;
+typedef struct MpplBreakStmtSyntaxFields         MpplBreakStmtSyntaxFields;
+typedef struct MpplCallStmtSyntaxFields          MpplCallStmtSyntaxFields;
+typedef struct MpplActParamsSyntaxFields         MpplActParamsSyntaxFields;
+typedef struct MpplReturnStmtSyntaxFields        MpplReturnStmtSyntaxFields;
+typedef struct MpplInputStmtSyntaxFields         MpplInputStmtSyntaxFields;
+typedef struct MpplInputsSyntaxFields            MpplInputsSyntaxFields;
+typedef struct MpplOutputStmtSyntaxFields        MpplOutputStmtSyntaxFields;
+typedef struct MpplOutputListElemSyntaxFields    MpplOutputListElemSyntaxFields;
+typedef struct MpplOutputListSyntaxFields        MpplOutputListSyntaxFields;
+typedef struct MpplOutputsSyntaxFields           MpplOutputsSyntaxFields;
+typedef struct MpplOutputValueSyntaxFields       MpplOutputValueSyntaxFields;
+typedef struct MpplCompStmtSyntaxFields          MpplCompStmtSyntaxFields;
+typedef struct MpplExprListElemSyntaxFields      MpplExprListElemSyntaxFields;
+typedef struct MpplExprListSyntaxFields          MpplExprListSyntaxFields;
+typedef struct MpplRefIdentSyntaxFields          MpplRefIdentSyntaxFields;
+typedef struct MpplEntireVarSyntaxFields         MpplEntireVarSyntaxFields;
+typedef struct MpplIndexedVarSyntaxFields        MpplIndexedVarSyntaxFields;
+typedef struct MpplUnaryExprSyntaxFields         MpplUnaryExprSyntaxFields;
+typedef struct MpplBinaryExprSyntaxFields        MpplBinaryExprSyntaxFields;
+typedef struct MpplParenExprSyntaxFields         MpplParenExprSyntaxFields;
+typedef struct MpplCastExprSyntaxFields          MpplCastExprSyntaxFields;
 
 #undef MpplSyntax
 
 union AnyMpplEofSyntax {
-  SyntaxToken        eof_token;
+  MpplEofSyntax      eof;
   BogusMpplEofSyntax bogus;
 };
 
@@ -349,10 +361,10 @@ union AnyMpplDeclPartSyntax {
 };
 
 union AnyMpplTypeSyntax {
-  SyntaxToken         integer_type;
-  SyntaxToken         char_type;
-  SyntaxToken         boolean_type;
-  MpplArrayTypeSyntax array_type;
+  MpplIntegerTypeSyntax integer_type;
+  MpplCharTypeSyntax    char_type;
+  MpplBooleanTypeSyntax boolean_type;
+  MpplArrayTypeSyntax   array_type;
 };
 
 union AnyMpplVarDeclSyntax {
@@ -402,14 +414,18 @@ union AnyMpplOutputSyntax {
   AnyMpplOutputValueSyntax output_value;
 };
 
-union AnyMpplIdentSyntax {
-  SyntaxToken          ident;
-  BogusMpplIdentSyntax bogus_ident;
+union AnyMpplBindIdentSyntax {
+  MpplBindIdentSyntax      ident;
+  BogusMpplBindIdentSyntax bogus_ident;
 };
 
 struct MpplRootSyntaxFields {
   MpplProgramSyntax *program;
   AnyMpplEofSyntax  *eof;
+};
+
+struct MpplEofSyntaxFields {
+  SyntaxToken *eof_token;
 };
 
 struct MpplProgramSyntaxFields {
@@ -423,6 +439,19 @@ struct MpplProgramSyntaxFields {
 
 struct MpplDeclPartListSyntaxFields {
   Slice(AnyMpplDeclPartSyntax *) decl_parts;
+};
+
+struct MpplBindIdentListElemSyntaxFields {
+  AnyMpplBindIdentSyntax *bind_ident;
+  SyntaxToken            *comma_token;
+};
+
+struct MpplBindIdentListSyntaxFields {
+  Slice(MpplBindIdentListElemSyntax *) bind_ident_list_elems;
+};
+
+struct MpplBindIdentSyntaxFields {
+  SyntaxToken *ident;
 };
 
 struct MpplVarDeclPartSyntaxFields {
@@ -440,9 +469,21 @@ struct MpplVarDeclListSyntaxFields {
 };
 
 struct MpplVarDeclSyntaxFields {
-  MpplIdentListSyntax *ident_list;
-  SyntaxToken         *colon_token;
-  AnyMpplTypeSyntax   *type;
+  MpplBindIdentListSyntax *ident_list;
+  SyntaxToken             *colon_token;
+  AnyMpplTypeSyntax       *type;
+};
+
+struct MpplIntegerTypeSyntaxFields {
+  SyntaxToken *integer_kw;
+};
+
+struct MpplCharTypeSyntaxFields {
+  SyntaxToken *char_kw;
+};
+
+struct MpplBooleanTypeSyntaxFields {
+  SyntaxToken *boolean_kw;
 };
 
 struct MpplArrayTypeSyntaxFields {
@@ -492,9 +533,9 @@ struct MpplFmlParamsSyntaxFields {
 };
 
 struct MpplFmlParamSecSyntaxFields {
-  MpplIdentListSyntax *ident_list;
-  SyntaxToken         *colon_token;
-  AnyMpplTypeSyntax   *type;
+  MpplBindIdentListSyntax *ident_list;
+  SyntaxToken             *colon_token;
+  AnyMpplTypeSyntax       *type;
 };
 
 struct MpplStmtListElemSyntaxFields {
@@ -604,15 +645,19 @@ struct MpplExprListSyntaxFields {
   Slice(MpplExprListElemSyntax *) expr_list_elems;
 };
 
+struct MpplRefIdentSyntaxFields {
+  SyntaxToken *ident;
+};
+
 struct MpplEntireVarSyntaxFields {
-  SyntaxToken *name;
+  MpplRefIdentSyntax *name;
 };
 
 struct MpplIndexedVarSyntaxFields {
-  SyntaxToken       *name;
-  SyntaxToken       *lbracket_token;
-  AnyMpplExprSyntax *index;
-  SyntaxToken       *rbracket_token;
+  MpplRefIdentSyntax *name;
+  SyntaxToken        *lbracket_token;
+  AnyMpplExprSyntax  *index;
+  SyntaxToken        *rbracket_token;
 };
 
 struct MpplUnaryExprSyntaxFields {
@@ -639,67 +684,71 @@ struct MpplCastExprSyntaxFields {
   SyntaxToken       *rparen_token;
 };
 
-struct MpplIdentListElemSyntaxFields {
-  SyntaxToken *ident;
-  SyntaxToken *comma_token;
-};
-
-struct MpplIdentListSyntaxFields {
-  Slice(MpplIdentListElemSyntax *) ident_list_elems;
-};
-
-MpplRootSyntax             *mppl_root_syntax_alloc(const SyntaxTree *syntax);
-MpplProgramSyntax          *mppl_program_syntax_alloc(const SyntaxTree *syntax);
-MpplDeclPartListSyntax     *mppl_decl_part_list_syntax_alloc(const SyntaxTree *syntax);
-MpplVarDeclPartSyntax      *mppl_var_decl_part_syntax_alloc(const SyntaxTree *syntax);
-MpplVarDeclListElemSyntax  *mppl_var_decl_list_elem_syntax_alloc(const SyntaxTree *syntax);
-MpplVarDeclListSyntax      *mppl_var_decl_list_syntax_alloc(const SyntaxTree *syntax);
-MpplVarDeclSyntax          *mppl_var_decl_syntax_alloc(const SyntaxTree *syntax);
-MpplArrayTypeSyntax        *mppl_array_type_syntax_alloc(const SyntaxTree *syntax);
-MpplProcDeclPartSyntax     *mppl_proc_decl_part_syntax_alloc(const SyntaxTree *syntax);
-MpplProcHeadingSyntax      *mppl_proc_heading_syntax_alloc(const SyntaxTree *syntax);
-MpplProcBodySyntax         *mppl_proc_body_syntax_alloc(const SyntaxTree *syntax);
-MpplProcDeclSyntax         *mppl_proc_decl_syntax_alloc(const SyntaxTree *syntax);
-MpplFmlParamListElemSyntax *mppl_fml_param_list_elem_syntax_alloc(const SyntaxTree *syntax);
-MpplFmlParamListSyntax     *mppl_fml_param_list_syntax_alloc(const SyntaxTree *syntax);
-MpplFmlParamsSyntax        *mppl_fml_params_syntax_alloc(const SyntaxTree *syntax);
-MpplFmlParamSecSyntax      *mppl_fml_param_sec_syntax_alloc(const SyntaxTree *syntax);
-MpplStmtListElemSyntax     *mppl_stmt_list_elem_syntax_alloc(const SyntaxTree *syntax);
-MpplStmtListSyntax         *mppl_stmt_list_syntax_alloc(const SyntaxTree *syntax);
-MpplAssignStmtSyntax       *mppl_assign_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplIfStmtSyntax           *mppl_if_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplElseClauseSyntax       *mppl_else_clause_syntax_alloc(const SyntaxTree *syntax);
-MpplWhileStmtSyntax        *mppl_while_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplBreakStmtSyntax        *mppl_break_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplCallStmtSyntax         *mppl_call_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplActParamsSyntax        *mppl_act_params_syntax_alloc(const SyntaxTree *syntax);
-MpplReturnStmtSyntax       *mppl_return_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplInputStmtSyntax        *mppl_input_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplInputsSyntax           *mppl_inputs_syntax_alloc(const SyntaxTree *syntax);
-MpplOutputStmtSyntax       *mppl_output_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplOutputListElemSyntax   *mppl_output_list_elem_syntax_alloc(const SyntaxTree *syntax);
-MpplOutputListSyntax       *mppl_output_list_syntax_alloc(const SyntaxTree *syntax);
-MpplOutputsSyntax          *mppl_outputs_syntax_alloc(const SyntaxTree *syntax);
-MpplOutputValueSyntax      *mppl_output_value_syntax_alloc(const SyntaxTree *syntax);
-MpplCompStmtSyntax         *mppl_comp_stmt_syntax_alloc(const SyntaxTree *syntax);
-MpplExprListElemSyntax     *mppl_expr_list_elem_syntax_alloc(const SyntaxTree *syntax);
-MpplExprListSyntax         *mppl_expr_list_syntax_alloc(const SyntaxTree *syntax);
-MpplEntireVarSyntax        *mppl_entire_var_syntax_alloc(const SyntaxTree *syntax);
-MpplIndexedVarSyntax       *mppl_indexed_var_syntax_alloc(const SyntaxTree *syntax);
-MpplUnaryExprSyntax        *mppl_unary_expr_syntax_alloc(const SyntaxTree *syntax);
-MpplBinaryExprSyntax       *mppl_binary_expr_syntax_alloc(const SyntaxTree *syntax);
-MpplParenExprSyntax        *mppl_paren_expr_syntax_alloc(const SyntaxTree *syntax);
-MpplCastExprSyntax         *mppl_cast_expr_syntax_alloc(const SyntaxTree *syntax);
-MpplIdentListElemSyntax    *mppl_ident_list_elem_syntax_alloc(const SyntaxTree *syntax);
-MpplIdentListSyntax        *mppl_ident_list_syntax_alloc(const SyntaxTree *syntax);
+MpplRootSyntax              *mppl_root_syntax_alloc(SyntaxTree *syntax);
+MpplProgramSyntax           *mppl_program_syntax_alloc(SyntaxTree *syntax);
+MpplEofSyntax               *mppl_eof_syntax_alloc(SyntaxTree *syntax);
+MpplDeclPartListSyntax      *mppl_decl_part_list_syntax_alloc(SyntaxTree *syntax);
+MpplBindIdentListElemSyntax *mppl_bind_ident_list_elem_syntax_alloc(SyntaxTree *syntax);
+MpplBindIdentListSyntax     *mppl_bind_ident_list_syntax_alloc(SyntaxTree *syntax);
+MpplBindIdentSyntax         *mppl_bind_ident_syntax_alloc(SyntaxTree *syntax);
+MpplVarDeclPartSyntax       *mppl_var_decl_part_syntax_alloc(SyntaxTree *syntax);
+MpplVarDeclListElemSyntax   *mppl_var_decl_list_elem_syntax_alloc(SyntaxTree *syntax);
+MpplVarDeclListSyntax       *mppl_var_decl_list_syntax_alloc(SyntaxTree *syntax);
+MpplVarDeclSyntax           *mppl_var_decl_syntax_alloc(SyntaxTree *syntax);
+MpplIntegerTypeSyntax       *mppl_integer_type_syntax_alloc(SyntaxTree *syntax);
+MpplCharTypeSyntax          *mppl_char_type_syntax_alloc(SyntaxTree *syntax);
+MpplBooleanTypeSyntax       *mppl_boolean_type_syntax_alloc(SyntaxTree *syntax);
+MpplArrayTypeSyntax         *mppl_array_type_syntax_alloc(SyntaxTree *syntax);
+MpplProcDeclPartSyntax      *mppl_proc_decl_part_syntax_alloc(SyntaxTree *syntax);
+MpplProcHeadingSyntax       *mppl_proc_heading_syntax_alloc(SyntaxTree *syntax);
+MpplProcBodySyntax          *mppl_proc_body_syntax_alloc(SyntaxTree *syntax);
+MpplProcDeclSyntax          *mppl_proc_decl_syntax_alloc(SyntaxTree *syntax);
+MpplFmlParamListElemSyntax  *mppl_fml_param_list_elem_syntax_alloc(SyntaxTree *syntax);
+MpplFmlParamListSyntax      *mppl_fml_param_list_syntax_alloc(SyntaxTree *syntax);
+MpplFmlParamsSyntax         *mppl_fml_params_syntax_alloc(SyntaxTree *syntax);
+MpplFmlParamSecSyntax       *mppl_fml_param_sec_syntax_alloc(SyntaxTree *syntax);
+MpplStmtListElemSyntax      *mppl_stmt_list_elem_syntax_alloc(SyntaxTree *syntax);
+MpplStmtListSyntax          *mppl_stmt_list_syntax_alloc(SyntaxTree *syntax);
+MpplAssignStmtSyntax        *mppl_assign_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplIfStmtSyntax            *mppl_if_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplElseClauseSyntax        *mppl_else_clause_syntax_alloc(SyntaxTree *syntax);
+MpplWhileStmtSyntax         *mppl_while_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplBreakStmtSyntax         *mppl_break_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplCallStmtSyntax          *mppl_call_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplActParamsSyntax         *mppl_act_params_syntax_alloc(SyntaxTree *syntax);
+MpplReturnStmtSyntax        *mppl_return_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplInputStmtSyntax         *mppl_input_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplInputsSyntax            *mppl_inputs_syntax_alloc(SyntaxTree *syntax);
+MpplOutputStmtSyntax        *mppl_output_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplOutputListElemSyntax    *mppl_output_list_elem_syntax_alloc(SyntaxTree *syntax);
+MpplOutputListSyntax        *mppl_output_list_syntax_alloc(SyntaxTree *syntax);
+MpplOutputsSyntax           *mppl_outputs_syntax_alloc(SyntaxTree *syntax);
+MpplOutputValueSyntax       *mppl_output_value_syntax_alloc(SyntaxTree *syntax);
+MpplCompStmtSyntax          *mppl_comp_stmt_syntax_alloc(SyntaxTree *syntax);
+MpplExprListElemSyntax      *mppl_expr_list_elem_syntax_alloc(SyntaxTree *syntax);
+MpplExprListSyntax          *mppl_expr_list_syntax_alloc(SyntaxTree *syntax);
+MpplRefIdentSyntax          *mppl_ref_ident_syntax_alloc(SyntaxTree *syntax);
+MpplEntireVarSyntax         *mppl_entire_var_syntax_alloc(SyntaxTree *syntax);
+MpplIndexedVarSyntax        *mppl_indexed_var_syntax_alloc(SyntaxTree *syntax);
+MpplUnaryExprSyntax         *mppl_unary_expr_syntax_alloc(SyntaxTree *syntax);
+MpplBinaryExprSyntax        *mppl_binary_expr_syntax_alloc(SyntaxTree *syntax);
+MpplParenExprSyntax         *mppl_paren_expr_syntax_alloc(SyntaxTree *syntax);
+MpplCastExprSyntax          *mppl_cast_expr_syntax_alloc(SyntaxTree *syntax);
 
 void mppl_root_syntax_free(MpplRootSyntax *root);
 void mppl_program_syntax_free(MpplProgramSyntax *program);
+void mppl_eof_syntax_free(MpplEofSyntax *program);
 void mppl_decl_part_list_syntax_free(MpplDeclPartListSyntax *decl_part_list);
+void mppl_bind_ident_list_elem_syntax_free(MpplBindIdentListElemSyntax *bind_ident_list_elem);
+void mppl_bind_ident_list_syntax_free(MpplBindIdentListSyntax *bind_ident_list);
+void mppl_bind_ident_syntax_free(MpplBindIdentSyntax *bind_ident);
 void mppl_var_decl_part_syntax_free(MpplVarDeclPartSyntax *var_decl_part);
 void mppl_var_decl_list_elem_syntax_free(MpplVarDeclListElemSyntax *var_decl_list_elem);
 void mppl_var_decl_list_syntax_free(MpplVarDeclListSyntax *var_decl_list);
 void mppl_var_decl_syntax_free(MpplVarDeclSyntax *var_decl);
+void mppl_integer_type_syntax_free(MpplIntegerTypeSyntax *integer_type);
+void mppl_char_type_syntax_free(MpplCharTypeSyntax *char_type);
+void mppl_boolean_type_syntax_free(MpplBooleanTypeSyntax *boolean_type);
 void mppl_array_type_syntax_free(MpplArrayTypeSyntax *array_type);
 void mppl_proc_decl_part_syntax_free(MpplProcDeclPartSyntax *proc_decl_part);
 void mppl_proc_heading_syntax_free(MpplProcHeadingSyntax *proc_heading);
@@ -729,24 +778,23 @@ void mppl_output_value_syntax_free(MpplOutputValueSyntax *output_value);
 void mppl_comp_stmt_syntax_free(MpplCompStmtSyntax *comp_stmt);
 void mppl_expr_list_elem_syntax_free(MpplExprListElemSyntax *expr_list_elem);
 void mppl_expr_list_syntax_free(MpplExprListSyntax *expr_list);
+void mppl_ref_ident_syntax_free(MpplRefIdentSyntax *ref_ident);
 void mppl_entire_var_syntax_free(MpplEntireVarSyntax *entire_var);
 void mppl_indexed_var_syntax_free(MpplIndexedVarSyntax *indexed_var);
 void mppl_unary_expr_syntax_free(MpplUnaryExprSyntax *unary_expr);
 void mppl_binary_expr_syntax_free(MpplBinaryExprSyntax *binary_expr);
 void mppl_paren_expr_syntax_free(MpplParenExprSyntax *paren_expr);
 void mppl_cast_expr_syntax_free(MpplCastExprSyntax *cast_expr);
-void mppl_ident_list_elem_syntax_free(MpplIdentListElemSyntax *ident_list_elem);
-void mppl_ident_list_syntax_free(MpplIdentListSyntax *ident_list);
 
-BogusMpplEofSyntax         *bogus_mppl_eof_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplDeclPartSyntax    *bogus_mppl_decl_part_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplVarDeclSyntax     *bogus_mppl_var_decl_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplFmlParamSecSyntax *bogus_mppl_fml_param_sec_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplStmtSyntax        *bogus_mppl_stmt_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplOutputValueSyntax *bogus_mppl_output_value_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplExprSyntax        *bogus_mppl_expr_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplIdentSyntax       *bogus_mppl_ident_syntax_alloc(const SyntaxTree *syntax);
-BogusMpplEofSyntax         *bogus_mppl_eof_syntax_alloc(const SyntaxTree *syntax);
+BogusMpplEofSyntax         *bogus_mppl_eof_syntax_alloc(SyntaxTree *syntax);
+BogusMpplDeclPartSyntax    *bogus_mppl_decl_part_syntax_alloc(SyntaxTree *syntax);
+BogusMpplVarDeclSyntax     *bogus_mppl_var_decl_syntax_alloc(SyntaxTree *syntax);
+BogusMpplFmlParamSecSyntax *bogus_mppl_fml_param_sec_syntax_alloc(SyntaxTree *syntax);
+BogusMpplStmtSyntax        *bogus_mppl_stmt_syntax_alloc(SyntaxTree *syntax);
+BogusMpplOutputValueSyntax *bogus_mppl_output_value_syntax_alloc(SyntaxTree *syntax);
+BogusMpplExprSyntax        *bogus_mppl_expr_syntax_alloc(SyntaxTree *syntax);
+BogusMpplBindIdentSyntax   *bogus_mppl_bind_ident_syntax_alloc(SyntaxTree *syntax);
+BogusMpplEofSyntax         *bogus_mppl_eof_syntax_alloc(SyntaxTree *syntax);
 
 void bogus_mppl_eof_syntax_free(BogusMpplEofSyntax *bogus_eof);
 void bogus_mppl_decl_part_syntax_free(BogusMpplDeclPartSyntax *bogus_decl_part);
@@ -755,20 +803,20 @@ void bogus_mppl_fml_param_sec_syntax_free(BogusMpplFmlParamSecSyntax *bogus_fml_
 void bogus_mppl_stmt_syntax_free(BogusMpplStmtSyntax *bogus_stmt);
 void bogus_mppl_output_value_syntax_free(BogusMpplOutputValueSyntax *bogus_output_value);
 void bogus_mppl_expr_syntax_free(BogusMpplExprSyntax *bogus_expr);
-void bogus_mppl_ident_syntax_free(BogusMpplIdentSyntax *bogus_ident);
+void bogus_mppl_bind_ident_syntax_free(BogusMpplBindIdentSyntax *BOGUS_BIND_IDENT);
 void bogus_mppl_eof_syntax_free(BogusMpplEofSyntax *bogus_eof);
 
-AnyMpplEofSyntax         *any_mppl_eof_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplDeclPartSyntax    *any_mppl_decl_part_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplTypeSyntax        *any_mppl_type_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplVarDeclSyntax     *any_mppl_var_decl_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplFmlParamSecSyntax *any_mppl_fml_param_sec_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplStmtSyntax        *any_mppl_stmt_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplOutputSyntax      *any_mppl_output_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplOutputValueSyntax *any_mppl_output_value_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplVarSyntax         *any_mppl_var_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplExprSyntax        *any_mppl_expr_syntax_alloc(const SyntaxTree *syntax);
-AnyMpplIdentSyntax       *any_mppl_ident_syntax_alloc(const SyntaxTree *syntax);
+AnyMpplEofSyntax         *any_mppl_eof_syntax_alloc(SyntaxTree *syntax);
+AnyMpplDeclPartSyntax    *any_mppl_decl_part_syntax_alloc(SyntaxTree *syntax);
+AnyMpplTypeSyntax        *any_mppl_type_syntax_alloc(SyntaxTree *syntax);
+AnyMpplVarDeclSyntax     *any_mppl_var_decl_syntax_alloc(SyntaxTree *syntax);
+AnyMpplFmlParamSecSyntax *any_mppl_fml_param_sec_syntax_alloc(SyntaxTree *syntax);
+AnyMpplStmtSyntax        *any_mppl_stmt_syntax_alloc(SyntaxTree *syntax);
+AnyMpplOutputSyntax      *any_mppl_output_syntax_alloc(SyntaxTree *syntax);
+AnyMpplOutputValueSyntax *any_mppl_output_value_syntax_alloc(SyntaxTree *syntax);
+AnyMpplVarSyntax         *any_mppl_var_syntax_alloc(SyntaxTree *syntax);
+AnyMpplExprSyntax        *any_mppl_expr_syntax_alloc(SyntaxTree *syntax);
+AnyMpplBindIdentSyntax   *any_mppl_bind_ident_syntax_alloc(SyntaxTree *syntax);
 
 void any_mppl_eof_syntax_free(AnyMpplEofSyntax *any_eof);
 void any_mppl_decl_part_syntax_free(AnyMpplDeclPartSyntax *any_decl_part);
@@ -780,7 +828,7 @@ void any_mppl_output_syntax_free(AnyMpplOutputSyntax *any_output);
 void any_mppl_output_value_syntax_free(AnyMpplOutputValueSyntax *any_output_value);
 void any_mppl_var_syntax_free(AnyMpplVarSyntax *any_var);
 void any_mppl_expr_syntax_free(AnyMpplExprSyntax *any_expr);
-void any_mppl_ident_syntax_free(AnyMpplIdentSyntax *any_ident);
+void any_mppl_bind_ident_syntax_free(AnyMpplBindIdentSyntax *any_bind_ident);
 
 MpplEofSyntaxKind         mppl_eof_syntax_kind(const AnyMpplEofSyntax *eof);
 MpplDeclPartSyntaxKind    mppl_decl_part_syntax_kind(const AnyMpplDeclPartSyntax *decl_part);
@@ -792,61 +840,74 @@ MpplOutputSyntaxKind      mppl_output_syntax_kind(const AnyMpplOutputSyntax *out
 MpplOutputValueSyntaxKind mppl_output_value_syntax_kind(const AnyMpplOutputValueSyntax *output_value);
 MpplVarSyntaxKind         mppl_var_syntax_kind(const AnyMpplVarSyntax *var);
 MpplExprSyntaxKind        mppl_expr_syntax_kind(const AnyMpplExprSyntax *expr);
-MpplIdentSyntaxKind       mppl_ident_syntax_kind(const AnyMpplIdentSyntax *ident);
+MpplBindIdentSyntaxKind   mppl_bind_ident_syntax_kind(const AnyMpplBindIdentSyntax *ident);
 
-MpplRootSyntaxFields             mppl_root_syntax_fields_alloc(const MpplRootSyntax *root);
-MpplProgramSyntaxFields          mppl_program_syntax_fields_alloc(const MpplProgramSyntax *program);
-MpplDeclPartListSyntaxFields     mppl_decl_part_list_syntax_fields_alloc(const MpplDeclPartListSyntax *decl_part_list);
-MpplVarDeclPartSyntaxFields      mppl_var_decl_part_syntax_fields_alloc(const MpplVarDeclPartSyntax *var_decl_part);
-MpplVarDeclListElemSyntaxFields  mppl_var_decl_list_elem_syntax_fields_alloc(const MpplVarDeclListElemSyntax *var_decl_list_elem);
-MpplVarDeclListSyntaxFields      mppl_var_decl_list_syntax_fields_alloc(const MpplVarDeclListSyntax *var_decl_list);
-MpplVarDeclSyntaxFields          mppl_var_decl_syntax_fields_alloc(const MpplVarDeclSyntax *var_decl);
-MpplArrayTypeSyntaxFields        mppl_array_type_syntax_fields_alloc(const MpplArrayTypeSyntax *array_type);
-MpplProcDeclPartSyntaxFields     mppl_proc_decl_part_syntax_fields_alloc(const MpplProcDeclPartSyntax *proc_decl_part);
-MpplProcHeadingSyntaxFields      mppl_proc_heading_syntax_fields_alloc(const MpplProcHeadingSyntax *proc_heading);
-MpplProcBodySyntaxFields         mppl_proc_body_syntax_fields_alloc(const MpplProcBodySyntax *proc_body);
-MpplProcDeclSyntaxFields         mppl_proc_decl_syntax_fields_alloc(const MpplProcDeclSyntax *proc_decl);
-MpplFmlParamListElemSyntaxFields mppl_fml_param_list_elem_syntax_fields_alloc(const MpplFmlParamListElemSyntax *fml_param_list_elem);
-MpplFmlParamListSyntaxFields     mppl_fml_param_list_syntax_fields_alloc(const MpplFmlParamListSyntax *fml_param_list);
-MpplFmlParamsSyntaxFields        mppl_fml_params_syntax_fields_alloc(const MpplFmlParamsSyntax *fml_params);
-MpplFmlParamSecSyntaxFields      mppl_fml_param_sec_syntax_fields_alloc(const MpplFmlParamSecSyntax *fml_param_sec);
-MpplStmtListElemSyntaxFields     mppl_stmt_list_elem_syntax_fields_alloc(const MpplStmtListElemSyntax *stmt_list_elem);
-MpplStmtListSyntaxFields         mppl_stmt_list_syntax_fields_alloc(const MpplStmtListSyntax *stmt_list);
-MpplAssignStmtSyntaxFields       mppl_assign_stmt_syntax_fields_alloc(const MpplAssignStmtSyntax *assign_stmt);
-MpplIfStmtSyntaxFields           mppl_if_stmt_syntax_fields_alloc(const MpplIfStmtSyntax *if_stmt);
-MpplElseClauseSyntaxFields       mppl_else_clause_syntax_fields_alloc(const MpplElseClauseSyntax *else_clause);
-MpplWhileStmtSyntaxFields        mppl_while_stmt_syntax_fields_alloc(const MpplWhileStmtSyntax *while_stmt);
-MpplBreakStmtSyntaxFields        mppl_break_stmt_syntax_fields_alloc(const MpplBreakStmtSyntax *break_stmt);
-MpplCallStmtSyntaxFields         mppl_call_stmt_syntax_fields_alloc(const MpplCallStmtSyntax *call_stmt);
-MpplActParamsSyntaxFields        mppl_act_params_syntax_fields_alloc(const MpplActParamsSyntax *act_params);
-MpplReturnStmtSyntaxFields       mppl_return_stmt_syntax_fields_alloc(const MpplReturnStmtSyntax *return_stmt);
-MpplInputStmtSyntaxFields        mppl_input_stmt_syntax_fields_alloc(const MpplInputStmtSyntax *input_stmt);
-MpplInputsSyntaxFields           mppl_inputs_syntax_fields_alloc(const MpplInputsSyntax *inputs);
-MpplOutputStmtSyntaxFields       mppl_output_stmt_syntax_fields_alloc(const MpplOutputStmtSyntax *output_stmt);
-MpplOutputListElemSyntaxFields   mppl_output_list_elem_syntax_fields_alloc(const MpplOutputListElemSyntax *output_list_elem);
-MpplOutputListSyntaxFields       mppl_output_list_syntax_fields_alloc(const MpplOutputListSyntax *output_list);
-MpplOutputsSyntaxFields          mppl_outputs_syntax_fields_alloc(const MpplOutputsSyntax *outputs);
-MpplOutputValueSyntaxFields      mppl_output_value_syntax_fields_alloc(const MpplOutputValueSyntax *output_value);
-MpplCompStmtSyntaxFields         mppl_comp_stmt_syntax_fields_alloc(const MpplCompStmtSyntax *comp_stmt);
-MpplExprListElemSyntaxFields     mppl_expr_list_elem_syntax_fields_alloc(const MpplExprListElemSyntax *expr_list_elem);
-MpplExprListSyntaxFields         mppl_expr_list_syntax_fields_alloc(const MpplExprListSyntax *expr_list);
-MpplEntireVarSyntaxFields        mppl_entire_var_syntax_fields_alloc(const MpplEntireVarSyntax *entire_var);
-MpplIndexedVarSyntaxFields       mppl_indexed_var_syntax_fields_alloc(const MpplIndexedVarSyntax *indexed_var);
-MpplUnaryExprSyntaxFields        mppl_unary_expr_syntax_fields_alloc(const MpplUnaryExprSyntax *unary_expr);
-MpplBinaryExprSyntaxFields       mppl_binary_expr_syntax_fields_alloc(const MpplBinaryExprSyntax *binary_expr);
-MpplParenExprSyntaxFields        mppl_paren_expr_syntax_fields_alloc(const MpplParenExprSyntax *paren_expr);
-MpplCastExprSyntaxFields         mppl_cast_expr_syntax_fields_alloc(const MpplCastExprSyntax *cast_expr);
-MpplIdentListElemSyntaxFields    mppl_ident_list_elem_syntax_fields_alloc(const MpplIdentListElemSyntax *ident_list_elem);
-MpplIdentListSyntaxFields        mppl_ident_list_syntax_fields_alloc(const MpplIdentListSyntax *ident_list);
+MpplRootSyntaxFields              mppl_root_syntax_fields_alloc(const MpplRootSyntax *root);
+MpplProgramSyntaxFields           mppl_program_syntax_fields_alloc(const MpplProgramSyntax *program);
+MpplEofSyntaxFields               mppl_eof_syntax_fields_alloc(const MpplEofSyntax *eof);
+MpplDeclPartListSyntaxFields      mppl_decl_part_list_syntax_fields_alloc(const MpplDeclPartListSyntax *decl_part_list);
+MpplBindIdentListElemSyntaxFields mppl_bind_ident_list_elem_syntax_fields_alloc(const MpplBindIdentListElemSyntax *bind_ident_list_elem);
+MpplBindIdentListSyntaxFields     mppl_bind_ident_list_syntax_fields_alloc(const MpplBindIdentListSyntax *bind_ident_list);
+MpplBindIdentSyntaxFields         mppl_bind_ident_syntax_fields_alloc(const MpplBindIdentSyntax *bind_ident);
+MpplVarDeclPartSyntaxFields       mppl_var_decl_part_syntax_fields_alloc(const MpplVarDeclPartSyntax *var_decl_part);
+MpplVarDeclListElemSyntaxFields   mppl_var_decl_list_elem_syntax_fields_alloc(const MpplVarDeclListElemSyntax *var_decl_list_elem);
+MpplVarDeclListSyntaxFields       mppl_var_decl_list_syntax_fields_alloc(const MpplVarDeclListSyntax *var_decl_list);
+MpplVarDeclSyntaxFields           mppl_var_decl_syntax_fields_alloc(const MpplVarDeclSyntax *var_decl);
+MpplIntegerTypeSyntaxFields       mppl_integer_type_syntax_fields_alloc(const MpplArrayTypeSyntax *integer_type);
+MpplCharTypeSyntaxFields          mppl_char_type_syntax_fields_alloc(const MpplArrayTypeSyntax *char_type);
+MpplBooleanTypeSyntaxFields       mppl_boolean_type_syntax_fields_alloc(const MpplArrayTypeSyntax *boolean_type);
+MpplArrayTypeSyntaxFields         mppl_array_type_syntax_fields_alloc(const MpplArrayTypeSyntax *array_type);
+MpplProcDeclPartSyntaxFields      mppl_proc_decl_part_syntax_fields_alloc(const MpplProcDeclPartSyntax *proc_decl_part);
+MpplProcHeadingSyntaxFields       mppl_proc_heading_syntax_fields_alloc(const MpplProcHeadingSyntax *proc_heading);
+MpplProcBodySyntaxFields          mppl_proc_body_syntax_fields_alloc(const MpplProcBodySyntax *proc_body);
+MpplProcDeclSyntaxFields          mppl_proc_decl_syntax_fields_alloc(const MpplProcDeclSyntax *proc_decl);
+MpplFmlParamListElemSyntaxFields  mppl_fml_param_list_elem_syntax_fields_alloc(const MpplFmlParamListElemSyntax *fml_param_list_elem);
+MpplFmlParamListSyntaxFields      mppl_fml_param_list_syntax_fields_alloc(const MpplFmlParamListSyntax *fml_param_list);
+MpplFmlParamsSyntaxFields         mppl_fml_params_syntax_fields_alloc(const MpplFmlParamsSyntax *fml_params);
+MpplFmlParamSecSyntaxFields       mppl_fml_param_sec_syntax_fields_alloc(const MpplFmlParamSecSyntax *fml_param_sec);
+MpplStmtListElemSyntaxFields      mppl_stmt_list_elem_syntax_fields_alloc(const MpplStmtListElemSyntax *stmt_list_elem);
+MpplStmtListSyntaxFields          mppl_stmt_list_syntax_fields_alloc(const MpplStmtListSyntax *stmt_list);
+MpplAssignStmtSyntaxFields        mppl_assign_stmt_syntax_fields_alloc(const MpplAssignStmtSyntax *assign_stmt);
+MpplIfStmtSyntaxFields            mppl_if_stmt_syntax_fields_alloc(const MpplIfStmtSyntax *if_stmt);
+MpplElseClauseSyntaxFields        mppl_else_clause_syntax_fields_alloc(const MpplElseClauseSyntax *else_clause);
+MpplWhileStmtSyntaxFields         mppl_while_stmt_syntax_fields_alloc(const MpplWhileStmtSyntax *while_stmt);
+MpplBreakStmtSyntaxFields         mppl_break_stmt_syntax_fields_alloc(const MpplBreakStmtSyntax *break_stmt);
+MpplCallStmtSyntaxFields          mppl_call_stmt_syntax_fields_alloc(const MpplCallStmtSyntax *call_stmt);
+MpplActParamsSyntaxFields         mppl_act_params_syntax_fields_alloc(const MpplActParamsSyntax *act_params);
+MpplReturnStmtSyntaxFields        mppl_return_stmt_syntax_fields_alloc(const MpplReturnStmtSyntax *return_stmt);
+MpplInputStmtSyntaxFields         mppl_input_stmt_syntax_fields_alloc(const MpplInputStmtSyntax *input_stmt);
+MpplInputsSyntaxFields            mppl_inputs_syntax_fields_alloc(const MpplInputsSyntax *inputs);
+MpplOutputStmtSyntaxFields        mppl_output_stmt_syntax_fields_alloc(const MpplOutputStmtSyntax *output_stmt);
+MpplOutputListElemSyntaxFields    mppl_output_list_elem_syntax_fields_alloc(const MpplOutputListElemSyntax *output_list_elem);
+MpplOutputListSyntaxFields        mppl_output_list_syntax_fields_alloc(const MpplOutputListSyntax *output_list);
+MpplOutputsSyntaxFields           mppl_outputs_syntax_fields_alloc(const MpplOutputsSyntax *outputs);
+MpplOutputValueSyntaxFields       mppl_output_value_syntax_fields_alloc(const MpplOutputValueSyntax *output_value);
+MpplCompStmtSyntaxFields          mppl_comp_stmt_syntax_fields_alloc(const MpplCompStmtSyntax *comp_stmt);
+MpplExprListElemSyntaxFields      mppl_expr_list_elem_syntax_fields_alloc(const MpplExprListElemSyntax *expr_list_elem);
+MpplExprListSyntaxFields          mppl_expr_list_syntax_fields_alloc(const MpplExprListSyntax *expr_list);
+MpplRefIdentSyntaxFields          mppl_ref_ident_syntax_fields_alloc(const MpplRefIdentSyntax *ref_ident);
+MpplEntireVarSyntaxFields         mppl_entire_var_syntax_fields_alloc(const MpplEntireVarSyntax *entire_var);
+MpplIndexedVarSyntaxFields        mppl_indexed_var_syntax_fields_alloc(const MpplIndexedVarSyntax *indexed_var);
+MpplUnaryExprSyntaxFields         mppl_unary_expr_syntax_fields_alloc(const MpplUnaryExprSyntax *unary_expr);
+MpplBinaryExprSyntaxFields        mppl_binary_expr_syntax_fields_alloc(const MpplBinaryExprSyntax *binary_expr);
+MpplParenExprSyntaxFields         mppl_paren_expr_syntax_fields_alloc(const MpplParenExprSyntax *paren_expr);
+MpplCastExprSyntaxFields          mppl_cast_expr_syntax_fields_alloc(const MpplCastExprSyntax *cast_expr);
 
 void mppl_root_syntax_fields_free(MpplRootSyntaxFields *fields);
+void mppl_eof_syntax_fields_free(MpplEofSyntaxFields *fields);
 void mppl_program_syntax_fields_free(MpplProgramSyntaxFields *fields);
 void mppl_decl_part_list_syntax_fields_free(MpplDeclPartListSyntaxFields *fields);
+void mppl_bind_ident_list_elem_syntax_fields_free(MpplBindIdentListElemSyntaxFields *fields);
+void mppl_bind_ident_list_syntax_fields_free(MpplBindIdentListSyntaxFields *fields);
+void mppl_bind_ident_syntax_fields_free(MpplBindIdentSyntaxFields *fields);
 void mppl_var_decl_part_syntax_fields_free(MpplVarDeclPartSyntaxFields *fields);
 void mppl_var_decl_list_elem_syntax_fields_free(MpplVarDeclListElemSyntaxFields *fields);
 void mppl_var_decl_list_syntax_fields_free(MpplVarDeclListSyntaxFields *fields);
 void mppl_var_decl_syntax_fields_free(MpplVarDeclSyntaxFields *fields);
-void mppl_array_type_syntax_fields_free(MpplArrayTypeSyntaxFields *fields);
+void mppl_integer_type_syntax_fields_free(MpplIntegerTypeSyntaxFields *fields);
+void mppl_char_type_syntax_fields_free(MpplCharTypeSyntaxFields *fields);
+void mppl_boolean_type_syntax_fields_free(MpplArrayTypeSyntaxFields *fields);
+void mppl_array_type_syntax_fields_free(MpplBooleanTypeSyntaxFields *fields);
 void mppl_proc_decl_part_syntax_fields_free(MpplProcDeclPartSyntaxFields *fields);
 void mppl_proc_heading_syntax_fields_free(MpplProcHeadingSyntaxFields *fields);
 void mppl_proc_body_syntax_fields_free(MpplProcBodySyntaxFields *fields);
@@ -875,13 +936,12 @@ void mppl_output_value_syntax_fields_free(MpplOutputValueSyntaxFields *fields);
 void mppl_comp_stmt_syntax_fields_free(MpplCompStmtSyntaxFields *fields);
 void mppl_expr_list_elem_syntax_fields_free(MpplExprListElemSyntaxFields *fields);
 void mppl_expr_list_syntax_fields_free(MpplExprListSyntaxFields *fields);
+void mppl_ref_ident_syntax_fields_free(MpplRefIdentSyntaxFields *fields);
 void mppl_entire_var_syntax_fields_free(MpplEntireVarSyntaxFields *fields);
 void mppl_indexed_var_syntax_fields_free(MpplIndexedVarSyntaxFields *fields);
 void mppl_unary_expr_syntax_fields_free(MpplUnaryExprSyntaxFields *fields);
 void mppl_binary_expr_syntax_fields_free(MpplBinaryExprSyntaxFields *fields);
 void mppl_paren_expr_syntax_fields_free(MpplParenExprSyntaxFields *fields);
 void mppl_cast_expr_syntax_fields_free(MpplCastExprSyntaxFields *fields);
-void mppl_ident_list_elem_syntax_fields_free(MpplIdentListElemSyntaxFields *fields);
-void mppl_ident_list_syntax_fields_free(MpplIdentListSyntaxFields *fields);
 
 #endif /* MPPL_SYNTAX_H */
