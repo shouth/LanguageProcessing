@@ -5,6 +5,7 @@
 
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
+#include "mppl_ty_ctxt.h"
 #include "report.h"
 #include "syntax_tree.h"
 #include "util.h"
@@ -37,5 +38,14 @@ struct MpplResolveResult {
 };
 
 MpplResolveResult mppl_resolve(const SyntaxTree *tree);
+
+typedef struct MpplCheckResult MpplCheckResult;
+
+struct MpplCheckResult {
+  MpplTyCtxt *ctxt;
+  Slice(Report *) diags;
+};
+
+MpplCheckResult mppl_check(const SyntaxTree *tree, const MpplSemantics *semantics);
 
 #endif /* MPPL_PASSES_H */

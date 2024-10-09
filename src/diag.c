@@ -36,7 +36,7 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
         length += fprintf(buffer, "`%s`", lexeme);
       } else {
         switch (kind) {
-        case MPPL_SYNTAX_EOF:
+        case MPPL_SYNTAX_EOF_TOKEN:
           length += fprintf(buffer, "end of file");
           break;
         case MPPL_SYNTAX_NUMBER_LIT:

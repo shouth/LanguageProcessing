@@ -98,7 +98,7 @@ static void next_nontrivia(Parser *p)
 
 static int is_eof(Parser *p)
 {
-  return p->kind == MPPL_SYNTAX_EOF;
+  return p->kind == MPPL_SYNTAX_EOF_TOKEN;
 }
 
 static void null(Parser *p)
@@ -236,6 +236,13 @@ static void parse_type(Parser *p)
   }
 }
 
+static void parse_ref_ident(Parser *p)
+{
+  Checkpoint reference_ident = open(p);
+  expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+  close(p, MPPL_SYNTAX_REF_IDENT, reference_ident);
+}
+
 static void parse_expr(Parser *p);
 
 static const MpplTokenKindSet *first_const(void)
@@ -316,7 +323,8 @@ static void parse_expr_with_power(Parser *p, int power)
     close(p, MPPL_SYNTAX_CAST_EXPR, expr);
   } else if (eat_any(p, first_const())) {
     /* number | true | false | string */
-  } else if (eat(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+  } else if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+    parse_ref_ident(p);
     if (eat(p, MPPL_SYNTAX_LBRACKET_TOKEN)) {
       /* identifier '[' expr ']' */
       parse_expr(p);
@@ -645,6 +653,13 @@ static void parse_stmt(Parser *p, const MpplTokenKindSet *recovery)
   }
 }
 
+static void parse_binding_ident(Parser *p)
+{
+  Checkpoint binding_ident = open(p);
+  expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+  close(p, MPPL_SYNTAX_BIND_IDENT, binding_ident);
+}
+
 static void parse_var_decl(Parser *p, const MpplTokenKindSet *recovery)
 {
   Checkpoint var_decl, ident_list, ident_list_elem;
@@ -658,7 +673,7 @@ static void parse_var_decl(Parser *p, const MpplTokenKindSet *recovery)
 
     ident_list_elem = open(p);
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+      parse_binding_ident(p);
     } else {
       parse_bogus(p, MPPL_SYNTAX_BOGUS_IDENT, &kinds);
     }
@@ -668,9 +683,9 @@ static void parse_var_decl(Parser *p, const MpplTokenKindSet *recovery)
     } else {
       expect(p, MPPL_SYNTAX_COMMA_TOKEN);
     }
-    close(p, MPPL_SYNTAX_IDENT_LIST_ELEM, ident_list_elem);
+    close(p, MPPL_SYNTAX_BIND_IDENT_LIST_ELEM, ident_list_elem);
   }
-  close(p, MPPL_SYNTAX_IDENT_LIST, ident_list);
+  close(p, MPPL_SYNTAX_BIND_IDENT_LIST, ident_list);
   expect(p, MPPL_SYNTAX_COLON_TOKEN);
   parse_type(p);
   close(p, MPPL_SYNTAX_VAR_DECL, var_decl);
@@ -714,7 +729,7 @@ static void parse_fml_param_sec(Parser *p, const MpplTokenKindSet *recovery)
 
     ident_list_elem = open(p);
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+      parse_binding_ident(p);
     } else {
       parse_bogus(p, MPPL_SYNTAX_BOGUS_IDENT, &kinds);
     }
@@ -724,9 +739,9 @@ static void parse_fml_param_sec(Parser *p, const MpplTokenKindSet *recovery)
     } else {
       expect(p, MPPL_SYNTAX_COMMA_TOKEN);
     }
-    close(p, MPPL_SYNTAX_IDENT_LIST_ELEM, ident_list_elem);
+    close(p, MPPL_SYNTAX_BIND_IDENT_LIST_ELEM, ident_list_elem);
   }
-  close(p, MPPL_SYNTAX_IDENT_LIST, ident_list);
+  close(p, MPPL_SYNTAX_BIND_IDENT_LIST, ident_list);
   expect(p, MPPL_SYNTAX_COLON_TOKEN);
   parse_type(p);
   close(p, MPPL_SYNTAX_FML_PARAM_SEC, fml_param_sec);
@@ -858,8 +873,10 @@ MpplParseResult mppl_parse(const char *text, unsigned long length)
 
   next_nontrivia(&p); /* initialize `p.span` and `p.kind` */
   parse_program(&p);
-  if (check(&p, MPPL_SYNTAX_EOF)) {
-    expect(&p, MPPL_SYNTAX_EOF);
+  if (check(&p, MPPL_SYNTAX_EOF_TOKEN)) {
+    Checkpoint eof = open(&p);
+    expect(&p, MPPL_SYNTAX_EOF_TOKEN);
+    close(&p, MPPL_SYNTAX_EOF, eof);
   } else {
     parse_bogus(&p, MPPL_SYNTAX_BOGUS_EOF, NULL);
   }
