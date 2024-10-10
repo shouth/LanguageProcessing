@@ -65,7 +65,7 @@ static int run_compiler(void)
         slice_free(&resolve_result.diags);
       }
 
-      mppl_root_syntax_free(parse_result.root);
+      syntax_tree_free((SyntaxTree *) parse_result.root);
       slice_free(&parse_result.diags);
       source_free(source);
     }

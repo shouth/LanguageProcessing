@@ -23,7 +23,7 @@ MpplLexResult mppl_lex(const char *text, unsigned long length);
 typedef struct MpplParseResult MpplParseResult;
 
 struct MpplParseResult {
-  MpplRootSyntax *root;
+  MpplRoot *root;
   Slice(Report *) diags;
 };
 
@@ -36,7 +36,7 @@ struct MpplResolveResult {
   Slice(Report *) diags;
 };
 
-MpplResolveResult mppl_resolve(const MpplRootSyntax *syntax);
+MpplResolveResult mppl_resolve(const MpplRoot *syntax);
 
 typedef struct MpplCheckResult MpplCheckResult;
 
@@ -45,6 +45,6 @@ struct MpplCheckResult {
   Slice(Report *) diags;
 };
 
-MpplCheckResult mppl_check(const MpplRootSyntax *syntax, const MpplSemantics *semantics);
+MpplCheckResult mppl_check(const MpplRoot *syntax, const MpplSemantics *semantics);
 
 #endif /* MPPL_PASSES_H */

@@ -196,7 +196,7 @@ static void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
   }
 }
 
-MpplResolveResult mppl_resolve(const MpplRootSyntax *syntax)
+MpplResolveResult mppl_resolve(const MpplRoot *syntax)
 {
   MpplResolveResult result;
 

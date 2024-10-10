@@ -3,6 +3,6 @@
 #include "mppl_passes.h"
 #include "mppl_syntax.h"
 
-MpplCheckResult mppl_check(const MpplRootSyntax *syntax, const MpplSemantics *semantics)
+MpplCheckResult mppl_check(const MpplRoot *syntax, const MpplSemantics *semantics)
 {
 }
