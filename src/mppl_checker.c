@@ -66,12 +66,6 @@ static int syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
       handle_proc_decl_heading((const MpplProcDecl *) syntax, checker);
       return 0;
 
-    default:
-      /* do nothing */
-      break;
-    }
-  } else {
-    switch (syntax->raw->node.kind) {
     case MPPL_SYNTAX_ASSIGN_STMT:
       handle_assign_stmt((const MpplAssignStmt *) syntax, checker);
       return 0;
