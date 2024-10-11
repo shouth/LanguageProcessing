@@ -66,7 +66,7 @@ typedef struct SyntaxNode   SyntaxNode;
 typedef struct SyntaxTree   SyntaxTree;
 typedef struct SyntaxToken  SyntaxToken;
 typedef struct SyntaxTrivia SyntaxTrivia;
-typedef void                SyntaxVisitor(const SyntaxTree *syntax, int enter, void *data);
+typedef int                 SyntaxVisitor(const SyntaxTree *syntax, int enter, void *data);
 
 struct SyntaxSpan {
   unsigned long offset;

@@ -365,18 +365,28 @@ SyntaxTrivia *syntax_token_trailing_trivia(const SyntaxToken *self)
   return syntax_node_adjacent_trivia((const SyntaxNode *) self, (const RawSyntaxNode *) self->raw, 0);
 }
 
-void syntax_tree_visit(const SyntaxTree *self, SyntaxVisitor *visitor, void *data)
+static int visit_syntax(const SyntaxTree *self, SyntaxVisitor *visitor, void *data)
 {
   unsigned long i;
-  visitor(self, 1, data);
-  for (i = 0; i * 2 < self->raw->children.count; ++i) {
-    SyntaxTree *child = syntax_tree_child_tree(self, i);
-    if (child) {
-      syntax_tree_visit(child, visitor, data);
-      syntax_tree_free(child);
+
+  if (visitor(self, 1, data)) {
+    for (i = 0; i * 2 < self->raw->children.count; ++i) {
+      SyntaxTree *child = syntax_tree_child_tree(self, i);
+      if (child) {
+        int result = visit_syntax(child, visitor, data);
+        syntax_tree_free(child);
+        if (!result) {
+          break;
+        }
+      }
     }
   }
-  visitor(self, 0, data);
+  return visitor(self, 0, data);
+}
+
+void syntax_tree_visit(const SyntaxTree *self, SyntaxVisitor *visitor, void *data)
+{
+  visit_syntax(self, visitor, data);
 }
 
 /* syntax builder */
