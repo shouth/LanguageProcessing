@@ -158,7 +158,7 @@ static void pop_scope(Resolver *resolver)
   free(scope);
 }
 
-static void syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
+static int syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
 {
   Resolver *resolver = data;
   if (enter) {
@@ -198,6 +198,7 @@ static void syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
       break;
     }
   }
+  return 1;
 }
 
 MpplResolveResult mppl_resolve(const MpplRoot *syntax)

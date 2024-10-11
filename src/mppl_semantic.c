@@ -55,7 +55,7 @@ static void handle_event(MpplSemanticsBuilder *builder, const MpplSemanticEvent 
   }
 }
 
-static void syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
+static int syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
 {
   HashMapEntry          entry;
   MpplSemanticsBuilder *builder = data;
@@ -75,6 +75,7 @@ static void syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
       break;
     }
   }
+  return 1;
 }
 
 static MpplSemantics build(MpplSemanticsBuilder *builder)
