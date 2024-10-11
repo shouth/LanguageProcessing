@@ -52,12 +52,10 @@ static void diag(Resolver *resolver, Report *report)
   vec_push(&resolver->diags, &report, 1);
 }
 
-static void enter_binding_use(Resolver *resolver, const SyntaxToken *token)
+static void enter_ref_ident(Resolver *resolver, const SyntaxToken *token)
 {
   MpplSemanticEvent event;
   HashMapEntry      entry;
-
-  assert(token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN);
 
   if (hashmap_entry(&resolver->bindings, &token->raw, &entry)) {
     event.kind        = MPPL_SEMANTIC_USE;
@@ -71,11 +69,28 @@ static void enter_binding_use(Resolver *resolver, const SyntaxToken *token)
   vec_push(&resolver->events, &event, 1);
 }
 
-static void enter_binding_decl(Resolver *resolver, const SyntaxToken *token, MpplSyntaxKind kind)
+static void enter_bind_ident(Resolver *resolver, const SyntaxToken *token)
 {
-  assert(token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN);
+  MpplSyntaxKind    item_kind;
+  const SyntaxTree *syntax = token->node.parent;
 
-  if (kind != MPPL_SYNTAX_PROGRAM) {
+  while (1) {
+    switch (syntax->raw->node.kind) {
+    case MPPL_SYNTAX_PROGRAM:
+    case MPPL_SYNTAX_PROC_DECL:
+    case MPPL_SYNTAX_VAR_DECL:
+    case MPPL_SYNTAX_FML_PARAM_SEC:
+      item_kind = syntax->raw->node.kind;
+      break;
+
+    default:
+      syntax = syntax->node.parent;
+      continue;
+    }
+    break;
+  }
+
+  if (item_kind != MPPL_SYNTAX_PROGRAM) {
     HashMapEntry entry;
     Binding      binding;
     binding.name        = token->raw;
@@ -106,34 +121,6 @@ static void enter_binding_decl(Resolver *resolver, const SyntaxToken *token, Mpp
     event.declared_at = token->node.span.offset;
     vec_push(&resolver->events, &event, 1);
   }
-}
-
-static void enter_ident(Resolver *resolver, const SyntaxToken *token)
-{
-  const SyntaxTree *parent;
-
-  assert(token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN);
-  for (parent = token->node.parent; parent; parent = parent->node.parent) {
-    switch (parent->raw->node.kind) {
-    case MPPL_SYNTAX_ENTIRE_VAR:
-    case MPPL_SYNTAX_INDEXED_VAR:
-    case MPPL_SYNTAX_CALL_STMT:
-      enter_binding_use(resolver, token);
-      return;
-
-    case MPPL_SYNTAX_PROGRAM:
-    case MPPL_SYNTAX_VAR_DECL:
-    case MPPL_SYNTAX_PROC_DECL:
-    case MPPL_SYNTAX_FML_PARAM_SEC:
-      enter_binding_decl(resolver, token, parent->raw->node.kind);
-      return;
-
-    default:
-      /* do nothing */
-      break;
-    }
-  }
-  unreachable();
 }
 
 static void push_scope(Resolver *resolver)
@@ -171,27 +158,44 @@ static void pop_scope(Resolver *resolver)
   free(scope);
 }
 
-static void do_resolve(Resolver *resolver, const SyntaxTree *syntax)
+static void syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
 {
-  SyntaxTree   *tree;
-  SyntaxToken  *token;
-  unsigned long i;
+  Resolver *resolver = data;
+  if (enter) {
+    switch (syntax->raw->node.kind) {
+    case MPPL_SYNTAX_PROGRAM:
+    case MPPL_SYNTAX_PROC_BODY:
+      push_scope(resolver);
+      break;
 
-  for (i = 0; i * 2 < syntax->raw->children.count; ++i) {
-    if ((tree = syntax_tree_child_tree(syntax, i))) {
-      if (tree->raw->node.kind == MPPL_SYNTAX_PROGRAM || tree->raw->node.kind == MPPL_SYNTAX_PROC_BODY) {
-        push_scope(resolver);
-        do_resolve(resolver, tree);
-        pop_scope(resolver);
-      } else {
-        do_resolve(resolver, tree);
-      }
-      syntax_tree_free(tree);
-    } else if ((token = syntax_tree_child_token(syntax, i))) {
-      if (token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN) {
-        enter_ident(resolver, token);
-      }
-      syntax_token_free(token);
+    case MPPL_SYNTAX_BIND_IDENT: {
+      MpplBindIdentFields fields = mppl_bind_ident_fields_alloc((const MpplBindIdent *) syntax);
+      enter_bind_ident(resolver, fields.ident);
+      mppl_bind_ident_fields_free(&fields);
+      break;
+    }
+
+    case MPPL_SYNTAX_REF_IDENT: {
+      MpplRefIdentFields fields = mppl_ref_ident_fields_alloc((const MpplRefIdent *) syntax);
+      enter_ref_ident(resolver, fields.ident);
+      mppl_ref_ident_fields_free(&fields);
+      break;
+    }
+
+    default:
+      /* do nothing */
+      break;
+    }
+  } else {
+    switch (syntax->raw->node.kind) {
+    case MPPL_SYNTAX_PROGRAM:
+    case MPPL_SYNTAX_PROC_BODY:
+      pop_scope(resolver);
+      break;
+
+    default:
+      /* do nothing */
+      break;
     }
   }
 }
@@ -206,7 +210,7 @@ MpplResolveResult mppl_resolve(const MpplRoot *syntax)
   vec_alloc(&resolver.events, 0);
   vec_alloc(&resolver.diags, 0);
 
-  do_resolve(&resolver, &syntax->syntax);
+  syntax_tree_visit((const SyntaxTree *) syntax, &syntax_visitor, &resolver);
 
   result.semantics   = mppl_semantics_alloc(&syntax->syntax, resolver.events.ptr, resolver.events.count);
   result.diags.ptr   = resolver.diags.ptr;
