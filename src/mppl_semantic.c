@@ -55,51 +55,24 @@ static void handle_event(MpplSemanticsBuilder *builder, const MpplSemanticEvent 
   }
 }
 
-static void handle_binding(MpplSemanticsBuilder *builder, const SyntaxToken *token)
+static void syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
 {
-  SyntaxTree  *parent;
-  HashMapEntry entry;
-
-  assert(token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN);
-  for (parent = token->node.parent; parent; parent = parent->node.parent) {
-    switch (parent->raw->node.kind) {
-    case MPPL_SYNTAX_PROGRAM:
-    case MPPL_SYNTAX_VAR_DECL:
-    case MPPL_SYNTAX_PROC_DECL:
-    case MPPL_SYNTAX_FML_PARAM_SEC:
-      hashmap_entry(&builder->syntax, &token->node.span.offset, &entry);
-      hashmap_occupy(&builder->syntax, &entry, &token->node.span.offset);
-      *hashmap_value(&builder->syntax, &entry) = syntax_token_shared(token);
-      return;
-
-    case MPPL_SYNTAX_ENTIRE_VAR:
-    case MPPL_SYNTAX_INDEXED_VAR:
-    case MPPL_SYNTAX_CALL_STMT:
-      /* do nothing */
-      return;
+  HashMapEntry          entry;
+  MpplSemanticsBuilder *builder = data;
+  if (enter) {
+    switch (syntax->raw->node.kind) {
+    case MPPL_SYNTAX_BIND_IDENT: {
+      MpplBindIdentFields fields = mppl_bind_ident_fields_alloc((const MpplBindIdent *) syntax);
+      hashmap_entry(&builder->syntax, &fields.ident->node.span.offset, &entry);
+      hashmap_occupy(&builder->syntax, &entry, &fields.ident->node.span.offset);
+      *hashmap_value(&builder->syntax, &entry) = syntax_token_shared(fields.ident);
+      mppl_bind_ident_fields_free(&fields);
+      break;
+    }
 
     default:
       /* do nothing */
       break;
-    }
-  }
-}
-
-static void handle_syntax(MpplSemanticsBuilder *builder, const SyntaxTree *syntax)
-{
-  unsigned long i;
-
-  for (i = 0; i * 2 < syntax->raw->children.count; ++i) {
-    SyntaxTree  *tree;
-    SyntaxToken *token;
-    if ((tree = syntax_tree_child_tree(syntax, i))) {
-      handle_syntax(builder, tree);
-      syntax_tree_free(tree);
-    } else if ((token = syntax_tree_child_token(syntax, i))) {
-      if (token->raw->node.kind == MPPL_SYNTAX_IDENT_TOKEN) {
-        handle_binding(builder, token);
-      }
-      syntax_token_free(token);
     }
   }
 }
@@ -152,7 +125,7 @@ MpplSemantics mppl_semantics_alloc(const SyntaxTree *syntax, const MpplSemanticE
   vec_alloc(&builder.unresolved, 0);
 
   handle_event(&builder, events, event_count);
-  handle_syntax(&builder, syntax);
+  syntax_tree_visit(syntax, &syntax_visitor, &builder);
 
   return build(&builder);
 }
