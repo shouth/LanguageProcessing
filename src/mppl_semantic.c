@@ -199,7 +199,7 @@ void mppl_semantics_print(const MpplSemantics *semantics, const Source *source)
     printf("reference: ");
     for (j = 0; j < binding->refs.count; ++j) {
       source_location(source, binding->refs.ptr[j], &location);
-      printf("%lu:%lu ", location.line, location.column);
+      printf("%lu:%lu ", location.line + 1, location.column + 1);
     }
     printf("\n");
   }
