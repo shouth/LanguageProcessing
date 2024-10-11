@@ -785,7 +785,7 @@ static void parse_proc_decl_part(Parser *p, const MpplTokenKindSet *recovery)
   {
     Checkpoint proc_head = open(p);
     expect(p, MPPL_SYNTAX_PROCEDURE_KW);
-    expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+    parse_binding_ident(p);
     if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
       MpplTokenKindSet kinds = *recovery;
       bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
@@ -826,7 +826,7 @@ static void parse_program(Parser *p)
 
   program = open(p);
   expect(p, MPPL_SYNTAX_PROGRAM_KW);
-  expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+  parse_binding_ident(p);
   expect(p, MPPL_SYNTAX_SEMI_TOKEN);
 
   decl_list = open(p);
