@@ -487,7 +487,7 @@ static void parse_call_stmt(Parser *p, const MpplTokenKindSet *recovery)
 {
   Checkpoint call_stmt = open(p);
   expect(p, MPPL_SYNTAX_CALL_KW);
-  expect(p, MPPL_SYNTAX_IDENT_TOKEN);
+  parse_ref_ident(p);
   if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
     parse_act_param_list(p, recovery);
   } else {
@@ -653,7 +653,7 @@ static void parse_stmt(Parser *p, const MpplTokenKindSet *recovery)
   }
 }
 
-static void parse_binding_ident(Parser *p)
+static void parse_bind_ident(Parser *p)
 {
   Checkpoint binding_ident = open(p);
   expect(p, MPPL_SYNTAX_IDENT_TOKEN);
@@ -673,7 +673,7 @@ static void parse_var_decl(Parser *p, const MpplTokenKindSet *recovery)
 
     ident_list_elem = open(p);
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      parse_binding_ident(p);
+      parse_bind_ident(p);
     } else {
       parse_bogus(p, MPPL_SYNTAX_BOGUS_BIND_IDENT, &kinds);
     }
@@ -729,7 +729,7 @@ static void parse_fml_param_sec(Parser *p, const MpplTokenKindSet *recovery)
 
     ident_list_elem = open(p);
     if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
-      parse_binding_ident(p);
+      parse_bind_ident(p);
     } else {
       parse_bogus(p, MPPL_SYNTAX_BOGUS_BIND_IDENT, &kinds);
     }
@@ -785,7 +785,7 @@ static void parse_proc_decl_part(Parser *p, const MpplTokenKindSet *recovery)
   {
     Checkpoint proc_head = open(p);
     expect(p, MPPL_SYNTAX_PROCEDURE_KW);
-    parse_binding_ident(p);
+    parse_bind_ident(p);
     if (check(p, MPPL_SYNTAX_LPAREN_TOKEN)) {
       MpplTokenKindSet kinds = *recovery;
       bitset_set(&kinds, MPPL_SYNTAX_SEMI_TOKEN);
@@ -826,7 +826,7 @@ static void parse_program(Parser *p)
 
   program = open(p);
   expect(p, MPPL_SYNTAX_PROGRAM_KW);
-  parse_binding_ident(p);
+  parse_bind_ident(p);
   expect(p, MPPL_SYNTAX_SEMI_TOKEN);
 
   decl_list = open(p);
