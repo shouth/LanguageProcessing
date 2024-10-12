@@ -582,7 +582,7 @@ MpplProgramFields mppl_program_fields_alloc(const MpplProgram *program)
 {
   MpplProgramFields fields;
   fields.program_kw     = syntax_tree_child_token((const SyntaxTree *) program, 0);
-  fields.name           = syntax_tree_child_token((const SyntaxTree *) program, 1);
+  fields.name           = (void *) syntax_tree_child_tree((const SyntaxTree *) program, 1);
   fields.semi_token     = syntax_tree_child_token((const SyntaxTree *) program, 2);
   fields.decl_part_list = (void *) syntax_tree_child_tree((const SyntaxTree *) program, 3);
   fields.comp_stmt      = (void *) syntax_tree_child_tree((const SyntaxTree *) program, 4);
@@ -718,7 +718,7 @@ MpplProcHeadingFields mppl_proc_heading_fields_alloc(const MpplProcHeading *proc
 {
   MpplProcHeadingFields fields;
   fields.procedure_kw = syntax_tree_child_token((const SyntaxTree *) proc_heading, 0);
-  fields.name         = syntax_tree_child_token((const SyntaxTree *) proc_heading, 1);
+  fields.name         = (void *) syntax_tree_child_tree((const SyntaxTree *) proc_heading, 1);
   fields.fml_params   = (void *) syntax_tree_child_tree((const SyntaxTree *) proc_heading, 2);
   return fields;
 }
@@ -847,7 +847,7 @@ MpplCallStmtFields mppl_call_stmt_fields_alloc(const MpplCallStmt *call_stmt)
 {
   MpplCallStmtFields fields;
   fields.call_kw    = syntax_tree_child_token((const SyntaxTree *) call_stmt, 0);
-  fields.name       = syntax_tree_child_token((const SyntaxTree *) call_stmt, 1);
+  fields.name       = (void *) syntax_tree_child_tree((const SyntaxTree *) call_stmt, 1);
   fields.act_params = (void *) syntax_tree_child_tree((const SyntaxTree *) call_stmt, 2);
   return fields;
 }
@@ -1039,7 +1039,7 @@ void mppl_program_fields_free(MpplProgramFields *fields)
 {
   if (fields) {
     syntax_token_free(fields->program_kw);
-    syntax_token_free(fields->name);
+    syntax_tree_free((void *) fields->name);
     syntax_token_free(fields->semi_token);
     syntax_tree_free((void *) fields->decl_part_list);
     syntax_tree_free((void *) fields->comp_stmt);
@@ -1165,7 +1165,7 @@ void mppl_proc_heading_fields_free(MpplProcHeadingFields *fields)
 {
   if (fields) {
     syntax_token_free(fields->procedure_kw);
-    syntax_token_free(fields->name);
+    syntax_tree_free((void *) fields->name);
     syntax_tree_free((void *) fields->fml_params);
   }
 }
@@ -1292,7 +1292,7 @@ void mppl_call_stmt_fields_free(MpplCallStmtFields *fields)
 {
   if (fields) {
     syntax_token_free(fields->call_kw);
-    syntax_token_free(fields->name);
+    syntax_tree_free((void *) fields->name);
     syntax_tree_free((void *) fields->act_params);
   }
 }
