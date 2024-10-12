@@ -404,42 +404,46 @@ void syntax_iterator_free(SyntaxIterator *self)
 
 int syntax_iterator_next(SyntaxIterator *self)
 {
-  if (self->event == SYNTAX_EVENT_NULL) {
+  SyntaxTree       *next;
+  const SyntaxTree *parent;
+  unsigned long     index;
+
+  switch (self->event) {
+  case SYNTAX_EVENT_NULL:
     self->event = SYNTAX_EVENT_ENTER;
     return 1;
-  } else {
-    const SyntaxTree *parent;
-    unsigned long     index;
 
-    if (self->event == SYNTAX_EVENT_ENTER) {
-      parent = self->syntax;
-      index  = 0;
-    } else if (self->syntax->node.parent) {
+  case SYNTAX_EVENT_ENTER:
+    parent = self->syntax;
+    index  = 0;
+    break;
+
+  case SYNTAX_EVENT_LEAVE:
+    if (self->syntax->node.parent) {
       parent = self->syntax->node.parent;
       index  = self->syntax->raw->node.index + 1;
     } else {
+      self->event = SYNTAX_EVENT_NULL;
       return 0;
     }
-
-    for (; index * 2 < parent->raw->children.count; ++index) {
-      SyntaxTree *child = syntax_tree_child_tree(parent, index);
-      if (child) {
-        syntax_tree_free(self->syntax);
-        self->event  = SYNTAX_EVENT_ENTER;
-        self->syntax = child;
-        return 1;
-      }
-    }
-
-    if (self->event == SYNTAX_EVENT_ENTER) {
-      self->event = SYNTAX_EVENT_LEAVE;
-    } else {
-      SyntaxTree *next = syntax_tree_shared(parent);
-      syntax_tree_free(self->syntax);
-      self->syntax = next;
-    }
-    return 1;
+    break;
   }
+
+  for (; index * 2 < parent->raw->children.count; ++index) {
+    next = syntax_tree_child_tree(parent, index);
+    if (next) {
+      syntax_tree_free(self->syntax);
+      self->event  = SYNTAX_EVENT_ENTER;
+      self->syntax = next;
+      return 1;
+    }
+  }
+
+  next = syntax_tree_shared(parent);
+  syntax_tree_free(self->syntax);
+  self->event  = SYNTAX_EVENT_LEAVE;
+  self->syntax = next;
+  return 1;
 }
 
 /* syntax builder */
