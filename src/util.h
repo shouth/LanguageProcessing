@@ -173,9 +173,9 @@ struct Hopscotch {
 
 void hopscotch_alloc(Hopscotch *hopscotch, unsigned long base_count, HopscotchHash *hash, HopscotchEq *eq);
 void hopscotch_free(Hopscotch *hopscotch);
-void hopscotch_unchecked(Hopscotch *hopscotch, const void *key, HopscotchEntry *entry);
-int  hopscotch_entry(Hopscotch *hopscotch, void *data, unsigned long size, const void *key, HopscotchEntry *entry);
-int  hopscotch_next(Hopscotch *hopscotch, HopscotchEntry *entry);
+void hopscotch_unchecked(const Hopscotch *hopscotch, const void *key, HopscotchEntry *entry);
+int  hopscotch_entry(const Hopscotch *hopscotch, void *data, unsigned long size, const void *key, HopscotchEntry *entry);
+int  hopscotch_next(const Hopscotch *hopscotch, HopscotchEntry *entry);
 int  hopscotch_occupy(Hopscotch *hopscotch, void *data, unsigned long size, HopscotchEntry *entry);
 int  hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry);
 

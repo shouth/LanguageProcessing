@@ -85,7 +85,7 @@ void hopscotch_free(Hopscotch *hopscotch)
   free(hopscotch->hops);
 }
 
-void hopscotch_unchecked(Hopscotch *hopscotch, const void *key, HopscotchEntry *entry)
+void hopscotch_unchecked(const Hopscotch *hopscotch, const void *key, HopscotchEntry *entry)
 {
   if (key && hopscotch->count > 0) {
     entry->bucket = hopscotch->hash(key) & (hopscotch->count - 1);
@@ -95,7 +95,7 @@ void hopscotch_unchecked(Hopscotch *hopscotch, const void *key, HopscotchEntry *
   entry->slot = HOPSCOTCH_BUCKET_SIZE;
 }
 
-int hopscotch_entry(Hopscotch *hopscotch, void *data, unsigned long size, const void *key, HopscotchEntry *entry)
+int hopscotch_entry(const Hopscotch *hopscotch, void *data, unsigned long size, const void *key, HopscotchEntry *entry)
 {
   hopscotch_unchecked(hopscotch, key, entry);
   if (entry->bucket < hopscotch->count) {
@@ -110,7 +110,7 @@ int hopscotch_entry(Hopscotch *hopscotch, void *data, unsigned long size, const 
   return 0;
 }
 
-int hopscotch_next(Hopscotch *hopscotch, HopscotchEntry *entry)
+int hopscotch_next(const Hopscotch *hopscotch, HopscotchEntry *entry)
 {
   if (entry->bucket < hopscotch->count) {
     ++entry->slot;
