@@ -431,7 +431,7 @@ struct MpplEofFields {
 
 struct MpplProgramFields {
   SyntaxToken      *program_kw;
-  SyntaxToken      *name;
+  MpplBindIdent    *name;
   SyntaxToken      *semi_token;
   MpplDeclPartList *decl_part_list;
   MpplCompStmt     *comp_stmt;
@@ -491,7 +491,7 @@ struct MpplProcDeclPartFields {
 
 struct MpplProcHeadingFields {
   SyntaxToken   *procedure_kw;
-  SyntaxToken   *name;
+  MpplBindIdent *name;
   MpplFmlParams *fml_params;
 };
 
@@ -560,7 +560,7 @@ struct MpplBreakStmtFields {
 
 struct MpplCallStmtFields {
   SyntaxToken   *call_kw;
-  SyntaxToken   *name;
+  MpplRefIdent  *name;
   MpplActParams *act_params;
 };
 
