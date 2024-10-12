@@ -39,11 +39,11 @@ const MpplTy *mppl_ty_integer(void);
 const MpplTy *mppl_ty_boolean(void);
 const MpplTy *mppl_ty_char(void);
 const MpplTy *mppl_ty_string(void);
-const MpplTy *mppl_ty_array(MpplTyCtxt *ctxt, const MpplTy *base);
+const MpplTy *mppl_ty_array(MpplTyCtxt *ctxt, const MpplTy *base, unsigned long size);
 const MpplTy *mppl_ty_proc(MpplTyCtxt *ctxt, const MpplTy *params, unsigned long param_count);
 
-MpplTyCtxt    *mppl_ty_ctxt_alloc(void);
-void           mppl_ty_ctxt_free(MpplTyCtxt *ctxt);
-const MpplTy **mppl_ty_ctxt_type_of(MpplTyCtxt *ctxt, const RawSyntaxNode *node);
+MpplTyCtxt   *mppl_ty_ctxt_alloc(void);
+void          mppl_ty_ctxt_free(MpplTyCtxt *ctxt);
+const MpplTy *mppl_ty_ctxt_type_of(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy *ty);
 
 #endif

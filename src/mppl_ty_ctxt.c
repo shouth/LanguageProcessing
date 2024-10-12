@@ -71,12 +71,12 @@ static MpplTy *ty_intern(MpplTyCtxt *ctxt, MpplTy *ty)
   }
 }
 
-const MpplTy *mppl_ty_array(MpplTyCtxt *ctxt, const MpplTy *base)
+const MpplTy *mppl_ty_array(MpplTyCtxt *ctxt, const MpplTy *base, unsigned long size)
 {
   MpplArrayTy *array = xmalloc(sizeof(*array));
   array->type.kind   = MPPL_TY_ARRAY;
   array->base        = base;
-  array->size        = 0;
+  array->size        = size;
   return ty_intern(ctxt, &array->type);
 }
 
@@ -189,12 +189,11 @@ void mppl_ty_ctxt_free(MpplTyCtxt *ctxt)
   free(ctxt);
 }
 
-const MpplTy **mppl_ty_ctxt_type_of(MpplTyCtxt *ctxt, const RawSyntaxNode *node)
+const MpplTy *mppl_ty_ctxt_type_of(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy *ty)
 {
   HashMapEntry entry;
   if (!hashmap_entry(&ctxt->type, node, &entry)) {
     hashmap_occupy(&ctxt->type, &entry, &node);
-    *hashmap_value(&ctxt->type, &entry) = NULL;
   }
-  return hashmap_value(&ctxt->type, &entry);
+  return *hashmap_value(&ctxt->type, &entry) = ty;
 }
