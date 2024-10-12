@@ -55,27 +55,20 @@ static void handle_event(MpplSemanticsBuilder *builder, const MpplSemanticEvent 
   }
 }
 
-static int syntax_visitor(const SyntaxTree *syntax, int enter, void *data)
+static void handle_syntax(MpplSemanticsBuilder *builder, const SyntaxTree *syntax)
 {
-  HashMapEntry          entry;
-  MpplSemanticsBuilder *builder = data;
-  if (enter) {
-    switch (syntax->raw->node.kind) {
-    case MPPL_SYNTAX_BIND_IDENT: {
-      MpplBindIdentFields fields = mppl_bind_ident_fields_alloc((const MpplBindIdent *) syntax);
+  SyntaxEvent event = syntax_event_alloc(syntax);
+  while (syntax_event_next(&event)) {
+    if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT) {
+      HashMapEntry        entry;
+      MpplBindIdentFields fields = mppl_bind_ident_fields_alloc((const MpplBindIdent *) event.syntax);
       hashmap_entry(&builder->syntax, &fields.ident->node.span.offset, &entry);
       hashmap_occupy(&builder->syntax, &entry, &fields.ident->node.span.offset);
       *hashmap_value(&builder->syntax, &entry) = syntax_token_shared(fields.ident);
       mppl_bind_ident_fields_free(&fields);
-      break;
-    }
-
-    default:
-      /* do nothing */
-      break;
     }
   }
-  return 1;
+  syntax_event_free(&event);
 }
 
 static MpplSemantics build(MpplSemanticsBuilder *builder)
@@ -126,7 +119,7 @@ MpplSemantics mppl_semantics_alloc(const SyntaxTree *syntax, const MpplSemanticE
   vec_alloc(&builder.unresolved, 0);
 
   handle_event(&builder, events, event_count);
-  syntax_tree_visit(syntax, &syntax_visitor, &builder);
+  handle_syntax(&builder, syntax);
 
   return build(&builder);
 }
