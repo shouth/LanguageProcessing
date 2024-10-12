@@ -66,15 +66,13 @@ typedef enum {
   SYNTAX_EVENT_NULL,
   SYNTAX_EVENT_ENTER,
   SYNTAX_EVENT_LEAVE
-} SyntaxEvent;
+} SyntaxEventKind;
 
-typedef struct SyntaxSpan     SyntaxSpan;
-typedef struct SyntaxNode     SyntaxNode;
-typedef struct SyntaxTree     SyntaxTree;
-typedef struct SyntaxToken    SyntaxToken;
-typedef struct SyntaxTrivia   SyntaxTrivia;
-typedef struct SyntaxIterator SyntaxIterator;
-typedef int                   SyntaxVisitor(const SyntaxTree *syntax, int enter, void *data);
+typedef struct SyntaxSpan   SyntaxSpan;
+typedef struct SyntaxNode   SyntaxNode;
+typedef struct SyntaxTree   SyntaxTree;
+typedef struct SyntaxToken  SyntaxToken;
+typedef struct SyntaxTrivia SyntaxTrivia;
 
 struct SyntaxSpan {
   unsigned long offset;
@@ -102,9 +100,9 @@ struct SyntaxTrivia {
   const RawSyntaxTrivia *raw;
 };
 
-struct SyntaxIterator {
-  SyntaxTree *syntax;
-  SyntaxEvent event;
+struct SyntaxEvent {
+  SyntaxEventKind kind;
+  SyntaxTree     *syntax;
 };
 
 void syntax_tree_free(SyntaxTree *self);
@@ -118,15 +116,10 @@ SyntaxTree   *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index
 SyntaxToken  *syntax_tree_child_token(const SyntaxTree *self, unsigned long index);
 SyntaxTrivia *syntax_tree_leading_trivia(const SyntaxTree *self);
 SyntaxTrivia *syntax_tree_trailing_trivia(const SyntaxTree *self);
-void          syntax_tree_visit(const SyntaxTree *self, SyntaxVisitor *visitor, void *data);
 
 SyntaxToken  *syntax_token_shared(const SyntaxToken *self);
 SyntaxTrivia *syntax_token_leading_trivia(const SyntaxToken *self);
 SyntaxTrivia *syntax_token_trailing_trivia(const SyntaxToken *self);
-
-SyntaxIterator syntax_iterator_alloc(const SyntaxTree *syntax);
-void           syntax_iterator_free(SyntaxIterator *self);
-int            syntax_iterator_next(SyntaxIterator *self);
 
 /* syntax tree builder */
 
@@ -141,5 +134,13 @@ void             syntax_builder_token(SyntaxBuilder *self, RawSyntaxKind kind, c
 SyntaxCheckpoint syntax_builder_open(SyntaxBuilder *self);
 void             syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpoint checkpoint);
 SyntaxTree      *syntax_builder_finish(SyntaxBuilder *self);
+
+/* syntax event */
+
+typedef struct SyntaxEvent SyntaxEvent;
+
+SyntaxEvent syntax_event_alloc(const SyntaxTree *syntax);
+void        syntax_event_free(SyntaxEvent *self);
+int         syntax_event_next(SyntaxEvent *self);
 
 #endif /* SYNTAX_TREE_H */

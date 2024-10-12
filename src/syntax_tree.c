@@ -365,87 +365,6 @@ SyntaxTrivia *syntax_token_trailing_trivia(const SyntaxToken *self)
   return syntax_node_adjacent_trivia((const SyntaxNode *) self, (const RawSyntaxNode *) self->raw, 0);
 }
 
-static int visit_syntax(const SyntaxTree *self, SyntaxVisitor *visitor, void *data)
-{
-  unsigned long i;
-
-  if (visitor(self, 1, data)) {
-    for (i = 0; i * 2 < self->raw->children.count; ++i) {
-      SyntaxTree *child = syntax_tree_child_tree(self, i);
-      if (child) {
-        int result = visit_syntax(child, visitor, data);
-        syntax_tree_free(child);
-        if (!result) {
-          break;
-        }
-      }
-    }
-  }
-  return visitor(self, 0, data);
-}
-
-void syntax_tree_visit(const SyntaxTree *self, SyntaxVisitor *visitor, void *data)
-{
-  visit_syntax(self, visitor, data);
-}
-
-SyntaxIterator syntax_iterator_alloc(const SyntaxTree *syntax)
-{
-  SyntaxIterator iterator;
-  iterator.syntax = syntax_tree_shared(syntax);
-  iterator.event  = SYNTAX_EVENT_NULL;
-  return iterator;
-}
-
-void syntax_iterator_free(SyntaxIterator *self)
-{
-  syntax_tree_free(self->syntax);
-}
-
-int syntax_iterator_next(SyntaxIterator *self)
-{
-  SyntaxTree       *next;
-  const SyntaxTree *parent;
-  unsigned long     index;
-
-  switch (self->event) {
-  case SYNTAX_EVENT_NULL:
-    self->event = SYNTAX_EVENT_ENTER;
-    return 1;
-
-  case SYNTAX_EVENT_ENTER:
-    parent = self->syntax;
-    index  = 0;
-    break;
-
-  case SYNTAX_EVENT_LEAVE:
-    if (self->syntax->node.parent) {
-      parent = self->syntax->node.parent;
-      index  = self->syntax->raw->node.index + 1;
-    } else {
-      self->event = SYNTAX_EVENT_NULL;
-      return 0;
-    }
-    break;
-  }
-
-  for (; index * 2 < parent->raw->children.count; ++index) {
-    next = syntax_tree_child_tree(parent, index);
-    if (next) {
-      syntax_tree_free(self->syntax);
-      self->event  = SYNTAX_EVENT_ENTER;
-      self->syntax = next;
-      return 1;
-    }
-  }
-
-  next = syntax_tree_shared(parent);
-  syntax_tree_free(self->syntax);
-  self->event  = SYNTAX_EVENT_LEAVE;
-  self->syntax = next;
-  return 1;
-}
-
 /* syntax builder */
 
 struct SyntaxBuilder {
@@ -613,4 +532,63 @@ SyntaxTree *syntax_builder_finish(SyntaxBuilder *self)
   syntax_builder_free(self);
 
   return root;
+}
+
+/* syntax event */
+
+SyntaxEvent syntax_event_alloc(const SyntaxTree *syntax)
+{
+  SyntaxEvent iterator;
+  iterator.syntax = syntax_tree_shared(syntax);
+  iterator.kind   = SYNTAX_EVENT_NULL;
+  return iterator;
+}
+
+void syntax_event_free(SyntaxEvent *self)
+{
+  syntax_tree_free(self->syntax);
+}
+
+int syntax_event_next(SyntaxEvent *self)
+{
+  SyntaxTree       *next;
+  const SyntaxTree *parent;
+  unsigned long     index;
+
+  switch (self->kind) {
+  case SYNTAX_EVENT_NULL:
+    self->kind = SYNTAX_EVENT_ENTER;
+    return 1;
+
+  case SYNTAX_EVENT_ENTER:
+    parent = self->syntax;
+    index  = 0;
+    break;
+
+  case SYNTAX_EVENT_LEAVE:
+    if (self->syntax->node.parent) {
+      parent = self->syntax->node.parent;
+      index  = self->syntax->raw->node.index + 1;
+    } else {
+      self->kind = SYNTAX_EVENT_NULL;
+      return 0;
+    }
+    break;
+  }
+
+  for (; index * 2 < parent->raw->children.count; ++index) {
+    next = syntax_tree_child_tree(parent, index);
+    if (next) {
+      syntax_tree_free(self->syntax);
+      self->kind   = SYNTAX_EVENT_ENTER;
+      self->syntax = next;
+      return 1;
+    }
+  }
+
+  next = syntax_tree_shared(parent);
+  syntax_tree_free(self->syntax);
+  self->kind   = SYNTAX_EVENT_LEAVE;
+  self->syntax = next;
+  return 1;
 }
