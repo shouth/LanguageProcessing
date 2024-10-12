@@ -538,14 +538,16 @@ SyntaxTree *syntax_builder_finish(SyntaxBuilder *self)
 
 SyntaxEvent syntax_event_alloc(const SyntaxTree *syntax)
 {
-  SyntaxEvent iterator;
-  iterator.syntax = syntax_tree_shared(syntax);
-  iterator.kind   = SYNTAX_EVENT_NULL;
-  return iterator;
+  SyntaxEvent event;
+  event.kind   = SYNTAX_EVENT_NULL;
+  event.start  = syntax_tree_shared(syntax);
+  event.syntax = syntax_tree_shared(syntax);
+  return event;
 }
 
 void syntax_event_free(SyntaxEvent *self)
 {
+  syntax_tree_free(self->start);
   syntax_tree_free(self->syntax);
 }
 
@@ -566,7 +568,7 @@ int syntax_event_next(SyntaxEvent *self)
     break;
 
   case SYNTAX_EVENT_LEAVE:
-    if (self->syntax->node.parent) {
+    if (self->syntax == self->start) {
       parent = self->syntax->node.parent;
       index  = self->syntax->raw->node.index + 1;
     } else {

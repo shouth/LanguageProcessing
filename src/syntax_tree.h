@@ -100,11 +100,6 @@ struct SyntaxTrivia {
   const RawSyntaxTrivia *raw;
 };
 
-struct SyntaxEvent {
-  SyntaxEventKind kind;
-  SyntaxTree     *syntax;
-};
-
 void syntax_tree_free(SyntaxTree *self);
 void syntax_token_free(SyntaxToken *self);
 
@@ -138,6 +133,12 @@ SyntaxTree      *syntax_builder_finish(SyntaxBuilder *self);
 /* syntax event */
 
 typedef struct SyntaxEvent SyntaxEvent;
+
+struct SyntaxEvent {
+  SyntaxEventKind kind;
+  SyntaxTree     *start;
+  SyntaxTree     *syntax;
+};
 
 SyntaxEvent syntax_event_alloc(const SyntaxTree *syntax);
 void        syntax_event_free(SyntaxEvent *self);
