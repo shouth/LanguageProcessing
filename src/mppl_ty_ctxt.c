@@ -104,7 +104,7 @@ static void do_ty_hash(Hash *hash, const MpplTy *ty)
     unsigned long     i;
     const MpplProcTy *proc = (const MpplProcTy *) ty;
     for (i = 0; i < proc->params.count; i++) {
-      do_ty_hash(hash, *proc->params.ptr[i]);
+      do_ty_hash(hash, proc->params.ptr[i]);
     }
     break;
   }
