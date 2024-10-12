@@ -40,7 +40,7 @@ const MpplTy *mppl_ty_boolean(void);
 const MpplTy *mppl_ty_char(void);
 const MpplTy *mppl_ty_string(void);
 const MpplTy *mppl_ty_array(MpplTyCtxt *ctxt, const MpplTy *base, unsigned long size);
-const MpplTy *mppl_ty_proc(MpplTyCtxt *ctxt, const MpplTy *params, unsigned long param_count);
+const MpplTy *mppl_ty_proc(MpplTyCtxt *ctxt, const MpplTy **params, unsigned long param_count);
 
 MpplTyCtxt   *mppl_ty_ctxt_alloc(void);
 void          mppl_ty_ctxt_free(MpplTyCtxt *ctxt);
