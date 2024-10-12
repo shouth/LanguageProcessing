@@ -33,9 +33,9 @@ static void free_node(RawSyntaxNode *node)
 
       for (i = 0; i < tree->children.count; ++i) {
         if (i % 2 == 1) {
-          free_trivia((RawSyntaxTrivia *) tree->children.ptr[i].node);
+          free_trivia((RawSyntaxTrivia *) tree->children.ptr[i].span);
         } else {
-          free_node((RawSyntaxNode *) tree->children.ptr[i].node);
+          free_node((RawSyntaxNode *) tree->children.ptr[i].span);
         }
       }
       slice_free(&tree->children);
@@ -243,9 +243,9 @@ static void print_slots(FILE *file, RawSyntaxSlot *slots, unsigned long slot_cou
 
   for (i = begin; i < end; ++i) {
     if (i % 2 == 1) {
-      print_trivia(file, (RawSyntaxTrivia *) slots[i].node, offset + slots[i].offset, depth, kind_printer);
+      print_trivia(file, (RawSyntaxTrivia *) slots[i].span, offset + slots[i].offset, depth, kind_printer);
     } else {
-      print_node(file, (RawSyntaxNode *) slots[i].node, offset + slots[i].offset, depth, kind_printer);
+      print_node(file, (RawSyntaxNode *) slots[i].span, offset + slots[i].offset, depth, kind_printer);
     }
   }
 }
@@ -278,7 +278,7 @@ SyntaxToken *syntax_token_shared(const SyntaxToken *self)
 
 SyntaxTree *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index)
 {
-  RawSyntaxNode *child = self->raw->children.ptr[index * 2].node;
+  RawSyntaxNode *child = (RawSyntaxNode *) self->raw->children.ptr[index * 2].span;
 
   if (child && child->kind >> 8 == SYNTAX_TREE) {
     SyntaxTree *tree       = xmalloc(sizeof(SyntaxTree));
@@ -294,7 +294,7 @@ SyntaxTree *syntax_tree_child_tree(const SyntaxTree *self, unsigned long index)
 
 SyntaxToken *syntax_tree_child_token(const SyntaxTree *self, unsigned long index)
 {
-  RawSyntaxNode *child = self->raw->children.ptr[index * 2].node;
+  RawSyntaxNode *child = (RawSyntaxNode *) self->raw->children.ptr[index * 2].span;
 
   if (child && child->kind >> 8 == SYNTAX_TOKEN) {
     SyntaxToken *token      = xmalloc(sizeof(SyntaxToken));
@@ -315,7 +315,7 @@ static SyntaxTrivia *syntax_node_adjacent_trivia(const SyntaxNode *self, const R
 
   for (slot = NULL; !self && !slot; self = (const SyntaxNode *) self->parent) {
     for (i = 0; i < self->parent->raw->children.count; ++i) {
-      if (self->parent->raw->children.ptr[i].node == raw) {
+      if ((RawSyntaxNode *) self->parent->raw->children.ptr[i].span == raw) {
         break;
       }
     }
@@ -338,7 +338,7 @@ static SyntaxTrivia *syntax_node_adjacent_trivia(const SyntaxNode *self, const R
     adjacent->span.offset  = self->parent->node.span.offset + slot->offset;
     adjacent->span.ref     = 1;
     adjacent->adjacent     = share_node((SyntaxNode *) self->parent);
-    adjacent->raw          = (const RawSyntaxTrivia *) slot->node;
+    adjacent->raw          = (const RawSyntaxTrivia *) slot->span;
     return adjacent;
   } else {
     return NULL;
@@ -387,6 +387,59 @@ static int visit_syntax(const SyntaxTree *self, SyntaxVisitor *visitor, void *da
 void syntax_tree_visit(const SyntaxTree *self, SyntaxVisitor *visitor, void *data)
 {
   visit_syntax(self, visitor, data);
+}
+
+SyntaxIterator syntax_iterator_alloc(const SyntaxTree *syntax)
+{
+  SyntaxIterator iterator;
+  iterator.syntax = syntax_tree_shared(syntax);
+  iterator.event  = SYNTAX_EVENT_NULL;
+  return iterator;
+}
+
+void syntax_iterator_free(SyntaxIterator *self)
+{
+  syntax_tree_free(self->syntax);
+}
+
+int syntax_iterator_next(SyntaxIterator *self)
+{
+  if (self->event == SYNTAX_EVENT_NULL) {
+    self->event = SYNTAX_EVENT_ENTER;
+    return 1;
+  } else {
+    const SyntaxTree *parent;
+    unsigned long     index;
+
+    if (self->event == SYNTAX_EVENT_ENTER) {
+      parent = self->syntax;
+      index  = 0;
+    } else if (self->syntax->node.parent) {
+      parent = self->syntax->node.parent;
+      index  = self->syntax->raw->node.index + 1;
+    } else {
+      return 0;
+    }
+
+    for (; index * 2 < parent->raw->children.count; ++index) {
+      SyntaxTree *child = syntax_tree_child_tree(parent, index);
+      if (child) {
+        syntax_tree_free(self->syntax);
+        self->event  = SYNTAX_EVENT_ENTER;
+        self->syntax = child;
+        return 1;
+      }
+    }
+
+    if (self->event == SYNTAX_EVENT_ENTER) {
+      self->event = SYNTAX_EVENT_LEAVE;
+    } else {
+      SyntaxTree *next = syntax_tree_shared(parent);
+      syntax_tree_free(self->syntax);
+      self->syntax = next;
+    }
+    return 1;
+  }
 }
 
 /* syntax builder */
@@ -515,9 +568,13 @@ void syntax_builder_close(SyntaxBuilder *self, RawSyntaxKind kind, SyntaxCheckpo
     slice_alloc(&tree->children, count);
     for (i = 0; i < count; ++i) {
       RawSyntaxSpan *span          = self->spans.ptr[checkpoint + i];
-      tree->children.ptr[i].node   = (RawSyntaxNode *) span;
+      tree->children.ptr[i].span   = span;
       tree->children.ptr[i].offset = offset;
       if (span) {
+        if (i % 2 == 0) {
+          RawSyntaxNode *node = (RawSyntaxNode *) span;
+          node->index         = i / 2;
+        }
         offset += span->text_length;
       }
     }

@@ -27,13 +27,14 @@ struct RawSyntaxSpan {
 };
 
 struct RawSyntaxSlot {
-  RawSyntaxNode *node;
+  RawSyntaxSpan *span;
   unsigned long  offset;
 };
 
 struct RawSyntaxNode {
   RawSyntaxSpan span;
   RawSyntaxKind kind;
+  unsigned int  index;
 };
 
 struct RawSyntaxTree {
@@ -61,12 +62,19 @@ typedef void RawSyntaxKindPrinter(RawSyntaxKind kind, FILE *file);
 
 /* syntax tree */
 
-typedef struct SyntaxSpan   SyntaxSpan;
-typedef struct SyntaxNode   SyntaxNode;
-typedef struct SyntaxTree   SyntaxTree;
-typedef struct SyntaxToken  SyntaxToken;
-typedef struct SyntaxTrivia SyntaxTrivia;
-typedef int                 SyntaxVisitor(const SyntaxTree *syntax, int enter, void *data);
+typedef enum {
+  SYNTAX_EVENT_NULL,
+  SYNTAX_EVENT_ENTER,
+  SYNTAX_EVENT_LEAVE
+} SyntaxEvent;
+
+typedef struct SyntaxSpan     SyntaxSpan;
+typedef struct SyntaxNode     SyntaxNode;
+typedef struct SyntaxTree     SyntaxTree;
+typedef struct SyntaxToken    SyntaxToken;
+typedef struct SyntaxTrivia   SyntaxTrivia;
+typedef struct SyntaxIterator SyntaxIterator;
+typedef int                   SyntaxVisitor(const SyntaxTree *syntax, int enter, void *data);
 
 struct SyntaxSpan {
   unsigned long offset;
@@ -94,6 +102,11 @@ struct SyntaxTrivia {
   const RawSyntaxTrivia *raw;
 };
 
+struct SyntaxIterator {
+  SyntaxTree *syntax;
+  SyntaxEvent event;
+};
+
 void syntax_tree_free(SyntaxTree *self);
 void syntax_token_free(SyntaxToken *self);
 
@@ -110,6 +123,10 @@ void          syntax_tree_visit(const SyntaxTree *self, SyntaxVisitor *visitor, 
 SyntaxToken  *syntax_token_shared(const SyntaxToken *self);
 SyntaxTrivia *syntax_token_leading_trivia(const SyntaxToken *self);
 SyntaxTrivia *syntax_token_trailing_trivia(const SyntaxToken *self);
+
+SyntaxIterator syntax_iterator_alloc(const SyntaxTree *syntax);
+void           syntax_iterator_free(SyntaxIterator *self);
+int            syntax_iterator_next(SyntaxIterator *self);
 
 /* syntax tree builder */
 
