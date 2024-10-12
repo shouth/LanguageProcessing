@@ -299,13 +299,10 @@ typedef union AnyMpplBindIdent   AnyMpplBindIdent;
 typedef struct MpplRootFields              MpplRootFields;
 typedef struct MpplEofFields               MpplEofFields;
 typedef struct MpplProgramFields           MpplProgramFields;
-typedef struct MpplDeclPartListFields      MpplDeclPartListFields;
 typedef struct MpplBindIdentListElemFields MpplBindIdentListElemFields;
-typedef struct MpplBindIdentListFields     MpplBindIdentListFields;
 typedef struct MpplBindIdentFields         MpplBindIdentFields;
 typedef struct MpplVarDeclPartFields       MpplVarDeclPartFields;
 typedef struct MpplVarDeclListElemFields   MpplVarDeclListElemFields;
-typedef struct MpplVarDeclListFields       MpplVarDeclListFields;
 typedef struct MpplVarDeclFields           MpplVarDeclFields;
 typedef struct MpplIntegerTypeFields       MpplIntegerTypeFields;
 typedef struct MpplCharTypeFields          MpplCharTypeFields;
@@ -316,11 +313,9 @@ typedef struct MpplProcHeadingFields       MpplProcHeadingFields;
 typedef struct MpplProcBodyFields          MpplProcBodyFields;
 typedef struct MpplProcDeclFields          MpplProcDeclFields;
 typedef struct MpplFmlParamListElemFields  MpplFmlParamListElemFields;
-typedef struct MpplFmlParamListFields      MpplFmlParamListFields;
 typedef struct MpplFmlParamsFields         MpplFmlParamsFields;
 typedef struct MpplFmlParamSecFields       MpplFmlParamSecFields;
 typedef struct MpplStmtListElemFields      MpplStmtListElemFields;
-typedef struct MpplStmtListFields          MpplStmtListFields;
 typedef struct MpplAssignStmtFields        MpplAssignStmtFields;
 typedef struct MpplIfStmtFields            MpplIfStmtFields;
 typedef struct MpplElseClauseFields        MpplElseClauseFields;
@@ -333,12 +328,10 @@ typedef struct MpplInputStmtFields         MpplInputStmtFields;
 typedef struct MpplInputsFields            MpplInputsFields;
 typedef struct MpplOutputStmtFields        MpplOutputStmtFields;
 typedef struct MpplOutputListElemFields    MpplOutputListElemFields;
-typedef struct MpplOutputListFields        MpplOutputListFields;
 typedef struct MpplOutputsFields           MpplOutputsFields;
 typedef struct MpplOutputValueFields       MpplOutputValueFields;
 typedef struct MpplCompStmtFields          MpplCompStmtFields;
 typedef struct MpplExprListElemFields      MpplExprListElemFields;
-typedef struct MpplExprListFields          MpplExprListFields;
 typedef struct MpplRefIdentFields          MpplRefIdentFields;
 typedef struct MpplEntireVarFields         MpplEntireVarFields;
 typedef struct MpplIndexedVarFields        MpplIndexedVarFields;
@@ -347,7 +340,15 @@ typedef struct MpplBinaryExprFields        MpplBinaryExprFields;
 typedef struct MpplParenExprFields         MpplParenExprFields;
 typedef struct MpplCastExprFields          MpplCastExprFields;
 
-#undef Mppl
+typedef Slice(AnyMpplDeclPart *) MpplDeclPartListFields;
+typedef Slice(MpplBindIdentListElem *) MpplBindIdentListFields;
+typedef Slice(MpplVarDeclListElem *) MpplVarDeclListFields;
+typedef Slice(MpplFmlParamListElem *) MpplFmlParamListFields;
+typedef Slice(MpplStmtListElem *) MpplStmtListFields;
+typedef Slice(MpplOutputListElem *) MpplOutputListFields;
+typedef Slice(MpplExprListElem *) MpplExprListFields;
+
+#undef MpplSyntax
 
 union AnyMpplEof {
   MpplEof      eof;
@@ -437,17 +438,9 @@ struct MpplProgramFields {
   SyntaxToken      *dot_token;
 };
 
-struct MpplDeclPartListFields {
-  Slice(AnyMpplDeclPart *) decl_parts;
-};
-
 struct MpplBindIdentListElemFields {
   AnyMpplBindIdent *bind_ident;
   SyntaxToken      *comma_token;
-};
-
-struct MpplBindIdentListFields {
-  Slice(MpplBindIdentListElem *) bind_ident_list_elems;
 };
 
 struct MpplBindIdentFields {
@@ -462,10 +455,6 @@ struct MpplVarDeclPartFields {
 struct MpplVarDeclListElemFields {
   MpplVarDecl *var_decl;
   SyntaxToken *semi_token;
-};
-
-struct MpplVarDeclListFields {
-  Slice(MpplVarDeclListElem *) var_decl_list_elems;
 };
 
 struct MpplVarDeclFields {
@@ -522,10 +511,6 @@ struct MpplFmlParamListElemFields {
   SyntaxToken     *semi_token;
 };
 
-struct MpplFmlParamListFields {
-  Slice(MpplFmlParamListElem *) fml_param_list_elems;
-};
-
 struct MpplFmlParamsFields {
   SyntaxToken      *lparen_token;
   MpplFmlParamList *fml_param_list;
@@ -541,10 +526,6 @@ struct MpplFmlParamSecFields {
 struct MpplStmtListElemFields {
   AnyMpplStmt *stmt;
   SyntaxToken *semi_token;
-};
-
-struct MpplStmtListFields {
-  Slice(MpplStmtListElem *) stmt_list_elems;
 };
 
 struct MpplAssignStmtFields {
@@ -614,10 +595,6 @@ struct MpplOutputListElemFields {
   SyntaxToken   *comma_token;
 };
 
-struct MpplOutputListFields {
-  Slice(MpplOutputListElem *) output_list_elems;
-};
-
 struct MpplOutputsFields {
   SyntaxToken    *lparen_token;
   MpplOutputList *output_list;
@@ -639,10 +616,6 @@ struct MpplCompStmtFields {
 struct MpplExprListElemFields {
   AnyMpplExpr *expr;
   SyntaxToken *comma_token;
-};
-
-struct MpplExprListFields {
-  Slice(MpplExprListElem *) expr_list_elems;
 };
 
 struct MpplRefIdentFields {

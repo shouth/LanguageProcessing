@@ -602,9 +602,9 @@ MpplDeclPartListFields mppl_decl_part_list_fields_alloc(const MpplDeclPartList *
   unsigned long i;
 
   MpplDeclPartListFields fields;
-  slice_alloc(&fields.decl_parts, decl_part_list->syntax.raw->children.count);
+  slice_alloc(&fields, decl_part_list->syntax.raw->children.count);
   for (i = 0; i * 2 < decl_part_list->syntax.raw->children.count; ++i) {
-    fields.decl_parts.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) decl_part_list, i);
+    fields.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) decl_part_list, i);
   }
   return fields;
 }
@@ -622,9 +622,9 @@ MpplBindIdentListFields mppl_bind_ident_list_fields_alloc(const MpplBindIdentLis
   unsigned long i;
 
   MpplBindIdentListFields fields;
-  slice_alloc(&fields.bind_ident_list_elems, bind_ident_list->syntax.raw->children.count);
+  slice_alloc(&fields, bind_ident_list->syntax.raw->children.count);
   for (i = 0; i * 2 < bind_ident_list->syntax.raw->children.count; ++i) {
-    fields.bind_ident_list_elems.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) bind_ident_list, i);
+    fields.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) bind_ident_list, i);
   }
   return fields;
 }
@@ -657,9 +657,9 @@ MpplVarDeclListFields mppl_var_decl_list_fields_alloc(const MpplVarDeclList *var
   unsigned long i;
 
   MpplVarDeclListFields fields;
-  slice_alloc(&fields.var_decl_list_elems, var_decl_list->syntax.raw->children.count);
+  slice_alloc(&fields, var_decl_list->syntax.raw->children.count);
   for (i = 0; i * 2 < var_decl_list->syntax.raw->children.count; ++i) {
-    fields.var_decl_list_elems.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) var_decl_list, i);
+    fields.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) var_decl_list, i);
   }
   return fields;
 }
@@ -753,9 +753,9 @@ MpplFmlParamListFields mppl_fml_param_list_fields_alloc(const MpplFmlParamList *
   unsigned long i;
 
   MpplFmlParamListFields fields;
-  slice_alloc(&fields.fml_param_list_elems, fml_param_list->syntax.raw->children.count);
+  slice_alloc(&fields, fml_param_list->syntax.raw->children.count);
   for (i = 0; i * 2 < fml_param_list->syntax.raw->children.count; ++i) {
-    fields.fml_param_list_elems.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) fml_param_list, i);
+    fields.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) fml_param_list, i);
   }
   return fields;
 }
@@ -791,9 +791,9 @@ MpplStmtListFields mppl_stmt_list_fields_alloc(const MpplStmtList *stmt_list)
   unsigned long i;
 
   MpplStmtListFields fields;
-  slice_alloc(&fields.stmt_list_elems, stmt_list->syntax.raw->children.count);
+  slice_alloc(&fields, stmt_list->syntax.raw->children.count);
   for (i = 0; i * 2 < stmt_list->syntax.raw->children.count; ++i) {
-    fields.stmt_list_elems.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) stmt_list, i);
+    fields.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) stmt_list, i);
   }
   return fields;
 }
@@ -906,9 +906,9 @@ MpplOutputListFields mppl_output_list_fields_alloc(const MpplOutputList *output_
   unsigned long i;
 
   MpplOutputListFields fields;
-  slice_alloc(&fields.output_list_elems, output_list->syntax.raw->children.count);
+  slice_alloc(&fields, output_list->syntax.raw->children.count);
   for (i = 0; i * 2 < output_list->syntax.raw->children.count; ++i) {
-    fields.output_list_elems.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) output_list, i);
+    fields.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) output_list, i);
   }
   return fields;
 }
@@ -953,9 +953,9 @@ MpplExprListFields mppl_expr_list_fields_alloc(const MpplExprList *expr_list)
   unsigned long i;
 
   MpplExprListFields fields;
-  slice_alloc(&fields.expr_list_elems, expr_list->syntax.raw->children.count);
+  slice_alloc(&fields, expr_list->syntax.raw->children.count);
   for (i = 0; i * 2 < expr_list->syntax.raw->children.count; ++i) {
-    fields.expr_list_elems.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) expr_list, i);
+    fields.ptr[i] = (void *) syntax_tree_child_tree((const SyntaxTree *) expr_list, i);
   }
   return fields;
 }
@@ -1051,10 +1051,10 @@ void mppl_decl_part_list_fields_free(MpplDeclPartListFields *fields)
 {
   if (fields) {
     unsigned long i;
-    for (i = 0; i < fields->decl_parts.count; ++i) {
-      syntax_tree_free((void *) fields->decl_parts.ptr[i]);
+    for (i = 0; i < fields->count; ++i) {
+      syntax_tree_free((void *) fields->ptr[i]);
     }
-    slice_free(&fields->decl_parts);
+    slice_free(fields);
   }
 }
 
@@ -1070,10 +1070,10 @@ void mppl_bind_ident_list_fields_free(MpplBindIdentListFields *fields)
 {
   if (fields) {
     unsigned long i;
-    for (i = 0; i < fields->bind_ident_list_elems.count; ++i) {
-      syntax_tree_free((void *) fields->bind_ident_list_elems.ptr[i]);
+    for (i = 0; i < fields->count; ++i) {
+      syntax_tree_free((void *) fields->ptr[i]);
     }
-    slice_free(&fields->bind_ident_list_elems);
+    slice_free(fields);
   }
 }
 
@@ -1104,10 +1104,10 @@ void mppl_var_decl_list_fields_free(MpplVarDeclListFields *fields)
 {
   if (fields) {
     unsigned long i;
-    for (i = 0; i < fields->var_decl_list_elems.count; ++i) {
-      syntax_tree_free((void *) fields->var_decl_list_elems.ptr[i]);
+    for (i = 0; i < fields->count; ++i) {
+      syntax_tree_free((void *) fields->ptr[i]);
     }
-    slice_free(&fields->var_decl_list_elems);
+    slice_free(fields);
   }
 }
 
@@ -1199,10 +1199,10 @@ void mppl_fml_param_list_fields_free(MpplFmlParamListFields *fields)
 {
   if (fields) {
     unsigned long i;
-    for (i = 0; i < fields->fml_param_list_elems.count; ++i) {
-      syntax_tree_free((void *) fields->fml_param_list_elems.ptr[i]);
+    for (i = 0; i < fields->count; ++i) {
+      syntax_tree_free((void *) fields->ptr[i]);
     }
-    slice_free(&fields->fml_param_list_elems);
+    slice_free(fields);
   }
 }
 
@@ -1236,10 +1236,10 @@ void mppl_stmt_list_fields_free(MpplStmtListFields *fields)
 {
   if (fields) {
     unsigned long i;
-    for (i = 0; i < fields->stmt_list_elems.count; ++i) {
-      syntax_tree_free((void *) fields->stmt_list_elems.ptr[i]);
+    for (i = 0; i < fields->count; ++i) {
+      syntax_tree_free((void *) fields->ptr[i]);
     }
-    slice_free(&fields->stmt_list_elems);
+    slice_free(fields);
   }
 }
 
@@ -1350,10 +1350,10 @@ void mppl_output_list_fields_free(MpplOutputListFields *fields)
 {
   if (fields) {
     unsigned long i;
-    for (i = 0; i < fields->output_list_elems.count; ++i) {
-      syntax_tree_free((void *) fields->output_list_elems.ptr[i]);
+    for (i = 0; i < fields->count; ++i) {
+      syntax_tree_free((void *) fields->ptr[i]);
     }
-    slice_free(&fields->output_list_elems);
+    slice_free(fields);
   }
 }
 
@@ -1396,10 +1396,10 @@ void mppl_expr_list_fields_free(MpplExprListFields *fields)
 {
   if (fields) {
     unsigned long i;
-    for (i = 0; i < fields->expr_list_elems.count; ++i) {
-      syntax_tree_free((void *) fields->expr_list_elems.ptr[i]);
+    for (i = 0; i < fields->count; ++i) {
+      syntax_tree_free((void *) fields->ptr[i]);
     }
-    slice_free(&fields->expr_list_elems);
+    slice_free(fields);
   }
 }
 
