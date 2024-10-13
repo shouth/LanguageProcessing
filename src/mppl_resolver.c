@@ -164,7 +164,7 @@ static void collect_semantic_events(const SyntaxTree *syntax, Resolver *resolver
     if (event.kind == SYNTAX_EVENT_ENTER) {
       switch (event.syntax->raw->node.kind) {
       case MPPL_SYNTAX_PROGRAM:
-      case MPPL_SYNTAX_PROC_BODY:
+      case MPPL_SYNTAX_FML_PARAMS:
         push_scope(resolver);
         break;
 
