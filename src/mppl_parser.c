@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "diag.h"
 #include "mppl_passes.h"
 #include "mppl_syntax.h"
 #include "report.h"
-#include "stdio.h"
-#include "string.h"
 #include "syntax_tree.h"
 #include "util.h"
 
