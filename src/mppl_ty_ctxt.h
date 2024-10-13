@@ -44,6 +44,7 @@ const MpplTy *mppl_ty_proc(MpplTyCtxt *ctxt, const MpplTy **params, unsigned lon
 
 MpplTyCtxt   *mppl_ty_ctxt_alloc(void);
 void          mppl_ty_ctxt_free(MpplTyCtxt *ctxt);
-const MpplTy *mppl_ty_ctxt_type_of(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy *ty);
+void          mppl_ty_ctxt_set(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy *ty);
+const MpplTy *mppl_ty_ctxt_get(MpplTyCtxt *ctxt, const RawSyntaxNode *node);
 
 #endif

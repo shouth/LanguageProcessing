@@ -158,21 +158,24 @@ static int ty_eq(const void *lhs, const void *rhs)
   }
 }
 
-static Hash ptr_hash(const void *ptr)
+static Hash raw_syntax_hash(const void *ptr)
 {
-  return hash_fnv1a(NULL, ptr, sizeof(ptr));
+  const RawSyntaxNode **node = (const RawSyntaxNode **) ptr;
+  return hash_fnv1a(NULL, node, sizeof(*node));
 }
 
-static int ptr_eq(const void *lhs, const void *rhs)
+static int raw_syntax_eq(const void *lhs, const void *rhs)
 {
-  return lhs == rhs;
+  const RawSyntaxNode **lnode = (const RawSyntaxNode **) lhs;
+  const RawSyntaxNode **rnode = (const RawSyntaxNode **) rhs;
+  return *lnode == *rnode;
 }
 
 MpplTyCtxt *mppl_ty_ctxt_alloc(void)
 {
   MpplTyCtxt *ctxt = xmalloc(sizeof(*ctxt));
   hashmap_alloc(&ctxt->interner, &ty_hash, &ty_eq);
-  hashmap_alloc(&ctxt->type, &ptr_hash, &ptr_eq);
+  hashmap_alloc(&ctxt->type, &raw_syntax_hash, &raw_syntax_eq);
   return ctxt;
 }
 
@@ -189,11 +192,20 @@ void mppl_ty_ctxt_free(MpplTyCtxt *ctxt)
   free(ctxt);
 }
 
-const MpplTy *mppl_ty_ctxt_type_of(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy *ty)
+void mppl_ty_ctxt_set(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy *ty)
 {
   HashMapEntry entry;
-  if (!hashmap_entry(&ctxt->type, node, &entry)) {
-    hashmap_occupy(&ctxt->type, &entry, &node);
+  hashmap_entry(&ctxt->type, &node, &entry);
+  hashmap_occupy(&ctxt->type, &entry, &node);
+  *hashmap_value(&ctxt->type, &entry) = ty;
+}
+
+const MpplTy *mppl_ty_ctxt_get(MpplTyCtxt *ctxt, const RawSyntaxNode *node)
+{
+  HashMapEntry entry;
+  if (hashmap_entry(&ctxt->type, &node, &entry)) {
+    return *hashmap_value(&ctxt->type, &entry);
+  } else {
+    return NULL;
   }
-  return *hashmap_value(&ctxt->type, &entry) = ty;
 }
