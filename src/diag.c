@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "diag.h"
 #include "mppl_syntax.h"
+#include "mppl_ty_ctxt.h"
 #include "report.h"
-#include "stdio.h"
 #include "util.h"
 
 /* utility */
@@ -15,7 +16,7 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
   MpplSyntaxKind kind;
   unsigned long  count;
   unsigned long  length;
-  char          *result;
+  Slice(char) result;
 
   FILE *buffer = tmpfile();
   if (buffer == NULL) {
@@ -63,12 +64,77 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
     }
   }
 
-  result = xmalloc(length + 1);
+  slice_alloc(&result, length);
   rewind(buffer);
-  fread(result, 1, length, buffer);
-  result[length] = '\0';
+  fread(result.ptr, 1, length, buffer);
+  result.ptr[length] = '\0';
   fclose(buffer);
-  return result;
+  return result.ptr;
+}
+
+unsigned long print_mppl_ty(FILE *buffer, const MpplTy *ty)
+{
+  unsigned long length = 0;
+  switch (ty->kind) {
+  case MPPL_TY_INTEGER:
+    length += fprintf(buffer, "integer");
+    break;
+
+  case MPPL_TY_CHAR:
+    length += fprintf(buffer, "char");
+    break;
+
+  case MPPL_TY_BOOLEAN:
+    length += fprintf(buffer, "boolean");
+    break;
+
+  case MPPL_TY_ARRAY: {
+    const MpplArrayTy *array_ty = (const MpplArrayTy *) ty;
+
+    length += print_mppl_ty(buffer, array_ty->base);
+    length += fprintf(buffer, "[%lu]", array_ty->size);
+    break;
+  }
+
+  case MPPL_TY_PROC: {
+    const MpplProcTy *proc_ty = (const MpplProcTy *) ty;
+
+    unsigned long i;
+    length += fprintf(buffer, "procedure(");
+    for (i = 0; i < proc_ty->params.count; i++) {
+      if (i > 0) {
+        length += fprintf(buffer, ", ");
+      }
+      length += print_mppl_ty(buffer, proc_ty->params.ptr[i]);
+    }
+    length += fprintf(buffer, ")");
+    break;
+  }
+
+  default:
+    unreachable();
+  }
+
+  return length;
+}
+
+char *mppl_ty_to_string(const MpplTy *ty)
+{
+  unsigned long length;
+  Slice(char) result;
+
+  FILE *buffer = tmpfile();
+  if (buffer == NULL) {
+    return NULL;
+  }
+
+  length = print_mppl_ty(buffer, ty);
+  slice_alloc(&result, length);
+  rewind(buffer);
+  fread(result.ptr, 1, length, buffer);
+  result.ptr[length] = '\0';
+  fclose(buffer);
+  return result.ptr;
 }
 
 /* lexer */
@@ -166,6 +232,77 @@ Report *diag_multiple_definition_error(unsigned long offset, unsigned long lengt
 Report *diag_not_defined_error(unsigned long offset, unsigned long length, const char *name)
 {
   Report *report = report_new(REPORT_KIND_ERROR, offset, "`%.*s` is not defined", (int) length, name);
+  report_annotation(report, offset, offset + length, NULL);
+  return report;
+}
+
+/* checker */ /* TODO: provide more precise error messages */
+
+Report *diag_zero_sized_array_error(unsigned long offset, unsigned long length)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "zero-sized array");
+  report_annotation(report, offset, offset + length, NULL);
+  return report;
+}
+
+Report *diag_non_array_subscript_error(unsigned long offset, unsigned long length)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "non-array subscript");
+  report_annotation(report, offset, offset + length, NULL);
+  return report;
+}
+
+Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const MpplTy *expected, const MpplTy *found)
+{
+  char   *expected_str = mppl_ty_to_string(expected);
+  char   *found_str    = mppl_ty_to_string(found);
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
+  report_annotation(report, offset, offset + length, "expected `%s`, found `%s`", expected_str, found_str);
+  free(expected_str);
+  free(found_str);
+  return report;
+}
+
+Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const MpplTy *found)
+{
+  char   *found_str = mppl_ty_to_string(found);
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
+  report_annotation(report, offset, offset + length, "expected `integer`, `char` or `boolean`, found `%s`", found_str);
+  free(found_str);
+  return report;
+}
+
+Report *diag_non_lvalue_assignment_error(unsigned long offset, unsigned long length)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "tries to assign to a rvalue");
+  report_annotation(report, offset, offset + length, NULL);
+  return report;
+}
+
+Report *diag_mismatched_arguments_count_error(unsigned long offset, unsigned long length, unsigned long expected, unsigned long found)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched arguments count");
+  report_annotation(report, offset, offset + length, "expected %lu, found %lu", expected, found);
+  return report;
+}
+
+Report *diag_non_procedure_invocation_error(unsigned long offset, unsigned long length)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "tries to invoke a non-procedure");
+  report_annotation(report, offset, offset + length, NULL);
+  return report;
+}
+
+Report *diag_invalid_input_error(unsigned long offset, unsigned long length)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid input");
+  report_annotation(report, offset, offset + length, NULL);
+  return report;
+}
+
+Report *diag_invalid_output_error(unsigned long offset, unsigned long length)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid output");
   report_annotation(report, offset, offset + length, NULL);
   return report;
 }

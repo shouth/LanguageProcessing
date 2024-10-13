@@ -8,6 +8,7 @@
 #include "mppl_passes.h"
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
+#include "mppl_ty_ctxt.h"
 #include "report.h"
 #include "source.h"
 #include "syntax_tree.h"
@@ -59,6 +60,17 @@ static int run_compiler(void)
 
         for (j = 0; j < resolve_result.diags.count; ++j) {
           report_emit(resolve_result.diags.ptr[j], source);
+        }
+
+        if (resolve_result.diags.count == 0) {
+          MpplCheckResult check_result = mppl_check(parse_result.root, &resolve_result.semantics);
+
+          for (j = 0; j < check_result.diags.count; ++j) {
+            report_emit(check_result.diags.ptr[j], source);
+          }
+
+          mppl_ty_ctxt_free(check_result.ctxt);
+          slice_free(&check_result.diags);
         }
 
         mppl_semantics_free(&resolve_result.semantics);
