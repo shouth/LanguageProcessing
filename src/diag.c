@@ -88,6 +88,10 @@ unsigned long print_mppl_ty(FILE *buffer, const MpplTy *ty)
     length += fprintf(buffer, "boolean");
     break;
 
+  case MPPL_TY_STRING:
+    length += fprintf(buffer, "string");
+    break;
+
   case MPPL_TY_ARRAY: {
     const MpplArrayTy *array_ty = (const MpplArrayTy *) ty;
 
