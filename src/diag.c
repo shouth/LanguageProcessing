@@ -64,7 +64,7 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
     }
   }
 
-  slice_alloc(&result, length);
+  slice_alloc(&result, length + 1);
   rewind(buffer);
   fread(result.ptr, 1, length, buffer);
   result.ptr[length] = '\0';
