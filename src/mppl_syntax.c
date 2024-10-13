@@ -983,14 +983,14 @@ MpplStringLitExprFields mppl_string_lit_expr_fields_alloc(const MpplStringLitExp
   return fields;
 }
 
-MpplEntireVarExprFields mppl_entire_var_fields_alloc(const MpplEntireVarExpr *entire_var)
+MpplEntireVarExprFields mppl_entire_var_expr_fields_alloc(const MpplEntireVarExpr *entire_var)
 {
   MpplEntireVarExprFields fields;
   fields.name = (void *) syntax_tree_child_tree((const SyntaxTree *) entire_var, 0);
   return fields;
 }
 
-MpplIndexedVarExprFields mppl_indexed_var_fields_alloc(const MpplIndexedVarExpr *indexed_var)
+MpplIndexedVarExprFields mppl_indexed_var_expr_fields_alloc(const MpplIndexedVarExpr *indexed_var)
 {
   MpplIndexedVarExprFields fields;
   fields.name           = (void *) syntax_tree_child_tree((const SyntaxTree *) indexed_var, 0);
@@ -1447,14 +1447,14 @@ void mppl_string_lit_expr_fields_free(MpplStringLitExprFields *fields)
   }
 }
 
-void mppl_entire_var_fields_free(MpplEntireVarExprFields *fields)
+void mppl_entire_var_expr_fields_free(MpplEntireVarExprFields *fields)
 {
   if (fields) {
     syntax_tree_free((void *) fields->name);
   }
 }
 
-void mppl_indexed_var_fields_free(MpplIndexedVarExprFields *fields)
+void mppl_indexed_var_expr_fields_free(MpplIndexedVarExprFields *fields)
 {
   if (fields) {
     syntax_tree_free((void *) fields->name);
