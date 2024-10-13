@@ -40,7 +40,7 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
         case MPPL_SYNTAX_EOF_TOKEN:
           length += fprintf(buffer, "end of file");
           break;
-        case MPPL_SYNTAX_NUMBER_LIT:
+        case MPPL_SYNTAX_INTEGER_LIT:
           length += fprintf(buffer, "number");
           break;
         case MPPL_SYNTAX_STRING_LIT:
@@ -256,7 +256,7 @@ Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, c
 {
   char   *expected_str = mppl_ty_to_string(expected);
   char   *found_str    = mppl_ty_to_string(found);
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
+  Report *report       = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
   report_annotation(report, offset, offset + length, "expected `%s`, found `%s`", expected_str, found_str);
   free(expected_str);
   free(found_str);
@@ -266,7 +266,7 @@ Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, c
 Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const MpplTy *found)
 {
   char   *found_str = mppl_ty_to_string(found);
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
+  Report *report    = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
   report_annotation(report, offset, offset + length, "expected `integer`, `char` or `boolean`, found `%s`", found_str);
   free(found_str);
   return report;
