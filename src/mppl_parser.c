@@ -38,7 +38,7 @@ static void next_token(Parser *p)
   p->span              = result.span;
 
   switch (p->kind) {
-  case MPPL_SYNTAX_NUMBER_LIT: {
+  case MPPL_SYNTAX_INTEGER_LIT: {
     if (strtoul(p->text + p->offset, NULL, 10) > 32767) {
       Report *report = diag_too_big_number_error(p->offset, p->span);
       vec_push(&p->diags, &report, 1);
@@ -231,7 +231,7 @@ static void parse_type(Parser *p)
     Checkpoint array_type = open(p);
     expect(p, MPPL_SYNTAX_ARRAY_KW);
     expect(p, MPPL_SYNTAX_LBRACKET_TOKEN);
-    expect(p, MPPL_SYNTAX_NUMBER_LIT);
+    expect(p, MPPL_SYNTAX_INTEGER_LIT);
     expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
     expect(p, MPPL_SYNTAX_OF_KW);
     if (check_any(p, first_std_type())) {
@@ -259,7 +259,7 @@ static void parse_expr(Parser *p);
 static const MpplTokenKindSet *first_const(void)
 {
   static MpplTokenKindSet kinds = bitset_zero();
-  bitset_set(&kinds, MPPL_SYNTAX_NUMBER_LIT);
+  bitset_set(&kinds, MPPL_SYNTAX_INTEGER_LIT);
   bitset_set(&kinds, MPPL_SYNTAX_TRUE_KW);
   bitset_set(&kinds, MPPL_SYNTAX_FALSE_KW);
   bitset_set(&kinds, MPPL_SYNTAX_STRING_LIT);
@@ -332,18 +332,25 @@ static void parse_expr_with_power(Parser *p, int power)
     parse_expr(p);
     expect(p, MPPL_SYNTAX_RPAREN_TOKEN);
     close(p, MPPL_SYNTAX_CAST_EXPR, expr);
-  } else if (eat_any(p, first_const())) {
-    /* number | true | false | string */
+  } else if (eat(p, MPPL_SYNTAX_INTEGER_LIT)) {
+    /* integer */
+    close(p, MPPL_SYNTAX_INTEGER_LIT_EXPR, expr);
+  } else if (eat(p, MPPL_SYNTAX_TRUE_KW) || eat(p, MPPL_SYNTAX_FALSE_KW)) {
+    /* 'true' | 'false' */
+    close(p, MPPL_SYNTAX_BOOLEAN_LIT_EXPR, expr);
+  } else if (eat(p, MPPL_SYNTAX_STRING_LIT)) {
+    /* string */
+    close(p, MPPL_SYNTAX_STRING_LIT_EXPR, expr);
   } else if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
     parse_ref_ident(p);
     if (eat(p, MPPL_SYNTAX_LBRACKET_TOKEN)) {
       /* identifier '[' expr ']' */
       parse_expr(p);
       expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
-      close(p, MPPL_SYNTAX_INDEXED_VAR, expr);
+      close(p, MPPL_SYNTAX_INDEXED_VAR_EXPR, expr);
     } else {
       /* identifier */
-      close(p, MPPL_SYNTAX_ENTIRE_VAR, expr);
+      close(p, MPPL_SYNTAX_ENTIRE_VAR_EXPR, expr);
     }
   } else {
     Report *report = diag_expected_expression_error(p->offset, p->span);
@@ -564,7 +571,7 @@ static void parse_output_value(Parser *p)
   Checkpoint output_value = open(p);
   parse_expr(p);
   if (eat(p, MPPL_SYNTAX_COLON_TOKEN)) {
-    expect(p, MPPL_SYNTAX_NUMBER_LIT);
+    expect(p, MPPL_SYNTAX_INTEGER_LIT);
     close(p, MPPL_SYNTAX_OUTPUT_VALUE, output_value);
   }
 }

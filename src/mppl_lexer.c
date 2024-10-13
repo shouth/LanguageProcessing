@@ -70,7 +70,7 @@ static MpplLexResult lex_identifier_or_keyword(Lexer *l)
 static MpplLexResult lex_integer(Lexer *l)
 {
   while (eat_if(l, &is_number)) { }
-  return lex(l, MPPL_SYNTAX_NUMBER_LIT);
+  return lex(l, MPPL_SYNTAX_INTEGER_LIT);
 }
 
 static MpplLexResult lex_string(Lexer *l)
