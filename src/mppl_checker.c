@@ -113,6 +113,7 @@ static const MpplTy *check_type(Checker *checker, const AnyMpplType *type)
       vec_push(&checker->diags, &report, 1);
     }
 
+    mppl_array_type_fields_free(&array_type_fields);
     return mppl_ty_array(checker->ctxt, base, size);
   }
 
