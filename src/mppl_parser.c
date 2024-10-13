@@ -213,29 +213,37 @@ static const MpplTokenKindSet *first_std_type(void)
   return &kinds;
 }
 
-static void parse_std_type(Parser *p)
-{
-  expect_any(p, first_std_type());
-}
-
-static void parse_array_type(Parser *p)
-{
-  Checkpoint array_type = open(p);
-  expect(p, MPPL_SYNTAX_ARRAY_KW);
-  expect(p, MPPL_SYNTAX_LBRACKET_TOKEN);
-  expect(p, MPPL_SYNTAX_NUMBER_LIT);
-  expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
-  expect(p, MPPL_SYNTAX_OF_KW);
-  parse_std_type(p);
-  close(p, MPPL_SYNTAX_ARRAY_TYPE, array_type);
-}
-
 static void parse_type(Parser *p)
 {
-  if (check_any(p, first_std_type())) {
-    parse_std_type(p);
+  if (check(p, MPPL_SYNTAX_INTEGER_KW)) {
+    Checkpoint integer_type = open(p);
+    expect(p, MPPL_SYNTAX_INTEGER_KW);
+    close(p, MPPL_SYNTAX_INTEGER_TYPE, integer_type);
+  } else if (check(p, MPPL_SYNTAX_CHAR_KW)) {
+    Checkpoint char_type = open(p);
+    expect(p, MPPL_SYNTAX_CHAR_KW);
+    close(p, MPPL_SYNTAX_CHAR_TYPE, char_type);
+  } else if (check(p, MPPL_SYNTAX_BOOLEAN_KW)) {
+    Checkpoint boolean_type = open(p);
+    expect(p, MPPL_SYNTAX_BOOLEAN_KW);
+    close(p, MPPL_SYNTAX_BOOLEAN_TYPE, boolean_type);
+  } else if (check(p, MPPL_SYNTAX_ARRAY_KW)) {
+    Checkpoint array_type = open(p);
+    expect(p, MPPL_SYNTAX_ARRAY_KW);
+    expect(p, MPPL_SYNTAX_LBRACKET_TOKEN);
+    expect(p, MPPL_SYNTAX_NUMBER_LIT);
+    expect(p, MPPL_SYNTAX_RBRACKET_TOKEN);
+    expect(p, MPPL_SYNTAX_OF_KW);
+    if (check_any(p, first_std_type())) {
+      parse_type(p);
+    } else {
+      error_unexpected(p);
+      null(p);
+    }
+    close(p, MPPL_SYNTAX_ARRAY_TYPE, array_type);
   } else {
-    parse_array_type(p);
+    error_unexpected(p);
+    null(p);
   }
 }
 
