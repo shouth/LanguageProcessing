@@ -407,13 +407,13 @@ static const MpplTokenKindSet *first_output_stmt(void)
 static const MpplTokenKindSet *first_stmt(void)
 {
   static MpplTokenKindSet kinds = bitset_zero();
-  bitset_set(&kinds, MPPL_SYNTAX_IDENT_TOKEN);
   bitset_set(&kinds, MPPL_SYNTAX_IF_KW);
   bitset_set(&kinds, MPPL_SYNTAX_WHILE_KW);
   bitset_set(&kinds, MPPL_SYNTAX_BREAK_KW);
   bitset_set(&kinds, MPPL_SYNTAX_CALL_KW);
   bitset_set(&kinds, MPPL_SYNTAX_RETURN_KW);
   bitset_set(&kinds, MPPL_SYNTAX_BEGIN_KW);
+  bitset_insert(&kinds, first_expr());
   bitset_insert(&kinds, first_input_stmt());
   bitset_insert(&kinds, first_output_stmt());
   return &kinds;
@@ -651,7 +651,7 @@ static void parse_comp_stmt(Parser *p, const MpplTokenKindSet *recovery)
 
 static void parse_stmt(Parser *p, const MpplTokenKindSet *recovery)
 {
-  if (check(p, MPPL_SYNTAX_IDENT_TOKEN)) {
+  if (check_any(p, first_expr())) {
     parse_assign_stmt(p);
   } else if (check(p, MPPL_SYNTAX_IF_KW)) {
     parse_if_stmt(p, recovery);
