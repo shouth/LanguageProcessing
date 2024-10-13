@@ -10,7 +10,7 @@
 typedef enum {
   MPPL_SEMANTIC_DEFINE,
   MPPL_SEMANTIC_USE,
-  MPPL_SEMANTIC_NOT_FOUND
+  MPPL_SEMANTIC_NOT_DEFINED
 } MpplSemanticEventKind;
 
 typedef struct MpplSemanticEvent MpplSemanticEvent;

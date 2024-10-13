@@ -5,6 +5,7 @@
 #include "diag.h"
 #include "mppl_passes.h"
 #include "mppl_syntax.h"
+#include "report.h"
 #include "stdio.h"
 #include "string.h"
 #include "syntax_tree.h"
@@ -27,11 +28,6 @@ struct Parser {
   int           recovery;
 };
 
-static void diag(Parser *p, Report *diagnostics)
-{
-  vec_push(&p->diags, &diagnostics, 1);
-}
-
 static void next_token(Parser *p)
 {
   unsigned long next_offset = p->offset + p->span;
@@ -44,19 +40,22 @@ static void next_token(Parser *p)
   switch (p->kind) {
   case MPPL_SYNTAX_NUMBER_LIT: {
     if (strtoul(p->text + p->offset, NULL, 10) > 32767) {
-      diag(p, diag_too_big_number_error(p->offset, p->span));
+      Report *report = diag_too_big_number_error(p->offset, p->span);
+      vec_push(&p->diags, &report, 1);
     }
     break;
   }
   case MPPL_SYNTAX_STRING_LIT: {
     unsigned long i;
     if (result.is_unterminated) {
-      diag(p, diag_unterminated_string_error(p->offset, p->span));
+      Report *report = diag_unterminated_string_error(p->offset, p->span);
+      vec_push(&p->diags, &report, 1);
     }
     if (result.has_nongraphic) {
       for (i = 0; i < p->span; ++i) {
         if (!is_graphic(p->text[p->offset + i])) {
-          diag(p, diag_nongraphic_char_error(p->offset + i, p->text[p->offset + i]));
+          Report *report = diag_nongraphic_char_error(p->offset + i, p->text[p->offset + i]);
+          vec_push(&p->diags, &report, 1);
         }
       }
     }
@@ -64,13 +63,15 @@ static void next_token(Parser *p)
   }
   case MPPL_SYNTAX_BRACES_COMMENT_TRIVIA: {
     if (result.is_unterminated) {
-      diag(p, diag_unterminated_comment_error(p->offset, p->span));
+      Report *report = diag_unterminated_comment_error(p->offset, p->span);
+      vec_push(&p->diags, &report, 1);
     }
     break;
   }
   case MPPL_SYNTAX_C_COMMENT_TRIVIA: {
     if (result.is_unterminated) {
-      diag(p, diag_unterminated_comment_error(p->offset, p->span));
+      Report *report = diag_unterminated_comment_error(p->offset, p->span);
+      vec_push(&p->diags, &report, 1);
     }
     break;
   }
@@ -150,9 +151,11 @@ static int eat(Parser *p, MpplSyntaxKind kind)
 static void error_unexpected(Parser *p)
 {
   if (p->kind == MPPL_SYNTAX_ERROR) {
-    diag(p, diag_stray_char_error(p->offset, p->text[p->offset], p->expected));
+    Report *report = diag_stray_char_error(p->offset, p->text[p->offset], p->expected);
+    vec_push(&p->diags, &report, 1);
   } else {
-    diag(p, diag_unexpected_token_error(p->offset, p->span, p->text + p->offset, p->expected));
+    Report *report = diag_unexpected_token_error(p->offset, p->span, p->text + p->offset, p->expected);
+    vec_push(&p->diags, &report, 1);
   }
 }
 
@@ -335,7 +338,9 @@ static void parse_expr_with_power(Parser *p, int power)
       close(p, MPPL_SYNTAX_ENTIRE_VAR, expr);
     }
   } else {
-    diag(p, diag_expected_expression_error(p->offset, p->span));
+    Report *report = diag_expected_expression_error(p->offset, p->span);
+    vec_push(&p->diags, &report, 1);
+
     null(p);
     bitset_clear(&p->expected);
     p->recovery = 1;
@@ -448,7 +453,8 @@ static void parse_break_stmt(Parser *p)
   unsigned long offset     = p->offset;
   unsigned long span       = p->span;
   if (expect(p, MPPL_SYNTAX_BREAK_KW) && !p->breakable) {
-    diag(p, diag_break_outside_loop_error(offset, span));
+    Report *report = diag_break_outside_loop_error(offset, span);
+    vec_push(&p->diags, &report, 1);
   }
   close(p, MPPL_SYNTAX_BREAK_STMT, break_stmt);
 }

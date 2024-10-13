@@ -24,6 +24,6 @@ Report *diag_break_outside_loop_error(unsigned long offset, unsigned long length
 /* resolver */
 
 Report *diag_multiple_definition_error(unsigned long offset, unsigned long length, const char *name, unsigned long previous_offset);
-Report *diag_not_found_error(unsigned long offset, unsigned long length, const char *name);
+Report *diag_not_defined_error(unsigned long offset, unsigned long length, const char *name);
 
 #endif /* DIAGNOSTICS_H */

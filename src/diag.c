@@ -163,7 +163,7 @@ Report *diag_multiple_definition_error(unsigned long offset, unsigned long lengt
   return report;
 }
 
-Report *diag_not_found_error(unsigned long offset, unsigned long length, const char *name)
+Report *diag_not_defined_error(unsigned long offset, unsigned long length, const char *name)
 {
   Report *report = report_new(REPORT_KIND_ERROR, offset, "`%.*s` is not defined", (int) length, name);
   report_annotation(report, offset, offset + length, NULL);

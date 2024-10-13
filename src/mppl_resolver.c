@@ -6,6 +6,7 @@
 #include "mppl_passes.h"
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
+#include "report.h"
 #include "stdio.h"
 #include "syntax_tree.h"
 #include "util.h"
@@ -47,11 +48,6 @@ static int name_eq(const void *a, const void *b)
   return l->node.span.text_length == r->node.span.text_length && memcmp(l->text, r->text, l->node.span.text_length) == 0;
 }
 
-static void diag(Resolver *resolver, Report *report)
-{
-  vec_push(&resolver->diags, &report, 1);
-}
-
 static void enter_ref_ident(Resolver *resolver, const SyntaxToken *token)
 {
   MpplSemanticEvent event;
@@ -62,9 +58,11 @@ static void enter_ref_ident(Resolver *resolver, const SyntaxToken *token)
     event.declared_at = hashmap_value(&resolver->bindings, &entry)->declared_at;
     event.used_at     = token->node.span.offset;
   } else {
-    event.kind    = MPPL_SEMANTIC_NOT_FOUND;
+    Report *report = diag_not_defined_error(token->node.span.offset, token->raw->node.span.text_length, token->raw->text);
+    vec_push(&resolver->diags, &report, 1);
+
+    event.kind    = MPPL_SEMANTIC_NOT_DEFINED;
     event.used_at = token->node.span.offset;
-    diag(resolver, diag_not_found_error(token->node.span.offset, token->raw->node.span.text_length, token->raw->text));
   }
   vec_push(&resolver->events, &event, 1);
 }
@@ -100,8 +98,9 @@ static void enter_bind_ident(Resolver *resolver, const SyntaxToken *token)
     if (hashmap_entry(&resolver->bindings, &binding.name, &entry)) {
       Binding *shadowed = hashmap_value(&resolver->bindings, &entry);
       if (shadowed->depth == binding.depth) {
-        diag(resolver,
-          diag_multiple_definition_error(token->node.span.offset, token->raw->node.span.text_length, token->raw->text, shadowed->declared_at));
+        Report *report = diag_multiple_definition_error(
+          token->node.span.offset, token->raw->node.span.text_length, token->raw->text, shadowed->declared_at);
+        vec_push(&resolver->diags, &report, 1);
       } else {
         vec_push(&resolver->scope->shadowed, shadowed, 1);
         vec_push(&resolver->scope->bindings, &binding, 1);
