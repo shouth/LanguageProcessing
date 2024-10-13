@@ -129,7 +129,7 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "EOF_TOKEN";
   case MPPL_SYNTAX_IDENT_TOKEN:
     return "IDENT_TOKEN";
-  case MPPL_SYNTAX_NUMBER_LIT:
+  case MPPL_SYNTAX_INTEGER_LIT:
     return "NUMBER_LIT";
   case MPPL_SYNTAX_STRING_LIT:
     return "STRING_LIT";
@@ -317,10 +317,16 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "EXPR_LIST";
   case MPPL_SYNTAX_REF_IDENT:
     return "REF_IDENT";
-  case MPPL_SYNTAX_ENTIRE_VAR:
-    return "ENTIRE_VAR";
-  case MPPL_SYNTAX_INDEXED_VAR:
-    return "INDEXED_VAR";
+  case MPPL_SYNTAX_INTEGER_LIT_EXPR:
+    return "INTEGER_LIT_EXPR";
+  case MPPL_SYNTAX_BOOLEAN_LIT_EXPR:
+    return "BOOLEAN_LIT_EXPR";
+  case MPPL_SYNTAX_STRING_LIT_EXPR:
+    return "STRING_LIT_EXPR";
+  case MPPL_SYNTAX_ENTIRE_VAR_EXPR:
+    return "ENTIRE_VAR_EXPR";
+  case MPPL_SYNTAX_INDEXED_VAR_EXPR:
+    return "INDEXED_VAR_EXPR";
   case MPPL_SYNTAX_UNARY_EXPR:
     return "UNARY_EXPR";
   case MPPL_SYNTAX_BINARY_EXPR:
@@ -446,21 +452,19 @@ static int stmt_kind(const SyntaxTree *syntax)
   }
 }
 
-static int var_kind(const SyntaxTree *syntax)
-{
-  switch (syntax->raw->node.kind) {
-  case MPPL_SYNTAX_ENTIRE_VAR:
-    return MPPL_VAR_SYNTAX_ENTIRE;
-  case MPPL_SYNTAX_INDEXED_VAR:
-    return MPPL_VAR_SYNTAX_INDEXED;
-  default:
-    return -1;
-  }
-}
-
 static int expr_kind(const SyntaxTree *syntax)
 {
   switch (syntax->raw->node.kind) {
+  case MPPL_SYNTAX_INTEGER_LIT_EXPR:
+    return MPPL_EXPR_SYNTAX_INTEGER_LIT;
+  case MPPL_SYNTAX_BOOLEAN_LIT_EXPR:
+    return MPPL_EXPR_SYNTAX_BOOLEAN_LIT;
+  case MPPL_SYNTAX_STRING_LIT_EXPR:
+    return MPPL_EXPR_SYNTAX_STRING_LIT;
+  case MPPL_SYNTAX_ENTIRE_VAR_EXPR:
+    return MPPL_EXPR_SYNTAX_ENTIRE_VAR;
+  case MPPL_SYNTAX_INDEXED_VAR_EXPR:
+    return MPPL_EXPR_SYNTAX_INDEXED_VAR;
   case MPPL_SYNTAX_UNARY_EXPR:
     return MPPL_EXPR_SYNTAX_UNARY;
   case MPPL_SYNTAX_BINARY_EXPR:
@@ -472,11 +476,7 @@ static int expr_kind(const SyntaxTree *syntax)
   case MPPL_SYNTAX_BOGUS_EXPR:
     return MPPL_EXPR_SYNTAX_BOGUS;
   default:
-    if (var_kind(syntax) != -1) {
-      return MPPL_EXPR_SYNTAX_VAR;
-    } else {
-      return -1;
-    }
+    return -1;
   }
 }
 
@@ -553,11 +553,6 @@ MpplOutputKind mppl_output_kind(const AnyMpplOutput *output)
 MpplOutputValueKind mppl_output_value_kind(const AnyMpplOutputValue *output_value)
 {
   return output_value_kind((const SyntaxTree *) output_value);
-}
-
-MpplVarKind mppl_var_kind(const AnyMpplVar *var)
-{
-  return var_kind((const SyntaxTree *) var);
 }
 
 MpplExprKind mppl_expr_kind(const AnyMpplExpr *expr)
@@ -967,16 +962,37 @@ MpplRefIdentFields mppl_ref_ident_fields_alloc(const MpplRefIdent *ref_ident)
   return fields;
 }
 
-MpplEntireVarFields mppl_entire_var_fields_alloc(const MpplEntireVar *entire_var)
+MpplIntegerLitExprFields mppl_integer_lit_expr_fields_alloc(const MpplIntegerLitExpr *integer_lit_expr)
 {
-  MpplEntireVarFields fields;
+  MpplIntegerLitExprFields fields;
+  fields.integer_lit = syntax_tree_child_token((const SyntaxTree *) integer_lit_expr, 0);
+  return fields;
+}
+
+MpplBooleanLitExprFields mppl_boolean_lit_expr_fields_alloc(const MpplBooleanLitExpr *boolean_lit_expr)
+{
+  MpplBooleanLitExprFields fields;
+  fields.boolean_lit = syntax_tree_child_token((const SyntaxTree *) boolean_lit_expr, 0);
+  return fields;
+}
+
+MpplStringLitExprFields mppl_string_lit_expr_fields_alloc(const MpplStringLitExpr *string_lit_expr)
+{
+  MpplStringLitExprFields fields;
+  fields.string_lit = syntax_tree_child_token((const SyntaxTree *) string_lit_expr, 0);
+  return fields;
+}
+
+MpplEntireVarExprFields mppl_entire_var_fields_alloc(const MpplEntireVarExpr *entire_var)
+{
+  MpplEntireVarExprFields fields;
   fields.name = (void *) syntax_tree_child_tree((const SyntaxTree *) entire_var, 0);
   return fields;
 }
 
-MpplIndexedVarFields mppl_indexed_var_fields_alloc(const MpplIndexedVar *indexed_var)
+MpplIndexedVarExprFields mppl_indexed_var_fields_alloc(const MpplIndexedVarExpr *indexed_var)
 {
-  MpplIndexedVarFields fields;
+  MpplIndexedVarExprFields fields;
   fields.name           = (void *) syntax_tree_child_tree((const SyntaxTree *) indexed_var, 0);
   fields.lbracket_token = syntax_tree_child_token((const SyntaxTree *) indexed_var, 1);
   fields.index          = (void *) syntax_tree_child_tree((const SyntaxTree *) indexed_var, 2);
@@ -1410,14 +1426,35 @@ void mppl_ref_ident_fields_free(MpplRefIdentFields *fields)
   }
 }
 
-void mppl_entire_var_fields_free(MpplEntireVarFields *fields)
+void mppl_integer_lit_expr_fields_free(MpplIntegerLitExprFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->integer_lit);
+  }
+}
+
+void mppl_boolean_lit_expr_fields_free(MpplBooleanLitExprFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->boolean_lit);
+  }
+}
+
+void mppl_string_lit_expr_fields_free(MpplStringLitExprFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->string_lit);
+  }
+}
+
+void mppl_entire_var_fields_free(MpplEntireVarExprFields *fields)
 {
   if (fields) {
     syntax_tree_free((void *) fields->name);
   }
 }
 
-void mppl_indexed_var_fields_free(MpplIndexedVarFields *fields)
+void mppl_indexed_var_fields_free(MpplIndexedVarExprFields *fields)
 {
   if (fields) {
     syntax_tree_free((void *) fields->name);

@@ -12,7 +12,7 @@ typedef enum {
   MPPL_SYNTAX_ERROR = SYNTAX_TOKEN << 8,
   MPPL_SYNTAX_EOF_TOKEN,
   MPPL_SYNTAX_IDENT_TOKEN,
-  MPPL_SYNTAX_NUMBER_LIT,
+  MPPL_SYNTAX_INTEGER_LIT,
   MPPL_SYNTAX_STRING_LIT,
   MPPL_SYNTAX_PLUS_TOKEN,
   MPPL_SYNTAX_MINUS_TOKEN,
@@ -109,8 +109,11 @@ typedef enum {
   MPPL_SYNTAX_EXPR_LIST_ELEM,
   MPPL_SYNTAX_EXPR_LIST,
   MPPL_SYNTAX_REF_IDENT,
-  MPPL_SYNTAX_ENTIRE_VAR,
-  MPPL_SYNTAX_INDEXED_VAR,
+  MPPL_SYNTAX_INTEGER_LIT_EXPR,
+  MPPL_SYNTAX_BOOLEAN_LIT_EXPR,
+  MPPL_SYNTAX_STRING_LIT_EXPR,
+  MPPL_SYNTAX_ENTIRE_VAR_EXPR,
+  MPPL_SYNTAX_INDEXED_VAR_EXPR,
   MPPL_SYNTAX_UNARY_EXPR,
   MPPL_SYNTAX_BINARY_EXPR,
   MPPL_SYNTAX_PAREN_EXPR,
@@ -191,12 +194,11 @@ typedef enum {
 } MpplStmtKind;
 
 typedef enum {
-  MPPL_VAR_SYNTAX_ENTIRE,
-  MPPL_VAR_SYNTAX_INDEXED
-} MpplVarKind;
-
-typedef enum {
-  MPPL_EXPR_SYNTAX_VAR,
+  MPPL_EXPR_SYNTAX_INTEGER_LIT,
+  MPPL_EXPR_SYNTAX_BOOLEAN_LIT,
+  MPPL_EXPR_SYNTAX_STRING_LIT,
+  MPPL_EXPR_SYNTAX_ENTIRE_VAR,
+  MPPL_EXPR_SYNTAX_INDEXED_VAR,
   MPPL_EXPR_SYNTAX_UNARY,
   MPPL_EXPR_SYNTAX_BINARY,
   MPPL_EXPR_SYNTAX_PAREN,
@@ -268,8 +270,11 @@ typedef MpplSyntax MpplCompStmt;
 typedef MpplSyntax MpplExprListElem;
 typedef MpplSyntax MpplExprList;
 typedef MpplSyntax MpplRefIdent;
-typedef MpplSyntax MpplEntireVar;
-typedef MpplSyntax MpplIndexedVar;
+typedef MpplSyntax MpplIntegerLitExpr;
+typedef MpplSyntax MpplBooleanLitExpr;
+typedef MpplSyntax MpplStringLitExpr;
+typedef MpplSyntax MpplEntireVarExpr;
+typedef MpplSyntax MpplIndexedVarExpr;
 typedef MpplSyntax MpplUnaryExpr;
 typedef MpplSyntax MpplBinaryExpr;
 typedef MpplSyntax MpplParenExpr;
@@ -292,7 +297,6 @@ typedef union AnyMpplFmlParamSec AnyMpplFmlParamSec;
 typedef union AnyMpplStmt        AnyMpplStmt;
 typedef union AnyMpplOutput      AnyMpplOutput;
 typedef union AnyMpplOutputValue AnyMpplOutputValue;
-typedef union AnyMpplVar         AnyMpplVar;
 typedef union AnyMpplExpr        AnyMpplExpr;
 typedef union AnyMpplBindIdent   AnyMpplBindIdent;
 
@@ -333,8 +337,11 @@ typedef struct MpplOutputValueFields       MpplOutputValueFields;
 typedef struct MpplCompStmtFields          MpplCompStmtFields;
 typedef struct MpplExprListElemFields      MpplExprListElemFields;
 typedef struct MpplRefIdentFields          MpplRefIdentFields;
-typedef struct MpplEntireVarFields         MpplEntireVarFields;
-typedef struct MpplIndexedVarFields        MpplIndexedVarFields;
+typedef struct MpplIntegerLitExprFields    MpplIntegerLitExprFields;
+typedef struct MpplBooleanLitExprFields    MpplBooleanLitExprFields;
+typedef struct MpplStringLitExprFields     MpplStringLitExprFields;
+typedef struct MpplEntireVarExprFields     MpplEntireVarExprFields;
+typedef struct MpplIndexedVarExprFields    MpplIndexedVarExprFields;
 typedef struct MpplUnaryExprFields         MpplUnaryExprFields;
 typedef struct MpplBinaryExprFields        MpplBinaryExprFields;
 typedef struct MpplParenExprFields         MpplParenExprFields;
@@ -391,18 +398,17 @@ union AnyMpplStmt {
   BogusMpplStmt  bogus;
 };
 
-union AnyMpplVar {
-  MpplEntireVar  entire_var;
-  MpplIndexedVar indexed_var;
-};
-
 union AnyMpplExpr {
-  AnyMpplVar     var_expr;
-  MpplUnaryExpr  unary_expr;
-  MpplBinaryExpr binary_expr;
-  MpplParenExpr  paren_expr;
-  MpplCastExpr   cast_expr;
-  BogusMpplExpr  bogus;
+  MpplIntegerLitExpr integer_lit_expr;
+  MpplBooleanLitExpr boolean_lit_expr;
+  MpplStringLitExpr  string_lit_expr;
+  MpplEntireVarExpr  entire_var_expr;
+  MpplIndexedVarExpr indexed_var_expr;
+  MpplUnaryExpr      unary_expr;
+  MpplBinaryExpr     binary_expr;
+  MpplParenExpr      paren_expr;
+  MpplCastExpr       cast_expr;
+  BogusMpplExpr      bogus;
 };
 
 union AnyMpplOutputValue {
@@ -622,11 +628,23 @@ struct MpplRefIdentFields {
   SyntaxToken *ident;
 };
 
-struct MpplEntireVarFields {
+struct MpplIntegerLitExprFields {
+  SyntaxToken *integer_lit;
+};
+
+struct MpplBooleanLitExprFields {
+  SyntaxToken *boolean_lit;
+};
+
+struct MpplStringLitExprFields {
+  SyntaxToken *string_lit;
+};
+
+struct MpplEntireVarExprFields {
   MpplRefIdent *name;
 };
 
-struct MpplIndexedVarFields {
+struct MpplIndexedVarExprFields {
   MpplRefIdent *name;
   SyntaxToken  *lbracket_token;
   AnyMpplExpr  *index;
@@ -701,8 +719,11 @@ MpplCompStmtFields          mppl_comp_stmt_fields_alloc(const MpplCompStmt *comp
 MpplExprListElemFields      mppl_expr_list_elem_fields_alloc(const MpplExprListElem *expr_list_elem);
 MpplExprListFields          mppl_expr_list_fields_alloc(const MpplExprList *expr_list);
 MpplRefIdentFields          mppl_ref_ident_fields_alloc(const MpplRefIdent *ref_ident);
-MpplEntireVarFields         mppl_entire_var_fields_alloc(const MpplEntireVar *entire_var);
-MpplIndexedVarFields        mppl_indexed_var_fields_alloc(const MpplIndexedVar *indexed_var);
+MpplIntegerLitExprFields    mppl_integer_lit_expr_fields_alloc(const MpplIntegerLitExpr *integer_lit_expr);
+MpplBooleanLitExprFields    mppl_boolean_lit_expr_fields_alloc(const MpplBooleanLitExpr *boolean_lit_expr);
+MpplStringLitExprFields     mppl_string_lit_expr_fields_alloc(const MpplStringLitExpr *string_lit_expr);
+MpplEntireVarExprFields     mppl_entire_var_fields_alloc(const MpplEntireVarExpr *entire_var);
+MpplIndexedVarExprFields    mppl_indexed_var_fields_alloc(const MpplIndexedVarExpr *indexed_var);
 MpplUnaryExprFields         mppl_unary_expr_fields_alloc(const MpplUnaryExpr *unary_expr);
 MpplBinaryExprFields        mppl_binary_expr_fields_alloc(const MpplBinaryExpr *binary_expr);
 MpplParenExprFields         mppl_paren_expr_fields_alloc(const MpplParenExpr *paren_expr);
@@ -752,8 +773,11 @@ void mppl_comp_stmt_fields_free(MpplCompStmtFields *fields);
 void mppl_expr_list_elem_fields_free(MpplExprListElemFields *fields);
 void mppl_expr_list_fields_free(MpplExprListFields *fields);
 void mppl_ref_ident_fields_free(MpplRefIdentFields *fields);
-void mppl_entire_var_fields_free(MpplEntireVarFields *fields);
-void mppl_indexed_var_fields_free(MpplIndexedVarFields *fields);
+void mppl_integer_lit_expr_fields_free(MpplIntegerLitExprFields *fields);
+void mppl_boolean_lit_expr_fields_free(MpplBooleanLitExprFields *fields);
+void mppl_string_lit_expr_fields_free(MpplStringLitExprFields *fields);
+void mppl_entire_var_fields_free(MpplEntireVarExprFields *fields);
+void mppl_indexed_var_fields_free(MpplIndexedVarExprFields *fields);
 void mppl_unary_expr_fields_free(MpplUnaryExprFields *fields);
 void mppl_binary_expr_fields_free(MpplBinaryExprFields *fields);
 void mppl_paren_expr_fields_free(MpplParenExprFields *fields);
@@ -767,7 +791,6 @@ MpplFmlParamSecKind mppl_fml_param_sec_kind(const AnyMpplFmlParamSec *fml_param_
 MpplStmtKind        mppl_stmt_kind(const AnyMpplStmt *stmt);
 MpplOutputKind      mppl_output_kind(const AnyMpplOutput *output);
 MpplOutputValueKind mppl_output_value_kind(const AnyMpplOutputValue *output_value);
-MpplVarKind         mppl_var_kind(const AnyMpplVar *var);
 MpplExprKind        mppl_expr_kind(const AnyMpplExpr *expr);
 MpplBindIdentKind   mppl_bind_ident_kind(const AnyMpplBindIdent *ident);
 
