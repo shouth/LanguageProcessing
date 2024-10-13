@@ -503,8 +503,8 @@ static void check_call_stmt(Checker *checker, const MpplCallStmt *call_stmt)
     MpplExprListFields  expr_list_fields  = mppl_expr_list_fields_alloc(act_params_fields.expr_list);
 
     if (proc_ty->params.count != expr_list_fields.count) {
-      unsigned long offset = call_stmt_fields.name->syntax.node.span.offset;
-      unsigned long length = call_stmt_fields.name->syntax.raw->node.span.text_length;
+      unsigned long offset = call_stmt_fields.act_params->syntax.node.span.offset;
+      unsigned long length = call_stmt_fields.act_params->syntax.raw->node.span.text_length;
       Report       *report = diag_mismatched_arguments_count_error(offset, length, proc_ty->params.count, expr_list_fields.count);
       vec_push(&checker->diags, &report, 1);
     }
