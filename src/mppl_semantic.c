@@ -174,8 +174,8 @@ void mppl_semantics_print(const MpplSemantics *semantics, const Source *source)
         printf("formal parameter");
         break;
 
-      case MPPL_SYNTAX_ENTIRE_VAR:
-      case MPPL_SYNTAX_INDEXED_VAR:
+      case MPPL_SYNTAX_ENTIRE_VAR_EXPR:
+      case MPPL_SYNTAX_INDEXED_VAR_EXPR:
       case MPPL_SYNTAX_CALL_STMT:
         /* do nothing */
         break;
