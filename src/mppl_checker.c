@@ -374,6 +374,8 @@ static void check_output_value(Checker *checker, const AnyMpplOutputValue *outpu
     if (value.kind != VALUE_ERROR && !ty_is_std(value.ty)) {
       error_non_standard_type(checker, output_value_fields.expr, value.ty);
     }
+
+    mppl_output_value_fields_free(&output_value_fields);
   }
 
   case MPPL_OUTPUT_VALUE_SYNTAX_BOGUS:
