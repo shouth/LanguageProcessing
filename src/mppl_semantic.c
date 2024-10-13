@@ -73,7 +73,7 @@ static void handle_syntax(MpplSemanticsBuilder *builder, const SyntaxTree *synta
 
 static MpplSemantics build(MpplSemanticsBuilder *builder)
 {
-  unsigned long i;
+  unsigned long i, j;
   HashMapEntry  entry;
 
   MpplSemantics semantics;
@@ -91,13 +91,16 @@ static MpplSemantics build(MpplSemanticsBuilder *builder)
     if (hashmap_entry(&builder->usage, &offset, &entry)) {
       binding->refs.ptr   = hashmap_value(&builder->usage, &entry)->ptr;
       binding->refs.count = hashmap_value(&builder->usage, &entry)->count;
+
+      for (j = 0; j < binding->refs.count; ++j) {
+        unsigned long ref = binding->refs.ptr[j];
+        hashmap_entry(&semantics.ref, &ref, &entry);
+        hashmap_occupy(&semantics.ref, &entry, &ref);
+        *hashmap_value(&semantics.ref, &entry) = binding;
+      }
     } else {
       slice_alloc(&binding->refs, 0);
     }
-
-    hashmap_entry(&semantics.ref, &offset, &entry);
-    hashmap_occupy(&semantics.ref, &entry, &offset);
-    *hashmap_value(&semantics.ref, &entry) = binding;
   }
 
   semantics.unresolved.ptr   = builder->unresolved.ptr;
