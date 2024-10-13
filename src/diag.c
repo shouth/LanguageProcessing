@@ -129,7 +129,7 @@ char *mppl_ty_to_string(const MpplTy *ty)
   }
 
   length = print_mppl_ty(buffer, ty);
-  slice_alloc(&result, length);
+  slice_alloc(&result, length + 1);
   rewind(buffer);
   fread(result.ptr, 1, length, buffer);
   result.ptr[length] = '\0';
