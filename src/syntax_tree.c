@@ -569,12 +569,12 @@ int syntax_event_next(SyntaxEvent *self)
 
   case SYNTAX_EVENT_LEAVE:
     if (self->syntax == self->start) {
-      parent = self->syntax->node.parent;
-      index  = self->syntax->raw->node.index + 1;
-    } else {
       self->kind = SYNTAX_EVENT_NULL;
       return 0;
     }
+
+    parent = self->syntax->node.parent;
+    index  = self->syntax->raw->node.index + 1;
     break;
   }
 
