@@ -14,6 +14,7 @@ static void ty_free(MpplTy *ty)
 {
   if (ty) {
     switch (ty->kind) {
+    case MPPL_TY_ERROR:
     case MPPL_TY_INTEGER:
     case MPPL_TY_BOOLEAN:
     case MPPL_TY_CHAR:
@@ -33,6 +34,12 @@ static void ty_free(MpplTy *ty)
     }
     }
   }
+}
+
+const MpplTy *mppl_ty_error(void)
+{
+  static const MpplTy ty = { MPPL_TY_ERROR };
+  return &ty;
 }
 
 const MpplTy *mppl_ty_integer(void)

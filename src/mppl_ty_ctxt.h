@@ -7,6 +7,7 @@
 #include "util.h"
 
 typedef enum {
+  MPPL_TY_ERROR,
   MPPL_TY_INTEGER,
   MPPL_TY_BOOLEAN,
   MPPL_TY_CHAR,
@@ -35,6 +36,7 @@ struct MpplProcTy {
   Slice(const MpplTy *) params;
 };
 
+const MpplTy *mppl_ty_error(void);
 const MpplTy *mppl_ty_integer(void);
 const MpplTy *mppl_ty_boolean(void);
 const MpplTy *mppl_ty_char(void);
