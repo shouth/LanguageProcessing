@@ -29,6 +29,7 @@ struct Checker {
   const MpplSemantics *semantics;
   MpplTyCtxt          *ctxt;
   Vec(Report *) diags;
+  const RawSyntaxToken *proc_name;
 };
 
 static int ty_is_std(const MpplTy *ty)
@@ -433,6 +434,12 @@ static void check_proc_heading(Checker *checker, const MpplProcHeading *proc_hea
     set_ty_to_bind(checker, ty, proc_heading_fields.name);
   }
 
+  {
+    MpplBindIdentFields bind_ident_fields = mppl_bind_ident_fields_alloc(proc_heading_fields.name);
+    checker->proc_name                    = bind_ident_fields.ident->raw;
+    mppl_bind_ident_fields_free(&bind_ident_fields);
+  }
+
   vec_free(&param_tys);
   syntax_event_free(&event);
   mppl_proc_heading_fields_free(&proc_heading_fields);
@@ -496,29 +503,42 @@ static void check_call_stmt(Checker *checker, const MpplCallStmt *call_stmt)
   const MpplTy *ty = get_ty_from_ref(checker, call_stmt_fields.name);
 
   if (ty->kind == MPPL_TY_PROC) {
-    unsigned long     i;
+    unsigned long      i;
+    HashMapEntry       entry;
+    const MpplBinding *binding;
+
     const MpplProcTy *proc_ty = (const MpplProcTy *) ty;
 
+    MpplRefIdentFields  ref_ident_fields  = mppl_ref_ident_fields_alloc(call_stmt_fields.name);
     MpplActParamsFields act_params_fields = mppl_act_params_fields_alloc(call_stmt_fields.act_params);
     MpplExprListFields  expr_list_fields  = mppl_expr_list_fields_alloc(act_params_fields.expr_list);
 
-    if (proc_ty->params.count != expr_list_fields.count) {
+    hashmap_entry(&checker->semantics->ref, &ref_ident_fields.ident->node.span.offset, &entry);
+    binding = *hashmap_value(&checker->semantics->ref, &entry);
+
+    if (checker->proc_name == binding->binding->raw) {
+      unsigned long offset = ref_ident_fields.ident->node.span.offset;
+      unsigned long length = ref_ident_fields.ident->raw->node.span.text_length;
+      Report       *report = diag_recursive_call_error(offset, length, ref_ident_fields.ident->raw->text);
+      vec_push(&checker->diags, &report, 1);
+    } else if (proc_ty->params.count != expr_list_fields.count) {
       unsigned long offset = call_stmt_fields.act_params->syntax.node.span.offset;
       unsigned long length = call_stmt_fields.act_params->syntax.raw->node.span.text_length;
       Report       *report = diag_mismatched_arguments_count_error(offset, length, proc_ty->params.count, expr_list_fields.count);
       vec_push(&checker->diags, &report, 1);
-    }
+    } else {
+      for (i = 0; i < expr_list_fields.count; ++i) {
+        MpplExprListElemFields elem_fields = mppl_expr_list_elem_fields_alloc(expr_list_fields.ptr[i]);
 
-    for (i = 0; i < expr_list_fields.count; ++i) {
-      MpplExprListElemFields elem_fields = mppl_expr_list_elem_fields_alloc(expr_list_fields.ptr[i]);
-
-      Value arg = check_expr(checker, elem_fields.expr);
-      if (proc_ty->params.count == expr_list_fields.count && arg.kind != VALUE_ERROR && arg.ty != proc_ty->params.ptr[i]) {
-        error_mismathced_type(checker, elem_fields.expr, proc_ty->params.ptr[i], arg.ty);
+        Value arg = check_expr(checker, elem_fields.expr);
+        if (proc_ty->params.count == expr_list_fields.count && arg.kind != VALUE_ERROR && arg.ty != proc_ty->params.ptr[i]) {
+          error_mismathced_type(checker, elem_fields.expr, proc_ty->params.ptr[i], arg.ty);
+        }
+        mppl_expr_list_elem_fields_free(&elem_fields);
       }
-      mppl_expr_list_elem_fields_free(&elem_fields);
     }
 
+    mppl_ref_ident_fields_free(&ref_ident_fields);
     mppl_expr_list_fields_free(&expr_list_fields);
     mppl_act_params_fields_free(&act_params_fields);
   } else {
@@ -630,6 +650,16 @@ static void check_syntax(Checker *checker, const SyntaxTree *syntax)
 
       case MPPL_SYNTAX_OUTPUTS:
         check_outputs(checker, (const MpplOutputs *) event.syntax);
+        break;
+
+      default:
+        /* do nothing */
+        break;
+      }
+    } else {
+      switch (event.syntax->raw->node.kind) {
+      case MPPL_SYNTAX_PROC_BODY:
+        checker->proc_name = NULL;
         break;
 
       default:
