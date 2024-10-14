@@ -307,6 +307,8 @@ const char *mppl_syntax_kind_to_string(MpplSyntaxKind kind)
     return "OUTPUT_LIST";
   case MPPL_SYNTAX_OUTPUTS:
     return "OUTPUTS";
+  case MPPL_SYNTAX_OUTPUT_VALUE_FIELD_WIDTH:
+    return "OUTPUT_VALUE_FIELD_WIDTH";
   case MPPL_SYNTAX_OUTPUT_VALUE:
     return "OUTPUT_VALUE";
   case MPPL_SYNTAX_COMP_STMT:
