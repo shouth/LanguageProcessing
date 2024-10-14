@@ -256,6 +256,13 @@ Report *diag_non_array_subscript_error(unsigned long offset, unsigned long lengt
   return report;
 }
 
+Report *diag_recursive_call_error(unsigned long offset, unsigned long length, const char *name)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "recursive call to `%s`", name);
+  report_annotation(report, offset, offset + length, "recursive call is not allowed");
+  return report;
+}
+
 Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const MpplTy *expected, const MpplTy *found)
 {
   char   *expected_str = mppl_ty_to_string(expected);

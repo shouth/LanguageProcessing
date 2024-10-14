@@ -31,6 +31,7 @@ Report *diag_not_defined_error(unsigned long offset, unsigned long length, const
 
 Report *diag_zero_sized_array_error(unsigned long offset, unsigned long length);
 Report *diag_non_array_subscript_error(unsigned long offset, unsigned long length);
+Report *diag_recursive_call_error(unsigned long offset, unsigned long length, const char *name);
 Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const MpplTy *expected, const MpplTy *found);
 Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const MpplTy *found);
 Report *diag_non_lvalue_assignment_error(unsigned long offset, unsigned long length);
