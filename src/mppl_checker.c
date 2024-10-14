@@ -369,29 +369,6 @@ static Value check_expr(Checker *checker, const AnyMpplExpr *expr)
   return value;
 }
 
-static void check_output_value(Checker *checker, const AnyMpplOutputValue *output_value)
-{
-  switch (mppl_output_value_kind(output_value)) {
-  case MPPL_OUTPUT_VALUE_SYNTAX: {
-    MpplOutputValueFields output_value_fields = mppl_output_value_fields_alloc((const MpplOutputValue *) output_value);
-
-    Value value = check_expr(checker, output_value_fields.expr);
-    if (!ty_is_std(value.ty)) {
-      error_non_standard_type(checker, output_value_fields.expr, value.ty);
-    }
-
-    mppl_output_value_fields_free(&output_value_fields);
-  }
-
-  case MPPL_OUTPUT_VALUE_SYNTAX_BOGUS:
-    /* do nothing */
-    break;
-
-  default:
-    unreachable();
-  }
-}
-
 static void check_var_decl(Checker *checker, const MpplVarDecl *var_decl)
 {
   MpplVarDeclFields var_decl_fields = mppl_var_decl_fields_alloc(var_decl);
@@ -591,27 +568,32 @@ static void check_outputs(Checker *checker, const MpplOutputs *outputs)
 
   for (i = 0; i < output_list_fields.count; ++i) {
     MpplOutputListElemFields elem_fields = mppl_output_list_elem_fields_alloc(output_list_fields.ptr[i]);
+    switch (mppl_output_value_kind(elem_fields.output_value)) {
+    case MPPL_OUTPUT_VALUE_SYNTAX: {
+      MpplOutputValueFields output_value_fields = mppl_output_value_fields_alloc((const MpplOutputValue *) elem_fields.output_value);
 
-    switch (mppl_output_kind(elem_fields.output)) {
-    case MPPL_OUTPUT_SYNTAX_EXPR: {
-      Value value = check_expr(checker, &elem_fields.output->expr);
-      if (!ty_is_std(value.ty) && value.ty->kind != TY_STRING) {
-        const SyntaxTree *syntax = (const SyntaxTree *) &elem_fields.output->expr;
-        if (value.ty->kind != TY_ERROR) {
-          unsigned long offset = syntax->node.span.offset;
-          unsigned long length = syntax->raw->node.span.text_length;
-          Report       *report = diag_invalid_output_error(offset, length);
+      Value value = check_expr(checker, output_value_fields.expr);
+      if (!ty_is_std(value.ty)) {
+        if (value.ty->kind != TY_STRING) {
+          error_non_standard_type(checker, output_value_fields.expr, value.ty);
+        } else if (output_value_fields.field_width) {
+          unsigned long offset = output_value_fields.field_width->syntax.node.span.offset;
+          unsigned long length = output_value_fields.field_width->syntax.raw->node.span.text_length;
+          Report       *report = diag_invalid_output_value_error(offset, length);
           vec_push(&checker->diags, &report, 1);
         }
       }
-      break;
+
+      mppl_output_value_fields_free(&output_value_fields);
     }
 
-    case MPPL_OUTPUT_SYNTAX_OUTPUT_VALUE:
-      check_output_value(checker, &elem_fields.output->output_value);
+    case MPPL_OUTPUT_VALUE_SYNTAX_BOGUS:
+      /* do nothing */
       break;
-    }
 
+    default:
+      unreachable();
+    }
     mppl_output_list_elem_fields_free(&elem_fields);
   }
 

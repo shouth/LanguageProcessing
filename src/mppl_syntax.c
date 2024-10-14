@@ -492,17 +492,6 @@ static int output_value_kind(const SyntaxTree *syntax)
   }
 }
 
-static int output_kind(const SyntaxTree *syntax)
-{
-  if (expr_kind(syntax) != -1) {
-    return MPPL_OUTPUT_SYNTAX_EXPR;
-  } else if (output_value_kind(syntax) != -1) {
-    return MPPL_OUTPUT_SYNTAX_OUTPUT_VALUE;
-  } else {
-    return -1;
-  }
-}
-
 static int bind_ident_kind(const SyntaxTree *syntax)
 {
   switch (syntax->raw->node.kind) {
@@ -543,11 +532,6 @@ MpplFmlParamSecKind mppl_fml_param_sec_kind(const AnyMpplFmlParamSec *fml_param_
 MpplStmtKind mppl_stmt_kind(const AnyMpplStmt *stmt)
 {
   return stmt_kind((const SyntaxTree *) stmt);
-}
-
-MpplOutputKind mppl_output_kind(const AnyMpplOutput *output)
-{
-  return output_kind((const SyntaxTree *) output);
 }
 
 MpplOutputValueKind mppl_output_value_kind(const AnyMpplOutputValue *output_value)
@@ -891,8 +875,8 @@ MpplOutputStmtFields mppl_output_stmt_fields_alloc(const MpplOutputStmt *output_
 MpplOutputListElemFields mppl_output_list_elem_fields_alloc(const MpplOutputListElem *output_list_elem)
 {
   MpplOutputListElemFields fields;
-  fields.output      = (void *) syntax_tree_child_tree((const SyntaxTree *) output_list_elem, 0);
-  fields.comma_token = syntax_tree_child_token((const SyntaxTree *) output_list_elem, 1);
+  fields.output_value = (void *) syntax_tree_child_tree((const SyntaxTree *) output_list_elem, 0);
+  fields.comma_token  = syntax_tree_child_token((const SyntaxTree *) output_list_elem, 1);
   return fields;
 }
 
@@ -917,12 +901,19 @@ MpplOutputsFields mppl_outputs_fields_alloc(const MpplOutputs *outputs)
   return fields;
 }
 
+MpplOutputValueFieldWidthFields mppl_output_value_field_width_alloc(const MpplOutputValue *output_value)
+{
+  MpplOutputValueFieldWidthFields fields;
+  fields.colon_token = syntax_tree_child_token((const SyntaxTree *) output_value, 0);
+  fields.field_width = syntax_tree_child_token((const SyntaxTree *) output_value, 1);
+  return fields;
+}
+
 MpplOutputValueFields mppl_output_value_fields_alloc(const MpplOutputValue *output_value)
 {
   MpplOutputValueFields fields;
   fields.expr        = (void *) syntax_tree_child_tree((const SyntaxTree *) output_value, 0);
-  fields.colon_token = syntax_tree_child_token((const SyntaxTree *) output_value, 1);
-  fields.number_lit  = syntax_tree_child_token((const SyntaxTree *) output_value, 2);
+  fields.field_width = (void *) syntax_tree_child_tree((const SyntaxTree *) output_value, 1);
   return fields;
 }
 
@@ -1357,7 +1348,7 @@ void mppl_output_stmt_fields_free(MpplOutputStmtFields *fields)
 void mppl_output_list_elem_fields_free(MpplOutputListElemFields *fields)
 {
   if (fields) {
-    syntax_tree_free((void *) fields->output);
+    syntax_tree_free((void *) fields->output_value);
     syntax_token_free(fields->comma_token);
   }
 }
@@ -1382,12 +1373,19 @@ void mppl_outputs_fields_free(MpplOutputsFields *fields)
   }
 }
 
+void mppl_output_value_field_width_fields_free(MpplOutputValueFieldWidthFields *fields)
+{
+  if (fields) {
+    syntax_token_free(fields->colon_token);
+    syntax_token_free(fields->field_width);
+  }
+}
+
 void mppl_output_value_fields_free(MpplOutputValueFields *fields)
 {
   if (fields) {
     syntax_tree_free((void *) fields->expr);
-    syntax_token_free(fields->colon_token);
-    syntax_token_free(fields->number_lit);
+    syntax_tree_free((void *) fields->field_width);
   }
 }
 

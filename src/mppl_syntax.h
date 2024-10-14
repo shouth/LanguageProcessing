@@ -104,6 +104,7 @@ typedef enum {
   MPPL_SYNTAX_OUTPUT_LIST_ELEM,
   MPPL_SYNTAX_OUTPUT_LIST,
   MPPL_SYNTAX_OUTPUTS,
+  MPPL_SYNTAX_OUTPUT_VALUE_FIELD_WIDTH,
   MPPL_SYNTAX_OUTPUT_VALUE,
   MPPL_SYNTAX_COMP_STMT,
   MPPL_SYNTAX_EXPR_LIST_ELEM,
@@ -207,11 +208,6 @@ typedef enum {
 } MpplExprKind;
 
 typedef enum {
-  MPPL_OUTPUT_SYNTAX_EXPR,
-  MPPL_OUTPUT_SYNTAX_OUTPUT_VALUE
-} MpplOutputKind;
-
-typedef enum {
   MPPL_OUTPUT_VALUE_SYNTAX,
   MPPL_OUTPUT_VALUE_SYNTAX_BOGUS
 } MpplOutputValueKind;
@@ -265,6 +261,7 @@ typedef MpplSyntax MpplOutputStmt;
 typedef MpplSyntax MpplOutputListElem;
 typedef MpplSyntax MpplOutputList;
 typedef MpplSyntax MpplOutputs;
+typedef MpplSyntax MpplOutputValueFieldWidth;
 typedef MpplSyntax MpplOutputValue;
 typedef MpplSyntax MpplCompStmt;
 typedef MpplSyntax MpplExprListElem;
@@ -295,57 +292,57 @@ typedef union AnyMpplType        AnyMpplType;
 typedef union AnyMpplVarDecl     AnyMpplVarDecl;
 typedef union AnyMpplFmlParamSec AnyMpplFmlParamSec;
 typedef union AnyMpplStmt        AnyMpplStmt;
-typedef union AnyMpplOutput      AnyMpplOutput;
 typedef union AnyMpplOutputValue AnyMpplOutputValue;
 typedef union AnyMpplExpr        AnyMpplExpr;
 typedef union AnyMpplBindIdent   AnyMpplBindIdent;
 
-typedef struct MpplRootFields              MpplRootFields;
-typedef struct MpplEofFields               MpplEofFields;
-typedef struct MpplProgramFields           MpplProgramFields;
-typedef struct MpplBindIdentListElemFields MpplBindIdentListElemFields;
-typedef struct MpplBindIdentFields         MpplBindIdentFields;
-typedef struct MpplVarDeclPartFields       MpplVarDeclPartFields;
-typedef struct MpplVarDeclListElemFields   MpplVarDeclListElemFields;
-typedef struct MpplVarDeclFields           MpplVarDeclFields;
-typedef struct MpplIntegerTypeFields       MpplIntegerTypeFields;
-typedef struct MpplCharTypeFields          MpplCharTypeFields;
-typedef struct MpplBooleanTypeFields       MpplBooleanTypeFields;
-typedef struct MpplArrayTypeFields         MpplArrayTypeFields;
-typedef struct MpplProcDeclPartFields      MpplProcDeclPartFields;
-typedef struct MpplProcHeadingFields       MpplProcHeadingFields;
-typedef struct MpplProcBodyFields          MpplProcBodyFields;
-typedef struct MpplProcDeclFields          MpplProcDeclFields;
-typedef struct MpplFmlParamListElemFields  MpplFmlParamListElemFields;
-typedef struct MpplFmlParamsFields         MpplFmlParamsFields;
-typedef struct MpplFmlParamSecFields       MpplFmlParamSecFields;
-typedef struct MpplStmtListElemFields      MpplStmtListElemFields;
-typedef struct MpplAssignStmtFields        MpplAssignStmtFields;
-typedef struct MpplIfStmtFields            MpplIfStmtFields;
-typedef struct MpplElseClauseFields        MpplElseClauseFields;
-typedef struct MpplWhileStmtFields         MpplWhileStmtFields;
-typedef struct MpplBreakStmtFields         MpplBreakStmtFields;
-typedef struct MpplCallStmtFields          MpplCallStmtFields;
-typedef struct MpplActParamsFields         MpplActParamsFields;
-typedef struct MpplReturnStmtFields        MpplReturnStmtFields;
-typedef struct MpplInputStmtFields         MpplInputStmtFields;
-typedef struct MpplInputsFields            MpplInputsFields;
-typedef struct MpplOutputStmtFields        MpplOutputStmtFields;
-typedef struct MpplOutputListElemFields    MpplOutputListElemFields;
-typedef struct MpplOutputsFields           MpplOutputsFields;
-typedef struct MpplOutputValueFields       MpplOutputValueFields;
-typedef struct MpplCompStmtFields          MpplCompStmtFields;
-typedef struct MpplExprListElemFields      MpplExprListElemFields;
-typedef struct MpplRefIdentFields          MpplRefIdentFields;
-typedef struct MpplIntegerLitExprFields    MpplIntegerLitExprFields;
-typedef struct MpplBooleanLitExprFields    MpplBooleanLitExprFields;
-typedef struct MpplStringLitExprFields     MpplStringLitExprFields;
-typedef struct MpplEntireVarExprFields     MpplEntireVarExprFields;
-typedef struct MpplIndexedVarExprFields    MpplIndexedVarExprFields;
-typedef struct MpplUnaryExprFields         MpplUnaryExprFields;
-typedef struct MpplBinaryExprFields        MpplBinaryExprFields;
-typedef struct MpplParenExprFields         MpplParenExprFields;
-typedef struct MpplCastExprFields          MpplCastExprFields;
+typedef struct MpplRootFields                  MpplRootFields;
+typedef struct MpplEofFields                   MpplEofFields;
+typedef struct MpplProgramFields               MpplProgramFields;
+typedef struct MpplBindIdentListElemFields     MpplBindIdentListElemFields;
+typedef struct MpplBindIdentFields             MpplBindIdentFields;
+typedef struct MpplVarDeclPartFields           MpplVarDeclPartFields;
+typedef struct MpplVarDeclListElemFields       MpplVarDeclListElemFields;
+typedef struct MpplVarDeclFields               MpplVarDeclFields;
+typedef struct MpplIntegerTypeFields           MpplIntegerTypeFields;
+typedef struct MpplCharTypeFields              MpplCharTypeFields;
+typedef struct MpplBooleanTypeFields           MpplBooleanTypeFields;
+typedef struct MpplArrayTypeFields             MpplArrayTypeFields;
+typedef struct MpplProcDeclPartFields          MpplProcDeclPartFields;
+typedef struct MpplProcHeadingFields           MpplProcHeadingFields;
+typedef struct MpplProcBodyFields              MpplProcBodyFields;
+typedef struct MpplProcDeclFields              MpplProcDeclFields;
+typedef struct MpplFmlParamListElemFields      MpplFmlParamListElemFields;
+typedef struct MpplFmlParamsFields             MpplFmlParamsFields;
+typedef struct MpplFmlParamSecFields           MpplFmlParamSecFields;
+typedef struct MpplStmtListElemFields          MpplStmtListElemFields;
+typedef struct MpplAssignStmtFields            MpplAssignStmtFields;
+typedef struct MpplIfStmtFields                MpplIfStmtFields;
+typedef struct MpplElseClauseFields            MpplElseClauseFields;
+typedef struct MpplWhileStmtFields             MpplWhileStmtFields;
+typedef struct MpplBreakStmtFields             MpplBreakStmtFields;
+typedef struct MpplCallStmtFields              MpplCallStmtFields;
+typedef struct MpplActParamsFields             MpplActParamsFields;
+typedef struct MpplReturnStmtFields            MpplReturnStmtFields;
+typedef struct MpplInputStmtFields             MpplInputStmtFields;
+typedef struct MpplInputsFields                MpplInputsFields;
+typedef struct MpplOutputStmtFields            MpplOutputStmtFields;
+typedef struct MpplOutputListElemFields        MpplOutputListElemFields;
+typedef struct MpplOutputsFields               MpplOutputsFields;
+typedef struct MpplOutputValueFieldWidthFields MpplOutputValueFieldWidthFields;
+typedef struct MpplOutputValueFields           MpplOutputValueFields;
+typedef struct MpplCompStmtFields              MpplCompStmtFields;
+typedef struct MpplExprListElemFields          MpplExprListElemFields;
+typedef struct MpplRefIdentFields              MpplRefIdentFields;
+typedef struct MpplIntegerLitExprFields        MpplIntegerLitExprFields;
+typedef struct MpplBooleanLitExprFields        MpplBooleanLitExprFields;
+typedef struct MpplStringLitExprFields         MpplStringLitExprFields;
+typedef struct MpplEntireVarExprFields         MpplEntireVarExprFields;
+typedef struct MpplIndexedVarExprFields        MpplIndexedVarExprFields;
+typedef struct MpplUnaryExprFields             MpplUnaryExprFields;
+typedef struct MpplBinaryExprFields            MpplBinaryExprFields;
+typedef struct MpplParenExprFields             MpplParenExprFields;
+typedef struct MpplCastExprFields              MpplCastExprFields;
 
 typedef Slice(AnyMpplDeclPart *) MpplDeclPartListFields;
 typedef Slice(MpplBindIdentListElem *) MpplBindIdentListFields;
@@ -597,8 +594,8 @@ struct MpplOutputStmtFields {
 };
 
 struct MpplOutputListElemFields {
-  AnyMpplOutput *output;
-  SyntaxToken   *comma_token;
+  AnyMpplOutputValue *output_value;
+  SyntaxToken        *comma_token;
 };
 
 struct MpplOutputsFields {
@@ -607,10 +604,14 @@ struct MpplOutputsFields {
   SyntaxToken    *rparen_token;
 };
 
-struct MpplOutputValueFields {
-  AnyMpplExpr *expr;
+struct MpplOutputValueFieldWidthFields {
   SyntaxToken *colon_token;
-  SyntaxToken *number_lit;
+  SyntaxToken *field_width;
+};
+
+struct MpplOutputValueFields {
+  AnyMpplExpr               *expr;
+  MpplOutputValueFieldWidth *field_width;
 };
 
 struct MpplCompStmtFields {
@@ -675,59 +676,60 @@ struct MpplCastExprFields {
   SyntaxToken *rparen_token;
 };
 
-MpplRootFields              mppl_root_fields_alloc(const MpplRoot *root);
-MpplProgramFields           mppl_program_fields_alloc(const MpplProgram *program);
-MpplEofFields               mppl_eof_fields_alloc(const MpplEof *eof);
-MpplDeclPartListFields      mppl_decl_part_list_fields_alloc(const MpplDeclPartList *decl_part_list);
-MpplBindIdentListElemFields mppl_bind_ident_list_elem_fields_alloc(const MpplBindIdentListElem *bind_ident_list_elem);
-MpplBindIdentListFields     mppl_bind_ident_list_fields_alloc(const MpplBindIdentList *bind_ident_list);
-MpplBindIdentFields         mppl_bind_ident_fields_alloc(const MpplBindIdent *bind_ident);
-MpplVarDeclPartFields       mppl_var_decl_part_fields_alloc(const MpplVarDeclPart *var_decl_part);
-MpplVarDeclListElemFields   mppl_var_decl_list_elem_fields_alloc(const MpplVarDeclListElem *var_decl_list_elem);
-MpplVarDeclListFields       mppl_var_decl_list_fields_alloc(const MpplVarDeclList *var_decl_list);
-MpplVarDeclFields           mppl_var_decl_fields_alloc(const MpplVarDecl *var_decl);
-MpplIntegerTypeFields       mppl_integer_type_fields_alloc(const MpplArrayType *integer_type);
-MpplCharTypeFields          mppl_char_type_fields_alloc(const MpplArrayType *char_type);
-MpplBooleanTypeFields       mppl_boolean_type_fields_alloc(const MpplArrayType *boolean_type);
-MpplArrayTypeFields         mppl_array_type_fields_alloc(const MpplArrayType *array_type);
-MpplProcDeclPartFields      mppl_proc_decl_part_fields_alloc(const MpplProcDeclPart *proc_decl_part);
-MpplProcHeadingFields       mppl_proc_heading_fields_alloc(const MpplProcHeading *proc_heading);
-MpplProcBodyFields          mppl_proc_body_fields_alloc(const MpplProcBody *proc_body);
-MpplProcDeclFields          mppl_proc_decl_fields_alloc(const MpplProcDecl *proc_decl);
-MpplFmlParamListElemFields  mppl_fml_param_list_elem_fields_alloc(const MpplFmlParamListElem *fml_param_list_elem);
-MpplFmlParamListFields      mppl_fml_param_list_fields_alloc(const MpplFmlParamList *fml_param_list);
-MpplFmlParamsFields         mppl_fml_params_fields_alloc(const MpplFmlParams *fml_params);
-MpplFmlParamSecFields       mppl_fml_param_sec_fields_alloc(const MpplFmlParamSec *fml_param_sec);
-MpplStmtListElemFields      mppl_stmt_list_elem_fields_alloc(const MpplStmtListElem *stmt_list_elem);
-MpplStmtListFields          mppl_stmt_list_fields_alloc(const MpplStmtList *stmt_list);
-MpplAssignStmtFields        mppl_assign_stmt_fields_alloc(const MpplAssignStmt *assign_stmt);
-MpplIfStmtFields            mppl_if_stmt_fields_alloc(const MpplIfStmt *if_stmt);
-MpplElseClauseFields        mppl_else_clause_fields_alloc(const MpplElseClause *else_clause);
-MpplWhileStmtFields         mppl_while_stmt_fields_alloc(const MpplWhileStmt *while_stmt);
-MpplBreakStmtFields         mppl_break_stmt_fields_alloc(const MpplBreakStmt *break_stmt);
-MpplCallStmtFields          mppl_call_stmt_fields_alloc(const MpplCallStmt *call_stmt);
-MpplActParamsFields         mppl_act_params_fields_alloc(const MpplActParams *act_params);
-MpplReturnStmtFields        mppl_return_stmt_fields_alloc(const MpplReturnStmt *return_stmt);
-MpplInputStmtFields         mppl_input_stmt_fields_alloc(const MpplInputStmt *input_stmt);
-MpplInputsFields            mppl_inputs_fields_alloc(const MpplInputs *inputs);
-MpplOutputStmtFields        mppl_output_stmt_fields_alloc(const MpplOutputStmt *output_stmt);
-MpplOutputListElemFields    mppl_output_list_elem_fields_alloc(const MpplOutputListElem *output_list_elem);
-MpplOutputListFields        mppl_output_list_fields_alloc(const MpplOutputList *output_list);
-MpplOutputsFields           mppl_outputs_fields_alloc(const MpplOutputs *outputs);
-MpplOutputValueFields       mppl_output_value_fields_alloc(const MpplOutputValue *output_value);
-MpplCompStmtFields          mppl_comp_stmt_fields_alloc(const MpplCompStmt *comp_stmt);
-MpplExprListElemFields      mppl_expr_list_elem_fields_alloc(const MpplExprListElem *expr_list_elem);
-MpplExprListFields          mppl_expr_list_fields_alloc(const MpplExprList *expr_list);
-MpplRefIdentFields          mppl_ref_ident_fields_alloc(const MpplRefIdent *ref_ident);
-MpplIntegerLitExprFields    mppl_integer_lit_expr_fields_alloc(const MpplIntegerLitExpr *integer_lit_expr);
-MpplBooleanLitExprFields    mppl_boolean_lit_expr_fields_alloc(const MpplBooleanLitExpr *boolean_lit_expr);
-MpplStringLitExprFields     mppl_string_lit_expr_fields_alloc(const MpplStringLitExpr *string_lit_expr);
-MpplEntireVarExprFields     mppl_entire_var_expr_fields_alloc(const MpplEntireVarExpr *entire_var);
-MpplIndexedVarExprFields    mppl_indexed_var_expr_fields_alloc(const MpplIndexedVarExpr *indexed_var);
-MpplUnaryExprFields         mppl_unary_expr_fields_alloc(const MpplUnaryExpr *unary_expr);
-MpplBinaryExprFields        mppl_binary_expr_fields_alloc(const MpplBinaryExpr *binary_expr);
-MpplParenExprFields         mppl_paren_expr_fields_alloc(const MpplParenExpr *paren_expr);
-MpplCastExprFields          mppl_cast_expr_fields_alloc(const MpplCastExpr *cast_expr);
+MpplRootFields                  mppl_root_fields_alloc(const MpplRoot *root);
+MpplProgramFields               mppl_program_fields_alloc(const MpplProgram *program);
+MpplEofFields                   mppl_eof_fields_alloc(const MpplEof *eof);
+MpplDeclPartListFields          mppl_decl_part_list_fields_alloc(const MpplDeclPartList *decl_part_list);
+MpplBindIdentListElemFields     mppl_bind_ident_list_elem_fields_alloc(const MpplBindIdentListElem *bind_ident_list_elem);
+MpplBindIdentListFields         mppl_bind_ident_list_fields_alloc(const MpplBindIdentList *bind_ident_list);
+MpplBindIdentFields             mppl_bind_ident_fields_alloc(const MpplBindIdent *bind_ident);
+MpplVarDeclPartFields           mppl_var_decl_part_fields_alloc(const MpplVarDeclPart *var_decl_part);
+MpplVarDeclListElemFields       mppl_var_decl_list_elem_fields_alloc(const MpplVarDeclListElem *var_decl_list_elem);
+MpplVarDeclListFields           mppl_var_decl_list_fields_alloc(const MpplVarDeclList *var_decl_list);
+MpplVarDeclFields               mppl_var_decl_fields_alloc(const MpplVarDecl *var_decl);
+MpplIntegerTypeFields           mppl_integer_type_fields_alloc(const MpplArrayType *integer_type);
+MpplCharTypeFields              mppl_char_type_fields_alloc(const MpplArrayType *char_type);
+MpplBooleanTypeFields           mppl_boolean_type_fields_alloc(const MpplArrayType *boolean_type);
+MpplArrayTypeFields             mppl_array_type_fields_alloc(const MpplArrayType *array_type);
+MpplProcDeclPartFields          mppl_proc_decl_part_fields_alloc(const MpplProcDeclPart *proc_decl_part);
+MpplProcHeadingFields           mppl_proc_heading_fields_alloc(const MpplProcHeading *proc_heading);
+MpplProcBodyFields              mppl_proc_body_fields_alloc(const MpplProcBody *proc_body);
+MpplProcDeclFields              mppl_proc_decl_fields_alloc(const MpplProcDecl *proc_decl);
+MpplFmlParamListElemFields      mppl_fml_param_list_elem_fields_alloc(const MpplFmlParamListElem *fml_param_list_elem);
+MpplFmlParamListFields          mppl_fml_param_list_fields_alloc(const MpplFmlParamList *fml_param_list);
+MpplFmlParamsFields             mppl_fml_params_fields_alloc(const MpplFmlParams *fml_params);
+MpplFmlParamSecFields           mppl_fml_param_sec_fields_alloc(const MpplFmlParamSec *fml_param_sec);
+MpplStmtListElemFields          mppl_stmt_list_elem_fields_alloc(const MpplStmtListElem *stmt_list_elem);
+MpplStmtListFields              mppl_stmt_list_fields_alloc(const MpplStmtList *stmt_list);
+MpplAssignStmtFields            mppl_assign_stmt_fields_alloc(const MpplAssignStmt *assign_stmt);
+MpplIfStmtFields                mppl_if_stmt_fields_alloc(const MpplIfStmt *if_stmt);
+MpplElseClauseFields            mppl_else_clause_fields_alloc(const MpplElseClause *else_clause);
+MpplWhileStmtFields             mppl_while_stmt_fields_alloc(const MpplWhileStmt *while_stmt);
+MpplBreakStmtFields             mppl_break_stmt_fields_alloc(const MpplBreakStmt *break_stmt);
+MpplCallStmtFields              mppl_call_stmt_fields_alloc(const MpplCallStmt *call_stmt);
+MpplActParamsFields             mppl_act_params_fields_alloc(const MpplActParams *act_params);
+MpplReturnStmtFields            mppl_return_stmt_fields_alloc(const MpplReturnStmt *return_stmt);
+MpplInputStmtFields             mppl_input_stmt_fields_alloc(const MpplInputStmt *input_stmt);
+MpplInputsFields                mppl_inputs_fields_alloc(const MpplInputs *inputs);
+MpplOutputStmtFields            mppl_output_stmt_fields_alloc(const MpplOutputStmt *output_stmt);
+MpplOutputListElemFields        mppl_output_list_elem_fields_alloc(const MpplOutputListElem *output_list_elem);
+MpplOutputListFields            mppl_output_list_fields_alloc(const MpplOutputList *output_list);
+MpplOutputsFields               mppl_outputs_fields_alloc(const MpplOutputs *outputs);
+MpplOutputValueFieldWidthFields mppl_output_value_field_width_fields_alloc(const MpplOutputValueFieldWidth *output_value_field_width);
+MpplOutputValueFields           mppl_output_value_fields_alloc(const MpplOutputValue *output_value);
+MpplCompStmtFields              mppl_comp_stmt_fields_alloc(const MpplCompStmt *comp_stmt);
+MpplExprListElemFields          mppl_expr_list_elem_fields_alloc(const MpplExprListElem *expr_list_elem);
+MpplExprListFields              mppl_expr_list_fields_alloc(const MpplExprList *expr_list);
+MpplRefIdentFields              mppl_ref_ident_fields_alloc(const MpplRefIdent *ref_ident);
+MpplIntegerLitExprFields        mppl_integer_lit_expr_fields_alloc(const MpplIntegerLitExpr *integer_lit_expr);
+MpplBooleanLitExprFields        mppl_boolean_lit_expr_fields_alloc(const MpplBooleanLitExpr *boolean_lit_expr);
+MpplStringLitExprFields         mppl_string_lit_expr_fields_alloc(const MpplStringLitExpr *string_lit_expr);
+MpplEntireVarExprFields         mppl_entire_var_expr_fields_alloc(const MpplEntireVarExpr *entire_var);
+MpplIndexedVarExprFields        mppl_indexed_var_expr_fields_alloc(const MpplIndexedVarExpr *indexed_var);
+MpplUnaryExprFields             mppl_unary_expr_fields_alloc(const MpplUnaryExpr *unary_expr);
+MpplBinaryExprFields            mppl_binary_expr_fields_alloc(const MpplBinaryExpr *binary_expr);
+MpplParenExprFields             mppl_paren_expr_fields_alloc(const MpplParenExpr *paren_expr);
+MpplCastExprFields              mppl_cast_expr_fields_alloc(const MpplCastExpr *cast_expr);
 
 void mppl_root_fields_free(MpplRootFields *fields);
 void mppl_eof_fields_free(MpplEofFields *fields);
@@ -768,6 +770,7 @@ void mppl_output_stmt_fields_free(MpplOutputStmtFields *fields);
 void mppl_output_list_elem_fields_free(MpplOutputListElemFields *fields);
 void mppl_output_list_fields_free(MpplOutputListFields *fields);
 void mppl_outputs_fields_free(MpplOutputsFields *fields);
+void mppl_output_value_field_width_fields_free(MpplOutputValueFieldWidthFields *fields);
 void mppl_output_value_fields_free(MpplOutputValueFields *fields);
 void mppl_comp_stmt_fields_free(MpplCompStmtFields *fields);
 void mppl_expr_list_elem_fields_free(MpplExprListElemFields *fields);
@@ -789,7 +792,6 @@ MpplTypeKind        mppl_type_kind(const AnyMpplType *type);
 MpplVarDeclKind     mppl_var_decl_kind(const AnyMpplVarDecl *var_decl);
 MpplFmlParamSecKind mppl_fml_param_sec_kind(const AnyMpplFmlParamSec *fml_param_sec);
 MpplStmtKind        mppl_stmt_kind(const AnyMpplStmt *stmt);
-MpplOutputKind      mppl_output_kind(const AnyMpplOutput *output);
 MpplOutputValueKind mppl_output_value_kind(const AnyMpplOutputValue *output_value);
 MpplExprKind        mppl_expr_kind(const AnyMpplExpr *expr);
 MpplBindIdentKind   mppl_bind_ident_kind(const AnyMpplBindIdent *ident);

@@ -39,5 +39,6 @@ Report *diag_mismatched_arguments_count_error(unsigned long offset, unsigned lon
 Report *diag_non_procedure_invocation_error(unsigned long offset, unsigned long length);
 Report *diag_invalid_input_error(unsigned long offset, unsigned long length);
 Report *diag_invalid_output_error(unsigned long offset, unsigned long length);
+Report *diag_invalid_output_value_error(unsigned long offset, unsigned long length);
 
 #endif /* DIAGNOSTICS_H */

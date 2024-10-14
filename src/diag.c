@@ -317,3 +317,10 @@ Report *diag_invalid_output_error(unsigned long offset, unsigned long length)
   report_annotation(report, offset, offset + length, NULL);
   return report;
 }
+
+Report *diag_invalid_output_value_error(unsigned long offset, unsigned long length)
+{
+  Report *report = report_new(REPORT_KIND_ERROR, offset, "field width exists for string");
+  report_annotation(report, offset, offset + length, "field width can not be used with string");
+  return report;
+}

@@ -570,10 +570,15 @@ static void parse_output_value(Parser *p)
 {
   Checkpoint output_value = open(p);
   parse_expr(p);
-  if (eat(p, MPPL_SYNTAX_COLON_TOKEN)) {
+  if (check(p, MPPL_SYNTAX_COLON_TOKEN)) {
+    Checkpoint output_value_field_width = open(p);
+    expect(p, MPPL_SYNTAX_COLON_TOKEN);
     expect(p, MPPL_SYNTAX_INTEGER_LIT);
-    close(p, MPPL_SYNTAX_OUTPUT_VALUE, output_value);
+    close(p, MPPL_SYNTAX_OUTPUT_VALUE_FIELD_WIDTH, output_value_field_width);
+  } else {
+    null(p);
   }
+  close(p, MPPL_SYNTAX_OUTPUT_VALUE, output_value);
 }
 
 static void parse_output_list(Parser *p, const MpplTokenKindSet *recovery)
