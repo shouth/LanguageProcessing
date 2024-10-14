@@ -5,8 +5,8 @@
 
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
-#include "mppl_ty_ctxt.h"
 #include "report.h"
+#include "ty_ctxt.h"
 #include "util.h"
 
 typedef struct MpplLexResult MpplLexResult;
@@ -41,7 +41,7 @@ MpplResolveResult mppl_resolve(const MpplRoot *syntax);
 typedef struct MpplCheckResult MpplCheckResult;
 
 struct MpplCheckResult {
-  MpplTyCtxt *ctxt;
+  TyCtxt *ctxt;
   Slice(Report *) diags;
 };
 

@@ -5,8 +5,8 @@
 
 #include "diag.h"
 #include "mppl_syntax.h"
-#include "mppl_ty_ctxt.h"
 #include "report.h"
+#include "ty_ctxt.h"
 #include "util.h"
 
 /* utility */
@@ -72,36 +72,36 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
   return result.ptr;
 }
 
-unsigned long print_mppl_ty(FILE *buffer, const MpplTy *ty)
+unsigned long print_mppl_ty(FILE *buffer, const Ty *ty)
 {
   unsigned long length = 0;
   switch (ty->kind) {
-  case MPPL_TY_INTEGER:
+  case TY_INTEGER:
     length += fprintf(buffer, "integer");
     break;
 
-  case MPPL_TY_CHAR:
+  case TY_CHAR:
     length += fprintf(buffer, "char");
     break;
 
-  case MPPL_TY_BOOLEAN:
+  case TY_BOOLEAN:
     length += fprintf(buffer, "boolean");
     break;
 
-  case MPPL_TY_STRING:
+  case TY_STRING:
     length += fprintf(buffer, "string");
     break;
 
-  case MPPL_TY_ARRAY: {
-    const MpplArrayTy *array_ty = (const MpplArrayTy *) ty;
+  case TY_ARRAY: {
+    const ArrayTy *array_ty = (const ArrayTy *) ty;
 
     length += print_mppl_ty(buffer, array_ty->base);
     length += fprintf(buffer, "[%lu]", array_ty->size);
     break;
   }
 
-  case MPPL_TY_PROC: {
-    const MpplProcTy *proc_ty = (const MpplProcTy *) ty;
+  case TY_PROC: {
+    const ProcTy *proc_ty = (const ProcTy *) ty;
 
     unsigned long i;
     length += fprintf(buffer, "procedure(");
@@ -122,7 +122,7 @@ unsigned long print_mppl_ty(FILE *buffer, const MpplTy *ty)
   return length;
 }
 
-char *mppl_ty_to_string(const MpplTy *ty)
+char *mppl_ty_to_string(const Ty *ty)
 {
   unsigned long length;
   Slice(char) result;
@@ -263,7 +263,7 @@ Report *diag_recursive_call_error(unsigned long offset, unsigned long length, co
   return report;
 }
 
-Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const MpplTy *expected, const MpplTy *found)
+Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const Ty *expected, const Ty *found)
 {
   char   *expected_str = mppl_ty_to_string(expected);
   char   *found_str    = mppl_ty_to_string(found);
@@ -274,7 +274,7 @@ Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, c
   return report;
 }
 
-Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const MpplTy *found)
+Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const Ty *found)
 {
   char   *found_str = mppl_ty_to_string(found);
   Report *report    = report_new(REPORT_KIND_ERROR, offset, "mismatched type");

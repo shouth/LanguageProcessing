@@ -8,16 +8,16 @@
 #include "mppl_passes.h"
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
-#include "mppl_ty_ctxt.h"
 #include "report.h"
 #include "syntax_tree.h"
+#include "ty_ctxt.h"
 #include "util.h"
 
 typedef struct Value   Value;
 typedef struct Checker Checker;
 
 struct Value {
-  const MpplTy *ty;
+  const Ty *ty;
   enum ValueKind {
     VALUE_PLACE,
     VALUE_TEMP
@@ -26,17 +26,17 @@ struct Value {
 
 struct Checker {
   const MpplSemantics *semantics;
-  MpplTyCtxt          *ctxt;
+  TyCtxt              *ctxt;
   Vec(Report *) diags;
   const RawSyntaxToken *proc_name;
 };
 
-static int ty_is_std(const MpplTy *ty)
+static int ty_is_std(const Ty *ty)
 {
   switch (ty->kind) {
-  case MPPL_TY_INTEGER:
-  case MPPL_TY_BOOLEAN:
-  case MPPL_TY_CHAR:
+  case TY_INTEGER:
+  case TY_BOOLEAN:
+  case TY_CHAR:
     return 1;
 
   default:
@@ -44,15 +44,15 @@ static int ty_is_std(const MpplTy *ty)
   }
 }
 
-static void set_ty_to_bind(Checker *checker, const MpplTy *ty, const MpplBindIdent *bind_ident)
+static void set_ty_to_bind(Checker *checker, const Ty *ty, const MpplBindIdent *bind_ident)
 {
   MpplBindIdentFields bind_ident_fields = mppl_bind_ident_fields_alloc(bind_ident);
 
-  mppl_ty_ctxt_set(checker->ctxt, (const RawSyntaxNode *) bind_ident_fields.ident->raw, ty);
+  ty_ctxt_set(checker->ctxt, (const RawSyntaxNode *) bind_ident_fields.ident->raw, ty);
   mppl_bind_ident_fields_free(&bind_ident_fields);
 }
 
-static const MpplTy *get_ty_from_ref(Checker *checker, const MpplRefIdent *ref_ident)
+static const Ty *get_ty_from_ref(Checker *checker, const MpplRefIdent *ref_ident)
 {
   HashMapEntry       entry;
   const MpplBinding *binding;
@@ -63,12 +63,12 @@ static const MpplTy *get_ty_from_ref(Checker *checker, const MpplRefIdent *ref_i
   binding = *hashmap_value(&checker->semantics->ref, &entry);
 
   mppl_ref_ident_fields_free(&ref_ident_fields);
-  return mppl_ty_ctxt_get(checker->ctxt, (const RawSyntaxNode *) binding->binding->raw);
+  return ty_ctxt_get(checker->ctxt, (const RawSyntaxNode *) binding->binding->raw);
 }
 
-static void error_mismathced_type(Checker *checker, const AnyMpplExpr *expr, const MpplTy *expected, const MpplTy *found)
+static void error_mismathced_type(Checker *checker, const AnyMpplExpr *expr, const Ty *expected, const Ty *found)
 {
-  if (expected->kind != MPPL_TY_ERROR && found->kind != MPPL_TY_ERROR) {
+  if (expected->kind != TY_ERROR && found->kind != TY_ERROR) {
     const SyntaxTree *syntax = (const SyntaxTree *) expr;
     unsigned long     offset = syntax->node.span.offset;
     unsigned long     length = syntax->raw->node.span.text_length;
@@ -77,9 +77,9 @@ static void error_mismathced_type(Checker *checker, const AnyMpplExpr *expr, con
   }
 }
 
-static void error_non_standard_type(Checker *checker, const AnyMpplExpr *expr, const MpplTy *found)
+static void error_non_standard_type(Checker *checker, const AnyMpplExpr *expr, const Ty *found)
 {
-  if (found->kind != MPPL_TY_ERROR) {
+  if (found->kind != TY_ERROR) {
     const SyntaxTree *syntax = (const SyntaxTree *) expr;
     unsigned long     offset = syntax->node.span.offset;
     unsigned long     length = syntax->raw->node.span.text_length;
@@ -88,22 +88,22 @@ static void error_non_standard_type(Checker *checker, const AnyMpplExpr *expr, c
   }
 }
 
-static const MpplTy *check_type(Checker *checker, const AnyMpplType *type)
+static const Ty *check_type(Checker *checker, const AnyMpplType *type)
 {
   switch (mppl_type_kind(type)) {
   case MPPL_TYPE_SYNTAX_INTEGER:
-    return mppl_ty_integer();
+    return ty_integer();
 
   case MPPL_TYPE_SYNTAX_BOOLEAN:
-    return mppl_ty_boolean();
+    return ty_boolean();
 
   case MPPL_TYPE_SYNTAX_CHAR:
-    return mppl_ty_char();
+    return ty_char();
 
   case MPPL_TYPE_SYNTAX_ARRAY: {
     MpplArrayTypeFields array_type_fields = mppl_array_type_fields_alloc((const MpplArrayType *) type);
 
-    const MpplTy *base = check_type(checker, array_type_fields.type);
+    const Ty     *base = check_type(checker, array_type_fields.type);
     unsigned long size = strtoul(array_type_fields.number_lit->raw->text, NULL, 10);
 
     if (size == 0) {
@@ -114,7 +114,7 @@ static const MpplTy *check_type(Checker *checker, const AnyMpplType *type)
     }
 
     mppl_array_type_fields_free(&array_type_fields);
-    return mppl_ty_array(checker->ctxt, base, size);
+    return ty_array(checker->ctxt, base, size);
   }
 
   default:
@@ -128,19 +128,19 @@ static Value check_indexed_var_expr(Checker *checker, const MpplIndexedVarExpr *
 {
   MpplIndexedVarExprFields indexed_var_expr_fields = mppl_indexed_var_expr_fields_alloc((const MpplIndexedVarExpr *) indexed_var);
 
-  const MpplTy *ty = get_ty_from_ref(checker, indexed_var_expr_fields.name);
+  const Ty *ty = get_ty_from_ref(checker, indexed_var_expr_fields.name);
 
   Value value;
   value.kind = VALUE_PLACE;
 
-  if (ty->kind == MPPL_TY_ARRAY) {
-    const MpplArrayTy *array_ty = (const MpplArrayTy *) ty;
-    Value              index    = check_expr(checker, indexed_var_expr_fields.index);
-    if (index.ty->kind == MPPL_TY_INTEGER) {
+  if (ty->kind == TY_ARRAY) {
+    const ArrayTy *array_ty = (const ArrayTy *) ty;
+    Value          index    = check_expr(checker, indexed_var_expr_fields.index);
+    if (index.ty->kind == TY_INTEGER) {
       value.ty = array_ty->base;
     } else {
-      error_mismathced_type(checker, indexed_var_expr_fields.index, mppl_ty_integer(), index.ty);
-      value.ty = mppl_ty_error();
+      error_mismathced_type(checker, indexed_var_expr_fields.index, ty_integer(), index.ty);
+      value.ty = ty_error();
     }
   } else {
     unsigned long begin = indexed_var_expr_fields.lbracket_token->node.span.offset;
@@ -148,7 +148,7 @@ static Value check_indexed_var_expr(Checker *checker, const MpplIndexedVarExpr *
       + indexed_var_expr_fields.rbracket_token->raw->node.span.text_length;
     Report *report = diag_non_array_subscript_error(begin, end - begin);
     vec_push(&checker->diags, &report, 1);
-    value.ty = mppl_ty_error();
+    value.ty = ty_error();
   }
 
   mppl_indexed_var_expr_fields_free(&indexed_var_expr_fields);
@@ -169,34 +169,34 @@ static Value check_binary_expr(Checker *checker, const MpplBinaryExpr *binary_ex
   case MPPL_SYNTAX_MINUS_TOKEN:
   case MPPL_SYNTAX_STAR_TOKEN:
   case MPPL_SYNTAX_DIV_KW: {
-    if (lhs.ty->kind != MPPL_TY_INTEGER) {
-      error_mismathced_type(checker, binary_expr_fields.lhs, mppl_ty_integer(), lhs.ty);
+    if (lhs.ty->kind != TY_INTEGER) {
+      error_mismathced_type(checker, binary_expr_fields.lhs, ty_integer(), lhs.ty);
     }
-    if (rhs.ty->kind != MPPL_TY_INTEGER) {
-      error_mismathced_type(checker, binary_expr_fields.rhs, mppl_ty_integer(), rhs.ty);
+    if (rhs.ty->kind != TY_INTEGER) {
+      error_mismathced_type(checker, binary_expr_fields.rhs, ty_integer(), rhs.ty);
     }
 
-    if (lhs.ty->kind == MPPL_TY_INTEGER && rhs.ty->kind == MPPL_TY_INTEGER) {
-      value.ty = mppl_ty_integer();
+    if (lhs.ty->kind == TY_INTEGER && rhs.ty->kind == TY_INTEGER) {
+      value.ty = ty_integer();
     } else {
-      value.ty = mppl_ty_error();
+      value.ty = ty_error();
     }
     break;
   }
 
   case MPPL_SYNTAX_AND_KW:
   case MPPL_SYNTAX_OR_KW: {
-    if (lhs.ty->kind != MPPL_TY_BOOLEAN) {
-      error_mismathced_type(checker, binary_expr_fields.lhs, mppl_ty_boolean(), lhs.ty);
+    if (lhs.ty->kind != TY_BOOLEAN) {
+      error_mismathced_type(checker, binary_expr_fields.lhs, ty_boolean(), lhs.ty);
     }
-    if (rhs.ty->kind != MPPL_TY_BOOLEAN) {
-      error_mismathced_type(checker, binary_expr_fields.rhs, mppl_ty_boolean(), rhs.ty);
+    if (rhs.ty->kind != TY_BOOLEAN) {
+      error_mismathced_type(checker, binary_expr_fields.rhs, ty_boolean(), rhs.ty);
     }
 
-    if (lhs.ty->kind == MPPL_TY_BOOLEAN && rhs.ty->kind == MPPL_TY_BOOLEAN) {
-      value.ty = mppl_ty_boolean();
+    if (lhs.ty->kind == TY_BOOLEAN && rhs.ty->kind == TY_BOOLEAN) {
+      value.ty = ty_boolean();
     } else {
-      value.ty = mppl_ty_error();
+      value.ty = ty_error();
     }
     break;
   }
@@ -216,10 +216,10 @@ static Value check_binary_expr(Checker *checker, const MpplBinaryExpr *binary_ex
 
     if (ty_is_std(lhs.ty) && ty_is_std(rhs.ty)) {
       if (lhs.ty == rhs.ty) {
-        value.ty = mppl_ty_boolean();
+        value.ty = ty_boolean();
       } else {
         error_mismathced_type(checker, binary_expr_fields.rhs, lhs.ty, rhs.ty);
-        value.ty = mppl_ty_error();
+        value.ty = ty_error();
       }
     }
     break;
@@ -244,21 +244,21 @@ static Value check_unary_expr(Checker *checker, const MpplUnaryExpr *unary_expr)
   switch (unary_expr_fields.op_token->raw->node.kind) {
   case MPPL_SYNTAX_PLUS_TOKEN:
   case MPPL_SYNTAX_MINUS_TOKEN: {
-    if (expr.ty->kind == MPPL_TY_INTEGER) {
-      value.ty = mppl_ty_integer();
+    if (expr.ty->kind == TY_INTEGER) {
+      value.ty = ty_integer();
     } else {
-      error_mismathced_type(checker, unary_expr_fields.expr, mppl_ty_integer(), expr.ty);
-      value.ty = mppl_ty_error();
+      error_mismathced_type(checker, unary_expr_fields.expr, ty_integer(), expr.ty);
+      value.ty = ty_error();
     }
     break;
   }
 
   case MPPL_SYNTAX_NOT_KW: {
-    if (expr.ty->kind == MPPL_TY_BOOLEAN) {
-      value.ty = mppl_ty_boolean();
+    if (expr.ty->kind == TY_BOOLEAN) {
+      value.ty = ty_boolean();
     } else {
-      error_mismathced_type(checker, unary_expr_fields.expr, mppl_ty_boolean(), expr.ty);
-      value.ty = mppl_ty_error();
+      error_mismathced_type(checker, unary_expr_fields.expr, ty_boolean(), expr.ty);
+      value.ty = ty_error();
     }
     break;
   }
@@ -277,13 +277,13 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
   switch (mppl_expr_kind(expr)) {
   case MPPL_EXPR_SYNTAX_INTEGER_LIT: {
     value.kind = VALUE_TEMP;
-    value.ty   = mppl_ty_integer();
+    value.ty   = ty_integer();
     break;
   }
 
   case MPPL_EXPR_SYNTAX_BOOLEAN_LIT: {
     value.kind = VALUE_TEMP;
-    value.ty   = mppl_ty_boolean();
+    value.ty   = ty_boolean();
     break;
   }
 
@@ -293,9 +293,9 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
 
     value.kind = VALUE_TEMP;
     if (lit_token->raw->node.span.text_length == 3 || strcmp(lit_token->raw->text, "''''") == 0) {
-      value.ty = mppl_ty_char();
+      value.ty = ty_char();
     } else {
-      value.ty = mppl_ty_string();
+      value.ty = ty_string();
     }
 
     mppl_string_lit_expr_fields_free(&string_lit_fields);
@@ -327,15 +327,15 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
   case MPPL_EXPR_SYNTAX_CAST: {
     MpplCastExprFields cast_expr_fields = mppl_cast_expr_fields_alloc((const MpplCastExpr *) expr);
 
-    const MpplTy *ty   = check_type(checker, cast_expr_fields.type);
-    Value         expr = check_expr(checker, cast_expr_fields.expr);
+    const Ty *ty   = check_type(checker, cast_expr_fields.type);
+    Value     expr = check_expr(checker, cast_expr_fields.expr);
 
     value.kind = VALUE_TEMP;
     if (ty_is_std(expr.ty)) {
       value.ty = ty;
     } else {
       error_non_standard_type(checker, cast_expr_fields.expr, expr.ty);
-      value.ty = mppl_ty_error();
+      value.ty = ty_error();
     }
 
     mppl_cast_expr_fields_free(&cast_expr_fields);
@@ -351,7 +351,7 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
   }
 
   case MPPL_EXPR_SYNTAX_BOGUS: {
-    value.ty = mppl_ty_error();
+    value.ty = ty_error();
     break;
   }
 
@@ -365,7 +365,7 @@ static Value check_expr(Checker *checker, const AnyMpplExpr *expr)
 {
   Value             value  = check_expr_core(checker, expr);
   const SyntaxTree *syntax = (SyntaxTree *) expr;
-  mppl_ty_ctxt_set(checker->ctxt, (const RawSyntaxNode *) syntax->raw, value.ty);
+  ty_ctxt_set(checker->ctxt, (const RawSyntaxNode *) syntax->raw, value.ty);
   return value;
 }
 
@@ -396,8 +396,8 @@ static void check_var_decl(Checker *checker, const MpplVarDecl *var_decl)
 {
   MpplVarDeclFields var_decl_fields = mppl_var_decl_fields_alloc(var_decl);
 
-  const MpplTy *ty    = check_type(checker, var_decl_fields.type);
-  SyntaxEvent   event = syntax_event_alloc((const SyntaxTree *) var_decl);
+  const Ty   *ty    = check_type(checker, var_decl_fields.type);
+  SyntaxEvent event = syntax_event_alloc((const SyntaxTree *) var_decl);
   while (syntax_event_next(&event)) {
     if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT) {
       set_ty_to_bind(checker, ty, (const MpplBindIdent *) event.syntax);
@@ -413,14 +413,14 @@ static void check_proc_heading(Checker *checker, const MpplProcHeading *proc_hea
   MpplProcHeadingFields proc_heading_fields = mppl_proc_heading_fields_alloc(proc_heading);
 
   SyntaxEvent event = syntax_event_alloc((const SyntaxTree *) proc_heading_fields.fml_params);
-  Vec(const MpplTy *) param_tys;
+  Vec(const Ty *) param_tys;
   vec_alloc(&param_tys, 0);
 
   while (syntax_event_next(&event)) {
     if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_SEC) {
       MpplFmlParamSecFields fml_param_sec_fields = mppl_fml_param_sec_fields_alloc((const MpplFmlParamSec *) event.syntax);
 
-      const MpplTy *ty = check_type(checker, fml_param_sec_fields.type);
+      const Ty *ty = check_type(checker, fml_param_sec_fields.type);
       while (syntax_event_next(&event)) {
         if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT) {
           set_ty_to_bind(checker, ty, (const MpplBindIdent *) event.syntax);
@@ -434,7 +434,7 @@ static void check_proc_heading(Checker *checker, const MpplProcHeading *proc_hea
   }
 
   {
-    const MpplTy *ty = mppl_ty_proc(checker->ctxt, param_tys.ptr, param_tys.count);
+    const Ty *ty = ty_proc(checker->ctxt, param_tys.ptr, param_tys.count);
     set_ty_to_bind(checker, ty, proc_heading_fields.name);
   }
 
@@ -458,7 +458,7 @@ static void check_assign_stmt(Checker *checker, const MpplAssignStmt *assign_stm
 
   if (lhs.kind != VALUE_PLACE) {
     const SyntaxTree *lhs_syntax = (const SyntaxTree *) assign_stmt_fields.lhs;
-    if (lhs.ty->kind != MPPL_TY_ERROR) {
+    if (lhs.ty->kind != TY_ERROR) {
       unsigned long offset = lhs_syntax->node.span.offset;
       unsigned long length = lhs_syntax->raw->node.span.text_length;
       Report       *report = diag_non_lvalue_assignment_error(offset, length);
@@ -479,8 +479,8 @@ static void check_while_stmt(Checker *checker, const MpplWhileStmt *while_stmt)
 
   Value cond = check_expr(checker, while_stmt_fields.cond);
 
-  if (cond.ty->kind != MPPL_TY_BOOLEAN) {
-    error_mismathced_type(checker, while_stmt_fields.cond, mppl_ty_boolean(), cond.ty);
+  if (cond.ty->kind != TY_BOOLEAN) {
+    error_mismathced_type(checker, while_stmt_fields.cond, ty_boolean(), cond.ty);
   }
 
   mppl_while_stmt_fields_free(&while_stmt_fields);
@@ -492,8 +492,8 @@ static void check_if_stmt(Checker *checker, const MpplIfStmt *if_stmt)
 
   Value cond = check_expr(checker, if_stmt_fields.cond);
 
-  if (cond.ty->kind != MPPL_TY_BOOLEAN) {
-    error_mismathced_type(checker, if_stmt_fields.cond, mppl_ty_boolean(), cond.ty);
+  if (cond.ty->kind != TY_BOOLEAN) {
+    error_mismathced_type(checker, if_stmt_fields.cond, ty_boolean(), cond.ty);
   }
 
   mppl_if_stmt_fields_free(&if_stmt_fields);
@@ -503,14 +503,14 @@ static void check_call_stmt(Checker *checker, const MpplCallStmt *call_stmt)
 {
   MpplCallStmtFields call_stmt_fields = mppl_call_stmt_fields_alloc(call_stmt);
 
-  const MpplTy *ty = get_ty_from_ref(checker, call_stmt_fields.name);
+  const Ty *ty = get_ty_from_ref(checker, call_stmt_fields.name);
 
-  if (ty->kind == MPPL_TY_PROC) {
+  if (ty->kind == TY_PROC) {
     unsigned long      i;
     HashMapEntry       entry;
     const MpplBinding *binding;
 
-    const MpplProcTy *proc_ty = (const MpplProcTy *) ty;
+    const ProcTy *proc_ty = (const ProcTy *) ty;
 
     MpplRefIdentFields  ref_ident_fields  = mppl_ref_ident_fields_alloc(call_stmt_fields.name);
     MpplActParamsFields act_params_fields = mppl_act_params_fields_alloc(call_stmt_fields.act_params);
@@ -567,7 +567,7 @@ static void check_inputs(Checker *checker, const MpplInputs *inputs)
     Value arg = check_expr(checker, elem_fields.expr);
     if (arg.kind != VALUE_PLACE) {
       const SyntaxTree *syntax = (const SyntaxTree *) elem_fields.expr;
-      if (arg.ty->kind != MPPL_TY_ERROR) {
+      if (arg.ty->kind != TY_ERROR) {
         unsigned long offset = syntax->node.span.offset;
         unsigned long length = syntax->raw->node.span.text_length;
         Report       *report = diag_invalid_input_error(offset, length);
@@ -595,9 +595,9 @@ static void check_outputs(Checker *checker, const MpplOutputs *outputs)
     switch (mppl_output_kind(elem_fields.output)) {
     case MPPL_OUTPUT_SYNTAX_EXPR: {
       Value value = check_expr(checker, &elem_fields.output->expr);
-      if (!ty_is_std(value.ty) && value.ty->kind != MPPL_TY_STRING) {
+      if (!ty_is_std(value.ty) && value.ty->kind != TY_STRING) {
         const SyntaxTree *syntax = (const SyntaxTree *) &elem_fields.output->expr;
-        if (value.ty->kind != MPPL_TY_ERROR) {
+        if (value.ty->kind != TY_ERROR) {
           unsigned long offset = syntax->node.span.offset;
           unsigned long length = syntax->raw->node.span.text_length;
           Report       *report = diag_invalid_output_error(offset, length);
@@ -681,7 +681,7 @@ MpplCheckResult mppl_check(const MpplRoot *syntax, const MpplSemantics *semantic
   MpplCheckResult result;
   Checker         checker;
   checker.semantics = semantics;
-  checker.ctxt      = mppl_ty_ctxt_alloc();
+  checker.ctxt      = ty_ctxt_alloc();
   vec_alloc(&checker.diags, 0);
 
   check_syntax(&checker, &syntax->syntax);

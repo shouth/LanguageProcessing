@@ -4,8 +4,8 @@
 #define DIAG_H
 
 #include "mppl_syntax.h"
-#include "mppl_ty_ctxt.h"
 #include "report.h"
+#include "ty_ctxt.h"
 
 /* lexer */
 
@@ -32,8 +32,8 @@ Report *diag_not_defined_error(unsigned long offset, unsigned long length, const
 Report *diag_zero_sized_array_error(unsigned long offset, unsigned long length);
 Report *diag_non_array_subscript_error(unsigned long offset, unsigned long length);
 Report *diag_recursive_call_error(unsigned long offset, unsigned long length, const char *name);
-Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const MpplTy *expected, const MpplTy *found);
-Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const MpplTy *found);
+Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const Ty *expected, const Ty *found);
+Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const Ty *found);
 Report *diag_non_lvalue_assignment_error(unsigned long offset, unsigned long length);
 Report *diag_mismatched_arguments_count_error(unsigned long offset, unsigned long length, unsigned long expected, unsigned long found);
 Report *diag_non_procedure_invocation_error(unsigned long offset, unsigned long length);

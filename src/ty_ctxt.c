@@ -2,32 +2,32 @@
 
 #include <stddef.h>
 
-#include "mppl_ty_ctxt.h"
+#include "ty_ctxt.h"
 #include "util.h"
 
-struct MpplTyCtxt {
-  HashSet(MpplTy *) interner;
-  HashMap(const RawSyntaxNode *, const MpplTy *) type;
+struct TyCtxt {
+  HashSet(Ty *) interner;
+  HashMap(const RawSyntaxNode *, const Ty *) type;
 };
 
-static void ty_free(MpplTy *ty)
+static void ty_free(Ty *ty)
 {
   if (ty) {
     switch (ty->kind) {
-    case MPPL_TY_ERROR:
-    case MPPL_TY_INTEGER:
-    case MPPL_TY_BOOLEAN:
-    case MPPL_TY_CHAR:
-    case MPPL_TY_STRING:
+    case TY_ERROR:
+    case TY_INTEGER:
+    case TY_BOOLEAN:
+    case TY_CHAR:
+    case TY_STRING:
       /* do nothing. allocated statically */
       break;
 
-    case MPPL_TY_ARRAY:
+    case TY_ARRAY:
       free(ty);
       break;
 
-    case MPPL_TY_PROC: {
-      MpplProcTy *proc = (MpplProcTy *) ty;
+    case TY_PROC: {
+      ProcTy *proc = (ProcTy *) ty;
       slice_free(&proc->params);
       free(ty);
       break;
@@ -36,37 +36,37 @@ static void ty_free(MpplTy *ty)
   }
 }
 
-const MpplTy *mppl_ty_error(void)
+const Ty *ty_error(void)
 {
-  static const MpplTy ty = { MPPL_TY_ERROR };
+  static const Ty ty = { TY_ERROR };
   return &ty;
 }
 
-const MpplTy *mppl_ty_integer(void)
+const Ty *ty_integer(void)
 {
-  static const MpplTy ty = { MPPL_TY_INTEGER };
+  static const Ty ty = { TY_INTEGER };
   return &ty;
 }
 
-const MpplTy *mppl_ty_boolean(void)
+const Ty *ty_boolean(void)
 {
-  static const MpplTy ty = { MPPL_TY_BOOLEAN };
+  static const Ty ty = { TY_BOOLEAN };
   return &ty;
 }
 
-const MpplTy *mppl_ty_char(void)
+const Ty *ty_char(void)
 {
-  static const MpplTy ty = { MPPL_TY_CHAR };
+  static const Ty ty = { TY_CHAR };
   return &ty;
 }
 
-const MpplTy *mppl_ty_string(void)
+const Ty *ty_string(void)
 {
-  static const MpplTy ty = { MPPL_TY_STRING };
+  static const Ty ty = { TY_STRING };
   return &ty;
 }
 
-static MpplTy *ty_intern(MpplTyCtxt *ctxt, MpplTy *ty)
+static Ty *ty_intern(TyCtxt *ctxt, Ty *ty)
 {
   HashMapEntry entry;
   if (!hashmap_entry(&ctxt->interner, &ty, &entry)) {
@@ -78,38 +78,38 @@ static MpplTy *ty_intern(MpplTyCtxt *ctxt, MpplTy *ty)
   }
 }
 
-const MpplTy *mppl_ty_array(MpplTyCtxt *ctxt, const MpplTy *base, unsigned long size)
+const Ty *ty_array(TyCtxt *ctxt, const Ty *base, unsigned long size)
 {
-  MpplArrayTy *array = xmalloc(sizeof(*array));
-  array->type.kind   = MPPL_TY_ARRAY;
-  array->base        = base;
-  array->size        = size;
+  ArrayTy *array   = xmalloc(sizeof(*array));
+  array->type.kind = TY_ARRAY;
+  array->base      = base;
+  array->size      = size;
   return ty_intern(ctxt, &array->type);
 }
 
-const MpplTy *mppl_ty_proc(MpplTyCtxt *ctxt, const MpplTy **params, unsigned long param_count)
+const Ty *ty_proc(TyCtxt *ctxt, const Ty **params, unsigned long param_count)
 {
-  MpplProcTy *proc = xmalloc(sizeof(*proc));
-  proc->type.kind  = MPPL_TY_PROC;
+  ProcTy *proc    = xmalloc(sizeof(*proc));
+  proc->type.kind = TY_PROC;
   slice_alloc(&proc->params, param_count);
   memcpy(proc->params.ptr, params, sizeof(*params) * param_count);
   return ty_intern(ctxt, &proc->type);
 }
 
-static void do_ty_hash(Hash *hash, const MpplTy *ty)
+static void do_ty_hash(Hash *hash, const Ty *ty)
 {
   hash_fnv1a(hash, &ty->kind, sizeof(ty->kind));
   switch (ty->kind) {
-  case MPPL_TY_ARRAY: {
-    const MpplArrayTy *array = (const MpplArrayTy *) ty;
+  case TY_ARRAY: {
+    const ArrayTy *array = (const ArrayTy *) ty;
     do_ty_hash(hash, array->base);
     hash_fnv1a(hash, &array->size, sizeof(array->size));
     break;
   }
 
-  case MPPL_TY_PROC: {
-    unsigned long     i;
-    const MpplProcTy *proc = (const MpplProcTy *) ty;
+  case TY_PROC: {
+    unsigned long i;
+    const ProcTy *proc = (const ProcTy *) ty;
     for (i = 0; i < proc->params.count; i++) {
       do_ty_hash(hash, proc->params.ptr[i]);
     }
@@ -125,30 +125,30 @@ static void do_ty_hash(Hash *hash, const MpplTy *ty)
 static Hash ty_hash(const void *value)
 {
   Hash hash = hash_fnv1a(NULL, NULL, 0);
-  do_ty_hash(&hash, (const MpplTy *) value);
+  do_ty_hash(&hash, (const Ty *) value);
   return hash;
 }
 
 static int ty_eq(const void *lhs, const void *rhs)
 {
-  const MpplTy *l = (const MpplTy *) lhs;
-  const MpplTy *r = (const MpplTy *) rhs;
+  const Ty *l = (const Ty *) lhs;
+  const Ty *r = (const Ty *) rhs;
 
   if (l->kind != r->kind) {
     return 0;
   }
 
   switch (l->kind) {
-  case MPPL_TY_ARRAY: {
-    const MpplArrayTy *larray = (const MpplArrayTy *) l;
-    const MpplArrayTy *rarray = (const MpplArrayTy *) r;
+  case TY_ARRAY: {
+    const ArrayTy *larray = (const ArrayTy *) l;
+    const ArrayTy *rarray = (const ArrayTy *) r;
     return larray->size == rarray->size && ty_eq(larray->base, rarray->base);
   }
 
-  case MPPL_TY_PROC: {
-    unsigned long     i;
-    const MpplProcTy *lproc = (const MpplProcTy *) l;
-    const MpplProcTy *rproc = (const MpplProcTy *) r;
+  case TY_PROC: {
+    unsigned long i;
+    const ProcTy *lproc = (const ProcTy *) l;
+    const ProcTy *rproc = (const ProcTy *) r;
     if (lproc->params.count != rproc->params.count) {
       return 0;
     }
@@ -178,15 +178,15 @@ static int raw_syntax_eq(const void *lhs, const void *rhs)
   return *lnode == *rnode;
 }
 
-MpplTyCtxt *mppl_ty_ctxt_alloc(void)
+TyCtxt *ty_ctxt_alloc(void)
 {
-  MpplTyCtxt *ctxt = xmalloc(sizeof(*ctxt));
+  TyCtxt *ctxt = xmalloc(sizeof(*ctxt));
   hashmap_alloc(&ctxt->interner, &ty_hash, &ty_eq);
   hashmap_alloc(&ctxt->type, &raw_syntax_hash, &raw_syntax_eq);
   return ctxt;
 }
 
-void mppl_ty_ctxt_free(MpplTyCtxt *ctxt)
+void ty_ctxt_free(TyCtxt *ctxt)
 {
   HashMapEntry entry;
   hashmap_entry(&ctxt->interner, NULL, &entry);
@@ -199,7 +199,7 @@ void mppl_ty_ctxt_free(MpplTyCtxt *ctxt)
   free(ctxt);
 }
 
-void mppl_ty_ctxt_set(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy *ty)
+void ty_ctxt_set(TyCtxt *ctxt, const RawSyntaxNode *node, const Ty *ty)
 {
   HashMapEntry entry;
   hashmap_entry(&ctxt->type, &node, &entry);
@@ -207,7 +207,7 @@ void mppl_ty_ctxt_set(MpplTyCtxt *ctxt, const RawSyntaxNode *node, const MpplTy 
   *hashmap_value(&ctxt->type, &entry) = ty;
 }
 
-const MpplTy *mppl_ty_ctxt_get(MpplTyCtxt *ctxt, const RawSyntaxNode *node)
+const Ty *ty_ctxt_get(TyCtxt *ctxt, const RawSyntaxNode *node)
 {
   HashMapEntry entry;
   if (hashmap_entry(&ctxt->type, &node, &entry)) {

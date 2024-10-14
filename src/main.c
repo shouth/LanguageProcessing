@@ -8,10 +8,10 @@
 #include "mppl_passes.h"
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
-#include "mppl_ty_ctxt.h"
 #include "report.h"
 #include "source.h"
 #include "syntax_tree.h"
+#include "ty_ctxt.h"
 #include "util.h"
 
 const char *program;
@@ -69,7 +69,7 @@ static int run_compiler(void)
             report_emit(check_result.diags.ptr[j], source);
           }
 
-          mppl_ty_ctxt_free(check_result.ctxt);
+          ty_ctxt_free(check_result.ctxt);
           slice_free(&check_result.diags);
         }
 
