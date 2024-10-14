@@ -19,9 +19,8 @@ typedef struct Checker Checker;
 struct Value {
   const MpplTy *ty;
   enum ValueKind {
-    VALUE_ERROR,
-    VALUE_LVALUE,
-    VALUE_RVALUE
+    VALUE_PLACE,
+    VALUE_TEMP
   } kind;
 };
 
@@ -34,10 +33,6 @@ struct Checker {
 
 static int ty_is_std(const MpplTy *ty)
 {
-  if (!ty) {
-    return 0;
-  }
-
   switch (ty->kind) {
   case MPPL_TY_INTEGER:
   case MPPL_TY_BOOLEAN:
@@ -73,20 +68,24 @@ static const MpplTy *get_ty_from_ref(Checker *checker, const MpplRefIdent *ref_i
 
 static void error_mismathced_type(Checker *checker, const AnyMpplExpr *expr, const MpplTy *expected, const MpplTy *found)
 {
-  const SyntaxTree *syntax = (const SyntaxTree *) expr;
-  unsigned long     offset = syntax->node.span.offset;
-  unsigned long     length = syntax->raw->node.span.text_length;
-  Report           *report = diag_mismatched_type_error(offset, length, expected, found);
-  vec_push(&checker->diags, &report, 1);
+  if (expected->kind != MPPL_TY_ERROR && found->kind != MPPL_TY_ERROR) {
+    const SyntaxTree *syntax = (const SyntaxTree *) expr;
+    unsigned long     offset = syntax->node.span.offset;
+    unsigned long     length = syntax->raw->node.span.text_length;
+    Report           *report = diag_mismatched_type_error(offset, length, expected, found);
+    vec_push(&checker->diags, &report, 1);
+  }
 }
 
 static void error_non_standard_type(Checker *checker, const AnyMpplExpr *expr, const MpplTy *found)
 {
-  const SyntaxTree *syntax = (const SyntaxTree *) expr;
-  unsigned long     offset = syntax->node.span.offset;
-  unsigned long     length = syntax->raw->node.span.text_length;
-  Report           *report = diag_non_standard_type_error(offset, length, found);
-  vec_push(&checker->diags, &report, 1);
+  if (found->kind != MPPL_TY_ERROR) {
+    const SyntaxTree *syntax = (const SyntaxTree *) expr;
+    unsigned long     offset = syntax->node.span.offset;
+    unsigned long     length = syntax->raw->node.span.text_length;
+    Report           *report = diag_non_standard_type_error(offset, length, found);
+    vec_push(&checker->diags, &report, 1);
+  }
 }
 
 static const MpplTy *check_type(Checker *checker, const AnyMpplType *type)
@@ -129,29 +128,27 @@ static Value check_indexed_var_expr(Checker *checker, const MpplIndexedVarExpr *
 {
   MpplIndexedVarExprFields indexed_var_expr_fields = mppl_indexed_var_expr_fields_alloc((const MpplIndexedVarExpr *) indexed_var);
 
-  const MpplTy *ty    = get_ty_from_ref(checker, indexed_var_expr_fields.name);
-  Value         index = check_expr(checker, indexed_var_expr_fields.index);
+  const MpplTy *ty = get_ty_from_ref(checker, indexed_var_expr_fields.name);
 
   Value value;
+  value.kind = VALUE_PLACE;
 
-  if (ty->kind != MPPL_TY_ARRAY) {
+  if (ty->kind == MPPL_TY_ARRAY) {
+    const MpplArrayTy *array_ty = (const MpplArrayTy *) ty;
+    Value              index    = check_expr(checker, indexed_var_expr_fields.index);
+    if (index.ty->kind == MPPL_TY_INTEGER) {
+      value.ty = array_ty->base;
+    } else {
+      error_mismathced_type(checker, indexed_var_expr_fields.index, mppl_ty_integer(), index.ty);
+      value.ty = mppl_ty_error();
+    }
+  } else {
     unsigned long begin = indexed_var_expr_fields.lbracket_token->node.span.offset;
     unsigned long end   = indexed_var_expr_fields.rbracket_token->node.span.offset
       + indexed_var_expr_fields.rbracket_token->raw->node.span.text_length;
     Report *report = diag_non_array_subscript_error(begin, end - begin);
     vec_push(&checker->diags, &report, 1);
-  }
-
-  if (index.kind != VALUE_ERROR && index.ty->kind != MPPL_TY_INTEGER) {
-    error_mismathced_type(checker, indexed_var_expr_fields.index, mppl_ty_integer(), index.ty);
-  }
-
-  if (ty->kind == MPPL_TY_ARRAY) {
-    value.kind = VALUE_LVALUE;
-    value.ty   = ((MpplArrayTy *) ty)->base;
-  } else {
-    value.kind = VALUE_ERROR;
-    value.ty   = NULL;
+    value.ty = mppl_ty_error();
   }
 
   mppl_indexed_var_expr_fields_free(&indexed_var_expr_fields);
@@ -166,36 +163,41 @@ static Value check_binary_expr(Checker *checker, const MpplBinaryExpr *binary_ex
   Value rhs = check_expr(checker, binary_expr_fields.rhs);
 
   Value value;
+  value.kind = VALUE_TEMP;
   switch (binary_expr_fields.op_token->raw->node.kind) {
   case MPPL_SYNTAX_PLUS_TOKEN:
   case MPPL_SYNTAX_MINUS_TOKEN:
   case MPPL_SYNTAX_STAR_TOKEN:
   case MPPL_SYNTAX_DIV_KW: {
-    if (lhs.kind != VALUE_ERROR && lhs.ty->kind != MPPL_TY_INTEGER) {
+    if (lhs.ty->kind != MPPL_TY_INTEGER) {
       error_mismathced_type(checker, binary_expr_fields.lhs, mppl_ty_integer(), lhs.ty);
     }
-
-    if (rhs.kind != VALUE_ERROR && rhs.ty->kind != MPPL_TY_INTEGER) {
+    if (rhs.ty->kind != MPPL_TY_INTEGER) {
       error_mismathced_type(checker, binary_expr_fields.rhs, mppl_ty_integer(), rhs.ty);
     }
 
-    value.kind = VALUE_RVALUE;
-    value.ty   = mppl_ty_integer();
+    if (lhs.ty->kind == MPPL_TY_INTEGER && rhs.ty->kind == MPPL_TY_INTEGER) {
+      value.ty = mppl_ty_integer();
+    } else {
+      value.ty = mppl_ty_error();
+    }
     break;
   }
 
   case MPPL_SYNTAX_AND_KW:
   case MPPL_SYNTAX_OR_KW: {
-    if (lhs.kind != VALUE_ERROR && lhs.ty->kind != MPPL_TY_BOOLEAN) {
+    if (lhs.ty->kind != MPPL_TY_BOOLEAN) {
       error_mismathced_type(checker, binary_expr_fields.lhs, mppl_ty_boolean(), lhs.ty);
     }
-
-    if (rhs.kind != VALUE_ERROR && rhs.ty->kind != MPPL_TY_BOOLEAN) {
+    if (rhs.ty->kind != MPPL_TY_BOOLEAN) {
       error_mismathced_type(checker, binary_expr_fields.rhs, mppl_ty_boolean(), rhs.ty);
     }
 
-    value.kind = VALUE_RVALUE;
-    value.ty   = mppl_ty_boolean();
+    if (lhs.ty->kind == MPPL_TY_BOOLEAN && rhs.ty->kind == MPPL_TY_BOOLEAN) {
+      value.ty = mppl_ty_boolean();
+    } else {
+      value.ty = mppl_ty_error();
+    }
     break;
   }
 
@@ -205,20 +207,21 @@ static Value check_binary_expr(Checker *checker, const MpplBinaryExpr *binary_ex
   case MPPL_SYNTAX_LESSEQ_TOKEN:
   case MPPL_SYNTAX_GREATER_TOKEN:
   case MPPL_SYNTAX_GREATEREQ_TOKEN: {
-    if (lhs.kind != VALUE_ERROR && !ty_is_std(lhs.ty)) {
+    if (!ty_is_std(lhs.ty)) {
       error_non_standard_type(checker, binary_expr_fields.lhs, lhs.ty);
     }
-
-    if (rhs.kind != VALUE_ERROR && !ty_is_std(rhs.ty)) {
+    if (!ty_is_std(rhs.ty)) {
       error_non_standard_type(checker, binary_expr_fields.rhs, rhs.ty);
     }
 
-    if (ty_is_std(lhs.ty) && ty_is_std(rhs.ty) && lhs.ty != rhs.ty) {
-      error_mismathced_type(checker, binary_expr_fields.rhs, lhs.ty, rhs.ty);
+    if (ty_is_std(lhs.ty) && ty_is_std(rhs.ty)) {
+      if (lhs.ty == rhs.ty) {
+        value.ty = mppl_ty_boolean();
+      } else {
+        error_mismathced_type(checker, binary_expr_fields.rhs, lhs.ty, rhs.ty);
+        value.ty = mppl_ty_error();
+      }
     }
-
-    value.kind = VALUE_RVALUE;
-    value.ty   = mppl_ty_boolean();
     break;
   }
 
@@ -237,25 +240,26 @@ static Value check_unary_expr(Checker *checker, const MpplUnaryExpr *unary_expr)
   Value expr = check_expr(checker, unary_expr_fields.expr);
 
   Value value;
+  value.kind = VALUE_TEMP;
   switch (unary_expr_fields.op_token->raw->node.kind) {
   case MPPL_SYNTAX_PLUS_TOKEN:
   case MPPL_SYNTAX_MINUS_TOKEN: {
-    if (expr.kind != VALUE_ERROR && expr.ty->kind != MPPL_TY_INTEGER) {
+    if (expr.ty->kind == MPPL_TY_INTEGER) {
+      value.ty = mppl_ty_integer();
+    } else {
       error_mismathced_type(checker, unary_expr_fields.expr, mppl_ty_integer(), expr.ty);
+      value.ty = mppl_ty_error();
     }
-
-    value.kind = VALUE_RVALUE;
-    value.ty   = mppl_ty_integer();
     break;
   }
 
   case MPPL_SYNTAX_NOT_KW: {
-    if (expr.kind != VALUE_ERROR && expr.ty->kind != MPPL_TY_BOOLEAN) {
+    if (expr.ty->kind == MPPL_TY_BOOLEAN) {
+      value.ty = mppl_ty_boolean();
+    } else {
       error_mismathced_type(checker, unary_expr_fields.expr, mppl_ty_boolean(), expr.ty);
+      value.ty = mppl_ty_error();
     }
-
-    value.kind = VALUE_RVALUE;
-    value.ty   = mppl_ty_boolean();
     break;
   }
 
@@ -272,13 +276,13 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
   Value value;
   switch (mppl_expr_kind(expr)) {
   case MPPL_EXPR_SYNTAX_INTEGER_LIT: {
-    value.kind = VALUE_RVALUE;
+    value.kind = VALUE_TEMP;
     value.ty   = mppl_ty_integer();
     break;
   }
 
   case MPPL_EXPR_SYNTAX_BOOLEAN_LIT: {
-    value.kind = VALUE_RVALUE;
+    value.kind = VALUE_TEMP;
     value.ty   = mppl_ty_boolean();
     break;
   }
@@ -287,7 +291,7 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
     MpplStringLitExprFields string_lit_fields = mppl_string_lit_expr_fields_alloc((const MpplStringLitExpr *) expr);
     const SyntaxToken      *lit_token         = (const SyntaxToken *) string_lit_fields.string_lit;
 
-    value.kind = VALUE_RVALUE;
+    value.kind = VALUE_TEMP;
     if (lit_token->raw->node.span.text_length == 3 || strcmp(lit_token->raw->text, "''''") == 0) {
       value.ty = mppl_ty_char();
     } else {
@@ -301,7 +305,7 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
   case MPPL_EXPR_SYNTAX_ENTIRE_VAR: {
     MpplEntireVarExprFields entire_var_fields = mppl_entire_var_expr_fields_alloc((const MpplEntireVarExpr *) expr);
 
-    value.kind = VALUE_LVALUE;
+    value.kind = VALUE_PLACE;
     value.ty   = get_ty_from_ref(checker, entire_var_fields.name);
 
     mppl_entire_var_expr_fields_free(&entire_var_fields);
@@ -326,12 +330,13 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
     const MpplTy *ty   = check_type(checker, cast_expr_fields.type);
     Value         expr = check_expr(checker, cast_expr_fields.expr);
 
-    if (expr.kind != VALUE_ERROR && !ty_is_std(expr.ty)) {
+    value.kind = VALUE_TEMP;
+    if (ty_is_std(expr.ty)) {
+      value.ty = ty;
+    } else {
       error_non_standard_type(checker, cast_expr_fields.expr, expr.ty);
+      value.ty = mppl_ty_error();
     }
-
-    value.kind = VALUE_RVALUE;
-    value.ty   = ty;
 
     mppl_cast_expr_fields_free(&cast_expr_fields);
     break;
@@ -346,8 +351,7 @@ static Value check_expr_core(Checker *checker, const AnyMpplExpr *expr)
   }
 
   case MPPL_EXPR_SYNTAX_BOGUS: {
-    value.kind = VALUE_ERROR;
-    value.ty   = NULL;
+    value.ty = mppl_ty_error();
     break;
   }
 
@@ -372,7 +376,7 @@ static void check_output_value(Checker *checker, const AnyMpplOutputValue *outpu
     MpplOutputValueFields output_value_fields = mppl_output_value_fields_alloc((const MpplOutputValue *) output_value);
 
     Value value = check_expr(checker, output_value_fields.expr);
-    if (value.kind != VALUE_ERROR && !ty_is_std(value.ty)) {
+    if (!ty_is_std(value.ty)) {
       error_non_standard_type(checker, output_value_fields.expr, value.ty);
     }
 
@@ -452,10 +456,9 @@ static void check_assign_stmt(Checker *checker, const MpplAssignStmt *assign_stm
   Value lhs = check_expr(checker, assign_stmt_fields.lhs);
   Value rhs = check_expr(checker, assign_stmt_fields.rhs);
 
-  if (lhs.kind != VALUE_LVALUE) {
-    if (lhs.kind != VALUE_ERROR) {
-      const SyntaxTree *lhs_syntax = (const SyntaxTree *) assign_stmt_fields.lhs;
-
+  if (lhs.kind != VALUE_PLACE) {
+    const SyntaxTree *lhs_syntax = (const SyntaxTree *) assign_stmt_fields.lhs;
+    if (lhs.ty->kind != MPPL_TY_ERROR) {
       unsigned long offset = lhs_syntax->node.span.offset;
       unsigned long length = lhs_syntax->raw->node.span.text_length;
       Report       *report = diag_non_lvalue_assignment_error(offset, length);
@@ -531,7 +534,7 @@ static void check_call_stmt(Checker *checker, const MpplCallStmt *call_stmt)
         MpplExprListElemFields elem_fields = mppl_expr_list_elem_fields_alloc(expr_list_fields.ptr[i]);
 
         Value arg = check_expr(checker, elem_fields.expr);
-        if (proc_ty->params.count == expr_list_fields.count && arg.kind != VALUE_ERROR && arg.ty != proc_ty->params.ptr[i]) {
+        if (arg.ty != proc_ty->params.ptr[i]) {
           error_mismathced_type(checker, elem_fields.expr, proc_ty->params.ptr[i], arg.ty);
         }
         mppl_expr_list_elem_fields_free(&elem_fields);
@@ -562,13 +565,14 @@ static void check_inputs(Checker *checker, const MpplInputs *inputs)
     MpplExprListElemFields elem_fields = mppl_expr_list_elem_fields_alloc(expr_list_fields.ptr[i]);
 
     Value arg = check_expr(checker, elem_fields.expr);
-    if (arg.kind != VALUE_ERROR && arg.kind != VALUE_LVALUE) {
+    if (arg.kind != VALUE_PLACE) {
       const SyntaxTree *syntax = (const SyntaxTree *) elem_fields.expr;
-
-      unsigned long offset = syntax->node.span.offset;
-      unsigned long length = syntax->raw->node.span.text_length;
-      Report       *report = diag_invalid_input_error(offset, length);
-      vec_push(&checker->diags, &report, 1);
+      if (arg.ty->kind != MPPL_TY_ERROR) {
+        unsigned long offset = syntax->node.span.offset;
+        unsigned long length = syntax->raw->node.span.text_length;
+        Report       *report = diag_invalid_input_error(offset, length);
+        vec_push(&checker->diags, &report, 1);
+      }
     }
 
     mppl_expr_list_elem_fields_free(&elem_fields);
@@ -591,13 +595,14 @@ static void check_outputs(Checker *checker, const MpplOutputs *outputs)
     switch (mppl_output_kind(elem_fields.output)) {
     case MPPL_OUTPUT_SYNTAX_EXPR: {
       Value value = check_expr(checker, &elem_fields.output->expr);
-      if (value.kind != VALUE_ERROR && !ty_is_std(value.ty) && value.ty->kind != MPPL_TY_STRING) {
+      if (!ty_is_std(value.ty) && value.ty->kind != MPPL_TY_STRING) {
         const SyntaxTree *syntax = (const SyntaxTree *) &elem_fields.output->expr;
-
-        unsigned long offset = syntax->node.span.offset;
-        unsigned long length = syntax->raw->node.span.text_length;
-        Report       *report = diag_invalid_output_error(offset, length);
-        vec_push(&checker->diags, &report, 1);
+        if (value.ty->kind != MPPL_TY_ERROR) {
+          unsigned long offset = syntax->node.span.offset;
+          unsigned long length = syntax->raw->node.span.text_length;
+          Report       *report = diag_invalid_output_error(offset, length);
+          vec_push(&checker->diags, &report, 1);
+        }
       }
       break;
     }
