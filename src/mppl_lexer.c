@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "mppl_passes.h"
+#include "mppl.h"
 #include "mppl_syntax.h"
 #include "util.h"
 

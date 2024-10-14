@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "diag.h"
-#include "mppl_passes.h"
+#include "mppl.h"
 #include "mppl_semantic.h"
 #include "mppl_syntax.h"
 #include "report.h"
