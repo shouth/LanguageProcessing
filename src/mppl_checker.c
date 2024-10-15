@@ -18,7 +18,7 @@ typedef struct Checker Checker;
 
 struct Value {
   const Ty *ty;
-  enum ValueKind {
+  enum {
     VALUE_PLACE,
     VALUE_TEMP
   } kind;
