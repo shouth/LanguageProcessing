@@ -15,16 +15,12 @@ typedef enum {
   IR_BINOP_LE,
   IR_BINOP_GT,
   IR_BINOP_GE
-} IrBinaryExprKind;
+} IrBinOpKind;
 
 typedef enum {
   IR_UNOP_NEG,
   IR_UNOP_NOT
-} IrUnaryExprKind;
-
-typedef enum {
-  IR_PROJ_INDEX
-} IrProjKind;
+} IrUnOpKind;
 
 typedef enum {
   IR_RVALUE_BINOP,
@@ -46,15 +42,13 @@ typedef enum {
 
 typedef struct IrLocal IrLocal;
 
-typedef struct IrProj      IrProj;
-typedef struct IrIndexProj IrIndexProj;
-typedef struct IrPlace     IrPlace;
+typedef struct IrPlace IrPlace;
 
-typedef struct IrRValue           IrRValue;
-typedef struct IrBinaryExprRValue IrBinaryExprRValue;
-typedef struct IrUnaryExprRValue  IrUnaryExprRValue;
-typedef struct IrPlaceRValue      IrPlaceRValue;
-typedef struct IrCastRValue       IrCastRValue;
+typedef struct IrRValue      IrRValue;
+typedef struct IrBinOpRValue IrBinOpRValue;
+typedef struct IrUnOpRValue  IrUnOpRValue;
+typedef struct IrPlaceRValue IrPlaceRValue;
+typedef struct IrCastRValue  IrCastRValue;
 
 typedef struct IrOperand      IrOperand;
 typedef struct IrPlaceOperand IrPlaceOperand;
@@ -63,10 +57,12 @@ typedef struct IrConstOperand IrConstOperand;
 typedef struct IrStmt IrStmt;
 
 typedef struct IrTerm       IrTerm;
+typedef struct IrCallTerm   IrCallTerm;
 typedef struct IrJumpTerm   IrJumpTerm;
 typedef struct IrBranchTerm IrBranchTerm;
 typedef struct IrReturnTerm IrReturnTerm;
 
+typedef unsigned long  IrBlockId;
 typedef struct IrBlock IrBlock;
 typedef struct IrItem  IrItem;
 typedef struct Ir      Ir;
@@ -75,35 +71,26 @@ struct IrLocal {
   Ty *ty;
 };
 
-struct IrProj {
-  IrLocal *local;
-};
-
-struct IrIndexProj {
-  IrProj base;
-  IrOperand *index;
-};
-
 struct IrPlace {
-  IrLocal *local;
-  Slice(IrProj *) projs;
+  IrLocal   *local;
+  IrOperand *offset;
 };
 
 struct IrRValue {
   IrRValueKind kind;
 };
 
-struct IrBinaryExprRValue {
-  IrRValue         base;
-  IrBinaryExprKind kind;
-  IrOperand       *lhs;
-  IrOperand       *rhs;
+struct IrBinOpRValue {
+  IrRValue    base;
+  IrBinOpKind kind;
+  IrOperand  *lhs;
+  IrOperand  *rhs;
 };
 
-struct IrUnaryExprRValue {
-  IrRValue        base;
-  IrUnaryExprKind kind;
-  IrOperand      *operand;
+struct IrUnOpRValue {
+  IrRValue   base;
+  IrUnOpKind kind;
+  IrOperand *operand;
 };
 
 struct IrPlaceRValue {
@@ -140,16 +127,24 @@ struct IrTerm {
   IrTermKind kind;
 };
 
+struct IrCallTerm {
+  IrTerm   base;
+  IrPlace *dest;
+  Slice(IrOperand *) args;
+  IrBlockId target;
+  IrBlockId unwind;
+};
+
 struct IrJumpTerm {
-  IrTerm        base;
-  unsigned long target;
+  IrTerm    base;
+  IrBlockId target;
 };
 
 struct IrBranchTerm {
-  IrTerm        base;
-  IrOperand    *cond;
-  unsigned long target_true;
-  unsigned long target_false;
+  IrTerm     base;
+  IrOperand *cond;
+  IrBlockId  target_true;
+  IrBlockId  target_false;
 };
 
 struct IrBlock {
