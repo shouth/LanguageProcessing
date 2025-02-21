@@ -389,25 +389,28 @@ static void check_proc_heading(Checker *checker, const MpplProcHeading *proc_hea
 {
   MpplProcHeadingFields proc_heading_fields = mppl_proc_heading_fields_alloc(proc_heading);
 
-  SyntaxEvent event = syntax_event_alloc((const SyntaxTree *) proc_heading_fields.fml_params);
   Vec(const Ty *) param_tys;
   vec_alloc(&param_tys, 0);
 
-  while (syntax_event_next(&event)) {
-    if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_SEC) {
-      MpplFmlParamSecFields fml_param_sec_fields = mppl_fml_param_sec_fields_alloc((const MpplFmlParamSec *) event.syntax);
+  if (proc_heading_fields.fml_params) {
+    SyntaxEvent event = syntax_event_alloc((const SyntaxTree *) proc_heading_fields.fml_params);
+    while (syntax_event_next(&event)) {
+      if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_SEC) {
+        MpplFmlParamSecFields fml_param_sec_fields = mppl_fml_param_sec_fields_alloc((const MpplFmlParamSec *) event.syntax);
 
-      const Ty *ty = check_type(checker, fml_param_sec_fields.type);
-      while (syntax_event_next(&event)) {
-        if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT) {
-          set_ty_to_bind(checker, ty, (const MpplBindIdent *) event.syntax);
-          vec_push(&param_tys, &ty, 1);
-        } else if (event.kind == SYNTAX_EVENT_LEAVE && event.syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_SEC) {
-          break;
+        const Ty *ty = check_type(checker, fml_param_sec_fields.type);
+        while (syntax_event_next(&event)) {
+          if (event.kind == SYNTAX_EVENT_ENTER && event.syntax->raw->node.kind == MPPL_SYNTAX_BIND_IDENT) {
+            set_ty_to_bind(checker, ty, (const MpplBindIdent *) event.syntax);
+            vec_push(&param_tys, &ty, 1);
+          } else if (event.kind == SYNTAX_EVENT_LEAVE && event.syntax->raw->node.kind == MPPL_SYNTAX_FML_PARAM_SEC) {
+            break;
+          }
         }
+        mppl_fml_param_sec_fields_free(&fml_param_sec_fields);
       }
-      mppl_fml_param_sec_fields_free(&fml_param_sec_fields);
     }
+    syntax_event_free(&event);
   }
 
   {
@@ -422,7 +425,6 @@ static void check_proc_heading(Checker *checker, const MpplProcHeading *proc_hea
   }
 
   vec_free(&param_tys);
-  syntax_event_free(&event);
   mppl_proc_heading_fields_free(&proc_heading_fields);
 }
 
@@ -489,9 +491,7 @@ static void check_call_stmt(Checker *checker, const MpplCallStmt *call_stmt)
 
     const ProcTy *proc_ty = (const ProcTy *) ty;
 
-    MpplRefIdentFields  ref_ident_fields  = mppl_ref_ident_fields_alloc(call_stmt_fields.name);
-    MpplActParamsFields act_params_fields = mppl_act_params_fields_alloc(call_stmt_fields.act_params);
-    MpplExprListFields  expr_list_fields  = mppl_expr_list_fields_alloc(act_params_fields.expr_list);
+    MpplRefIdentFields ref_ident_fields = mppl_ref_ident_fields_alloc(call_stmt_fields.name);
 
     hashmap_entry(&checker->semantics->ref, &ref_ident_fields.ident->node.span.offset, &entry);
     binding = *hashmap_value(&checker->semantics->ref, &entry);
@@ -501,26 +501,37 @@ static void check_call_stmt(Checker *checker, const MpplCallStmt *call_stmt)
       unsigned long length = ref_ident_fields.ident->raw->node.span.text_length;
       Report       *report = diag_recursive_call_error(offset, length, ref_ident_fields.ident->raw->text);
       vec_push(&checker->diags, &report, 1);
-    } else if (proc_ty->params.count != expr_list_fields.count) {
-      unsigned long offset = call_stmt_fields.act_params->syntax.node.span.offset;
-      unsigned long length = call_stmt_fields.act_params->syntax.raw->node.span.text_length;
-      Report       *report = diag_mismatched_arguments_count_error(offset, length, proc_ty->params.count, expr_list_fields.count);
-      vec_push(&checker->diags, &report, 1);
-    } else {
-      for (i = 0; i < expr_list_fields.count; ++i) {
-        MpplExprListElemFields elem_fields = mppl_expr_list_elem_fields_alloc(expr_list_fields.ptr[i]);
+    }
 
-        Value arg = check_expr(checker, elem_fields.expr);
-        if (arg.ty != proc_ty->params.ptr[i]) {
-          error_mismathced_type(checker, elem_fields.expr, proc_ty->params.ptr[i], arg.ty);
+    if (call_stmt_fields.act_params) {
+      MpplActParamsFields act_params_fields = mppl_act_params_fields_alloc(call_stmt_fields.act_params);
+      MpplExprListFields  expr_list_fields  = mppl_expr_list_fields_alloc(act_params_fields.expr_list);
+      if (proc_ty->params.count != expr_list_fields.count) {
+        unsigned long offset = call_stmt_fields.act_params->syntax.node.span.offset;
+        unsigned long length = call_stmt_fields.act_params->syntax.raw->node.span.text_length;
+        Report       *report = diag_mismatched_arguments_count_error(offset, length, proc_ty->params.count, expr_list_fields.count);
+        vec_push(&checker->diags, &report, 1);
+      } else {
+        for (i = 0; i < expr_list_fields.count; ++i) {
+          MpplExprListElemFields elem_fields = mppl_expr_list_elem_fields_alloc(expr_list_fields.ptr[i]);
+
+          Value arg = check_expr(checker, elem_fields.expr);
+          if (arg.ty != proc_ty->params.ptr[i]) {
+            error_mismathced_type(checker, elem_fields.expr, proc_ty->params.ptr[i], arg.ty);
+          }
+          mppl_expr_list_elem_fields_free(&elem_fields);
         }
-        mppl_expr_list_elem_fields_free(&elem_fields);
       }
+      mppl_expr_list_fields_free(&expr_list_fields);
+      mppl_act_params_fields_free(&act_params_fields);
+    } else if (proc_ty->params.count != 0) {
+      unsigned long offset = call_stmt_fields.name->syntax.node.span.offset;
+      unsigned long length = call_stmt_fields.name->syntax.raw->node.span.text_length;
+      Report       *report = diag_mismatched_arguments_count_error(offset, length, proc_ty->params.count, 0);
+      vec_push(&checker->diags, &report, 1);
     }
 
     mppl_ref_ident_fields_free(&ref_ident_fields);
-    mppl_expr_list_fields_free(&expr_list_fields);
-    mppl_act_params_fields_free(&act_params_fields);
   } else {
     unsigned long offset = call_stmt_fields.name->syntax.node.span.offset;
     unsigned long length = call_stmt_fields.name->syntax.raw->node.span.text_length;

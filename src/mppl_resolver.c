@@ -159,13 +159,18 @@ static void pop_scope(Resolver *resolver)
 
 static void collect_semantic_events(const SyntaxTree *syntax, Resolver *resolver)
 {
-  SyntaxEvent event = syntax_event_alloc(syntax);
+  SyntaxEvent event      = syntax_event_alloc(syntax);
+  int         proc_scope = 0;
   while (syntax_event_next(&event)) {
     if (event.kind == SYNTAX_EVENT_ENTER) {
       switch (event.syntax->raw->node.kind) {
       case MPPL_SYNTAX_PROGRAM:
+        push_scope(resolver);
+        break;
+
       case MPPL_SYNTAX_FML_PARAMS:
         push_scope(resolver);
+        proc_scope = 1;
         break;
 
       case MPPL_SYNTAX_BIND_IDENT: {
@@ -188,9 +193,19 @@ static void collect_semantic_events(const SyntaxTree *syntax, Resolver *resolver
       }
     } else {
       switch (event.syntax->raw->node.kind) {
+      case MPPL_SYNTAX_PROC_HEADING:
+        if (!proc_scope) {
+          push_scope(resolver);
+        }
+        break;
+
       case MPPL_SYNTAX_PROGRAM:
+        pop_scope(resolver);
+        break;
+
       case MPPL_SYNTAX_PROC_BODY:
         pop_scope(resolver);
+        proc_scope = 0;
         break;
 
       default:

@@ -92,7 +92,9 @@ const Ty *ty_proc(TyCtxt *ctxt, const Ty **params, unsigned long param_count)
   ProcTy *proc    = xmalloc(sizeof(*proc));
   proc->type.kind = TY_PROC;
   slice_alloc(&proc->params, param_count);
-  memcpy(proc->params.ptr, params, sizeof(*params) * param_count);
+  if (param_count > 0) {
+    memcpy(proc->params.ptr, params, sizeof(*params) * param_count);
+  }
   return ty_intern(ctxt, &proc->type);
 }
 
