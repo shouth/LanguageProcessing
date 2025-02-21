@@ -6,8 +6,8 @@
   },
   "remoteUser": "devcontainer",
   "features": {
-    "ghcr.io/devcontainers/features/nix:1": {
-      "packages": "fish,git,clang-tools"
+    "ghcr.io/devcontainers-extra/features/apt-get-packages:1": {
+      "packages": "fish,git,openssh-client,cmake,ninja-build,g++"
     }
   },
   "customizations": {
@@ -35,6 +35,7 @@
         "clangd.path": "clangd",
         "cmake.buildTask": true,
         "cmake.configureOnOpen": true,
+        "cmake.generator": "Ninja",
         "C_Cpp.intelliSenseEngine": "disabled",
         "files.associations": {
           "*.h": "c",
