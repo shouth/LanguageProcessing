@@ -34,7 +34,7 @@ int main(void)
     for (i = 0; i < TEST_SIZE; ++i) {
       HashMapEntry entry;
       hashmap_entry(&map, &i, &entry);
-      hashmap_update(&map, &entry, &i, &i);
+      hashmap_occupy(&map, &entry, &i);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
 
@@ -60,7 +60,7 @@ int main(void)
     for (i = 0; i < TEST_SIZE; ++i) {
       HashMapEntry entry;
       hashmap_entry(&map, &i, &entry);
-      hashmap_update(&map, &entry, &i, &i);
+      hashmap_occupy(&map, &entry, &i);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
 
@@ -93,7 +93,7 @@ int main(void)
       prev_capacity = map.metadata.count ? map.metadata.count + HOPSCOTCH_BUCKET_SIZE - 1 : 0;
 
       hashmap_entry(&map, &i, &entry);
-      hashmap_update(&map, &entry, &i, &i);
+      hashmap_occupy(&map, &entry, &i);
 
       capacity = map.metadata.count ? map.metadata.count + HOPSCOTCH_BUCKET_SIZE - 1 : 0;
 
