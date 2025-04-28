@@ -229,26 +229,25 @@ int hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry)
 void hashmap_reserve_impl(Block *block, Hopscotch *hopscotch, unsigned long new_capacity)
 {
   if (new_capacity > hopscotch->count) {
-    void          *ptr      = block->ptr;
-    unsigned long *hops     = hopscotch->hops;
-    unsigned long  count    = hopscotch->count;
-    unsigned long  sentinel = count + HOPSCOTCH_BUCKET_SIZE - 1;
-    unsigned long  i;
+    Block         old_block     = *block;
+    Hopscotch     old_hopscotch = *hopscotch;
+    unsigned long i;
 
     while (1) {
       unsigned long hop = 0;
 
       hopscotch_alloc(hopscotch, new_capacity, hopscotch->hash, hopscotch->eq);
-      block->ptr = xmalloc(block->size * (hopscotch->count + HOPSCOTCH_BUCKET_SIZE - 1));
+      block->count = hopscotch->count + HOPSCOTCH_BUCKET_SIZE - 1;
+      block->ptr   = xmalloc(block->size * block->count);
 
-      if (count == 0) {
+      if (old_hopscotch.count == 0) {
         break;
       }
 
-      for (i = 0; i < sentinel; ++i) {
-        hop = (hop >> 1) | hops[i];
+      for (i = 0; i < old_block.count; ++i) {
+        hop = (hop >> 1) | old_hopscotch.hops[i];
         if (hop & 1ul) {
-          const void    *kv = (char *) ptr + i * block->size;
+          const void    *kv = (char *) old_block.ptr + i * block->size;
           HopscotchEntry entry;
           hopscotch_unchecked(hopscotch, kv, &entry);
           if (!hopscotch_occupy(hopscotch, block->ptr, block->size, &entry)) {
@@ -258,7 +257,7 @@ void hashmap_reserve_impl(Block *block, Hopscotch *hopscotch, unsigned long new_
         }
       }
 
-      if (i == sentinel) {
+      if (i == old_block.count) {
         break;
       }
 
@@ -267,8 +266,8 @@ void hashmap_reserve_impl(Block *block, Hopscotch *hopscotch, unsigned long new_
       free(block->ptr);
     }
 
-    free(ptr);
-    free(hops);
+    free(old_block.ptr);
+    hopscotch_free(&old_hopscotch);
   }
 }
 
