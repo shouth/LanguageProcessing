@@ -59,26 +59,25 @@ Hash hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len)
 
 /* Vec */
 
-void vec_reserve_impl(Block *block, unsigned long count, unsigned long new_capacity)
+void *vec_reserve_impl(void *ptr, unsigned long size, unsigned long used, unsigned long capacity)
 {
-  if (block->count < new_capacity) {
-    unsigned long i;
-    void         *ptr = block->ptr;
+  unsigned long i;
+  void         *result;
 
-    --new_capacity;
-    for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {
-      new_capacity |= new_capacity >> i;
-    }
-    ++new_capacity;
-
-    block->ptr   = xmalloc(block->size * new_capacity);
-    block->count = new_capacity;
-
-    if (ptr) {
-      memcpy(block->ptr, ptr, block->size * count);
-      free(ptr);
-    }
+  --capacity;
+  for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {
+    capacity |= capacity >> i;
   }
+  ++capacity;
+
+  result = xmalloc(size * capacity);
+
+  if (ptr) {
+    memcpy(result, ptr, size * used);
+    free(ptr);
+  }
+
+  return result;
 }
 
 /* Hopscotch */
@@ -226,49 +225,49 @@ int hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry)
 
 /* HashMap */
 
-void hashmap_reserve_impl(Block *block, Hopscotch *hopscotch, unsigned long new_capacity)
+void *hashmap_reserve_impl(void *ptr, unsigned long size, Hopscotch *hopscotch, unsigned long capacity)
 {
-  if (new_capacity > hopscotch->count) {
-    Block         old_block     = *block;
-    Hopscotch     old_hopscotch = *hopscotch;
-    unsigned long i;
+  unsigned long i;
+  void         *r_ptr;
+  Hopscotch     r_hopscotch;
 
-    while (1) {
-      unsigned long hop = 0;
+  while (1) {
+    unsigned long hop = 0;
 
-      hopscotch_alloc(hopscotch, new_capacity, hopscotch->hash, hopscotch->eq);
-      block->count = hopscotch->count + HOPSCOTCH_BUCKET_SIZE - 1;
-      block->ptr   = xmalloc(block->size * block->count);
+    hopscotch_alloc(&r_hopscotch, capacity, hopscotch->hash, hopscotch->eq);
+    r_ptr = xmalloc(size * (r_hopscotch.count + HOPSCOTCH_BUCKET_SIZE - 1));
 
-      if (old_hopscotch.count == 0) {
-        break;
-      }
-
-      for (i = 0; i < old_block.count; ++i) {
-        hop = (hop >> 1) | old_hopscotch.hops[i];
-        if (hop & 1ul) {
-          const void    *kv = (char *) old_block.ptr + i * block->size;
-          HopscotchEntry entry;
-          hopscotch_unchecked(hopscotch, kv, &entry);
-          if (!hopscotch_occupy(hopscotch, block->ptr, block->size, &entry)) {
-            break;
-          }
-          memcpy((char *) block->ptr + (entry.bucket + entry.slot) * block->size, kv, block->size);
-        }
-      }
-
-      if (i == old_block.count) {
-        break;
-      }
-
-      new_capacity <<= 1;
-      hopscotch_free(hopscotch);
-      free(block->ptr);
+    if (hopscotch->count == 0) {
+      break;
     }
 
-    free(old_block.ptr);
-    hopscotch_free(&old_hopscotch);
+    for (i = 0; i < hopscotch->count + HOPSCOTCH_BUCKET_SIZE - 1; ++i) {
+      hop = (hop >> 1) | hopscotch->hops[i];
+      if (hop & 1ul) {
+        const void    *kv = (char *) ptr + i * size;
+        HopscotchEntry entry;
+        hopscotch_unchecked(&r_hopscotch, kv, &entry);
+        if (!hopscotch_occupy(&r_hopscotch, r_ptr, size, &entry)) {
+          break;
+        }
+        memcpy((char *) r_ptr + (entry.bucket + entry.slot) * size, kv, size);
+      }
+    }
+
+    if (i == hopscotch->count + HOPSCOTCH_BUCKET_SIZE - 1) {
+      break;
+    }
+
+    capacity <<= 1;
+    hopscotch_free(&r_hopscotch);
+    free(r_ptr);
   }
+
+  free(ptr);
+  hopscotch_free(hopscotch);
+
+  *hopscotch = r_hopscotch;
+  return r_ptr;
 }
 
 /* Charactor */

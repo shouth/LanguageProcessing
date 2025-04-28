@@ -66,23 +66,6 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     }                                                \
   } while (0)
 
-/* Span */
-
-typedef struct Block Block;
-
-struct Block {
-  void         *ptr;
-  unsigned long size;
-  unsigned long count;
-};
-
-#define block_from(self, new_ptr, new_count) \
-  do {                                       \
-    (self)->ptr   = (new_ptr);               \
-    (self)->size  = sizeof(*(new_ptr));      \
-    (self)->count = (new_count);             \
-  } while (0)
-
 /* Slice */
 
 #define Slice(type)      \
@@ -124,14 +107,14 @@ struct Block {
     slice_free(self);  \
   } while (0)
 
-#define vec_reserve(self, new_capacity)                                  \
-  do {                                                                   \
-    extern void vec_reserve_impl(Block *, unsigned long, unsigned long); \
-    Block       block;                                                   \
-    block_from(&block, (self)->ptr, (self)->capacity);                   \
-    vec_reserve_impl(&block, (self)->count, (new_capacity));             \
-    (self)->ptr      = block.ptr;                                        \
-    (self)->capacity = block.count;                                      \
+#define vec_reserve(self, new_capacity)                                                                \
+  do {                                                                                                 \
+    extern void  *vec_reserve_impl(void *, unsigned long, unsigned long, unsigned long);               \
+    unsigned long capacity = (new_capacity);                                                           \
+    if (capacity > (self)->capacity) {                                                                 \
+      (self)->ptr      = vec_reserve_impl((self)->ptr, sizeof(*(self)->ptr), (self)->count, capacity); \
+      (self)->capacity = capacity;                                                                     \
+    }                                                                                                  \
   } while (0)
 
 #define vec_push(self, other_ptr, other_count)                                              \
@@ -216,13 +199,13 @@ typedef HopscotchEntry HashMapEntry;
     free((self)->ptr);                 \
   } while (0)
 
-#define hashmap_reserve(self, new_capacity)                                              \
-  do {                                                                                   \
-    extern void hashmap_reserve_impl(Block *, Hopscotch *, unsigned long);               \
-    Block       block;                                                                   \
-    block_from(&block, (self)->ptr, (self)->metadata.count + HOPSCOTCH_BUCKET_SIZE - 1); \
-    hashmap_reserve_impl(&block, &(self)->metadata, (new_capacity));                     \
-    (self)->ptr = block.ptr;                                                             \
+#define hashmap_reserve(self, new_capacity)                                                               \
+  do {                                                                                                    \
+    extern void  *hashmap_reserve_impl(void *, unsigned long, Hopscotch *, unsigned long);                \
+    unsigned long capacity = (new_capacity);                                                              \
+    if (capacity > (self)->metadata.count) {                                                              \
+      (self)->ptr = hashmap_reserve_impl((self)->ptr, sizeof(*(self)->ptr), &(self)->metadata, capacity); \
+    }                                                                                                     \
   } while (0);
 
 #define hashmap_entry(self, key, entry) \
