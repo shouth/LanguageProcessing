@@ -206,7 +206,7 @@ typedef HopscotchEntry HashMapEntry;
     if (capacity > (self)->metadata.count) {                                                              \
       (self)->ptr = hashmap_reserve_impl((self)->ptr, sizeof(*(self)->ptr), &(self)->metadata, capacity); \
     }                                                                                                     \
-  } while (0);
+  } while (0)
 
 #define hashmap_entry(self, key, entry) \
   hopscotch_entry(&(self)->metadata, (self)->ptr, sizeof(*(self)->ptr), key, entry)
