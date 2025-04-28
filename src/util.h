@@ -66,6 +66,23 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     }                                                \
   } while (0)
 
+/* Span */
+
+typedef struct Block Block;
+
+struct Block {
+  void         *ptr;
+  unsigned long size;
+  unsigned long count;
+};
+
+#define block_from(self, new_ptr, new_count) \
+  do {                                       \
+    (self)->ptr   = (new_ptr);               \
+    (self)->size  = sizeof(*(new_ptr));      \
+    (self)->count = (new_count);             \
+  } while (0)
+
 /* Slice */
 
 #define Slice(type)      \
@@ -74,17 +91,15 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     unsigned long count; \
   }
 
-#define slice_alloc(seq, new_count)                            \
-  do {                                                         \
-    /* NOLINTBEGIN(bugprone-sizeof-expression) */              \
-    (seq)->ptr   = xmalloc(sizeof(*(seq)->ptr) * (new_count)); \
-    (seq)->count = new_count;                                  \
-    /* NOLINTEND(bugprone-sizeof-expression) */                \
+#define slice_alloc(self, new_count)                             \
+  do {                                                           \
+    (self)->ptr   = xmalloc(sizeof(*(self)->ptr) * (new_count)); \
+    (self)->count = new_count;                                   \
   } while (0)
 
-#define slice_free(seq) \
-  do {                  \
-    free((seq)->ptr);   \
+#define slice_free(self) \
+  do {                   \
+    free((self)->ptr);   \
   } while (0)
 
 /* Vec */
@@ -96,58 +111,44 @@ Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
     unsigned long capacity; \
   }
 
-#define vec_alloc(vec, new_count)   \
-  do {                              \
-    (vec)->ptr      = NULL;         \
-    (vec)->capacity = 0;            \
-    (vec)->count    = new_count;    \
-    vec_reserve(vec, (vec)->count); \
+#define vec_alloc(self, new_count)    \
+  do {                                \
+    (self)->ptr      = NULL;          \
+    (self)->capacity = 0;             \
+    (self)->count    = new_count;     \
+    vec_reserve(self, (self)->count); \
   } while (0)
 
-#define vec_free(vec) \
-  do {                \
-    slice_free(vec);  \
-  } while (0)
-
-#define vec_reserve(vec, new_capacity)                                    \
-  do {                                                                    \
-    /* NOLINTBEGIN(bugprone-sizeof-expression) */                         \
-    unsigned long capacity = new_capacity;                                \
-    if (capacity > (vec)->capacity) {                                     \
-      void         *old_ptr = (vec)->ptr;                                 \
-      unsigned long i;                                                    \
-                                                                          \
-      --capacity;                                                         \
-      for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {                    \
-        capacity |= capacity >> i;                                        \
-      }                                                                   \
-      ++capacity;                                                         \
-                                                                          \
-      (vec)->capacity = capacity;                                         \
-      (vec)->ptr      = xmalloc(sizeof(*(vec)->ptr) * ((vec)->capacity)); \
-      if ((vec)->count) {                                                 \
-        memcpy((vec)->ptr, old_ptr, sizeof(*(vec)->ptr) * (vec)->count);  \
-      }                                                                   \
-      free(old_ptr);                                                      \
-      /* NOLINTEND(bugprone-sizeof-expression) */                         \
-    }                                                                     \
-  } while (0)
-
-#define vec_push(vec, other_ptr, other_count)                                            \
-  do {                                                                                   \
-    vec_reserve(vec, (vec)->count + (other_count));                                      \
-    memcpy((vec)->ptr + (vec)->count, (other_ptr), sizeof(*(vec)->ptr) * (other_count)); \
-    (vec)->count += (other_count);                                                       \
-  } while (0)
-
-#define vec_pop(vec, delete_count)  \
-  do {                              \
-    (vec)->count -= (delete_count); \
-  } while (0)
-
-#define vec_clear(vec) \
+#define vec_free(self) \
   do {                 \
-    (vec)->count = 0;  \
+    slice_free(self);  \
+  } while (0)
+
+#define vec_reserve(self, new_capacity)                                  \
+  do {                                                                   \
+    extern void vec_reserve_impl(Block *, unsigned long, unsigned long); \
+    Block       block;                                                   \
+    block_from(&block, (self)->ptr, (self)->capacity);                   \
+    vec_reserve_impl(&block, (self)->count, (new_capacity));             \
+    (self)->ptr      = block.ptr;                                        \
+    (self)->capacity = block.count;                                      \
+  } while (0)
+
+#define vec_push(self, other_ptr, other_count)                                              \
+  do {                                                                                      \
+    vec_reserve(self, (self)->count + (other_count));                                       \
+    memcpy((self)->ptr + (self)->count, (other_ptr), sizeof(*(self)->ptr) * (other_count)); \
+    (self)->count += (other_count);                                                         \
+  } while (0)
+
+#define vec_pop(self, delete_count)  \
+  do {                               \
+    (self)->count -= (delete_count); \
+  } while (0)
+
+#define vec_clear(self) \
+  do {                  \
+    (self)->count = 0;  \
   } while (0)
 
 /* Hopscotch */
@@ -202,95 +203,58 @@ typedef HopscotchEntry HashMapEntry;
     unsigned long count;  \
   }
 
-#define hashmap_alloc(map, hash, eq)                \
-  do {                                              \
-    hopscotch_alloc(&(map)->metadata, 0, hash, eq); \
-    (map)->ptr   = NULL;                            \
-    (map)->count = 0;                               \
+#define hashmap_alloc(self, hash, eq)                \
+  do {                                               \
+    hopscotch_alloc(&(self)->metadata, 0, hash, eq); \
+    (self)->ptr   = NULL;                            \
+    (self)->count = 0;                               \
   } while (0)
 
-#define hashmap_free(map)             \
-  do {                                \
-    hopscotch_free(&(map)->metadata); \
-    free((map)->ptr);                 \
+#define hashmap_free(self)             \
+  do {                                 \
+    hopscotch_free(&(self)->metadata); \
+    free((self)->ptr);                 \
   } while (0)
 
-#define hashmap_reserve(map, new_capacity)                                                               \
-  do {                                                                                                   \
-    unsigned long capacity = new_capacity;                                                               \
-    if (capacity > (map)->metadata.count) {                                                              \
-      void         *ptr      = (map)->ptr;                                                               \
-      Hopscotch     metadata = (map)->metadata;                                                          \
-      unsigned long i;                                                                                   \
-                                                                                                         \
-      while (1) {                                                                                        \
-        unsigned long hop      = 0;                                                                      \
-        unsigned long sentinel = metadata.count + HOPSCOTCH_BUCKET_SIZE - 1;                             \
-                                                                                                         \
-        hopscotch_alloc(&(map)->metadata, capacity, metadata.hash, metadata.eq);                         \
-        (map)->ptr = xmalloc(sizeof(*(map)->ptr) * ((map)->metadata.count + HOPSCOTCH_BUCKET_SIZE - 1)); \
-                                                                                                         \
-        if (metadata.count == 0) {                                                                       \
-          break;                                                                                         \
-        }                                                                                                \
-                                                                                                         \
-        for (i = 0; i < sentinel; ++i) {                                                                 \
-          hop = (hop >> 1) | metadata.hops[i];                                                           \
-          if (hop & 1ul) {                                                                               \
-            const void    *kv = (char *) ptr + i * sizeof(*(map)->ptr);                                  \
-            HopscotchEntry entry;                                                                        \
-            hopscotch_unchecked(&(map)->metadata, kv, &entry);                                           \
-            if (!hopscotch_occupy(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), &entry)) {          \
-              break;                                                                                     \
-            }                                                                                            \
-            memcpy((map)->ptr + (entry.bucket + entry.slot), kv, sizeof(*(map)->ptr));                   \
-          }                                                                                              \
-        }                                                                                                \
-                                                                                                         \
-        if (i == sentinel) {                                                                             \
-          break;                                                                                         \
-        }                                                                                                \
-                                                                                                         \
-        capacity *= 2;                                                                                   \
-        hopscotch_free(&(map)->metadata);                                                                \
-        free((map)->ptr);                                                                                \
-      }                                                                                                  \
-                                                                                                         \
-      free(ptr);                                                                                         \
-      hopscotch_free(&metadata);                                                                         \
-    }                                                                                                    \
+#define hashmap_reserve(self, new_capacity)                                              \
+  do {                                                                                   \
+    extern void hashmap_reserve_impl(Block *, Hopscotch *, unsigned long);               \
+    Block       block;                                                                   \
+    block_from(&block, (self)->ptr, (self)->metadata.count + HOPSCOTCH_BUCKET_SIZE - 1); \
+    hashmap_reserve_impl(&block, &(self)->metadata, (new_capacity));                     \
+    (self)->ptr = block.ptr;                                                             \
   } while (0);
 
-#define hashmap_entry(map, key, entry) \
-  hopscotch_entry(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), key, entry)
+#define hashmap_entry(self, key, entry) \
+  hopscotch_entry(&(self)->metadata, (self)->ptr, sizeof(*(self)->ptr), key, entry)
 
-#define hashmap_key(map, entry) \
-  (assert((entry)->bucket < (map)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE), &(map)->ptr[(entry)->bucket + (entry)->slot].key)
+#define hashmap_key(self, entry) \
+  (assert((entry)->bucket < (self)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE), &(self)->ptr[(entry)->bucket + (entry)->slot].key)
 
-#define hashmap_value(map, entry) \
-  (assert((entry)->bucket < (map)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE), &(map)->ptr[(entry)->bucket + (entry)->slot].value)
+#define hashmap_value(self, entry) \
+  (assert((entry)->bucket < (self)->metadata.count && (entry)->slot < HOPSCOTCH_BUCKET_SIZE), &(self)->ptr[(entry)->bucket + (entry)->slot].value)
 
-#define hashmap_next(map, entry) \
-  hopscotch_next(&(map)->metadata, entry)
+#define hashmap_next(self, entry) \
+  hopscotch_next(&(self)->metadata, entry)
 
-#define hashmap_occupy(map, entry, new_key)                                                            \
-  do {                                                                                                 \
-    int status;                                                                                        \
-    while (!(status = hopscotch_occupy(&(map)->metadata, (map)->ptr, sizeof(*(map)->ptr), (entry)))) { \
-      hashmap_reserve(map, (map)->metadata.count ? (map)->metadata.count * 2 : 1);                     \
-      hopscotch_unchecked(&(map)->metadata, (new_key), (entry));                                       \
-    }                                                                                                  \
-    if (status == 1) {                                                                                 \
-      ++(map)->count;                                                                                  \
-    }                                                                                                  \
-    (map)->ptr[(entry)->bucket + (entry)->slot].key = *(new_key);                                      \
+#define hashmap_occupy(self, entry, new_key)                                                              \
+  do {                                                                                                    \
+    int status;                                                                                           \
+    while (!(status = hopscotch_occupy(&(self)->metadata, (self)->ptr, sizeof(*(self)->ptr), (entry)))) { \
+      hashmap_reserve(self, (self)->metadata.count ? (self)->metadata.count * 2 : 1);                     \
+      hopscotch_unchecked(&(self)->metadata, (new_key), (entry));                                         \
+    }                                                                                                     \
+    if (status == 1) {                                                                                    \
+      ++(self)->count;                                                                                    \
+    }                                                                                                     \
+    (self)->ptr[(entry)->bucket + (entry)->slot].key = *(new_key);                                        \
   } while (0)
 
-#define hashmap_release(map, entry)                   \
-  do {                                                \
-    if (hopscotch_release(&(map)->metadata, entry)) { \
-      --(map)->count;                                 \
-    }                                                 \
+#define hashmap_release(self, entry)                   \
+  do {                                                 \
+    if (hopscotch_release(&(self)->metadata, entry)) { \
+      --(self)->count;                                 \
+    }                                                  \
   } while (0)
 
 /* Character */

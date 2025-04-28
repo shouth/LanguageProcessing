@@ -57,6 +57,30 @@ Hash hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len)
   return result;
 }
 
+/* Vec */
+
+void vec_reserve_impl(Block *block, unsigned long count, unsigned long new_capacity)
+{
+  if (block->count < new_capacity) {
+    unsigned long i;
+    void         *ptr = block->ptr;
+
+    --new_capacity;
+    for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {
+      new_capacity |= new_capacity >> i;
+    }
+    ++new_capacity;
+
+    block->ptr   = xmalloc(block->size * new_capacity);
+    block->count = new_capacity;
+
+    if (ptr) {
+      memcpy(block->ptr, ptr, block->size * count);
+      free(ptr);
+    }
+  }
+}
+
 /* Hopscotch */
 
 void hopscotch_alloc(Hopscotch *hopscotch, unsigned long base_count, HopscotchHash *hash, HopscotchEq *eq)
@@ -197,6 +221,54 @@ int hopscotch_release(Hopscotch *hopscotch, HopscotchEntry *entry)
     return 1;
   } else {
     return 0;
+  }
+}
+
+/* HashMap */
+
+void hashmap_reserve_impl(Block *block, Hopscotch *hopscotch, unsigned long new_capacity)
+{
+  if (new_capacity > hopscotch->count) {
+    void          *ptr      = block->ptr;
+    unsigned long *hops     = hopscotch->hops;
+    unsigned long  count    = hopscotch->count;
+    unsigned long  sentinel = count + HOPSCOTCH_BUCKET_SIZE - 1;
+    unsigned long  i;
+
+    while (1) {
+      unsigned long hop = 0;
+
+      hopscotch_alloc(hopscotch, new_capacity, hopscotch->hash, hopscotch->eq);
+      block->ptr = xmalloc(block->size * (hopscotch->count + HOPSCOTCH_BUCKET_SIZE - 1));
+
+      if (count == 0) {
+        break;
+      }
+
+      for (i = 0; i < sentinel; ++i) {
+        hop = (hop >> 1) | hops[i];
+        if (hop & 1ul) {
+          const void    *kv = (char *) ptr + i * block->size;
+          HopscotchEntry entry;
+          hopscotch_unchecked(hopscotch, kv, &entry);
+          if (!hopscotch_occupy(hopscotch, block->ptr, block->size, &entry)) {
+            break;
+          }
+          memcpy((char *) block->ptr + (entry.bucket + entry.slot) * block->size, kv, block->size);
+        }
+      }
+
+      if (i == sentinel) {
+        break;
+      }
+
+      new_capacity <<= 1;
+      hopscotch_free(hopscotch);
+      free(block->ptr);
+    }
+
+    free(ptr);
+    free(hops);
   }
 }
 
