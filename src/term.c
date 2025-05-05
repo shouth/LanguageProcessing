@@ -332,7 +332,7 @@ void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ..
   while (fgets(buffer + index, BUFFER_SIZE - index, file)) {
     while (buffer[index]) {
       long size = utf8_len(buffer + index, BUFFER_SIZE - index);
-      if (size < 0) {
+      if (size <= 0) {
         int remain = strlen(buffer + index);
         memmove(buffer, buffer + index, remain);
         index = remain;

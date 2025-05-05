@@ -247,7 +247,7 @@ int is_number(int c);
 int is_space(int c);
 int is_graphic(int c);
 
-long utf8_len(const char *str, long len);
+long utf8_len(const char *str, unsigned long len);
 
 /* Color */
 

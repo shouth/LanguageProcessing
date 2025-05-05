@@ -292,9 +292,11 @@ int is_graphic(int c)
   return is_alphabet(c) || is_number(c) || is_space(c) || !!strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", c);
 }
 
-long utf8_len(const char *str, long len)
+long utf8_len(const char *str, unsigned long len)
 {
-  if ((str[0] & 0x80) == 0x00) {
+  if (len == 0) {
+    return 0;
+  } else if ((str[0] & 0x80) == 0x00) {
     return 1;
   } else if ((str[0] & 0xE0) == 0xC0) {
     return len >= 2 && (str[1] & 0xC0) == 0x80 ? 2 : -1;
