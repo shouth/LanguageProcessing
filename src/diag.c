@@ -6,7 +6,6 @@
 #include "diag.h"
 #include "mppl_syntax.h"
 #include "report.h"
-#include "ty_ctxt.h"
 #include "util.h"
 
 /* utility */
@@ -64,75 +63,6 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
     }
   }
 
-  slice_alloc(&result, length + 1);
-  rewind(buffer);
-  fread(result.ptr, 1, length, buffer);
-  result.ptr[length] = '\0';
-  fclose(buffer);
-  return result.ptr;
-}
-
-unsigned long print_mppl_ty(FILE *buffer, const Ty *ty)
-{
-  unsigned long length = 0;
-  switch (ty->kind) {
-  case TY_INTEGER:
-    length += fprintf(buffer, "integer");
-    break;
-
-  case TY_CHAR:
-    length += fprintf(buffer, "char");
-    break;
-
-  case TY_BOOLEAN:
-    length += fprintf(buffer, "boolean");
-    break;
-
-  case TY_STRING:
-    length += fprintf(buffer, "string");
-    break;
-
-  case TY_ARRAY: {
-    const ArrayTy *array_ty = (const ArrayTy *) ty;
-
-    length += print_mppl_ty(buffer, array_ty->base);
-    length += fprintf(buffer, "[%lu]", array_ty->size);
-    break;
-  }
-
-  case TY_PROC: {
-    const ProcTy *proc_ty = (const ProcTy *) ty;
-
-    unsigned long i;
-    length += fprintf(buffer, "procedure(");
-    for (i = 0; i < proc_ty->params.count; i++) {
-      if (i > 0) {
-        length += fprintf(buffer, ", ");
-      }
-      length += print_mppl_ty(buffer, proc_ty->params.ptr[i]);
-    }
-    length += fprintf(buffer, ")");
-    break;
-  }
-
-  default:
-    unreachable();
-  }
-
-  return length;
-}
-
-char *mppl_ty_to_string(const Ty *ty)
-{
-  unsigned long length;
-  Slice(char) result;
-
-  FILE *buffer = tmpfile();
-  if (buffer == NULL) {
-    return NULL;
-  }
-
-  length = print_mppl_ty(buffer, ty);
   slice_alloc(&result, length + 1);
   rewind(buffer);
   fread(result.ptr, 1, length, buffer);
@@ -220,107 +150,5 @@ Report *diag_break_outside_loop_error(unsigned long offset, unsigned long length
 {
   Report *report = report_new(REPORT_KIND_ERROR, offset, "`break` statement outside loop");
   report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-/* resolver */
-
-Report *diag_multiple_definition_error(unsigned long offset, unsigned long length, const char *name, unsigned long previous_offset)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "`%.*s` has multiple definitions", (int) length, name);
-  report_annotation(report, offset, offset + length, "current definition");
-  report_annotation(report, previous_offset, previous_offset + length, "previous definition");
-  return report;
-}
-
-Report *diag_not_defined_error(unsigned long offset, unsigned long length, const char *name)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "`%.*s` is not defined", (int) length, name);
-  report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-/* checker */ /* TODO: provide more precise error messages */
-
-Report *diag_zero_sized_array_error(unsigned long offset, unsigned long length)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "zero-sized array");
-  report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-Report *diag_non_array_subscript_error(unsigned long offset, unsigned long length)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "non-array subscript");
-  report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-Report *diag_recursive_call_error(unsigned long offset, unsigned long length, const char *name)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "recursive call to `%s`", name);
-  report_annotation(report, offset, offset + length, "recursive call is not allowed");
-  return report;
-}
-
-Report *diag_mismatched_type_error(unsigned long offset, unsigned long length, const Ty *expected, const Ty *found)
-{
-  char   *expected_str = mppl_ty_to_string(expected);
-  char   *found_str    = mppl_ty_to_string(found);
-  Report *report       = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
-  report_annotation(report, offset, offset + length, "expected `%s`, found `%s`", expected_str, found_str);
-  free(expected_str);
-  free(found_str);
-  return report;
-}
-
-Report *diag_non_standard_type_error(unsigned long offset, unsigned long length, const Ty *found)
-{
-  char   *found_str = mppl_ty_to_string(found);
-  Report *report    = report_new(REPORT_KIND_ERROR, offset, "mismatched type");
-  report_annotation(report, offset, offset + length, "expected `integer`, `char` or `boolean`, found `%s`", found_str);
-  free(found_str);
-  return report;
-}
-
-Report *diag_non_lvalue_assignment_error(unsigned long offset, unsigned long length)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "tries to assign to a rvalue");
-  report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-Report *diag_mismatched_arguments_count_error(unsigned long offset, unsigned long length, unsigned long expected, unsigned long found)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "mismatched arguments count");
-  report_annotation(report, offset, offset + length, "expected %lu, found %lu", expected, found);
-  return report;
-}
-
-Report *diag_non_procedure_invocation_error(unsigned long offset, unsigned long length)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "tries to invoke a non-procedure");
-  report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-Report *diag_invalid_input_error(unsigned long offset, unsigned long length)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid input");
-  report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-Report *diag_invalid_output_error(unsigned long offset, unsigned long length)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "invalid output");
-  report_annotation(report, offset, offset + length, NULL);
-  return report;
-}
-
-Report *diag_invalid_output_value_error(unsigned long offset, unsigned long length)
-{
-  Report *report = report_new(REPORT_KIND_ERROR, offset, "field width exists for string");
-  report_annotation(report, offset, offset + length, "field width can not be used with string");
   return report;
 }

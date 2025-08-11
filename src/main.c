@@ -6,12 +6,10 @@
 #include <string.h>
 
 #include "mppl.h"
-#include "mppl_semantic.h"
 #include "mppl_syntax.h"
 #include "report.h"
 #include "source.h"
 #include "syntax_tree.h"
-#include "ty_ctxt.h"
 #include "util.h"
 
 const char *program;
@@ -43,42 +41,6 @@ static int run_compiler(void)
       fprintf(stderr, "Cannot open file: %s\n", filename);
       result = EXIT_FAILURE;
     } else {
-      MpplParseResult parse_result = mppl_parse(source->text.ptr, source->text.count);
-      if (dump_syntax) {
-        syntax_tree_print(&parse_result.root->syntax, stdout, &mppl_syntax_kind_print);
-      }
-
-      if (parse_result.diags.count > 0) {
-        for (j = 0; j < parse_result.diags.count; ++j) {
-          report_emit(parse_result.diags.ptr[j], source);
-        }
-      } else {
-        MpplResolveResult resolve_result = mppl_resolve(parse_result.root);
-        if (dump_crossref) {
-          mppl_semantics_print(&resolve_result.semantics, source);
-        }
-
-        for (j = 0; j < resolve_result.diags.count; ++j) {
-          report_emit(resolve_result.diags.ptr[j], source);
-        }
-
-        if (resolve_result.diags.count == 0) {
-          MpplCheckResult check_result = mppl_check(parse_result.root, &resolve_result.semantics);
-
-          for (j = 0; j < check_result.diags.count; ++j) {
-            report_emit(check_result.diags.ptr[j], source);
-          }
-
-          ty_ctxt_free(check_result.ctxt);
-          slice_free(&check_result.diags);
-        }
-
-        mppl_semantics_free(&resolve_result.semantics);
-        slice_free(&resolve_result.diags);
-      }
-
-      syntax_tree_free((SyntaxTree *) parse_result.root);
-      slice_free(&parse_result.diags);
       source_free(source);
     }
   }
