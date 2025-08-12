@@ -9,7 +9,6 @@
 #include "mppl_syntax.h"
 #include "report.h"
 #include "source.h"
-#include "syntax_tree.h"
 #include "util.h"
 
 const char *program;
@@ -22,11 +21,6 @@ int pretty_print  = 0;
 int syntax_only   = 0;
 int emit_llvm     = 0;
 int emit_casl2    = 0;
-
-void mppl_syntax_kind_print(RawSyntaxKind kind, FILE *file)
-{
-  fprintf(file, "%s", mppl_syntax_kind_to_string(kind));
-}
 
 static int run_compiler(void)
 {

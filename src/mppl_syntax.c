@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "mppl_syntax.h"
-#include "syntax_tree.h"
 #include "util.h"
 
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size)
