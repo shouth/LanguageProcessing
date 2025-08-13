@@ -133,10 +133,9 @@ int source_offset_location(const Source *source, size_t offset, SourceLocation *
 static size_t source_offset(Source const *source, size_t line)
 {
   size_t offset = 0;
-  size_t i;
   assert(source->line_count > line);
 
-  for (i = line; line > 0; line -= line & -line) {
+  for (; line > 0; line -= line & -line) {
     offset += source->offset_tree[line];
   }
   return offset;
