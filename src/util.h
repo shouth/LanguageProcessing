@@ -15,12 +15,6 @@ void *xmalloc(unsigned long size);
 
 unsigned long popcount(const void *data, unsigned long size);
 
-/* Hash */
-
-typedef unsigned long Hash;
-
-Hash hash_fnv1a(Hash *hash, const void *ptr, unsigned long len);
-
 /* BitSet */
 
 #define BitSet(bits)                                      \

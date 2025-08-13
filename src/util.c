@@ -41,22 +41,6 @@ unsigned long popcount(const void *data, unsigned long count)
   return result;
 }
 
-/* Hash */
-
-Hash hash_fnv1a(unsigned long *hash, const void *ptr, unsigned long len)
-{
-  unsigned long i;
-
-  Hash result = hash ? *hash : 0x811C9DC5ul;
-  for (i = 0; i < len; ++i) {
-    result = 0xFFFFFFFFul & ((result ^ *((unsigned char *) ptr + i)) * 0x01000193ul);
-  }
-  if (hash) {
-    *hash = result;
-  }
-  return result;
-}
-
 /* Vec */
 
 void *vec_reserve_impl(void *ptr, unsigned long size, unsigned long used, unsigned long capacity)
