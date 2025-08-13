@@ -3,32 +3,33 @@
 #ifndef SOURCE_H
 #define SOURCE_H
 
-#include "util.h"
+#include <stddef.h>
 
 typedef struct SourceLocation SourceLocation;
 typedef struct SourceRange    SourceRange;
 typedef struct Source         Source;
 
-typedef Slice(SourceRange) SourceRangeSlice;
-
 struct SourceLocation {
-  unsigned long line;
-  unsigned long column;
+  size_t line;
+  size_t column;
 };
 
 struct SourceRange {
-  unsigned long offset;
-  unsigned long span;
+  size_t offset;
+  size_t length;
 };
 
 struct Source {
-  Slice(char) filename;
-  Slice(char) text;
-  SourceRangeSlice lines;
+  char *filename;
+  char *text;
+  size_t text_length;
+  size_t line_count;
+  size_t *offset_tree;
 };
 
-Source *source_new(const char *filename, unsigned long filename_len);
+Source *source_new(char const *filename, size_t filename_len);
 void    source_free(Source *source);
-int     source_location(const Source *source, unsigned long offset, SourceLocation *location);
+int     source_offset_location(Source const *source, size_t offset, SourceLocation *location);
+int     source_line_range(Source const *source, size_t line, SourceRange *range);
 
 #endif /* SOURCE_H */
