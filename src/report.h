@@ -5,8 +5,6 @@
 
 #include <stdarg.h>
 
-#include "source.h"
-
 typedef enum {
   REPORT_KIND_NOTE,
   REPORT_KIND_WARN,
@@ -17,12 +15,12 @@ typedef struct ReportAnnotation ReportAnnotation;
 typedef struct Report           Report;
 
 Report *report_new(ReportKind kind, unsigned long offset, const char *format, ...);
-Report *report_new_with_args(ReportKind kind, unsigned long offset, const char *format, va_list args);
+Report *report_new_with_args(ReportKind kind, unsigned long offset, char const *format, va_list args);
 void    report_free(Report *report);
-void    report_annotation(Report *report, unsigned long start, unsigned long end, const char *format, ...);
-void    report_annotation_with_args(Report *report, unsigned long start, unsigned long end, const char *format, va_list args);
-void    report_note(Report *report, const char *format, ...);
-void    report_note_with_args(Report *report, const char *format, va_list args);
-void    report_emit(Report *report, const Source *source);
+void    report_annotation(Report *report, unsigned long start, unsigned long end, char const *format, ...);
+void    report_annotation_with_args(Report *report, unsigned long start, unsigned long end, char const *format, va_list args);
+void    report_note(Report *report, char const *format, ...);
+void    report_note_with_args(Report *report, char const *format, va_list args);
+void    report_emit(Report *report, char const *filename, char const *source);
 
 #endif /* REPORT_H */

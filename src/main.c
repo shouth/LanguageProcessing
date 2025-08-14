@@ -5,10 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mppl.h"
-#include "mppl_syntax.h"
-#include "report.h"
-#include "source.h"
 #include "util.h"
 
 const char *program;
@@ -29,13 +25,14 @@ static int run_compiler(void)
 
   for (i = 0; i < filenames.count; ++i) {
     const char *filename = filenames.ptr[i];
-    Source     *source   = source_new(filename, strlen(filename));
+    size_t length;
+    char *content = load_file(filename, &length);
 
-    if (!source) {
+    if (!content) {
       fprintf(stderr, "Cannot open file: %s\n", filename);
       result = EXIT_FAILURE;
     } else {
-      source_free(source);
+      free(content);
     }
   }
   return result;

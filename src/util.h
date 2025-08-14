@@ -137,6 +137,14 @@ int is_graphic(int c);
 
 long utf8_len(const char *str, unsigned long len);
 
+/* Text */
+
+
+
+void   text_offsets_update(size_t *offsets, size_t count, size_t index, size_t length);
+size_t text_offsets_at(size_t const *offsets, size_t count, size_t index);
+size_t text_offsets_locate(size_t const *offsets, size_t count, size_t offset, size_t *column);
+
 /* Color */
 
 #define MONOKAI_RED    0xFF6188
@@ -145,7 +153,9 @@ long utf8_len(const char *str, unsigned long len);
 #define MONOKAI_BLUE   0x78DCE8
 #define MONOKAI_PURPLE 0xAB9DF2
 
-/* Miscellaneous */
+/* Misc */
+
+char *load_file(char const *filename, size_t *out_length);
 
 #define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))
 

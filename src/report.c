@@ -7,18 +7,19 @@
 #include <string.h>
 
 #include "report.h"
-#include "source.h"
 #include "term.h"
 #include "util.h"
 
 /* Report */
 
 struct ReportAnnotation {
-  unsigned long  start_offset;
-  unsigned long  end_offset;
-  SourceLocation start;
-  SourceLocation end;
-  char          *message;
+  size_t start_offset;
+  size_t end_offset;
+  size_t start_line;
+  size_t start_column;
+  size_t end_line;
+  size_t end_column;
+  char  *message;
 };
 
 struct Report {
@@ -153,8 +154,12 @@ struct Connector {
 };
 
 struct Writer {
-  const Report *report;
-  const Source *source;
+  Report const *report;
+  char const   *filename;
+  char const   *source;
+  size_t        source_length;
+  size_t       *offsets;
+  size_t        line_count;
   int           number_margin;
   int           tab_width;
 };
@@ -253,8 +258,8 @@ static void write_location_line(Writer *writer, TermBuf *canvas)
 {
   TermStyle style;
 
-  SourceLocation location;
-  source_offset_location(writer->source, writer->report->offset, &location);
+  size_t column;
+  size_t line = text_offsets_locate(writer->offsets, writer->line_count, writer->report->offset, &column);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -262,7 +267,7 @@ static void write_location_line(Writer *writer, TermBuf *canvas)
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_WHITE | TERM_COLOR_BRIGHT;
-  term_buf_write(canvas, &style, "%s:%lu:%lu", writer->source->filename, location.line + 1, location.column + 1);
+  term_buf_write(canvas, &style, "%s:%lu:%lu", writer->filename, line + 1, column + 1);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -288,17 +293,17 @@ static void write_annotation_left(
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
   for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
-    if (annotation->start.line != annotation->end.line) {
+    if (annotation->start_line != annotation->end_line) {
       if (strike) {
         term_buf_write(canvas, &style, "──");
-      } else if (line_number < annotation->start.line || line_number > annotation->end.line) {
+      } else if (line_number < annotation->start_line || line_number > annotation->end_line) {
         term_buf_write(canvas, &style, "  ");
-      } else if (line_number == annotation->start.line) {
+      } else if (line_number == annotation->start_line) {
         if (line_column == -1ul) {
           term_buf_write(canvas, &style, "  ");
-        } else if (line_column > annotation->start.column) {
+        } else if (line_column > annotation->start_column) {
           term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
-        } else if (line_column < annotation->start.column) {
+        } else if (line_column < annotation->start_column) {
           term_buf_write(canvas, &style, "  ");
         } else if (annotation == connect) {
           term_buf_write(canvas, &style, "╭─");
@@ -306,12 +311,12 @@ static void write_annotation_left(
         } else {
           term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
         }
-      } else if (line_number == annotation->end.line) {
+      } else if (line_number == annotation->end_line) {
         if (line_column == -1ul) {
           term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
-        } else if (line_column < annotation->end.column) {
+        } else if (line_column < annotation->end_column) {
           term_buf_write(canvas, &style, dotted ? "╎ " : "│ ");
-        } else if (line_column > annotation->end.column) {
+        } else if (line_column > annotation->end_column) {
           term_buf_write(canvas, &style, "  ");
         } else if (annotation == connect) {
           term_buf_write(canvas, &style, "╰─");
@@ -333,7 +338,6 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
 
   unsigned long line_width;
   char         *line;
-  SourceRange range;
 
   unsigned long line_offset;
   unsigned long column_offset;
@@ -341,14 +345,15 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
   Vec(LineSegment) segments;
   Vec(LineSegment) nongraphics;
 
-  source_line_range(writer->source, line_number, &range);
+  size_t offset = text_offsets_at(writer->offsets, writer->line_count, line_number);
+  size_t length = text_offsets_at(writer->offsets, writer->line_count, line_number + 1) - offset;
 
   vec_alloc(&segments, 0);
   vec_alloc(&nongraphics, 0);
 
   line_width = 0;
-  for (i = 0; i < range.length; ++i) {
-    char c = writer->source->text[range.offset + i];
+  for (i = 0; i < length; ++i) {
+    char c = writer->source[offset + i];
     if (c == '\t') {
       line_width += writer->tab_width - (line_width % writer->tab_width);
     } else if (!is_graphic(c)) {
@@ -360,8 +365,8 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
 
   line        = malloc(line_width + 1);
   line_offset = 0;
-  for (i = 0; i < range.length; ++i) {
-    char c = writer->source->text[range.offset + i];
+  for (i = 0; i < length; ++i) {
+    char c = writer->source[offset + i];
     if (c == '\t') {
       unsigned long adjusted_width = writer->tab_width - (line_offset % writer->tab_width);
       line_offset += sprintf(line + line_offset, "%*.s", (int) adjusted_width, "");
@@ -383,15 +388,15 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
     LineSegment       segment;
     segment.annotation = annotation;
-    if (annotation->start.line == line_number && annotation->end.line == line_number) {
-      segment.start = annotation->start.column;
-      segment.end   = annotation->end.column;
-    } else if (annotation->start.line == line_number) {
-      segment.start = annotation->start.column;
+    if (annotation->start_line == line_number && annotation->end_line == line_number) {
+      segment.start = annotation->start_column;
+      segment.end   = annotation->end_column;
+    } else if (annotation->start_line == line_number) {
+      segment.start = annotation->start_column;
       segment.end   = line_width;
-    } else if (annotation->end.line == line_number) {
+    } else if (annotation->end_line == line_number) {
       segment.start = 0;
-      segment.end   = annotation->end.column;
+      segment.end   = annotation->end_column;
     } else {
       continue;
     }
@@ -460,20 +465,20 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
   for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
     Indicator         indicator;
-    if (annotation->start.line == line_number && annotation->end.line == line_number) {
+    if (annotation->start_line == line_number && annotation->end_line == line_number) {
       indicator.annotation = annotation;
       indicator.kind       = INDICATOR_INLINE;
-      indicator.column     = annotation->start.column;
-      indicator.length     = annotation->end.column - annotation->start.column + 1;
-    } else if (annotation->start.line == line_number) {
+      indicator.column     = annotation->start_column;
+      indicator.length     = annotation->end_column - annotation->start_column + 1;
+    } else if (annotation->start_line == line_number) {
       indicator.annotation = annotation;
       indicator.kind       = INDICATOR_BEGIN;
-      indicator.column     = annotation->start.column;
+      indicator.column     = annotation->start_column;
       indicator.length     = 1;
-    } else if (annotation->end.line == line_number) {
+    } else if (annotation->end_line == line_number) {
       indicator.annotation = annotation;
       indicator.kind       = INDICATOR_END;
-      indicator.column     = annotation->end.column;
+      indicator.column     = annotation->end_column;
       indicator.length     = 1;
     } else {
       continue;
@@ -534,27 +539,27 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
     Connector         connector;
     connector.annotation = annotation;
 
-    if (annotation->start.line == line_number && label_offset < annotation->start.column) {
-      label_offset = annotation->start.column;
+    if (annotation->start_line == line_number && label_offset < annotation->start_column) {
+      label_offset = annotation->start_column;
     }
-    if (annotation->end.line == line_number && label_offset < annotation->end.column) {
-      label_offset = annotation->end.column;
+    if (annotation->end_line == line_number && label_offset < annotation->end_column) {
+      label_offset = annotation->end_column;
     }
 
-    if (annotation->start.line == line_number && annotation->end.line == line_number) {
+    if (annotation->start_line == line_number && annotation->end_line == line_number) {
       connector.kind      = CONNECTOR_END;
       connector.multiline = 0;
-      connector.column    = annotation->start.column;
+      connector.column    = annotation->start_column;
       connector.depth     = -1ul;
-    } else if (annotation->start.line == line_number) {
+    } else if (annotation->start_line == line_number) {
       connector.kind      = CONNECTOR_BEGIN;
       connector.multiline = 1;
-      connector.column    = annotation->start.column;
+      connector.column    = annotation->start_column;
       connector.depth     = -1ul;
-    } else if (annotation->end.line == line_number) {
+    } else if (annotation->end_line == line_number) {
       connector.kind      = CONNECTOR_END;
       connector.multiline = 1;
-      connector.column    = annotation->end.column;
+      connector.column    = annotation->end_column;
       connector.depth     = -1ul;
     } else {
       continue;
@@ -655,18 +660,18 @@ static void write_interest_lines(Writer *writer, TermBuf *canvas)
 
   for (i = 0; i < writer->report->annotations.count; ++i) {
     ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
-    if (start_line > annotation->start.line) {
-      start_line = annotation->start.line;
+    if (start_line > annotation->start_line) {
+      start_line = annotation->start_line;
     }
-    if (end_line < annotation->end.line) {
-      end_line = annotation->end.line;
+    if (end_line < annotation->end_line) {
+      end_line = annotation->end_line;
     }
   }
 
   for (i = start_line; i <= end_line; ++i) {
     for (j = 0; j < writer->report->annotations.count; ++j) {
       ReportAnnotation *annotation = &writer->report->annotations.ptr[j];
-      if (i == annotation->start.line || i == annotation->end.line) {
+      if (i == annotation->start_line || i == annotation->end_line) {
         int dotted = previous_line != -1ul && previous_line + 1 != i;
 
         style           = term_default_style();
@@ -710,39 +715,84 @@ static int digits(unsigned long number)
   return result;
 }
 
-static void display_location(const Source *source, unsigned long offset, unsigned long tab_width, int start, SourceLocation *location)
+static size_t display_locate(Writer *writer, unsigned long offset, int start, size_t *out_column)
 {
-  unsigned long i;
-  unsigned long column = 0;
-  SourceRange range;
+  size_t i;
+  size_t column;
+  size_t line;
+  size_t line_column;
+  size_t line_offset;
 
   if (!start) {
     --offset;
   }
-  source_offset_location(source, offset, location);
-  source_line_range(source, location->line, &range);
+  line = text_offsets_locate(writer->offsets, writer->line_count, offset, &line_column);
+  line_offset = text_offsets_at(writer->offsets, writer->line_count, line);
   if (!start) {
-    ++location->column;
+    ++line_column;
   }
 
-  for (i = 0; i < location->column; ++i) {
-    char c = source->text[range.offset + i];
+  column = line_column;
+  for (i = 0; i < line_column; ++i) {
+    char c = writer->source[line_offset + i];
     if (c == '\t') {
-      column += tab_width - (column % tab_width);
+      column += writer->tab_width - (column % writer->tab_width);
     } else if (!is_graphic(c)) {
       column += strlen("\\xXX");
     } else {
       ++column;
     }
   }
-  location->column = column;
 
   if (!start) {
-    --location->column;
+    --column;
   }
+
+  if (out_column) {
+    *out_column = column;
+  }
+  return line;
 }
 
-void report_emit(Report *report, const Source *source)
+static size_t count_line(char const *text, size_t length)
+{
+  size_t count = 0;
+
+  for (; *text; ++text) {
+    text += strcspn(text, "\r\n");
+    if (!strncmp(text, "\r\n", 2) || !strncmp(text, "\n\r", 2)) {
+      ++text;
+    }
+    ++text;
+    ++count;
+  }
+  return count;
+}
+
+static size_t *build_text_offsets(char const *text, size_t length, size_t line_count)
+{
+  size_t  i;
+  size_t  line;
+  size_t *offsets = xmalloc(sizeof(size_t) * (line_count + 1));
+  memset(offsets, 0, sizeof(size_t) * (line_count + 1));
+
+  for (line = 0; *text; ++line) {
+    size_t line_length = strcspn(text, "\r\n");
+    if (!strncmp(text, "\r\n", 2) || !strncmp(text, "\n\r", 2)) {
+      ++line_length;
+    }
+    ++line_length;
+
+    for (i = line; i <= line_count; i += i & -i) {
+      offsets[i] += line_length;
+    }
+
+    text += line_length;
+  }
+  return offsets;
+}
+
+void report_emit(Report *report, char const *filename, char const *source)
 {
   Writer        writer;
   TermBuf      *canvas = term_buf_new();
@@ -752,19 +802,22 @@ void report_emit(Report *report, const Source *source)
 
   writer.report        = report;
   writer.source        = source;
+  writer.filename      = filename;
+  writer.line_count    = count_line(source, strlen(source));
+  writer.offsets       = build_text_offsets(source, strlen(source), writer.line_count);
   writer.tab_width     = 4;
   writer.number_margin = 0;
   for (i = 0; i < report->annotations.count; ++i) {
     int               margin;
     ReportAnnotation *annotation = &report->annotations.ptr[i];
-    display_location(source, annotation->start_offset, writer.tab_width, 1, &annotation->start);
-    display_location(source, annotation->end_offset, writer.tab_width, 0, &annotation->end);
+    annotation->start_line = display_locate(&writer, annotation->start_offset, 1, &annotation->start_column);
+    annotation->end_line   = display_locate(&writer, annotation->end_offset, 0, &annotation->end_column);
 
-    margin = digits(annotation->start.line + 1);
+    margin = digits(annotation->start_line + 1);
     if (writer.number_margin < margin) {
       writer.number_margin = margin;
     }
-    margin = digits(annotation->end.line + 1);
+    margin = digits(annotation->end_line + 1);
     if (writer.number_margin < margin) {
       writer.number_margin = margin;
     }
