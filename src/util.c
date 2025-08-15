@@ -65,6 +65,60 @@ void *vec_reserve_impl(void *ptr, unsigned long size, unsigned long used, unsign
   return result;
 }
 
+/* Fenwick */
+
+void fenwick_construct(size_t *fenwick, size_t count)
+{
+  size_t i;
+  for (i = 1; i <= count; ++i) {
+    size_t parent = i + (i & -i);
+    if (parent <= count) {
+      fenwick[parent - 1] += fenwick[i - 1];
+    }
+  }
+}
+
+void fenwick_add(size_t *fenwick, size_t count, size_t index, size_t value)
+{
+  size_t i;
+  assert(count >= index);
+
+  for (i = index; i <= count; i += i & -i) {
+    fenwick[i - 1] += value;
+  }
+}
+
+size_t fenwick_query(size_t const *fenwick, size_t count, size_t index)
+{
+  size_t i;
+  size_t result = 0;
+  assert(count >= index);
+
+  for (i = index; i > 0; i -= i & -i) {
+    result += fenwick[i - 1];
+  }
+  return result;
+}
+
+size_t fenwick_upper_bound(size_t const *fenwick, size_t count, size_t value)
+{
+  size_t i, j;
+
+  i = count;
+  for (j = 1; j < sizeof(size_t) * CHAR_BIT; j <<= 1) {
+    i |= i >> j;
+  }
+  i = (i + 1) >> 1;
+
+  for (j = 0; i > 0; i >>= 1) {
+    if (j + i <= count && fenwick[j + i - 1] <= value) {
+      value -= fenwick[j + i - 1];
+      j += i;
+    }
+  }
+  return j;
+}
+
 /* Charactor */
 
 int is_alphabet(int c)
@@ -102,55 +156,6 @@ long utf8_len(const char *str, unsigned long len)
   } else {
     return -1;
   }
-}
-
-/* Text */
-
-void text_offsets_update(size_t *offsets, size_t count, size_t index, size_t length)
-{
-  size_t i;
-  assert(count > index);
-
-  for (i = index + 1; i < count; i += i & -i) {
-    offsets[i] += length;
-  }
-}
-
-size_t text_offsets_at(size_t const *offsets, size_t count, size_t index)
-{
-  size_t i;
-  size_t offset = 0;
-  assert(count > index);
-
-  for (i = index; i > 0; i -= i & -i) {
-    offset += offsets[i];
-  }
-  return offset;
-}
-
-size_t text_offsets_locate(size_t const *offsets, size_t count, size_t offset, size_t *out_column)
-{
-  size_t i, j;
-  size_t line;
-  size_t start = 0;
-
-  i = count;
-  for (j = 1; j < sizeof(size_t) * CHAR_BIT; j <<= 1) {
-    i |= i >> j;
-  }
-  i = (i + 1) >> 1;
-
-  for (line = 0; i > 0; i >>= 1) {
-    if (line + i <= count && start + offsets[line + i] <= offset) {
-      start += offsets[line + i];
-      line += i;
-    }
-  }
-
-  if (out_column) {
-    *out_column = offset - start;
-  }
-  return line;
 }
 
 /* Misc */

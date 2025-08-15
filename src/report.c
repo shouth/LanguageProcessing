@@ -258,8 +258,8 @@ static void write_location_line(Writer *writer, TermBuf *canvas)
 {
   TermStyle style;
 
-  size_t column;
-  size_t line = text_offsets_locate(writer->offsets, writer->line_count, writer->report->offset, &column);
+  size_t line = fenwick_upper_bound(writer->offsets, writer->line_count, writer->report->offset);
+  size_t column = writer->report->offset - fenwick_query(writer->offsets, writer->line_count, line);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -345,8 +345,8 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
   Vec(LineSegment) segments;
   Vec(LineSegment) nongraphics;
 
-  size_t offset = text_offsets_at(writer->offsets, writer->line_count, line_number);
-  size_t length = text_offsets_at(writer->offsets, writer->line_count, line_number + 1) - offset;
+  size_t offset = fenwick_query(writer->offsets, writer->line_count, line_number);
+  size_t length = fenwick_query(writer->offsets, writer->line_count, line_number + 1) - offset;
 
   vec_alloc(&segments, 0);
   vec_alloc(&nongraphics, 0);
@@ -726,8 +726,8 @@ static size_t display_locate(Writer *writer, unsigned long offset, int start, si
   if (!start) {
     --offset;
   }
-  line = text_offsets_locate(writer->offsets, writer->line_count, offset, &line_column);
-  line_offset = text_offsets_at(writer->offsets, writer->line_count, line);
+  line = fenwick_upper_bound(writer->offsets, writer->line_count, offset);
+  line_offset = fenwick_query(writer->offsets, writer->line_count, line);
   if (!start) {
     ++line_column;
   }
@@ -754,41 +754,33 @@ static size_t display_locate(Writer *writer, unsigned long offset, int start, si
   return line;
 }
 
-static size_t count_line(char const *text, size_t length)
-{
-  size_t count = 0;
-
-  for (; *text; ++text) {
-    text += strcspn(text, "\r\n");
-    if (!strncmp(text, "\r\n", 2) || !strncmp(text, "\n\r", 2)) {
-      ++text;
-    }
-    ++text;
-    ++count;
-  }
-  return count;
-}
-
-static size_t *build_text_offsets(char const *text, size_t length, size_t line_count)
+static size_t *build_fenwick(char const *text, size_t length, size_t *line_count)
 {
   size_t  i;
-  size_t  line;
-  size_t *offsets = xmalloc(sizeof(size_t) * (line_count + 1));
-  memset(offsets, 0, sizeof(size_t) * (line_count + 1));
+  size_t  line = 0;
+  size_t  capacity = 16;
+  size_t *offsets = xmalloc(sizeof(size_t) * capacity);
 
-  for (line = 0; *text; ++line) {
+  do {
     size_t line_length = strcspn(text, "\r\n");
     if (!strncmp(text, "\r\n", 2) || !strncmp(text, "\n\r", 2)) {
       ++line_length;
     }
     ++line_length;
 
-    for (i = line; i <= line_count; i += i & -i) {
-      offsets[i] += line_length;
+    if (line + 1 >= capacity) {
+      size_t *old_offsets = offsets;
+      capacity *= 2;
+      offsets = xmalloc(sizeof(size_t) * capacity);
+      memcpy(offsets, old_offsets, sizeof(size_t) * line);
+      free(old_offsets);
     }
+    offsets[line++] = line_length;
 
     text += line_length;
-  }
+  } while (*text);
+
+  fenwick_construct(offsets, line + 1);
   return offsets;
 }
 
@@ -803,8 +795,7 @@ void report_emit(Report *report, char const *filename, char const *source)
   writer.report        = report;
   writer.source        = source;
   writer.filename      = filename;
-  writer.line_count    = count_line(source, strlen(source));
-  writer.offsets       = build_text_offsets(source, strlen(source), writer.line_count);
+  writer.offsets       = build_fenwick(source, strlen(source), &writer.line_count);
   writer.tab_width     = 4;
   writer.number_margin = 0;
   for (i = 0; i < report->annotations.count; ++i) {

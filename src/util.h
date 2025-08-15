@@ -128,6 +128,13 @@ unsigned long popcount(const void *data, unsigned long size);
     (self)->count = 0;  \
   } while (0)
 
+/* Fenwick */
+
+void fenwick_construct(size_t *fenwick, size_t count);
+void fenwick_add(size_t *fenwick, size_t count, size_t index, size_t value);
+size_t fenwick_query(size_t const *fenwick, size_t count, size_t index);
+size_t fenwick_upper_bound(size_t const *fenwick, size_t count, size_t value);
+
 /* Character */
 
 int is_alphabet(int c);
@@ -136,14 +143,6 @@ int is_space(int c);
 int is_graphic(int c);
 
 long utf8_len(const char *str, unsigned long len);
-
-/* Text */
-
-
-
-void   text_offsets_update(size_t *offsets, size_t count, size_t index, size_t length);
-size_t text_offsets_at(size_t const *offsets, size_t count, size_t index);
-size_t text_offsets_locate(size_t const *offsets, size_t count, size_t offset, size_t *column);
 
 /* Color */
 
