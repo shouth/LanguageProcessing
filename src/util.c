@@ -65,6 +65,81 @@ void *vec_reserve_impl(void *ptr, unsigned long size, unsigned long used, unsign
   return result;
 }
 
+/* List */
+
+void list_init(ListNode *node)
+{
+  node->next = node;
+  node->prev = node;
+}
+
+void list_push_back(ListNode *head, ListNode *node)
+{
+  head->prev->next = node;
+  node->prev = head->prev;
+  head->prev = node;
+  node->next = head;
+}
+
+void list_sort(ListNode *head, ListNodeCompare *compare)
+{
+  unsigned long window = 1;
+  int compared = 1;
+  while (compared) {
+    ListNode *tail = head->next;
+    head->prev->next = NULL;
+    list_init(head);
+
+    compared = 0;
+    while (tail) {
+      ListNode *a, *b;
+      size_t i;
+
+      a = tail;
+      for (i = 0; i < window && tail; ++i) {
+        tail = tail->next;
+      }
+      if (tail) {
+        tail->prev->next = NULL;
+      }
+
+      b = tail;
+      for (i = 0; i < window && tail; ++i) {
+        tail = tail->next;
+      }
+      if (tail) {
+        tail->prev->next = NULL;
+      }
+
+      while (a && b) {
+        if (compare(a, b) < 0) {
+          ListNode *next = a->next;
+          list_push_back(head, a);
+          a = next;
+        } else {
+          ListNode *next = b->next;
+          list_push_back(head, b);
+          b = next;
+        }
+        compared = 1;
+      }
+
+      while (a) {
+        ListNode *next = a->next;
+        list_push_back(head, a);
+        a = next;
+      }
+
+      while (b) {
+        ListNode *next = b->next;
+        list_push_back(head, b);
+        b = next;
+      }
+    }
+    window <<= 1;
+  }
+}
+
 /* Fenwick */
 
 void fenwick_construct(size_t *fenwick, size_t count)

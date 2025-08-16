@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,6 +129,20 @@ unsigned long popcount(const void *data, unsigned long size);
     (self)->count = 0;  \
   } while (0)
 
+/* List */
+
+typedef struct ListNode ListNode;
+typedef int ListNodeCompare(ListNode const *a, ListNode const *b);
+
+struct ListNode {
+  struct ListNode *next;
+  struct ListNode *prev;
+};
+
+void list_init(ListNode *node);
+void list_push_back(ListNode *head, ListNode *node);
+void list_sort(ListNode *head, ListNodeCompare *compare);
+
 /* Fenwick */
 
 void fenwick_construct(size_t *fenwick, size_t count);
@@ -155,6 +170,9 @@ long utf8_len(const char *str, unsigned long len);
 /* Misc */
 
 char *load_file(char const *filename, size_t *out_length);
+
+#define container_of(ptr, type, member) \
+  ((type *)((char *)(ptr) - offsetof(type, member)))
 
 #define count_of(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t) (!(sizeof(x) % sizeof(0 [x])))))
 
