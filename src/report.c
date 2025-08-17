@@ -821,7 +821,7 @@ static size_t *build_fenwick(char const *text, size_t *line_count)
     text += line_length;
   } while (*text);
 
-  fenwick_construct(offsets, line + 1);
+  fenwick_build(offsets, line + 1);
   if (line_count) {
     *line_count = line;
   }

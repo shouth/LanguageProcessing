@@ -77,7 +77,7 @@ void list_sort(ListNode *head, ListNodeCompare *compare);
 
 /* Fenwick */
 
-void fenwick_construct(size_t *fenwick, size_t count);
+void fenwick_build(size_t *fenwick, size_t count);
 void fenwick_add(size_t *fenwick, size_t count, size_t index, size_t value);
 size_t fenwick_query(size_t const *fenwick, size_t count, size_t index);
 size_t fenwick_upper_bound(size_t const *fenwick, size_t count, size_t value);

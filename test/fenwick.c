@@ -23,7 +23,7 @@ int main(void)
   {
     size_t sum = 0;
     memcpy(offsets, lengths, sizeof(lengths));
-    fenwick_construct(offsets, 14);
+    fenwick_build(offsets, 14);
     for (i = 1; i <= 14; ++i) {
       sum += lengths[i - 1];
       assert(fenwick_query(offsets, 14, i) == sum);
