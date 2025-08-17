@@ -42,29 +42,6 @@ unsigned long popcount(const void *data, unsigned long count)
   return result;
 }
 
-/* Vec */
-
-void *vec_reserve_impl(void *ptr, unsigned long size, unsigned long used, unsigned long capacity)
-{
-  unsigned long i;
-  void         *result;
-
-  --capacity;
-  for (i = 1; i < sizeof(i) * CHAR_BIT; i <<= 1) {
-    capacity |= capacity >> i;
-  }
-  ++capacity;
-
-  result = xmalloc(size * capacity);
-
-  if (ptr) {
-    memcpy(result, ptr, size * used);
-    free(ptr);
-  }
-
-  return result;
-}
-
 /* List */
 
 void list_init(ListNode *node)

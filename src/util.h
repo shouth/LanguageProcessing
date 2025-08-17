@@ -80,55 +80,6 @@ unsigned long popcount(const void *data, unsigned long size);
     free((self)->ptr);   \
   } while (0)
 
-/* Vec */
-
-#define Vec(type)           \
-  struct {                  \
-    type         *ptr;      \
-    unsigned long count;    \
-    unsigned long capacity; \
-  }
-
-#define vec_alloc(self, new_count)    \
-  do {                                \
-    (self)->ptr      = NULL;          \
-    (self)->capacity = 0;             \
-    (self)->count    = new_count;     \
-    vec_reserve(self, (self)->count); \
-  } while (0)
-
-#define vec_free(self) \
-  do {                 \
-    slice_free(self);  \
-  } while (0)
-
-#define vec_reserve(self, new_capacity)                                                                \
-  do {                                                                                                 \
-    extern void  *vec_reserve_impl(void *, unsigned long, unsigned long, unsigned long);               \
-    unsigned long capacity = (new_capacity);                                                           \
-    if (capacity > (self)->capacity) {                                                                 \
-      (self)->ptr      = vec_reserve_impl((self)->ptr, sizeof(*(self)->ptr), (self)->count, capacity); \
-      (self)->capacity = capacity;                                                                     \
-    }                                                                                                  \
-  } while (0)
-
-#define vec_push(self, other_ptr, other_count)                                              \
-  do {                                                                                      \
-    vec_reserve(self, (self)->count + (other_count));                                       \
-    memcpy((self)->ptr + (self)->count, (other_ptr), sizeof(*(self)->ptr) * (other_count)); \
-    (self)->count += (other_count);                                                         \
-  } while (0)
-
-#define vec_pop(self, delete_count)  \
-  do {                               \
-    (self)->count -= (delete_count); \
-  } while (0)
-
-#define vec_clear(self) \
-  do {                  \
-    (self)->count = 0;  \
-  } while (0)
-
 /* List */
 
 typedef struct ListNode ListNode;
