@@ -64,10 +64,10 @@ typedef struct TermBuf TermBuf;
 TermBuf      *term_buf_new(void);
 void          term_buf_free(TermBuf *canvas);
 void          term_buf_next_line(TermBuf *canvas);
-void          term_buf_write(TermBuf *canvas, const TermStyle *style, const char *format, ...) format(printf, 3, 4);
-unsigned long term_buf_line(const TermBuf *canvas);
-unsigned long term_buf_column(const TermBuf *canvas);
-void          term_buf_seek(TermBuf *canvas, unsigned long line, unsigned long column);
+void          term_buf_write(TermBuf *canvas, TermStyle const *style, char const *format, ...) format(printf, 3, 4);
+unsigned long term_buf_line(TermBuf const *canvas);
+unsigned long term_buf_column(TermBuf const *canvas);
+void          term_buf_seek(TermBuf *canvas, size_t line, size_t column);
 void          term_buf_print(TermBuf *canvas, FILE *stream);
 
 #endif /* TERM_H */

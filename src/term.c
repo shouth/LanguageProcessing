@@ -263,8 +263,7 @@ void term_print(FILE *file, const TermStyle *style, const char *format, ...)
 /* TermBuf */
 
 typedef struct TermBufCell TermBufCell;
-typedef Vec(TermBufCell) TermBufLine;
-typedef Vec(TermBufLine) TermBufScreen;
+typedef struct TermBufLine TermBufLine;
 
 struct TermBufCell {
   char      character[4];
@@ -272,22 +271,27 @@ struct TermBufCell {
   TermStyle style;
 };
 
+struct TermBufLine {
+  TermBufCell *cells;
+  size_t       cell_count;
+  size_t       cell_capacity;
+};
+
 struct TermBuf {
-  TermBufScreen screen;
-  unsigned long current_line;
-  unsigned long current_column;
+  TermBufLine *lines;
+  size_t       line_count;
+  size_t       line_capacity;
+  size_t       current_line;
+  size_t       current_column;
 };
 
 TermBuf *term_buf_new(void)
 {
-  TermBufLine line;
-
   TermBuf *buf = malloc(sizeof(TermBuf));
-  vec_alloc(&buf->screen, 0);
-  vec_alloc(&line, 0);
-  vec_push(&buf->screen, &line, 1);
-
-  buf->current_line   = 0;
+  buf->lines = NULL;
+  buf->line_count = 0;
+  buf->line_capacity = 0;
+  buf->current_line = 0;
   buf->current_column = 0;
   return buf;
 }
@@ -295,29 +299,70 @@ TermBuf *term_buf_new(void)
 void term_buf_free(TermBuf *buf)
 {
   if (buf) {
-    unsigned long i;
-    for (i = 0; i < buf->screen.count; ++i) {
-      vec_free(&buf->screen.ptr[i]);
+    size_t i;
+    for (i = 0; i < buf->line_count; ++i) {
+      free(buf->lines[i].cells);
     }
-    vec_free(&buf->screen);
+    free(buf->lines);
     free(buf);
   }
 }
 
 #define BUFFER_SIZE 1024
 
-void term_buf_next_line(TermBuf *buf)
+static TermBufCell *locate(TermBuf *buf, size_t line, size_t column)
 {
-  ++buf->current_line;
-  buf->current_column = 0;
-  if (buf->current_line >= buf->screen.count) {
-    TermBufLine line;
-    vec_alloc(&line, 0);
-    vec_push(&buf->screen, &line, 1);
+  size_t i;
+
+  if (line >= buf->line_capacity) {
+    TermBufLine *lines = buf->lines;
+    size_t capacity = buf->line_capacity;
+    for (i = 1; i < sizeof(size_t) * CHAR_BIT; i <<= 1) {
+      capacity |= capacity >> i;
+    }
+    ++capacity;
+    buf->lines = xmalloc(sizeof(TermBufLine) * capacity);
+    buf->line_capacity = capacity;
+    memcpy(buf->lines, lines, sizeof(TermBufLine) * buf->line_count);
+    free(lines);
   }
+  if (line >= buf->line_count) {
+    for (i = buf->line_count; i <= line; ++i) {
+      TermBufLine line = { NULL, 0, 0 };
+      buf->lines[i] = line;
+    }
+    buf->line_count = line;
+  }
+
+  if (column >= buf->lines[line].cell_capacity) {
+    TermBufCell *cells = buf->lines[line].cells;
+    size_t capacity = buf->lines[line].cell_capacity;
+    for (i = 1; i < sizeof(size_t) * CHAR_BIT; i <<= 1) {
+      capacity |= capacity >> i;
+    }
+    ++capacity;
+    buf->lines[line].cells = xmalloc(sizeof(TermBufCell) * capacity);
+    buf->lines[line].cell_capacity = capacity;
+    memcpy(buf->lines[line].cells, cells, sizeof(TermBufCell) * buf->lines[line].cell_count);
+    free(cells);
+  }
+  if (column >= buf->lines[line].cell_count) {
+    for (i = buf->lines[line].cell_count; i <= column; ++i) {
+      TermBufCell cell = { " ", 1, term_default_style() };
+      buf->lines[line].cells[i] = cell;
+    }
+    buf->lines[line].cell_count = column;
+  }
+
+  return &buf->lines[line].cells[column];
 }
 
-void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ...)
+void term_buf_next_line(TermBuf *buf)
+{
+  term_buf_seek(buf, buf->current_line + 1, 0);
+}
+
+void term_buf_write(TermBuf *buf, TermStyle const *style, char const *format, ...)
 {
   va_list args;
 
@@ -340,16 +385,10 @@ void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ..
       }
 
       {
-        unsigned long initial_line_width = buf->screen.ptr[buf->current_line].count;
-        TermBufCell   cell;
-        cell.style = style ? *style : term_default_style();
-        cell.size  = size;
-        memcpy(cell.character, buffer + index, size);
-        if (buf->current_column < initial_line_width) {
-          buf->screen.ptr[buf->current_line].ptr[buf->current_column] = cell;
-        } else {
-          vec_push(&buf->screen.ptr[buf->current_line], &cell, 1);
-        }
+        TermBufCell *cell = locate(buf, buf->current_line, buf->current_column);
+        cell->style = style ? *style : term_default_style();
+        cell->size  = size;
+        memcpy(cell->character, buffer + index, size);
         ++buf->current_column;
         index += size;
       }
@@ -358,47 +397,34 @@ void term_buf_write(TermBuf *buf, const TermStyle *style, const char *format, ..
   fclose(file);
 }
 
-unsigned long term_buf_line(const TermBuf *buf)
+unsigned long term_buf_line(TermBuf const *buf)
 {
   return buf->current_line;
 }
 
-unsigned long term_buf_column(const TermBuf *buf)
+unsigned long term_buf_column(TermBuf const *buf)
 {
   return buf->current_column;
 }
 
-void term_buf_seek(TermBuf *buf, unsigned long line, unsigned long column)
+void term_buf_seek(TermBuf *buf, size_t line, size_t column)
 {
+  locate(buf, line, column);
   buf->current_line   = line;
   buf->current_column = column;
-
-  while (buf->current_line >= buf->screen.count) {
-    TermBufLine line;
-    vec_alloc(&line, 0);
-    vec_push(&buf->screen, &line, 1);
-  }
-
-  while (buf->current_column >= buf->screen.ptr[buf->current_line].count) {
-    TermBufCell cell;
-    cell.style = term_default_style();
-    cell.size  = 1;
-    strcpy(cell.character, " ");
-    vec_push(&buf->screen.ptr[buf->current_line], &cell, 1);
-  }
 }
 
 void term_buf_print(TermBuf *buf, FILE *file)
 {
   unsigned long line, column;
-  for (line = 0; line < buf->screen.count; ++line) {
-    for (column = 0; column < buf->screen.ptr[line].count; ++column) {
-      TermBufCell *cell = &buf->screen.ptr[line].ptr[column];
+  for (line = 0; line < buf->line_count; ++line) {
+    for (column = 0; column < buf->lines[line].cell_count; ++column) {
+      TermBufCell *cell = &buf->lines[line].cells[column];
       term_style(file, &cell->style);
       fprintf(file, "%.*s", (int) cell->size, cell->character);
       term_style(file, NULL);
     }
-    if (line + 1 < buf->screen.count) {
+    if (line + 1 < buf->line_count) {
       fprintf(file, "\n");
     }
   }
