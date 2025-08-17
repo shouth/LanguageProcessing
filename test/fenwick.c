@@ -44,4 +44,6 @@ int main(void)
     assert(line == 1);
     assert(column == 6);
   }
+
+  return 0;
 }

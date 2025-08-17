@@ -43,4 +43,6 @@ int main(void)
       assert(current->value <= next->value);
     }
   }
+
+  return 0;
 }

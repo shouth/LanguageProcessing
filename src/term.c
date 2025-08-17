@@ -328,7 +328,7 @@ static TermBufCell *locate(TermBuf *buf, size_t line, size_t column)
   }
   if (line >= buf->line_count) {
     for (i = buf->line_count; i <= line; ++i) {
-      TermBufLine line = { NULL, 0, 0 };
+      TermBufLine line = { NULL };
       buf->lines[i] = line;
     }
     buf->line_count = line;
@@ -348,7 +348,7 @@ static TermBufCell *locate(TermBuf *buf, size_t line, size_t column)
   }
   if (column >= buf->lines[line].cell_count) {
     for (i = buf->lines[line].cell_count; i <= column; ++i) {
-      TermBufCell cell = { " ", 1, term_default_style() };
+      TermBufCell cell = { " ", 1 };
       buf->lines[line].cells[i] = cell;
     }
     buf->lines[line].cell_count = column;
