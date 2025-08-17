@@ -769,6 +769,7 @@ static size_t display_locate(Writer *writer, unsigned long offset, int start, si
   }
   line = fenwick_upper_bound(writer->offsets, writer->line_count, offset);
   line_offset = fenwick_query(writer->offsets, writer->line_count, line);
+  line_column = offset - line_offset;
   if (!start) {
     ++line_column;
   }
@@ -795,9 +796,8 @@ static size_t display_locate(Writer *writer, unsigned long offset, int start, si
   return line;
 }
 
-static size_t *build_fenwick(char const *text, size_t length, size_t *line_count)
+static size_t *build_fenwick(char const *text, size_t *line_count)
 {
-  size_t  i;
   size_t  line = 0;
   size_t  capacity = 16;
   size_t *offsets = xmalloc(sizeof(size_t) * capacity);
@@ -822,6 +822,9 @@ static size_t *build_fenwick(char const *text, size_t length, size_t *line_count
   } while (*text);
 
   fenwick_construct(offsets, line + 1);
+  if (line_count) {
+    *line_count = line;
+  }
   return offsets;
 }
 
@@ -836,7 +839,7 @@ void report_emit(Report *report, char const *filename, char const *source)
   writer.report        = report;
   writer.source        = source;
   writer.filename      = filename;
-  writer.offsets       = build_fenwick(source, strlen(source), &writer.line_count);
+  writer.offsets       = build_fenwick(source, &writer.line_count);
   writer.tab_width     = 4;
   writer.number_margin = 0;
   for (n = report->annotations.next; n != &report->annotations; n = n->next) {
