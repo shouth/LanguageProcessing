@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 /* Memory */
 
@@ -59,25 +58,6 @@ unsigned long popcount(const void *data, unsigned long size);
     for (i = 0; i < count_of((self)->data); ++i) {   \
       self_data[i] &= ~other_data[i];                \
     }                                                \
-  } while (0)
-
-/* Slice */
-
-#define Slice(type)      \
-  struct {               \
-    type         *ptr;   \
-    unsigned long count; \
-  }
-
-#define slice_alloc(self, new_count)                             \
-  do {                                                           \
-    (self)->ptr   = xmalloc(sizeof(*(self)->ptr) * (new_count)); \
-    (self)->count = new_count;                                   \
-  } while (0)
-
-#define slice_free(self) \
-  do {                   \
-    free((self)->ptr);   \
   } while (0)
 
 /* List */

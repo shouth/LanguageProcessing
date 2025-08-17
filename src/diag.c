@@ -15,7 +15,7 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
   MpplSyntaxKind kind;
   unsigned long  count;
   unsigned long  length;
-  Slice(char) result;
+  char          *result;
 
   FILE *buffer = tmpfile();
   if (buffer == NULL) {
@@ -63,12 +63,12 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
     }
   }
 
-  slice_alloc(&result, length + 1);
   rewind(buffer);
-  fread(result.ptr, 1, length, buffer);
-  result.ptr[length] = '\0';
+  result = xmalloc(length + 1);
+  fread(result, 1, length, buffer);
+  result[length] = '\0';
   fclose(buffer);
-  return result.ptr;
+  return result;
 }
 
 /* lexer */
