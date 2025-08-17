@@ -494,21 +494,21 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
       indicator->kind       = INDICATOR_INLINE;
       indicator->column     = annotation->start_column;
       indicator->length     = annotation->end_column - annotation->start_column + 1;
-      list_push(&indicators, &indicator->node);
+      list_push_back(&indicators, &indicator->node);
     } else if (annotation->start_line == line_number) {
       Indicator *indicator  = xmalloc(sizeof(Indicator));
       indicator->annotation = annotation;
       indicator->kind       = INDICATOR_BEGIN;
       indicator->column     = annotation->start_column;
       indicator->length     = 1;
-      list_push(&indicators, &indicator->node);
+      list_push_back(&indicators, &indicator->node);
     } else if (annotation->end_line == line_number) {
       Indicator *indicator  = xmalloc(sizeof(Indicator));
       indicator->annotation = annotation;
       indicator->kind       = INDICATOR_END;
       indicator->column     = annotation->end_column;
       indicator->length     = 1;
-      list_push(&indicators, &indicator->node);
+      list_push_back(&indicators, &indicator->node);
     } else {
       continue;
     }
@@ -583,7 +583,7 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
       connector->multiline  = 0;
       connector->column     = annotation->start_column;
       connector->depth      = -1ul;
-      list_push(&connectors, &connector->node);
+      list_push_back(&connectors, &connector->node);
     } else if (annotation->start_line == line_number) {
       Connector *connector  = xmalloc(sizeof(Connector));
       connector->annotation = annotation;
@@ -591,7 +591,7 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
       connector->multiline  = 1;
       connector->column     = annotation->start_column;
       connector->depth      = -1ul;
-      list_push(&connectors, &connector->node);
+      list_push_back(&connectors, &connector->node);
     } else if (annotation->end_line == line_number) {
       Connector *connector  = xmalloc(sizeof(Connector));
       connector->annotation = annotation;
@@ -599,7 +599,7 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
       connector->multiline  = 1;
       connector->column     = annotation->end_column;
       connector->depth      = -1ul;
-      list_push(&connectors, &connector->node);
+      list_push_back(&connectors, &connector->node);
     } else {
       continue;
     }
