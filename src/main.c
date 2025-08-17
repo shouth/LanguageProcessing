@@ -7,9 +7,16 @@
 
 #include "util.h"
 
+typedef struct FileName FileName;
+
+struct FileName {
+  ListNode node;
+  char const *ptr;
+};
+
 const char *program;
 
-Vec(const char *) filenames;
+ListNode filenames;
 
 int dump_syntax   = 0;
 int dump_crossref = 0;
@@ -20,16 +27,16 @@ int emit_casl2    = 0;
 
 static int run_compiler(void)
 {
-  unsigned long i, j;
-  int           result = EXIT_SUCCESS;
+  int       result = EXIT_SUCCESS;
+  ListNode *node;
 
-  for (i = 0; i < filenames.count; ++i) {
-    const char *filename = filenames.ptr[i];
+  for (node = filenames.next; node != &filenames; node = node->next) {
+    FileName const *filename = container_of(node, FileName, node);
     size_t length;
-    char *content = load_file(filename, &length);
+    char *content = load_file(filename->ptr, &length);
 
     if (!content) {
-      fprintf(stderr, "Cannot open file: %s\n", filename);
+      fprintf(stderr, "Cannot open file: %s\n", filename->ptr);
       result = EXIT_FAILURE;
     } else {
       free(content);
@@ -56,7 +63,12 @@ static void print_help(void)
 
 static void deinit(void)
 {
-  vec_free(&filenames);
+  ListNode *n, *m;
+  for (n = filenames.next, m = n->next; n != &filenames; n = m, m = m->next) {
+    FileName *filename = container_of(n, FileName, node);
+    list_erase(n);
+    free(filename);
+  }
 }
 
 static void init(int argc, const char **argv)
@@ -67,7 +79,7 @@ static void init(int argc, const char **argv)
 
   program = argv[0];
 
-  vec_alloc(&filenames, 0);
+  list_init(&filenames);
 
   if (argc < 2) {
     print_help();
@@ -93,7 +105,9 @@ static void init(int argc, const char **argv)
         status = EXIT_SUCCESS;
       } else if (strcmp(argv[i], "--") == 0) {
         for (++i; i < argc; ++i) {
-          vec_push(&filenames, &argv[i], 1);
+          FileName *file = xmalloc(sizeof(FileName));
+          file->ptr = argv[i];
+          list_push_back(&filenames, &file->node);
         }
       } else if (argv[i][0] == '-') {
         fprintf(stderr, "Unknown option: %s\n", argv[i]);
@@ -101,7 +115,9 @@ static void init(int argc, const char **argv)
         stop   = 1;
         status = EXIT_FAILURE;
       } else {
-        vec_push(&filenames, &argv[i], 1);
+        FileName *file = xmalloc(sizeof(FileName));
+        file->ptr = argv[i];
+        list_push_back(&filenames, &file->node);
       }
     }
   }
