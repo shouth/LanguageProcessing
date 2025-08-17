@@ -12,25 +12,35 @@
 
 /* Report */
 
+typedef struct ReportAnnotation ReportAnnotation;
+typedef struct ReportNote       ReportNote;
+
 struct ReportAnnotation {
-  size_t start_offset;
-  size_t end_offset;
-  size_t start_line;
-  size_t start_column;
-  size_t end_line;
-  size_t end_column;
-  char  *message;
+  ListNode node;
+  size_t   start_offset;
+  size_t   end_offset;
+  size_t   start_line;
+  size_t   start_column;
+  size_t   end_line;
+  size_t   end_column;
+  char    *message;
+};
+
+struct ReportNote {
+  ListNode node;
+  char    *message;
 };
 
 struct Report {
+  ListNode      node;
   ReportKind    kind;
   unsigned long offset;
   char         *message;
-  Vec(ReportAnnotation) annotations;
-  Vec(char *) notes;
+  ListNode      annotations;
+  ListNode      notes;
 };
 
-static char *vformat(const char *format, va_list args)
+static char *vformat(char const *format, va_list args)
 {
   FILE         *file   = tmpfile();
   unsigned long length = vfprintf(file, format, args);
@@ -42,7 +52,7 @@ static char *vformat(const char *format, va_list args)
   return text;
 }
 
-Report *report_new(ReportKind kind, unsigned long offset, const char *format, ...)
+Report *report_new(ReportKind kind, unsigned long offset, char const *format, ...)
 {
   va_list args;
   Report *report;
@@ -55,35 +65,36 @@ Report *report_new(ReportKind kind, unsigned long offset, const char *format, ..
 void report_free(Report *report)
 {
   if (report) {
-    unsigned long i;
+    ListNode *n, *m;
     free(report->message);
-
-    for (i = 0; i < report->notes.count; ++i) {
-      free(report->notes.ptr[i]);
+    for (n = report->notes.next, m = n->next; n != &report->notes; n = m, m = m->next) {
+      ReportNote *note = container_of(n, ReportNote, node);
+      list_erase(n);
+      free(note->message);
+      free(note);
     }
-    vec_free(&report->notes);
-
-    for (i = 0; i < report->annotations.count; ++i) {
-      free(report->annotations.ptr[i].message);
+    for (n = report->annotations.next, m = n->next; n != &report->annotations; n = m, m = m->next) {
+      ReportAnnotation *annotation = container_of(n, ReportAnnotation, node);
+      list_erase(n);
+      free(annotation->message);
+      free(annotation);
     }
-    vec_free(&report->annotations);
-
     free(report);
   }
 }
 
-Report *report_new_with_args(ReportKind kind, unsigned long offset, const char *format, va_list args)
+Report *report_new_with_args(ReportKind kind, unsigned long offset, char const *format, va_list args)
 {
-  Report *report  = xmalloc(sizeof(Report));
-  report->kind    = kind;
-  report->offset  = offset;
-  report->message = vformat(format, args);
-  vec_alloc(&report->notes, 0);
-  vec_alloc(&report->annotations, 0);
+  Report *report      = xmalloc(sizeof(Report));
+  report->kind        = kind;
+  report->offset      = offset;
+  report->message     = vformat(format, args);
+  list_init(&report->annotations);
+  list_init(&report->notes);
   return report;
 }
 
-void report_annotation(Report *report, unsigned long start, unsigned long end, const char *format, ...)
+void report_annotation(Report *report, unsigned long start, unsigned long end, char const *format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -91,16 +102,16 @@ void report_annotation(Report *report, unsigned long start, unsigned long end, c
   va_end(args);
 }
 
-void report_annotation_with_args(Report *report, unsigned long start, unsigned long end, const char *format, va_list args)
+void report_annotation_with_args(Report *report, unsigned long start, unsigned long end, char const *format, va_list args)
 {
-  ReportAnnotation label;
-  label.start_offset = start;
-  label.end_offset   = end;
-  label.message      = format ? vformat(format, args) : NULL;
-  vec_push(&report->annotations, &label, 1);
+  ReportAnnotation *label = xmalloc(sizeof(ReportAnnotation));
+  label->start_offset     = start;
+  label->end_offset       = end;
+  label->message          = format ? vformat(format, args) : NULL;
+  list_push_back(&report->annotations, &label->node);
 }
 
-void report_note(Report *report, const char *format, ...)
+void report_note(Report *report, char const *format, ...)
 {
   va_list args;
   va_start(args, format);
@@ -108,10 +119,11 @@ void report_note(Report *report, const char *format, ...)
   va_end(args);
 }
 
-void report_note_with_args(Report *report, const char *format, va_list args)
+void report_note_with_args(Report *report, char const *format, va_list args)
 {
-  char *note = vformat(format, args);
-  vec_push(&report->notes, &note, 1);
+  ReportNote *note = xmalloc(sizeof(ReportNote));
+  note->message    = format ? vformat(format, args) : NULL;
+  list_push_back(&report->notes, &note->node);
 }
 
 /* Report emitter */
@@ -133,20 +145,23 @@ typedef enum {
 } ConnectorKind;
 
 struct LineSegment {
-  const ReportAnnotation *annotation;
+  ListNode                node;
+  ReportAnnotation const *annotation;
   unsigned long           start;
   unsigned long           end;
 };
 
 struct Indicator {
-  const ReportAnnotation *annotation;
+  ListNode                node;
+  ReportAnnotation const *annotation;
   IndicatorKind           kind;
   unsigned long           column;
   unsigned long           length;
 };
 
 struct Connector {
-  const ReportAnnotation *annotation;
+  ListNode                node;
+  ReportAnnotation const *annotation;
   ConnectorKind           kind;
   int                     multiline;
   unsigned long           column;
@@ -164,57 +179,57 @@ struct Writer {
   int           tab_width;
 };
 
-static int compare_line_segments(const void *left, const void *right)
+static int compare_line_segments(ListNode const *left, ListNode const *right)
 {
-  const LineSegment *left_segment  = left;
-  const LineSegment *right_segment = right;
+  LineSegment const *l = container_of(left, LineSegment, node);
+  LineSegment const *r = container_of(right, LineSegment, node);
 
-  if (left_segment->start != right_segment->start) {
-    return left_segment->start < right_segment->start ? -1 : 1;
-  } else if (left_segment->end != right_segment->end) {
-    return left_segment->end > right_segment->end ? -1 : 1;
+  if (l->start != r->start) {
+    return l->start < r->start ? -1 : 1;
+  } else if (l->end != r->end) {
+    return l->end > r->end ? -1 : 1;
   } else {
     return 0;
   }
 }
 
-static int compare_indicators(const void *left, const void *right)
+static int compare_indicators(ListNode const *left, ListNode const *right)
 {
-  const Indicator *left_indicator  = left;
-  const Indicator *right_indicator = right;
+  Indicator const *l = container_of(left, Indicator, node);
+  Indicator const *r = container_of(right, Indicator, node);
 
-  if (left_indicator->kind != right_indicator->kind) {
-    return left_indicator->kind < right_indicator->kind ? -1 : 1;
-  } else if (left_indicator->column != right_indicator->column) {
-    return left_indicator->column < right_indicator->column ? -1 : 1;
-  } else if (left_indicator->length != right_indicator->length) {
-    return left_indicator->length > right_indicator->length ? -1 : 1;
+  if (l->kind != r->kind) {
+    return l->kind < r->kind ? -1 : 1;
+  } else if (l->column != r->column) {
+    return l->column < r->column ? -1 : 1;
+  } else if (l->length != r->length) {
+    return l->length > r->length ? -1 : 1;
   } else {
     return 0;
   }
 }
 
-static int compare_connectors(const void *left, const void *right)
+static int compare_connectors(ListNode const *left, ListNode const *right)
 {
-  const Connector *left_connector  = left;
-  const Connector *right_connector = right;
+  Connector const *l = container_of(left, Connector, node);
+  Connector const *r = container_of(right, Connector, node);
 
-  if (left_connector->column != right_connector->column) {
-    return left_connector->column < right_connector->column ? -1 : 1;
+  if (l->column != r->column) {
+    return l->column < r->column ? -1 : 1;
   } else {
     return 0;
   }
 }
 
-static int compare_annotations(const void *left, const void *right)
+static int compare_annotations(ListNode const *left, ListNode const *right)
 {
-  const ReportAnnotation *left_annotation  = left;
-  const ReportAnnotation *right_annotation = right;
+  ReportAnnotation const *l = container_of(left, ReportAnnotation, node);
+  ReportAnnotation const *r = container_of(right, ReportAnnotation, node);
 
-  if (left_annotation->start_offset != right_annotation->start_offset) {
-    return left_annotation->start_offset < right_annotation->start_offset ? -1 : 1;
-  } else if (left_annotation->end_offset != right_annotation->end_offset) {
-    return left_annotation->end_offset < right_annotation->end_offset ? -1 : 1;
+  if (l->start_offset != r->start_offset) {
+    return l->start_offset < r->start_offset ? -1 : 1;
+  } else if (l->end_offset != r->end_offset) {
+    return l->end_offset < r->end_offset ? -1 : 1;
   } else {
     return 0;
   }
@@ -258,7 +273,7 @@ static void write_location_line(Writer *writer, TermBuf *canvas)
 {
   TermStyle style;
 
-  size_t line = fenwick_upper_bound(writer->offsets, writer->line_count, writer->report->offset);
+  size_t line   = fenwick_upper_bound(writer->offsets, writer->line_count, writer->report->offset);
   size_t column = writer->report->offset - fenwick_query(writer->offsets, writer->line_count, line);
 
   style           = term_default_style();
@@ -281,18 +296,16 @@ static void write_annotation_left(
   TermBuf                *canvas,
   unsigned long           line_number,
   unsigned long           line_column,
-  const ReportAnnotation *connect,
+  ReportAnnotation const *connect,
   int                     dotted)
 {
-  unsigned long i;
-  TermStyle     style;
+  ListNode *n;
+  TermStyle style = term_default_style();
 
-  const ReportAnnotation *strike = NULL;
-
-  style            = term_default_style();
+  ReportAnnotation const *strike = NULL;
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
-  for (i = 0; i < writer->report->annotations.count; ++i) {
-    ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
+  for (n = writer->report->annotations.next; n != &writer->report->annotations; n = n->next) {
+    ReportAnnotation const *annotation = container_of(n, ReportAnnotation, node);
     if (annotation->start_line != annotation->end_line) {
       if (strike) {
         term_buf_write(canvas, &style, "──");
@@ -333,8 +346,9 @@ static void write_annotation_left(
 
 static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long line_number)
 {
-  unsigned long i, j;
-  TermStyle     style;
+  size_t    i;
+  ListNode *n, *m;
+  TermStyle style;
 
   unsigned long line_width;
   char         *line;
@@ -342,14 +356,14 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
   unsigned long line_offset;
   unsigned long column_offset;
 
-  Vec(LineSegment) segments;
-  Vec(LineSegment) nongraphics;
+  ListNode segments;
+  ListNode nongraphics;
 
   size_t offset = fenwick_query(writer->offsets, writer->line_count, line_number);
   size_t length = fenwick_query(writer->offsets, writer->line_count, line_number + 1) - offset;
 
-  vec_alloc(&segments, 0);
-  vec_alloc(&nongraphics, 0);
+  list_init(&segments);
+  list_init(&nongraphics);
 
   line_width = 0;
   for (i = 0; i < length; ++i) {
@@ -363,7 +377,7 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
     }
   }
 
-  line        = malloc(line_width + 1);
+  line        = xmalloc(line_width + 1);
   line_offset = 0;
   for (i = 0; i < length; ++i) {
     char c = writer->source[offset + i];
@@ -371,38 +385,38 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
       unsigned long adjusted_width = writer->tab_width - (line_offset % writer->tab_width);
       line_offset += sprintf(line + line_offset, "%*.s", (int) adjusted_width, "");
     } else if (!is_graphic(c)) {
-      LineSegment segment;
-      segment.annotation = NULL;
+      LineSegment *segment = xmalloc(sizeof(LineSegment));
+      segment->annotation = NULL;
 
-      segment.start = line_offset;
+      segment->start = line_offset;
       line_offset += sprintf(line + line_offset, "\\x%X", (unsigned char) (c & 0xFF));
-      segment.end = line_offset - 1;
-      vec_push(&nongraphics, &segment, 1);
+      segment->end = line_offset - 1;
+      list_push_back(&nongraphics, &segment->node);
     } else {
       line[line_offset++] = c ? c : ' ';
     }
   }
   line[line_width] = '\0';
 
-  for (i = 0; i < writer->report->annotations.count; ++i) {
-    ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
-    LineSegment       segment;
-    segment.annotation = annotation;
+  for (n = writer->report->annotations.next; n != &writer->report->annotations; n = n->next) {
+    ReportAnnotation const *annotation = container_of(n, ReportAnnotation, node);
+    LineSegment            *segment    = xmalloc(sizeof(LineSegment));
+    segment->annotation = annotation;
     if (annotation->start_line == line_number && annotation->end_line == line_number) {
-      segment.start = annotation->start_column;
-      segment.end   = annotation->end_column;
+      segment->start = annotation->start_column;
+      segment->end   = annotation->end_column;
     } else if (annotation->start_line == line_number) {
-      segment.start = annotation->start_column;
-      segment.end   = line_width;
+      segment->start = annotation->start_column;
+      segment->end   = line_width;
     } else if (annotation->end_line == line_number) {
-      segment.start = 0;
-      segment.end   = annotation->end_column;
+      segment->start = 0;
+      segment->end   = annotation->end_column;
     } else {
       continue;
     }
-    vec_push(&segments, &segment, 1);
+    list_push_back(&segments, &segment->node);
   }
-  qsort(segments.ptr, segments.count, sizeof(LineSegment), &compare_line_segments);
+  list_sort(&segments, &compare_line_segments);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -418,14 +432,14 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  for (j = 0; j < nongraphics.count; ++j) {
-    LineSegment *nongraphic = &nongraphics.ptr[j];
+  for (n = nongraphics.next; n != &nongraphics; n = n->next) {
+    LineSegment const *nongraphic = container_of(n, LineSegment, node);
     term_buf_seek(canvas, line_offset, column_offset + nongraphic->start);
     term_buf_write(canvas, &style, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
   }
 
-  for (i = 0; i < segments.count; ++i) {
-    LineSegment *segment = &segments.ptr[i];
+  for (n = segments.next; n != &segments; n = n->next) {
+    LineSegment const *segment = container_of(n, LineSegment, node);
     term_buf_seek(canvas, line_offset, column_offset + segment->start);
 
     style            = term_default_style();
@@ -435,8 +449,8 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
     style            = term_default_style();
     style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
     style.intensity  = TERM_INTENSITY_FAINT;
-    for (j = 0; j < nongraphics.count; ++j) {
-      LineSegment *nongraphic = &nongraphics.ptr[j];
+    for (m = nongraphics.next; m != &nongraphics; m = m->next) {
+      LineSegment const *nongraphic = container_of(m, LineSegment, node);
       if (nongraphic->start >= segment->start && nongraphic->end <= segment->end) {
         term_buf_seek(canvas, line_offset, column_offset + nongraphic->start);
         term_buf_write(canvas, &style, "%.*s", (int) (nongraphic->end - nongraphic->start + 1), line + nongraphic->start);
@@ -445,47 +459,61 @@ static void write_source_line(Writer *writer, TermBuf *canvas, unsigned long lin
   }
   term_buf_next_line(canvas);
 
+  for (n = segments.next, m = n->next; n != &segments; n = m, m = m->next) {
+    LineSegment *segment = container_of(n, LineSegment, node);
+    list_erase(n);
+    free(segment);
+  }
+
+  for (n = nongraphics.next, m = n->next; n != &nongraphics; n = m, m = m->next) {
+    LineSegment *nongraphic = container_of(n, LineSegment, node);
+    list_erase(n);
+    free(nongraphic);
+  }
+
   free(line);
-  vec_free(&segments);
-  vec_free(&nongraphics);
 }
 
 static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long line_number)
 {
-  unsigned long i, j;
-  TermStyle     style;
+  size_t    i;
+  ListNode *n, *m;
+  TermStyle style;
 
   unsigned long line_offset;
   unsigned long column_offset;
 
-  Vec(Indicator) indicators;
+  ListNode indicators;
+  list_init(&indicators);
 
-  vec_alloc(&indicators, 0);
-
-  for (i = 0; i < writer->report->annotations.count; ++i) {
-    ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
-    Indicator         indicator;
+  for (n = writer->report->annotations.next; n != &writer->report->annotations; n = n->next) {
+    ReportAnnotation const *annotation = container_of(n, ReportAnnotation, node);
     if (annotation->start_line == line_number && annotation->end_line == line_number) {
-      indicator.annotation = annotation;
-      indicator.kind       = INDICATOR_INLINE;
-      indicator.column     = annotation->start_column;
-      indicator.length     = annotation->end_column - annotation->start_column + 1;
+      Indicator *indicator  = xmalloc(sizeof(Indicator));
+      indicator->annotation = annotation;
+      indicator->kind       = INDICATOR_INLINE;
+      indicator->column     = annotation->start_column;
+      indicator->length     = annotation->end_column - annotation->start_column + 1;
+      list_push(&indicators, &indicator->node);
     } else if (annotation->start_line == line_number) {
-      indicator.annotation = annotation;
-      indicator.kind       = INDICATOR_BEGIN;
-      indicator.column     = annotation->start_column;
-      indicator.length     = 1;
+      Indicator *indicator  = xmalloc(sizeof(Indicator));
+      indicator->annotation = annotation;
+      indicator->kind       = INDICATOR_BEGIN;
+      indicator->column     = annotation->start_column;
+      indicator->length     = 1;
+      list_push(&indicators, &indicator->node);
     } else if (annotation->end_line == line_number) {
-      indicator.annotation = annotation;
-      indicator.kind       = INDICATOR_END;
-      indicator.column     = annotation->end_column;
-      indicator.length     = 1;
+      Indicator *indicator  = xmalloc(sizeof(Indicator));
+      indicator->annotation = annotation;
+      indicator->kind       = INDICATOR_END;
+      indicator->column     = annotation->end_column;
+      indicator->length     = 1;
+      list_push(&indicators, &indicator->node);
     } else {
       continue;
     }
-    vec_push(&indicators, &indicator, 1);
   }
-  qsort(indicators.ptr, indicators.count, sizeof(Indicator), &compare_indicators);
+  list_sort(&indicators, &compare_indicators);
 
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
@@ -497,13 +525,13 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
 
   style            = term_default_style();
   style.foreground = TERM_COLOR_BRIGHT | TERM_COLOR_RED;
-  for (i = 0; i < indicators.count; ++i) {
-    Indicator *indicator = &indicators.ptr[i];
+  for (n = indicators.next; n != &indicators; n = n->next) {
+    Indicator const *indicator = container_of(n, Indicator, node);
     term_buf_seek(canvas, line_offset, column_offset + indicator->column);
     switch (indicator->kind) {
     case INDICATOR_INLINE:
       term_buf_write(canvas, &style, indicator->annotation->message ? "┬" : "─");
-      for (j = 1; j < indicator->length; ++j) {
+      for (i = 1; i < indicator->length; ++i) {
         term_buf_write(canvas, &style, "─");
       }
       break;
@@ -516,13 +544,18 @@ static void write_indicator_line(Writer *writer, TermBuf *canvas, unsigned long 
   }
   term_buf_next_line(canvas);
 
-  vec_free(&indicators);
+  for (n = indicators.next, m = n->next; n != &indicators; n = m, m = m->next) {
+    Indicator *indicator = container_of(n, Indicator, node);
+    list_erase(n);
+    free(indicator);
+  }
 }
 
 static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned long line_number)
 {
-  unsigned long i, j;
-  TermStyle     style;
+  size_t    i;
+  ListNode *n, *m;
+  TermStyle style;
 
   unsigned long label_offset = 0;
   unsigned long line_offset;
@@ -530,14 +563,11 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
   unsigned long end_line_offset;
   unsigned long depth;
 
-  Vec(Connector) connectors;
+  ListNode connectors;
+  list_init(&connectors);
 
-  vec_alloc(&connectors, 0);
-
-  for (i = 0; i < writer->report->annotations.count; ++i) {
-    ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
-    Connector         connector;
-    connector.annotation = annotation;
+  for (n = writer->report->annotations.next; n != &writer->report->annotations; n = n->next) {
+    ReportAnnotation const *annotation = container_of(n, ReportAnnotation, node);
 
     if (annotation->start_line == line_number && label_offset < annotation->start_column) {
       label_offset = annotation->start_column;
@@ -547,34 +577,40 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
     }
 
     if (annotation->start_line == line_number && annotation->end_line == line_number) {
-      connector.kind      = CONNECTOR_END;
-      connector.multiline = 0;
-      connector.column    = annotation->start_column;
-      connector.depth     = -1ul;
+      Connector *connector  = xmalloc(sizeof(Connector));
+      connector->annotation = annotation;
+      connector->kind       = CONNECTOR_END;
+      connector->multiline  = 0;
+      connector->column     = annotation->start_column;
+      connector->depth      = -1ul;
+      list_push(&connectors, &connector->node);
     } else if (annotation->start_line == line_number) {
-      connector.kind      = CONNECTOR_BEGIN;
-      connector.multiline = 1;
-      connector.column    = annotation->start_column;
-      connector.depth     = -1ul;
+      Connector *connector  = xmalloc(sizeof(Connector));
+      connector->annotation = annotation;
+      connector->kind       = CONNECTOR_BEGIN;
+      connector->multiline  = 1;
+      connector->column     = annotation->start_column;
+      connector->depth      = -1ul;
+      list_push(&connectors, &connector->node);
     } else if (annotation->end_line == line_number) {
-      connector.kind      = CONNECTOR_END;
-      connector.multiline = 1;
-      connector.column    = annotation->end_column;
-      connector.depth     = -1ul;
+      Connector *connector  = xmalloc(sizeof(Connector));
+      connector->annotation = annotation;
+      connector->kind       = CONNECTOR_END;
+      connector->multiline  = 1;
+      connector->column     = annotation->end_column;
+      connector->depth      = -1ul;
+      list_push(&connectors, &connector->node);
     } else {
       continue;
     }
-
-    vec_push(&connectors, &connector, 1);
   }
-  qsort(connectors.ptr, connectors.count, sizeof(Connector), &compare_connectors);
+  list_sort(&connectors, &compare_connectors);
 
-  depth = 0;
-
+  depth           = 0;
   style           = term_default_style();
   style.intensity = TERM_INTENSITY_FAINT;
-  for (i = 0; i < connectors.count; ++i) {
-    Connector *connector = &connectors.ptr[i];
+  for (n = connectors.next; n != &connectors; n = n->next) {
+    Connector *connector = container_of(n, Connector, node);
     if (connector->multiline || connector->annotation->message) {
       connector->depth = depth;
       if (depth > 0) {
@@ -595,14 +631,14 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
   }
   end_line_offset = term_buf_line(canvas);
 
-  for (i = connectors.count; i > 0; --i) {
-    Connector *connector = &connectors.ptr[i - 1];
+  for (n = connectors.prev; n != &connectors; n = n->prev) {
+    Connector const *connector = container_of(n, Connector, node);
 
     style            = term_default_style();
     style.foreground = TERM_COLOR_RED | TERM_COLOR_BRIGHT;
     if (connector->depth != -1ul) {
-      for (j = 0; j < connector->depth; ++j) {
-        term_buf_seek(canvas, line_offset + j, column_offset + connector->column);
+      for (i = 0; i < connector->depth; ++i) {
+        term_buf_seek(canvas, line_offset + i, column_offset + connector->column);
         term_buf_write(canvas, &style, "│");
       }
     }
@@ -612,18 +648,18 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
       style            = term_default_style();
       style.foreground = TERM_COLOR_RED | TERM_COLOR_BRIGHT;
       if (connector->multiline) {
-        term_buf_seek(canvas, line_offset + j, column_offset);
-        for (j = 0; j < connector->column; ++j) {
+        term_buf_seek(canvas, line_offset + i, column_offset);
+        for (i = 0; i < connector->column; ++i) {
           term_buf_write(canvas, &style, "─");
         }
         term_buf_write(canvas, &style, connector->annotation->message ? "┴" : "╯");
       } else if (connector->annotation->message) {
-        term_buf_seek(canvas, line_offset + j, column_offset + connector->column);
+        term_buf_seek(canvas, line_offset + i, column_offset + connector->column);
         term_buf_write(canvas, &style, "╰");
       }
 
       if (connector->annotation->message) {
-        for (j = connector->column + 1; j < label_offset + 3; ++j) {
+        for (i = connector->column + 1; i < label_offset + 3; ++i) {
           term_buf_write(canvas, &style, "─");
         }
 
@@ -636,8 +672,8 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
     case CONNECTOR_BEGIN:
       style            = term_default_style();
       style.foreground = TERM_COLOR_RED | TERM_COLOR_BRIGHT;
-      term_buf_seek(canvas, line_offset + j, column_offset);
-      for (j = 0; j < connector->column; ++j) {
+      term_buf_seek(canvas, line_offset + i, column_offset);
+      for (i = 0; i < connector->column; ++i) {
         term_buf_write(canvas, &style, "─");
       }
       term_buf_write(canvas, &style, "╯");
@@ -646,20 +682,25 @@ static void write_annotation_lines(Writer *writer, TermBuf *canvas, unsigned lon
   }
   term_buf_seek(canvas, end_line_offset, 0);
 
-  vec_free(&connectors);
+  for (n = connectors.next, m = n->next; n != &connectors; n = m, m = m->next) {
+    Connector *connector = container_of(n, Connector, node);
+    list_erase(n);
+    free(connector);
+  }
 }
 
 static void write_interest_lines(Writer *writer, TermBuf *canvas)
 {
-  unsigned long i, j;
-  TermStyle     style;
+  size_t    i;
+  ListNode *n;
+  TermStyle style;
 
   unsigned long start_line    = -1ul;
   unsigned long end_line      = 0;
   unsigned long previous_line = -1ul;
 
-  for (i = 0; i < writer->report->annotations.count; ++i) {
-    ReportAnnotation *annotation = &writer->report->annotations.ptr[i];
+  for (n = writer->report->annotations.next; n != &writer->report->annotations; n = n->next) {
+    ReportAnnotation const *annotation = container_of(n, ReportAnnotation, node);
     if (start_line > annotation->start_line) {
       start_line = annotation->start_line;
     }
@@ -669,8 +710,8 @@ static void write_interest_lines(Writer *writer, TermBuf *canvas)
   }
 
   for (i = start_line; i <= end_line; ++i) {
-    for (j = 0; j < writer->report->annotations.count; ++j) {
-      ReportAnnotation *annotation = &writer->report->annotations.ptr[j];
+    for (n = writer->report->annotations.next; n != &writer->report->annotations; n = n->next) {
+      ReportAnnotation const *annotation = container_of(n, ReportAnnotation, node);
       if (i == annotation->start_line || i == annotation->end_line) {
         int dotted = previous_line != -1ul && previous_line + 1 != i;
 
@@ -786,11 +827,11 @@ static size_t *build_fenwick(char const *text, size_t length, size_t *line_count
 
 void report_emit(Report *report, char const *filename, char const *source)
 {
-  Writer        writer;
-  TermBuf      *canvas = term_buf_new();
-  unsigned long i;
+  Writer    writer;
+  TermBuf  *canvas = term_buf_new();
+  ListNode *n;
 
-  qsort(report->annotations.ptr, report->annotations.count, sizeof(ReportAnnotation), &compare_annotations);
+  list_sort(&report->annotations, &compare_annotations);
 
   writer.report        = report;
   writer.source        = source;
@@ -798,9 +839,9 @@ void report_emit(Report *report, char const *filename, char const *source)
   writer.offsets       = build_fenwick(source, strlen(source), &writer.line_count);
   writer.tab_width     = 4;
   writer.number_margin = 0;
-  for (i = 0; i < report->annotations.count; ++i) {
+  for (n = report->annotations.next; n != &report->annotations; n = n->next) {
     int               margin;
-    ReportAnnotation *annotation = &report->annotations.ptr[i];
+    ReportAnnotation *annotation = container_of(n, ReportAnnotation, node);
     annotation->start_line = display_locate(&writer, annotation->start_offset, 1, &annotation->start_column);
     annotation->end_line   = display_locate(&writer, annotation->end_offset, 0, &annotation->end_column);
 
@@ -819,6 +860,7 @@ void report_emit(Report *report, char const *filename, char const *source)
   write_interest_lines(&writer, canvas);
   write_tail_line(&writer, canvas);
 
+  free(writer.offsets);
   term_buf_print(canvas, stderr);
   term_buf_free(canvas);
   report_free(report);

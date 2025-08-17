@@ -11,8 +11,7 @@ typedef enum {
   REPORT_KIND_ERROR
 } ReportKind;
 
-typedef struct ReportAnnotation ReportAnnotation;
-typedef struct Report           Report;
+typedef struct Report Report;
 
 Report *report_new(ReportKind kind, unsigned long offset, const char *format, ...);
 Report *report_new_with_args(ReportKind kind, unsigned long offset, char const *format, va_list args);
