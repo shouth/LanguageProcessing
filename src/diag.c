@@ -10,7 +10,7 @@
 
 /* utility */
 
-char *expected_set_to_string(const MpplTokenKindSet *expected)
+static char *expected_set_to_string(MpplTokenKindSet const *expected)
 {
   MpplSyntaxKind kind;
   unsigned long  count;
@@ -22,14 +22,14 @@ char *expected_set_to_string(const MpplTokenKindSet *expected)
     return NULL;
   }
 
-  count  = bitset_count(expected);
+  count  = bitset_count(expected->bitset, count_of(expected->bitset));
   length = 0;
   if (count > 2) {
     length += fprintf(buffer, "one of ");
   }
 
   for (kind = MPPL_BEGIN_TOKEN; kind < MPPL_END_TOKEN; kind++) {
-    if (bitset_get(expected, kind)) {
+    if (bitset_get(expected->bitset, kind)) {
       const char *lexeme = mppl_syntax_kind_static_lexeme(kind - MPPL_BEGIN_TOKEN);
 
       if (lexeme) {

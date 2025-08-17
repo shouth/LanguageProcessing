@@ -144,7 +144,17 @@ typedef enum {
 #define MPPL_BEGIN_TREE MPPL_SYNTAX_PROGRAM
 #define MPPL_END_TREE   MPPL_SYNTAX_IDENT_LIST
 
-typedef BitSet(MPPL_END_TOKEN - MPPL_BEGIN_TOKEN + 1) MpplTokenKindSet;
+typedef struct MpplTokenKindSet MpplTokenKindSet;
+
+struct MpplTokenKindSet {
+#define BITS (MPPL_END_TOKEN - MPPL_BEGIN_TOKEN + 1)
+#define ULONG_BITS (sizeof(unsigned long) * CHAR_BIT)
+
+  unsigned long bitset[(BITS + ULONG_BITS - 1) / ULONG_BITS];
+
+#undef ULONG_BITS
+#undef BITS
+};
 
 MpplSyntaxKind mppl_syntax_kind_from_keyword(const char *string, unsigned long size);
 const char    *mppl_syntax_kind_static_lexeme(MpplSyntaxKind kind);

@@ -20,13 +20,38 @@ void *xmalloc(unsigned long size)
   return result;
 }
 
-unsigned long popcount(const void *data, unsigned long count)
+/* BitSet */
+
+void bitset_init(unsigned long *bitset, size_t size)
+{
+  memset(bitset, 0, sizeof(unsigned long) * size);
+}
+
+void bitset_set(unsigned long *bitset, size_t index, int value)
+{
+  size_t bucket = index / sizeof(unsigned long);
+  size_t bit = index % sizeof(unsigned long);
+  if (value) {
+    bitset[bucket] |= 1ul << bit;
+  } else {
+    bitset[bucket] &= ~(1ul << bit);
+  }
+}
+
+int bitset_get(unsigned long const *bitset, size_t index)
+{
+  size_t bucket = index / sizeof(unsigned long);
+  size_t bit = index % sizeof(unsigned long);
+  return (bitset[bucket] >> bit) & 1ul;
+}
+
+size_t bitset_count(unsigned long const *bitset, size_t size)
 {
 #define B2(n) n, n + 1, n + 1, n + 2
 #define B4(n) B2(n), B2(n + 1), B2(n + 1), B2(n + 2)
 #define B6(n) B4(n), B4(n + 1), B4(n + 1), B4(n + 2)
 
-  static const unsigned char table[] = {
+  static unsigned char const table[] = {
     B6(0), B6(1), B6(1), B6(2)
   };
 
@@ -34,10 +59,13 @@ unsigned long popcount(const void *data, unsigned long count)
 #undef B4
 #undef B6
 
-  unsigned long result = 0;
-  unsigned long i;
-  for (i = 0; i < count; ++i) {
-    result += table[((unsigned char *) data)[i]];
+  size_t i, j;
+  size_t result = 0;
+  for (i = 0; i < size; ++i) {
+    unsigned char const *bytes = (void *) &bitset[i];
+    for (j = 0; j < sizeof(bitset[i]); ++j) {
+      result += table[bytes[j]];
+    }
   }
   return result;
 }
