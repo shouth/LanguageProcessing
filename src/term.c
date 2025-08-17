@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "term.h"
 #include "util.h"
@@ -327,9 +328,12 @@ static TermBufCell *locate(TermBuf *buf, size_t line, size_t column)
     free(lines);
   }
   if (line >= buf->line_count) {
+    TermBufLine value;
+    value.cells = NULL;
+    value.cell_count = 0;
+    value.cell_capacity = 0;
     for (i = buf->line_count; i <= line; ++i) {
-      TermBufLine line = { NULL };
-      buf->lines[i] = line;
+      buf->lines[i] = value;
     }
     buf->line_count = line;
   }
@@ -347,9 +351,12 @@ static TermBufCell *locate(TermBuf *buf, size_t line, size_t column)
     free(cells);
   }
   if (column >= buf->lines[line].cell_count) {
+    TermBufCell value;
+    value.size = 1;
+    strcpy(value.character, " ");
+    value.style = term_default_style();
     for (i = buf->lines[line].cell_count; i <= column; ++i) {
-      TermBufCell cell = { " ", 1 };
-      buf->lines[line].cells[i] = cell;
+      buf->lines[line].cells[i] = value;
     }
     buf->lines[line].cell_count = column;
   }
