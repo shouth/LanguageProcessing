@@ -14,11 +14,11 @@ static void push(ListNode *head, int value)
   list_push_back(head, &item->node);
 }
 
-static int int_compare(ListNode const *a, ListNode const *b)
+static int int_compare(ListNode const *left, ListNode const *right)
 {
-  Int const *left = container_of(a, Int, node);
-  Int const *right = container_of(b, Int, node);
-  return left->value - right->value;
+  Int const *l = container_of(left, Int, node);
+  Int const *r = container_of(right, Int, node);
+  return l->value - r->value;
 }
 
 int main(void)
@@ -36,10 +36,10 @@ int main(void)
   list_sort(&list, int_compare);
 
   {
-    ListNode *ptr = list.next;
-    for (; ptr != list.prev; ptr = ptr->next) {
-      Int const *current = container_of(ptr, Int, node);
-      Int const *next = container_of(ptr->next, Int, node);
+    ListNode *n = list.next;
+    for (; n != list.prev; n = n->next) {
+      Int const *current = container_of(n, Int, node);
+      Int const *next = container_of(n->next, Int, node);
       assert(current->value <= next->value);
     }
   }

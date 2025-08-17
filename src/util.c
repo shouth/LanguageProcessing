@@ -81,6 +81,14 @@ void list_push_back(ListNode *head, ListNode *node)
   node->next = head;
 }
 
+void list_erase(ListNode *node)
+{
+  node->prev->next = node->next;
+  node->next->prev = node->prev;
+  node->next = NULL;
+  node->prev = NULL;
+}
+
 void list_sort(ListNode *head, ListNodeCompare *compare)
 {
   unsigned long window = 1;

@@ -141,6 +141,7 @@ struct ListNode {
 
 void list_init(ListNode *node);
 void list_push_back(ListNode *head, ListNode *node);
+void list_erase(ListNode *node);
 void list_sort(ListNode *head, ListNodeCompare *compare);
 
 /* Fenwick */
