@@ -1,23 +1,23 @@
 cmake_minimum_required(VERSION 3.15)
 project(KIT_LPP)
 
-add_executable(mpplc)
+add_library(mpplc_options INTERFACE)
 
-file(GLOB src src/*.c)
-target_sources(mpplc
-  PRIVATE ${src})
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(mpplc_options
+    INTERFACE
+      -std=c90 -pedantic-errors -Wall -Wextra
+      $<$<CONFIG:Debug>:-fsanitize=address,leak,undefined -fno-sanitize-recover -fstack-protector>)
+  target_link_options(mpplc_options
+    INTERFACE
+      $<$<CONFIG:Debug>:-fsanitize=address,leak,undefined>)
+endif()
 
-set_target_properties(mpplc
-  PROPERTIES
-    C_STANDARD 90
-    C_EXTENSIONS OFF)
+file(GLOB src CONFIGURE_DEPENDS src/*.c)
+list(FILTER src EXCLUDE REGEX "src/main.c")
 
-set(gnu_like "$<C_COMPILER_ID:GNU,Clang>")
-set(gnu_like_debug "$<AND:${gnu_like},$<CONFIG:Debug>>")
-target_compile_options(mpplc
-  PRIVATE
-    "$<${gnu_like}:-pedantic-errors;-Wall;-Wextra>"
-    "$<${gnu_like_debug}:-fsanitize=address,leak,undefined;-fno-sanitize-recover;-fstack-protector>")
-target_link_options(mpplc
-  PRIVATE
-    "$<${gnu_like_debug}:-fsanitize=address,leak,undefined>")
+add_library(mpplc_core STATIC ${src})
+target_link_libraries(mpplc_core mpplc_options)
+
+add_executable(mpplc src/main.c)
+target_link_libraries(mpplc mpplc_core mpplc_options)
