@@ -1,0 +1,168 @@
+/*
+ * ds.c -- data structures
+ *
+ * SPDX-FileCopyrightText: 2026 Shota Minami
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <limits.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "ds.h"
+
+/* vector */
+
+void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap)
+{
+  if (ncap > *cap) {
+    data = realloc(data, size * ncap);
+    *cap = ncap;
+  }
+  return data;
+}
+
+/* hash map */
+
+void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash, ht_eq eq)
+{
+  struct ht_entry entry, nentry;
+  void *ndata;
+  ht_hop *nhop;
+  unsigned long nmask = *mask;
+
+  while (1) {
+    nmask = nmask << 1 | 1;
+    ndata = calloc(nmask + 1, size);
+    nhop = calloc(nmask + 1, sizeof(ht_hop));
+
+    for (raw_ht_entry(&entry, *hop, *mask, data, size, hash, eq, NULL); raw_ht_next(&entry, *hop, *mask);) {
+      void *item = (char *) data + size * ((entry.bucket + entry.slot) & *mask);
+      nentry.bucket = hash(item) & nmask;
+      nentry.slot = -1UL;
+      if (!raw_ht_occupy(&nentry, nhop, nmask, ndata, size)) {
+        break;
+      }
+      memcpy((char *) ndata + size * ((nentry.bucket + nentry.slot) & nmask), item, size);
+    }
+
+    if (entry.slot == -1UL) {
+      free(data);
+      free(*hop);
+      *mask = nmask;
+      *hop = nhop;
+      return ndata;
+    }
+
+    free(ndata);
+    free(nhop);
+  }
+}
+
+int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void *elem)
+{
+  if (elem && mask) {
+    entry->bucket = hash(elem) & mask;
+    for (entry->slot = 0; entry->slot < sizeof(ht_hop) * CHAR_BIT; ++entry->slot) {
+      if (hop[entry->bucket] & (1UL << entry->slot)) {
+        if (eq(elem, (char *) data + size * ((entry->bucket + entry->slot) & mask))) {
+          return 1;
+        }
+      }
+    }
+  } else {
+    entry->bucket = 0;
+  }
+
+  entry->slot = -1UL;
+  return 0;
+}
+
+int raw_ht_next(struct ht_entry *entry, ht_hop *hop, unsigned long mask)
+{
+  if (mask) {
+    ++entry->slot;
+    for (; entry->bucket <= mask; ++entry->bucket) {
+      for (; entry->slot < sizeof(ht_hop) * CHAR_BIT; ++entry->slot) {
+        if (hop[entry->bucket] & (1UL << entry->slot)) {
+          return 1;
+        }
+      }
+      entry->slot = 0;
+    }
+    entry->slot = -1UL;
+  }
+  return 0;
+}
+
+int raw_ht_occupy(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size)
+{
+  unsigned long window = mask < sizeof(ht_hop) * CHAR_BIT ? mask : sizeof(ht_hop) * CHAR_BIT;
+  unsigned long limit = mask < sizeof(ht_hop) * CHAR_BIT * 8 ? mask : sizeof(ht_hop) * CHAR_BIT * 8;
+  unsigned long occupied = 0;
+  unsigned long empty = -1UL;
+  unsigned long i;
+
+  if (!mask) {
+    return 0;
+  }
+
+  if (entry->slot != -1UL) {
+    return 1;
+  }
+
+  for (i = window - 1; i > 0; --i) {
+    occupied = occupied >> 1 | hop[(entry->bucket - i) & mask];
+  }
+
+  for (i = 0; i < limit; ++i) {
+    occupied = occupied >> 1 | hop[(entry->bucket + i) & mask];
+    if (!(occupied & 1)) {
+      empty = i;
+      break;
+    }
+  }
+
+  if (empty == -1UL) {
+    return 0;
+  }
+
+  while (empty >= sizeof(ht_hop) * CHAR_BIT) {
+    unsigned long next = -1UL;
+    for (i = empty - window + 1; i < empty; ++i) {
+      unsigned long b = hop[(entry->bucket + i) & mask] & -hop[(entry->bucket + i) & mask];
+      if (b && b < (1UL << (empty - i))) {
+        next = i;
+        while (b >>= 1) {
+          ++next;
+        }
+        break;
+      }
+    }
+
+    if (next == -1UL) {
+      return 0;
+    }
+
+    memcpy((char *) data + size * ((entry->bucket + empty) & mask), (char *) data + size * ((entry->bucket + next) & mask), size);
+    hop[(entry->bucket + i) & mask] &= ~(1UL << (next - i));
+    hop[(entry->bucket + i) & mask] |= 1UL << (empty - i);
+    empty = next;
+  }
+
+  entry->slot = empty;
+  hop[entry->bucket] |= 1UL << empty;
+  return 1;
+}
+
+int raw_ht_release(struct ht_entry *entry, ht_hop *hop)
+{
+  if (entry->slot != -1UL) {
+    hop[entry->bucket] &= ~(1UL << entry->slot);
+    return 1;
+  } else {
+    return 0;
+  }
+}
