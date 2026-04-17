@@ -18,15 +18,15 @@
 
 #define SIZE 10000000
 
-unsigned long hash(void *x)
+unsigned long hash(void const *x)
 {
-  unsigned long v = *(unsigned long *) x;
+  unsigned long v = *(unsigned long const *) x;
   return (((v << 5) | v >> (sizeof(unsigned long) * CHAR_BIT - 5)) ^ v) * 0x517cc1b727220a95UL;
 }
 
-int eq(void *l, void *r)
+int eq(void const *l, void const *r)
 {
-  return *(unsigned long *) l == *(unsigned long *) r;
+  return *(unsigned long const *) l == *(unsigned long const *) r;
 }
 
 unsigned long *make_shuffled(size_t n)

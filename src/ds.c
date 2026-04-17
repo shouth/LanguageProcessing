@@ -72,7 +72,7 @@ void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, 
   }
 }
 
-int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void *elem)
+int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void const *elem)
 {
   if (elem && mask) {
     entry->bucket = hash(elem) & mask;

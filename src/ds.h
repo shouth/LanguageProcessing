@@ -72,9 +72,9 @@ void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap);
 
 /* hash table */
 
-typedef unsigned long (*ht_hash)(void *key);
+typedef unsigned long (*ht_hash)(void const *key);
 
-typedef int (*ht_eq)(void *l, void *r);
+typedef int (*ht_eq)(void const *l, void const *r);
 
 typedef unsigned long ht_hop;
 
@@ -85,7 +85,7 @@ struct ht_entry {
 
 void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash);
 
-int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void *key);
+int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void const *key);
 
 int raw_ht_next(struct ht_entry *entry, ht_hop *hop, unsigned long mask);
 
