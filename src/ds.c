@@ -7,7 +7,6 @@
 
 #include <limits.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,36 +25,48 @@ void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap)
 
 /* hash map */
 
-void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash, ht_eq eq)
+void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash)
 {
-  struct ht_entry entry, nentry;
   void *ndata;
   ht_hop *nhop;
   unsigned long nmask = *mask;
+  size_t i;
 
   while (1) {
     nmask = nmask << 1 | 1;
     ndata = calloc(nmask + 1, size);
     nhop = calloc(nmask + 1, sizeof(ht_hop));
 
-    for (raw_ht_entry(&entry, *hop, *mask, data, size, hash, eq, NULL); raw_ht_next(&entry, *hop, *mask);) {
-      void *item = (char *) data + size * ((entry.bucket + entry.slot) & *mask);
-      nentry.bucket = hash(item) & nmask;
-      nentry.slot = -1UL;
-      if (!raw_ht_occupy(&nentry, nhop, nmask, ndata, size)) {
-        break;
+    if (*mask) {
+      unsigned long window = *mask < sizeof(ht_hop) * CHAR_BIT ? *mask : sizeof(ht_hop) * CHAR_BIT;
+      unsigned long occupied = 0;
+
+      for (i = window - 1; i > 0; --i) {
+        occupied = occupied >> 1 | (*hop)[-i & *mask];
       }
-      memcpy((char *) ndata + size * ((nentry.bucket + nentry.slot) & nmask), item, size);
+
+      for (i = 0; i <= *mask; ++i) {
+        occupied = occupied >> 1 | (*hop)[i];
+        if (occupied & 1) {
+          void *item = (char *) data + size * i;
+          struct ht_entry e;
+          e.bucket = hash(item) & nmask;
+          e.slot = -1UL;
+          if (!raw_ht_occupy(&e, nhop, nmask, ndata, size)) {
+            goto fail;
+          }
+          memcpy((char *) ndata + size * ((e.bucket + e.slot) & nmask), item, size);
+        }
+      }
     }
 
-    if (entry.slot == -1UL) {
-      free(data);
-      free(*hop);
-      *mask = nmask;
-      *hop = nhop;
-      return ndata;
-    }
+    free(data);
+    free(*hop);
+    *mask = nmask;
+    *hop = nhop;
+    return ndata;
 
+  fail:
     free(ndata);
     free(nhop);
   }

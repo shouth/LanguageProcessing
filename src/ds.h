@@ -83,7 +83,7 @@ struct ht_entry {
   size_t slot;
 };
 
-void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash, ht_eq eq);
+void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash);
 
 int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void *key);
 
@@ -134,7 +134,7 @@ int raw_ht_release(struct ht_entry *entry, ht_hop *hop);
 #define ht_occupy(m, entry, elem) \
   do { \
     while (!raw_ht_occupy((entry), (m)->hop, (m)->mask, (m)->data, sizeof(*(m)->data))) { \
-      (m)->data = raw_ht_rehash(&(m)->hop, &(m)->mask, (m)->data, sizeof(*(m)->data), (m)->hash, (m)->eq); \
+      (m)->data = raw_ht_rehash(&(m)->hop, &(m)->mask, (m)->data, sizeof(*(m)->data), (m)->hash); \
       ht_entry((m), (elem), (entry)); \
     } \
     ++(m)->count; \
