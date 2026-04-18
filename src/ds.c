@@ -25,20 +25,20 @@ void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap)
 
 /* hash map */
 
-void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash)
+void *raw_ht_rehash(unsigned long **hop, unsigned long *mask, void *data, size_t size, ht_hash_fn_t hash)
 {
   void *ndata;
-  ht_hop *nhop;
+  unsigned long *nhop;
   unsigned long nmask = *mask;
   size_t i;
 
   while (1) {
     nmask = nmask << 1 | 1;
     ndata = calloc(nmask + 1, size);
-    nhop = calloc(nmask + 1, sizeof(ht_hop));
+    nhop = calloc(nmask + 1, sizeof(unsigned long));
 
     if (*mask) {
-      unsigned long window = *mask < sizeof(ht_hop) * CHAR_BIT ? *mask : sizeof(ht_hop) * CHAR_BIT;
+      unsigned long window = *mask < sizeof(unsigned long) * CHAR_BIT ? *mask : sizeof(unsigned long) * CHAR_BIT;
       unsigned long occupied = 0;
 
       for (i = window - 1; i > 0; --i) {
@@ -72,11 +72,11 @@ void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, 
   }
 }
 
-int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void const *elem)
+int raw_ht_entry(struct ht_entry *entry, unsigned long *hop, unsigned long mask, void *data, size_t size, ht_hash_fn_t hash, ht_eq_fn_t eq, void const *elem)
 {
   if (elem && mask) {
     entry->bucket = hash(elem) & mask;
-    for (entry->slot = 0; entry->slot < sizeof(ht_hop) * CHAR_BIT; ++entry->slot) {
+    for (entry->slot = 0; entry->slot < sizeof(unsigned long) * CHAR_BIT; ++entry->slot) {
       if (hop[entry->bucket] & (1UL << entry->slot)) {
         if (eq(elem, (char *) data + size * ((entry->bucket + entry->slot) & mask))) {
           return 1;
@@ -91,12 +91,12 @@ int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *
   return 0;
 }
 
-int raw_ht_next(struct ht_entry *entry, ht_hop *hop, unsigned long mask)
+int raw_ht_next(struct ht_entry *entry, unsigned long *hop, unsigned long mask)
 {
   if (mask) {
     ++entry->slot;
     for (; entry->bucket <= mask; ++entry->bucket) {
-      for (; entry->slot < sizeof(ht_hop) * CHAR_BIT; ++entry->slot) {
+      for (; entry->slot < sizeof(unsigned long) * CHAR_BIT; ++entry->slot) {
         if (hop[entry->bucket] & (1UL << entry->slot)) {
           return 1;
         }
@@ -108,10 +108,10 @@ int raw_ht_next(struct ht_entry *entry, ht_hop *hop, unsigned long mask)
   return 0;
 }
 
-int raw_ht_occupy(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size)
+int raw_ht_occupy(struct ht_entry *entry, unsigned long *hop, unsigned long mask, void *data, size_t size)
 {
-  unsigned long window = mask < sizeof(ht_hop) * CHAR_BIT ? mask : sizeof(ht_hop) * CHAR_BIT;
-  unsigned long limit = mask < sizeof(ht_hop) * CHAR_BIT * 8 ? mask : sizeof(ht_hop) * CHAR_BIT * 8;
+  unsigned long window = mask < sizeof(unsigned long) * CHAR_BIT ? mask : sizeof(unsigned long) * CHAR_BIT;
+  unsigned long limit = mask < sizeof(unsigned long) * CHAR_BIT * 8 ? mask : sizeof(unsigned long) * CHAR_BIT * 8;
   unsigned long occupied = 0;
   unsigned long empty = -1UL;
   unsigned long i;
@@ -140,7 +140,7 @@ int raw_ht_occupy(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void 
     return 0;
   }
 
-  while (empty >= sizeof(ht_hop) * CHAR_BIT) {
+  while (empty >= sizeof(unsigned long) * CHAR_BIT) {
     unsigned long next = -1UL;
     for (i = empty - window + 1; i < empty; ++i) {
       unsigned long b = hop[(entry->bucket + i) & mask] & -hop[(entry->bucket + i) & mask];
@@ -168,7 +168,7 @@ int raw_ht_occupy(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void 
   return 1;
 }
 
-int raw_ht_release(struct ht_entry *entry, ht_hop *hop)
+int raw_ht_release(struct ht_entry *entry, unsigned long *hop)
 {
   if (entry->slot != -1UL) {
     hop[entry->bucket] &= ~(1UL << entry->slot);

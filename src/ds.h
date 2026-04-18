@@ -72,35 +72,33 @@ void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap);
 
 /* hash table */
 
-typedef unsigned long (*ht_hash)(void const *key);
+typedef unsigned long (*ht_hash_fn_t)(void const *key);
 
-typedef int (*ht_eq)(void const *l, void const *r);
-
-typedef unsigned long ht_hop;
+typedef int (*ht_eq_fn_t)(void const *l, void const *r);
 
 struct ht_entry {
   size_t bucket;
   size_t slot;
 };
 
-void *raw_ht_rehash(ht_hop **hop, unsigned long *mask, void *data, size_t size, ht_hash hash);
+void *raw_ht_rehash(unsigned long **hop, unsigned long *mask, void *data, size_t size, ht_hash_fn_t hash);
 
-int raw_ht_entry(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size, ht_hash hash, ht_eq eq, void const *key);
+int raw_ht_entry(struct ht_entry *entry, unsigned long *hop, unsigned long mask, void *data, size_t size, ht_hash_fn_t hash, ht_eq_fn_t eq, void const *key);
 
-int raw_ht_next(struct ht_entry *entry, ht_hop *hop, unsigned long mask);
+int raw_ht_next(struct ht_entry *entry, unsigned long *hop, unsigned long mask);
 
-int raw_ht_occupy(struct ht_entry *entry, ht_hop *hop, unsigned long mask, void *data, size_t size);
+int raw_ht_occupy(struct ht_entry *entry, unsigned long *hop, unsigned long mask, void *data, size_t size);
 
-int raw_ht_release(struct ht_entry *entry, ht_hop *hop);
+int raw_ht_release(struct ht_entry *entry, unsigned long *hop);
 
 #define hs(E) \
   struct { \
-    ht_hop *hop; \
+    unsigned long *hop; \
     unsigned long mask; \
     size_t count; \
     E *data; \
-    ht_hash hash; \
-    ht_eq eq; \
+    ht_hash_fn_t hash; \
+    ht_eq_fn_t eq; \
   }
 
 #define hm(K, V) \
@@ -150,7 +148,7 @@ int raw_ht_release(struct ht_entry *entry, ht_hop *hop);
 
 #define ht_clear(m) \
   do { \
-    memset((m)->hop, 0, sizeof(ht_hop) * ((m)->mask + 1)); \
+    memset((m)->hop, 0, sizeof(unsigned long) * ((m)->mask + 1)); \
     (m)->count = 0; \
   } while (0)
 
