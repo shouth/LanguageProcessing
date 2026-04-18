@@ -38,7 +38,7 @@ void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap);
   } while (0)
 
 #define vec_at(v, i) \
-  (assert((i) >= 0 && (i) < (v)->count), &(v)->data[(i)])
+  (assert((size_t) (i) < (v)->count), &(v)->data[(i)])
 
 #define vec_front(v) \
   (assert((v)->count > 0), &(v)->data[0])
