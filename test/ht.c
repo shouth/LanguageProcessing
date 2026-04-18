@@ -18,10 +18,12 @@
 
 #define SIZE 10000000
 
-unsigned long hash(void const *x)
+hash_t hash(void const *x)
 {
-  unsigned long v = *(unsigned long const *) x;
-  return (((v << 5) | v >> (sizeof(unsigned long) * CHAR_BIT - 5)) ^ v) * 0x517cc1b727220a95UL;
+  hash_t h;
+  hash_init(&h);
+  hash_add(&h, x, sizeof(unsigned long));
+  return h;
 }
 
 int eq(void const *l, void const *r)
