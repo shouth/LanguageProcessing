@@ -9,6 +9,7 @@
 #define DS_H
 
 #include <assert.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,7 +73,43 @@ void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap);
 
 /* hash table */
 
-typedef unsigned long (*ht_hash_fn_t)(void const *key);
+typedef unsigned long hash_t;
+
+#if ULONG_MAX >= 0xffffffffffffffffUL
+
+#define hash_init(h) \
+  do { \
+    *(h) = 0xcbf29ce484222325UL; \
+  } while (0)
+
+#define hash_add(h, data, size) \
+  do { \
+    size_t i; \
+    for (i = 0; i < (size); ++i) { \
+      *(h) ^= (unsigned char) ((char *) (data))[(i)]; \
+      *(h) *= 0x100000001b3UL; \
+    } \
+  } while (0)
+
+#else
+
+#define hash_init(h) \
+  do { \
+    *(h) = 0x811c9dc5UL; \
+  } while (0)
+
+#define hash_add(h, data, size) \
+  do { \
+    size_t i; \
+    for (i = 0; i < (size); ++i) { \
+      *(h) ^= (unsigned char) ((char *) (data))[(i)]; \
+      *(h) *= 0x1000193UL; \
+    } \
+  } while (0)
+
+#endif
+
+typedef hash_t (*ht_hash_fn_t)(void const *key);
 
 typedef int (*ht_eq_fn_t)(void const *l, void const *r);
 
