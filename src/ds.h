@@ -56,7 +56,7 @@ void *raw_vec_reserve(void *data, size_t size, size_t *cap, size_t ncap);
     if ((v)->count == (v)->cap) { \
       vec_reserve((v), (v)->cap ? (v)->cap << 1 : 1); \
     } \
-    memcpy(vec_at((v), (v)->count), (elem), sizeof(*elem)); \
+    memcpy(&(v)->data[(v)->count], (elem), sizeof(*elem)); \
     ++(v)->count; \
   } while (0)
 

@@ -43,7 +43,7 @@ int main(void)
     }
   }
 
-  vec_init(&v);
+  vec_deinit(&v);
   free(values);
 
   return EXIT_SUCCESS;
