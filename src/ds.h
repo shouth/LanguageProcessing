@@ -189,4 +189,12 @@ int raw_ht_release(struct ht_entry *entry, unsigned long *hop);
     (m)->count = 0; \
   } while (0)
 
+/* fenwick tree */
+
+void fw_build(size_t *tree, size_t n);
+
+void fw_update(size_t *tree, size_t n, size_t i, size_t delta);
+
+size_t fw_query(size_t *tree, size_t i);
+
 #endif /* DS_H */

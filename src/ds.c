@@ -177,3 +177,32 @@ int raw_ht_release(struct ht_entry *entry, unsigned long *hop)
     return 0;
   }
 }
+
+/* fenwick tree */
+
+void fw_build(size_t *tree, size_t n)
+{
+  size_t i;
+  for (i = 1; i <= n; ++i) {
+    size_t parent = i + (i & -i);
+    if (parent <= n) {
+      tree[parent - 1] += tree[i - 1];
+    }
+  }
+}
+
+void fw_update(size_t *tree, size_t n, size_t i, size_t delta)
+{
+  for (; i <= n; i += i & -i) {
+    tree[i - 1] += delta;
+  }
+}
+
+size_t fw_query(size_t *tree, size_t i)
+{
+  size_t sum = 0;
+  for (; i > 0; i -= i & -i) {
+    sum += tree[i - 1];
+  }
+  return sum;
+}
