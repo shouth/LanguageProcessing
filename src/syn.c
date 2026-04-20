@@ -85,90 +85,112 @@ DEF_SYN(TOK, SEQ, ALT, REP)
 
 void syn_free(struct syn_node *node)
 {
+  if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
+    struct syn_tok *tok = (struct syn_tok *) node;
+    if (tok->text) {
+      free((char *) tok->text);
+    }
+    if (tok->triv) {
+      size_t i;
+      for (i = 0; i < tok->triv->count; ++i) {
+        free((char *) tok->triv->pieces[i].text);
+      }
+      free(tok->triv->pieces);
+      free(tok->triv->offsets);
+      free(tok->triv);
+    }
+    free(tok);
+  } else {
+    size_t i;
+    for (i = 0; i < syn_child_count(node); ++i) {
+      struct syn_node *child = syn_child_at(node, i);
+      if (child) {
+        syn_free(child);
+      }
+    }
+    free(node);
+  }
+}
+
+size_t syn_text_len(struct syn_node const *node)
+{
+  if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
+    struct syn_tok const *tok = (struct syn_tok const *) node;
+    return tok->len + (tok->triv ? fw_query(tok->triv->offsets, tok->triv->count) : 0);
+  } else {
+    struct syn_tree const *tree = (struct syn_tree const *) node;
+    return fw_query(tree->offsets, syn_child_count(node));
+  }
+}
+
+struct syn_node *syn_child_at(struct syn_node const *node, size_t index)
+{
   switch (node->kind) {
 #define TOK(KIND, LEXEME) \
-  case KIND: { \
-    struct syn_tok *n = (struct syn_tok *) node; \
-    free((char *) n->text); \
-    if (n->triv) { \
-      size_t i; \
-      for (i = 0; i < n->triv->count; ++i) { \
-        free((char *) n->triv->pieces[i].text); \
-      } \
-      free(n->triv->pieces); \
-      free(n->triv->offsets); \
-      free(n->triv); \
-    } \
-    free(n); \
-    break; \
-  }
+  case KIND: return NULL;
 
-#define FLD(KIND, TYPE, NAME) \
-  if (n->NAME) { \
-    syn_free((struct syn_node *) n->NAME); \
-  }
+#define FLD_IDX(KIND, TYPE, NAME) \
+  index_ ## NAME,
+
+#define FLD_AT(KIND, TYPE, NAME) \
+  case index_ ## NAME: return (struct syn_node *) n->NAME;
 
 #define SEQ(KIND, TYPE, FIELDS) \
   case KIND: { \
-    struct TYPE *n = (struct TYPE *) node; \
-    FIELDS(FLD) \
-    free(n->syn.offsets); \
-    free(n); \
-    break; \
+    enum { FIELDS(FLD_IDX) count }; \
+    struct TYPE const *n = (struct TYPE const *) node; \
+    (void) n; \
+    switch (index) { \
+      FIELDS(FLD_AT) \
+      default: return NULL; \
+    } \
   }
 
 #define ALT(KIND, TYPE, OPTIONS)
 
 #define REP(KIND, TYPE, ITEM) \
   case KIND: { \
-    size_t i; \
-    struct TYPE *n = (struct TYPE *) node; \
-    for (i = 0; i < n->count; ++i) { \
-      syn_free((struct syn_node *) n->children[i]); \
-    } \
-    free(n->children); \
-    free(n); \
-    break; \
+    struct TYPE const *n = (struct TYPE const *) node; \
+    return index < n->count ? (struct syn_node *) n->children[index] : NULL; \
+  }
+
+  DEF_SYN(TOK, SEQ, ALT, REP)
+
+#undef TOK
+#undef FLD_IDX
+#undef FLD_AT
+#undef SEQ
+#undef ALT
+#undef REP
+
+  default: return NULL;
+  }
+}
+
+size_t syn_child_count(struct syn_node const *node)
+{
+  switch (node->kind) {
+#define TOK(KIND, LEXEME) \
+  case KIND: return 0;
+
+#define FLD(KIND, TYPE, NAME) \
+  + 1
+
+#define SEQ(KIND, TYPE, FIELDS) \
+  case KIND: return 0 FIELDS(FLD);
+
+#define ALT(KIND, TYPE, OPTIONS)
+
+#define REP(KIND, TYPE, ITEM) \
+  case KIND: { \
+    struct TYPE const *n = (struct TYPE const *) node; \
+    return n->count; \
   }
 
   DEF_SYN(TOK, SEQ, ALT, REP)
 
 #undef TOK
 #undef FLD
-#undef SEQ
-#undef ALT
-#undef REP
-
-  default: break;
-  }
-}
-
-size_t syn_len(struct syn_node const *node)
-{
-  switch (node->kind) {
-#define TOK(KIND, LEXEME) \
-  case KIND: { \
-    struct syn_tok const *n = (struct syn_tok const *) node; \
-    return n->len + (n->triv ? fw_query(n->triv->offsets, n->triv->count) : 0); \
-  }
-
-#define SEQ(KIND, TYPE, FIELDS) \
-  case KIND: { \
-    struct syn_tree const *n = (struct syn_tree const *) node; \
-    return fw_query(n->offsets, n->count); \
-  }
-
-#define ALT(KIND, TYPE, OPTIONS)
-
-#define REP(KIND, TYPE, ITEM) \
-  case KIND: { \
-    struct syn_tree const *n = (struct syn_tree const *) node; \
-    return fw_query(n->offsets, n->count); \
-  }
-
-  DEF_SYN(TOK, SEQ, ALT, REP)
-
-#undef TOK
 #undef SEQ
 #undef ALT
 #undef REP
@@ -179,117 +201,37 @@ size_t syn_len(struct syn_node const *node)
 
 static void syn_print_impl(struct syn_node const *node, FILE *out, size_t offset, size_t indent)
 {
-  switch (node->kind) {
-#define TOK(KIND, LEXEME) \
-  case KIND: { \
-    size_t i; \
-    struct syn_tok const *n = (struct syn_tok const *) node; \
-    size_t triv = n->triv ? fw_query(n->triv->offsets, n->triv->count) : 0; \
-    fprintf(out, "%*s%s @ %lu..%lu \"%s\"\n", (int) indent, "", #KIND, triv + offset, triv + offset + n->len, n->text); \
-    if (n->triv) { \
-      for (i = 0; i < n->triv->count; ++i) { \
-        struct syn_triv_piece const *piece = &n->triv->pieces[i]; \
-        size_t start = fw_query(n->triv->offsets, i); \
-        size_t end = fw_query(n->triv->offsets, i + 1); \
-        fprintf(out, "%*s%s @ %lu..%lu\n", (int) indent + 2, "", syn_kind_to_string(piece->kind), offset + start, offset + end); \
-      } \
-    } \
-    break; \
-  }
-
-#define FLD(KIND, TYPE, NAME) \
-  if (n->NAME) { \
-    struct syn_node const *child = (struct syn_node const *) n->NAME; \
-    syn_print_impl(child, out, offset + fw_query(n->syn.offsets, child->index), indent + 2); \
-  } else { \
-    fprintf(out, "%*s[EMPTY]\n", (int) indent + 2, ""); \
-  }
-
-#define SEQ(KIND, TYPE, FIELDS) \
-  case KIND: { \
-    struct TYPE const *n = (struct TYPE const *) node; \
-    fprintf(out, "%*s%s @ %lu..%lu\n", (int) indent, "", #KIND, offset, offset + fw_query(n->syn.offsets, n->syn.count)); \
-    FIELDS(FLD) \
-    break; \
-  }
-
-#define ALT(KIND, TYPE, OPTIONS)
-
-#define REP(KIND, TYPE, ITEM) \
-  case KIND: { \
-    size_t i; \
-    struct TYPE const *n = (struct TYPE const *) node; \
-    fprintf(out, "%*s%s @ %lu..%lu\n", (int) indent, "", #KIND, offset, offset + fw_query(n->syn.offsets, n->syn.count)); \
-    for (i = 0; i < n->count; ++i) { \
-      struct syn_node const *child = (struct syn_node const *) n->children[i]; \
-      syn_print_impl(child, out, offset + fw_query(n->syn.offsets, child->index), indent + 2); \
-    } \
-    break; \
-  }
-
-  DEF_SYN(TOK, SEQ, ALT, REP)
-
-#undef TOK
-#undef FLD
-#undef SEQ
-#undef ALT
-#undef REP
-
-  default: break;
+  if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
+    struct syn_tok const *n = (struct syn_tok const *) node;
+    size_t triv = n->triv ? fw_query(n->triv->offsets, n->triv->count) : 0;
+    fprintf(out, "%*s%s @ %lu..%lu \"%s\"\n", (int) indent, "", syn_kind_to_string(node->kind), triv + offset, triv + offset + n->len, n->text);
+    if (n->triv) {
+      size_t i;
+      for (i = 0; i < n->triv->count; ++i) {
+        struct syn_triv_piece const *piece = &n->triv->pieces[i];
+        size_t start = fw_query(n->triv->offsets, i);
+        size_t end = fw_query(n->triv->offsets, i + 1);
+        fprintf(out, "%*s%s @ %lu..%lu\n", (int) indent + 2, "", syn_kind_to_string(piece->kind), offset + start, offset + end);
+      }
+    }
+  } else {
+    size_t i;
+    struct syn_tree const *n = (struct syn_tree const *) node;
+    fprintf(out, "%*s%s @ %lu..%lu\n", (int) indent, "", syn_kind_to_string(node->kind), offset, offset + fw_query(n->offsets, syn_child_count(node)));
+    for (i = 0; i < syn_child_count(node); ++i) {
+      struct syn_node const *child = syn_child_at(node, i);
+      if (child) {
+        syn_print_impl(child, out, offset + fw_query(n->offsets, i), indent + 2);
+      } else {
+        fprintf(out, "%*s[EMPTY]\n", (int) indent + 2, "");
+      }
+    }
   }
 }
 
 void syn_print(struct syn_node const *node, FILE *out)
 {
   syn_print_impl(node, out, 0, 0);
-}
-
-void syn_visit(struct syn_node const *node, syn_visit_fn_t fn, void *data)
-{
-  switch (node->kind) {
-#define TOK(KIND, LEXEME) \
-  case KIND: break;
-
-#define FLD(KIND, TYPE, NAME) \
-  if (n->NAME) { \
-    syn_visit((struct syn_node const *) n->NAME, fn, data); \
-  }
-
-#define SEQ(KIND, TYPE, FIELDS) \
-  case KIND: { \
-    struct TYPE const *n = (struct TYPE const *) node; \
-    (void) n; \
-    if (fn(node, data)) { \
-      FIELDS(FLD) \
-    } \
-    break; \
-  }
-
-#define ALT(KIND, TYPE, OPTIONS)
-
-#define REP(KIND, TYPE, ITEM) \
-  case KIND: { \
-    struct TYPE const *n = (struct TYPE const *) node; \
-    (void) n; \
-    if (fn(node, data)) { \
-      size_t i; \
-      for (i = 0; i < n->count; i++) { \
-        syn_visit((struct syn_node const *) n->children[i], fn, data); \
-      } \
-    } \
-    break; \
-  }
-
-  DEF_SYN(TOK, SEQ, ALT, REP)
-
-#undef TOK
-#undef FLD
-#undef SEQ
-#undef ALT
-#undef REP
-
-  default: break;
-  }
 }
 
 void syn_bldr_init(struct syn_bldr *b)
@@ -317,6 +259,7 @@ void syn_bldr_triv(struct syn_bldr *b, enum syn_kind kind, char const *text, siz
     memcpy((char *) piece.text, text, len);
     ((char *) piece.text)[len] = '\0';
   }
+
   vec_push(&b->trivs, &piece);
   vec_push(&b->triv_lens, &len);
 }
@@ -383,7 +326,7 @@ void syn_bldr_close(struct syn_bldr *b, enum syn_kind kind, syn_ckpt_t ckpt)
     child->index = index_ ## NAME; \
     child->parent = &node->syn.node; \
     node->NAME = (struct TYPE *) child; \
-    node->syn.offsets[index_ ## NAME] = syn_len(child); \
+    node->syn.offsets[index_ ## NAME] = syn_text_len(child); \
   }
 
 #define SEQ(KIND, TYPE, FIELDS) \
@@ -395,7 +338,6 @@ void syn_bldr_close(struct syn_bldr *b, enum syn_kind kind, syn_ckpt_t ckpt)
     node->syn.node.index = 0; \
     node->syn.node.parent = NULL; \
     node->syn.offsets = malloc(sizeof(size_t) * count); \
-    node->syn.count = count; \
     FIELDS(FLD_SET) \
     fw_build(node->syn.offsets, count); \
     while (b->stack.count > ckpt) { \

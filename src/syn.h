@@ -400,7 +400,6 @@ struct syn_node {
 struct syn_tree {
   struct syn_node node;
   size_t *offsets;
-  size_t count;
 };
 
 struct syn_tok {
@@ -461,15 +460,15 @@ DEF_SYN(TOK, SEQ, ALT, REP)
 #undef ALT
 #undef REP
 
-typedef int (*syn_visit_fn_t)(struct syn_node const *node, void *data);
-
 void syn_free(struct syn_node *node);
 
-size_t syn_len(struct syn_node const *node);
+size_t syn_text_len(struct syn_node const *node);
+
+struct syn_node *syn_child_at(struct syn_node const *node, size_t index);
+
+size_t syn_child_count(struct syn_node const *node);
 
 void syn_print(struct syn_node const *node, FILE *out);
-
-void syn_visit(struct syn_node const *node, syn_visit_fn_t fn, void *data);
 
 typedef unsigned long syn_ckpt_t;
 
