@@ -365,7 +365,9 @@ void syn_bldr_close(struct syn_bldr *b, enum syn_kind kind, syn_ckpt_t ckpt)
       child->index = i; \
       child->parent = &node->syn.node; \
       node->children[i] = (struct ITEM *) child; \
+      node->syn.offsets[i] = syn_text_len(child); \
     } \
+    fw_build(node->syn.offsets, node->count); \
     while (b->stack.count > ckpt) { \
       vec_pop(&b->stack); \
     } \
