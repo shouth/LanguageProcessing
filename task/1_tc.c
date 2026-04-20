@@ -14,9 +14,6 @@
 #include "ds.h"
 #include "syn.h"
 
-#define TOK_BEGIN SYN_IDENT
-#define TOK_END SYN_SEMI
-
 hash_t str_hash(void const *x)
 {
   char const *str = *(char const **) x;
@@ -42,7 +39,7 @@ int main(int argc, char const *argv[])
   size_t off = 0;
   size_t len = 0;
 
-  size_t counts[TOK_END - TOK_BEGIN + 1] = { 0 };
+  size_t counts[NONTRIV_END - NONTRIV_BEGIN + 1] = { 0 };
   hm(char const *, size_t) idents;
 
   int status = EXIT_FAILURE;
@@ -60,8 +57,8 @@ int main(int argc, char const *argv[])
   }
 
   while (lex(text + off, len, &token)) {
-    if (token.kind >= TOK_BEGIN && token.kind <= TOK_END) {
-      ++counts[token.kind - TOK_BEGIN];
+    if (token.kind >= NONTRIV_BEGIN && token.kind <= NONTRIV_END) {
+      ++counts[token.kind - NONTRIV_BEGIN];
       if (token.kind == SYN_IDENT) {
         struct ht_entry e;
         char *lexeme = malloc(token.len + 1);
@@ -98,9 +95,9 @@ int main(int argc, char const *argv[])
     len -= token.len;
   }
 
-  for (i = 0; i <= TOK_END - TOK_BEGIN; ++i) {
+  for (i = 0; i <= NONTRIV_END - NONTRIV_BEGIN; ++i) {
     if (counts[i]) {
-      enum syn_kind kind = TOK_BEGIN + i;
+      enum syn_kind kind = NONTRIV_BEGIN + i;
       char const *name = syn_kind_to_lexeme(kind);
       if (kind == SYN_IDENT) {
         name = "NAME";
