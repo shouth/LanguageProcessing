@@ -189,6 +189,27 @@ int raw_ht_release(struct ht_entry *entry, unsigned long *hop);
     (m)->count = 0; \
   } while (0)
 
+/* bits */
+
+typedef unsigned long bits_t;
+
+#define bits(N) \
+  struct { \
+    bits_t data[((N) + sizeof(bits_t) * CHAR_BIT - 1) / (sizeof(bits_t) * CHAR_BIT)]; \
+  }
+
+#define bits_bucket(i) ((i) / (sizeof(bits_t) * CHAR_BIT))
+
+#define bits_slot(i) ((i) % (sizeof(bits_t) * CHAR_BIT))
+
+#define bits_set(bits, i, value) \
+  do { \
+    ((bits_t *) (bits))[bits_bucket(i)] = (((bits_t *) (bits))[bits_bucket(i)] & ~((bits_t) 1 << bits_slot(i))) | ((bits_t) !!(value) << bits_slot(i)); \
+  } while (0)
+
+#define bits_test(bits, i) \
+  ((((bits_t *) (bits))[bits_bucket(i)] >> bits_slot(i)) & 1)
+
 /* fenwick tree */
 
 void fw_build(size_t *tree, size_t n);
