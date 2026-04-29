@@ -198,6 +198,9 @@ typedef unsigned long bits_t;
     bits_t data[((N) + sizeof(bits_t) * CHAR_BIT - 1) / (sizeof(bits_t) * CHAR_BIT)]; \
   }
 
+#define bits_clear(bits) \
+  memset((bits), 0, sizeof(*(bits)))
+
 #define bits_bucket(i) ((i) / (sizeof(bits_t) * CHAR_BIT))
 
 #define bits_slot(i) ((i) % (sizeof(bits_t) * CHAR_BIT))
@@ -214,6 +217,22 @@ typedef unsigned long bits_t;
 
 #define bits_test(bits, i) \
   ((((bits_t *) (bits))[bits_bucket(i)] >> bits_slot(i)) & 1)
+
+#define bits_and(l, r) \
+  do { \
+    size_t i; \
+    for (i = 0; i < sizeof(*(l)) / sizeof(bits_t); ++i) { \
+      ((bits_t *) (l))[i] &= ((bits_t *) (r))[i]; \
+    } \
+  } while (0)
+
+#define bits_or(l, r) \
+  do { \
+    size_t i; \
+    for (i = 0; i < sizeof(*(l)) / sizeof(bits_t); ++i) { \
+      ((bits_t *) (l))[i] |= ((bits_t *) (r))[i]; \
+    } \
+  } while (0)
 
 /* fenwick tree */
 
