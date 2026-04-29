@@ -23,4 +23,6 @@ struct token {
 
 int lex(char const *text, size_t len, struct token *token);
 
+struct syn_program *parse(char const *text, size_t len);
+
 #endif /* COMPILER_H */
