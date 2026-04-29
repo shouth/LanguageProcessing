@@ -17,17 +17,26 @@
   FLD(SYN_PROGRAM_KW, syn_tok, program_kw) \
   FLD(SYN_IDENT, syn_tok, name) \
   FLD(SYN_SEMI, syn_tok, semi) \
-  FLD(SYN_BLOCK, syn_tok, block) \
+  FLD(SYN_BLOCK, syn_block, block) \
   FLD(SYN_DOT, syn_tok, dot) \
+  FLD(ANY_SYN_END, syn_end, end) \
   FLD(SYN_EOF, syn_tok, eof)
+
+#define DEF_OPT_ANY_SYN_END(OPT) \
+  OPT(SYN_EMPTY_END, syn_empty_end, ANY_SYN_END_EMPTY) \
+  OPT(SYN_BOGUS_END, syn_bogus_end, ANY_SYN_END_BOGUS)
+
+#define DEF_FLD_SYN_EMPTY_END(FLD) \
+  /* empty */
 
 #define DEF_FLD_SYN_BLOCK(FLD) \
   FLD(SYN_DECL_PART_LIST, syn_decl_part_list, decl_part_list) \
   FLD(SYN_COMP_STMT, syn_comp_stmt, comp_stmt)
 
 #define DEF_OPT_ANY_SYN_DECL_PART(OPT) \
-  OPT(SYN_VAR_DECL_PART, ANY_SYN_DECL_PART_VAR, syn_var_decl_part) \
-  OPT(SYN_PROC_DECL_PART, ANY_SYN_DECL_PART_PROC, syn_proc_decl_part)
+  OPT(SYN_VAR_DECL_PART, syn_var_decl_part, ANY_SYN_DECL_PART_VAR) \
+  OPT(SYN_PROC_DECL_PART, syn_proc_decl_part, ANY_SYN_DECL_PART_PROC) \
+  OPT(SYN_BOGUS_DECL_PART, syn_bogus_decl_part, ANY_SYN_DECL_PART_BOGUS)
 
 #define DEF_FLD_SYN_VAR_DECL_PART(FLD) \
   FLD(SYN_VAR_KW, syn_tok, var_kw) \
@@ -99,7 +108,8 @@
   OPT(SYN_INPUT_STMT, syn_input_stmt, ANY_SYN_STMT_INPUT) \
   OPT(SYN_OUTPUT_STMT, syn_output_stmt, ANY_SYN_STMT_OUTPUT) \
   OPT(SYN_COMP_STMT, syn_comp_stmt, ANY_SYN_STMT_COMP) \
-  OPT(SYN_EMPTY_STMT, syn_empty_stmt, ANY_SYN_STMT_EMPTY)
+  OPT(SYN_EMPTY_STMT, syn_empty_stmt, ANY_SYN_STMT_EMPTY) \
+  OPT(SYN_BOGUS_STMT, syn_bogus_stmt, ANY_SYN_STMT_BOGUS)
 
 #define DEF_FLD_SYN_ASSIGN_STMT(FLD) \
   FLD(ANY_SYN_EXPR, any_syn_expr, lhs) \
@@ -189,7 +199,8 @@
   OPT(SYN_PAREN_EXPR, syn_paren_expr, ANY_SYN_EXPR_PAREN) \
   OPT(SYN_CAST_EXPR, syn_cast_expr, ANY_SYN_EXPR_CAST) \
   OPT(SYN_UNARY_EXPR, syn_unary_expr, ANY_SYN_EXPR_UNARY) \
-  OPT(SYN_BINARY_EXPR, syn_binary_expr, ANY_SYN_EXPR_BINARY)
+  OPT(SYN_BINARY_EXPR, syn_binary_expr, ANY_SYN_EXPR_BINARY) \
+  OPT(SYN_BOGUS_EXPR, syn_bogus_expr, ANY_SYN_EXPR_BOGUS)
 
 #define DEF_FLD_SYN_ENTIRE_VAR_EXPR(FLD) \
   FLD(SYN_IDENT, syn_tok, name)
@@ -306,6 +317,8 @@
   TOK(SYN_BRACKET_COMMENT, NULL) \
   TOK(SYN_SLASH_STAR_COMMENT, NULL) \
   SEQ(SYN_PROGRAM, syn_program, DEF_FLD_SYN_PROGRAM) \
+  ALT(ANY_SYN_END, any_syn_end, DEF_OPT_ANY_SYN_END) \
+  SEQ(SYN_EMPTY_END, syn_empty_end, DEF_FLD_SYN_EMPTY_END) \
   SEQ(SYN_BLOCK, syn_block, DEF_FLD_SYN_BLOCK) \
   REP(SYN_DECL_PART_LIST, syn_decl_part_list, any_syn_decl_part) \
   ALT(ANY_SYN_DECL_PART, any_syn_decl_part, DEF_OPT_ANY_SYN_DECL_PART) \
@@ -358,7 +371,14 @@
   SEQ(SYN_UNARY_EXPR, syn_unary_expr, DEF_FLD_SYN_UNARY_EXPR) \
   ALT(ANY_SYN_UNARY_OP, any_syn_unary_op, DEF_OPT_ANY_SYN_UNARY_OP) \
   SEQ(SYN_BINARY_EXPR, syn_binary_expr, DEF_FLD_SYN_BINARY_EXPR) \
-  ALT(ANY_SYN_BINARY_OP, any_syn_binary_op, DEF_OPT_ANY_SYN_BINARY_OP)
+  ALT(ANY_SYN_BINARY_OP, any_syn_binary_op, DEF_OPT_ANY_SYN_BINARY_OP) \
+  REP(SYN_BOGUS_END, syn_bogus_end, syn_tok) \
+  REP(SYN_BOGUS_DECL_PART, syn_bogus_decl_part, syn_tok) \
+  REP(SYN_BOGUS_VAR_DECL, syn_bogus_var_decl, syn_tok) \
+  REP(SYN_BOGUS_FML_PARAM_SEC, syn_bogus_fml_param_sec, syn_tok) \
+  REP(SYN_BOGUS_STMT, syn_bogus_stmt, syn_tok) \
+  REP(SYN_BOGUS_EXPR, syn_bogus_expr, syn_tok) \
+  REP(SYN_BOGUS_IDENT, syn_bogus_ident, syn_tok)
 
 #define KW_BEGIN SYN_PROGRAM_KW
 #define KW_END SYN_BREAK_KW
