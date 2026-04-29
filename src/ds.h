@@ -202,9 +202,14 @@ typedef unsigned long bits_t;
 
 #define bits_slot(i) ((i) % (sizeof(bits_t) * CHAR_BIT))
 
-#define bits_set(bits, i, value) \
+#define bits_set(bits, i) \
   do { \
-    ((bits_t *) (bits))[bits_bucket(i)] = (((bits_t *) (bits))[bits_bucket(i)] & ~((bits_t) 1 << bits_slot(i))) | ((bits_t) !!(value) << bits_slot(i)); \
+    ((bits_t *) (bits))[bits_bucket(i)] |= (1UL << bits_slot(i)); \
+  } while (0)
+
+#define bits_unset(bits, i) \
+  do { \
+    ((bits_t *) (bits))[bits_bucket(i)] &= ~(1UL << bits_slot(i)); \
   } while (0)
 
 #define bits_test(bits, i) \

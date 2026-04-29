@@ -17,14 +17,18 @@ int main(void)
 
   for (i = 0; i < sizeof(bits) * CHAR_BIT; ++i) {
     assert(!bits_test(bits, i));
-    bits_set(bits, i, 1);
+    bits_set(bits, i);
     assert(bits_test(bits, i));
-    bits_set(bits, i, 0);
+    bits_unset(bits, i);
     assert(!bits_test(bits, i));
   }
 
   for (i = 0; i < sizeof(bits) * CHAR_BIT; ++i) {
-    bits_set(bits, i, (expected[i / (sizeof(bits_t) * CHAR_BIT)] >> (i % (sizeof(bits_t) * CHAR_BIT))) & 1);
+    if ((expected[i / (sizeof(bits_t) * CHAR_BIT)] >> (i % (sizeof(bits_t) * CHAR_BIT))) & 1) {
+      bits_set(bits, i);
+    } else {
+      bits_unset(bits, i);
+    }
   }
 
   for (i = 0; i < sizeof(bits) / sizeof(*bits); ++i) {
