@@ -323,10 +323,12 @@ void syn_bldr_close(struct syn_bldr *b, enum syn_kind kind, syn_ckpt_t ckpt)
 #define FLD_SET(KIND, TYPE, NAME) \
   { \
     struct syn_node *child = *vec_at(&b->stack, ckpt + index_ ## NAME); \
-    child->index = index_ ## NAME; \
-    child->parent = &node->syn.node; \
+    if (child) { \
+      child->index = index_ ## NAME; \
+      child->parent = &node->syn.node; \
+    } \
     node->NAME = (struct TYPE *) child; \
-    node->syn.offsets[index_ ## NAME] = syn_text_len(child); \
+    node->syn.offsets[index_ ## NAME] = child ? syn_text_len(child) : 0; \
   }
 
 #define SEQ(KIND, TYPE, FIELDS) \
@@ -358,14 +360,17 @@ void syn_bldr_close(struct syn_bldr *b, enum syn_kind kind, syn_ckpt_t ckpt)
     node->syn.node.kind = kind; \
     node->syn.node.index = 0; \
     node->syn.node.parent = NULL; \
-    node->children = malloc(sizeof(struct ITEM *) * (b->stack.count - ckpt)); \
     node->count = b->stack.count - ckpt; \
+    node->syn.offsets = malloc(sizeof(size_t) * node->count); \
+    node->children = malloc(sizeof(struct ITEM *) * node->count); \
     for (i = 0; i < node->count; ++i) { \
       struct syn_node *child = *vec_at(&b->stack, ckpt + i); \
-      child->index = i; \
-      child->parent = &node->syn.node; \
+      if (child) { \
+        child->index = i; \
+        child->parent = &node->syn.node; \
+      } \
       node->children[i] = (struct ITEM *) child; \
-      node->syn.offsets[i] = syn_text_len(child); \
+      node->syn.offsets[i] = child ? syn_text_len(child) : 0; \
     } \
     fw_build(node->syn.offsets, node->count); \
     while (b->stack.count > ckpt) { \
