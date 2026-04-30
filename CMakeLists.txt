@@ -13,6 +13,10 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
       $<$<CONFIG:Debug>:-fsanitize=address,leak,undefined>)
 endif()
 
+if(UNIX)
+  target_compile_definitions(mpplc_options INTERFACE _POSIX_C_SOURCE=200809L)
+endif()
+
 file(GLOB src CONFIGURE_DEPENDS src/*.c)
 list(FILTER src EXCLUDE REGEX "src/main.c")
 
