@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "ds.h"
+#include "fmt.h"
 #include "syn.h"
 
 char const *syn_kind_to_lexeme(enum syn_kind kind)
@@ -235,39 +236,78 @@ size_t syn_child_count(struct syn_node const *node)
   }
 }
 
-static void syn_print_impl(struct syn_node const *node, FILE *out, size_t offset, size_t indent)
+static void print_line(enum syn_kind kind, size_t start, size_t end, char const *text, int indent, FILE *out)
 {
-  if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
+  struct fmt_style s = { 0 };
+
+  s.color = 0;
+  fmt_print(out, &s, "%*s", indent, "");
+
+  s.color = TRIV_BEGIN <= kind && kind <= TRIV_END ? FMT_BRIGHT_BLACK : FMT_BRIGHT_GREEN;
+  fmt_print(out, &s, "%s", syn_kind_to_string(kind));
+
+  s.color = 0;
+  fmt_print(out, &s, " @ ");
+
+  s.color = FMT_BRIGHT_BLUE;
+  fmt_print(out, &s, "%lu", start);
+
+  s.color = 0;
+  fmt_print(out, &s, "..");
+
+  s.color = FMT_BRIGHT_BLUE;
+  fmt_print(out, &s, "%lu", end);
+
+  if (text) {
+    s.color = FMT_BRIGHT_YELLOW;
+    fmt_print(out, &s, " \"%s\"", text);
+  }
+
+  s.color = 0;
+  fmt_print(out, &s, "\n");
+}
+
+static void print_tree(struct syn_node const *node, FILE *out, size_t offset, size_t indent)
+{  
+  if (!node) {
+    struct fmt_style s = { 0 };
+
+    s.color = 0;
+    fmt_print(out, &s, "%*s", (int) indent, "");
+
+    s.color = FMT_BRIGHT_CYAN;
+    fmt_print(out, &s, "NULL");
+
+    s.color = 0;
+    fmt_print(out, &s, "\n");
+  } else if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
     struct syn_tok const *n = (struct syn_tok const *) node;
     size_t triv = n->triv ? fw_query(n->triv->offsets, n->triv->count) : 0;
-    fprintf(out, "%*s%s @ %lu..%lu \"%s\"\n", (int) indent, "", syn_kind_to_string(node->kind), triv + offset, triv + offset + n->len, n->text);
+
+    print_line(node->kind, triv + offset, triv + offset + n->len, n->text, (int) indent, out);
     if (n->triv) {
       size_t i;
       for (i = 0; i < n->triv->count; ++i) {
         struct syn_triv_piece const *piece = &n->triv->pieces[i];
         size_t start = fw_query(n->triv->offsets, i);
         size_t end = fw_query(n->triv->offsets, i + 1);
-        fprintf(out, "%*s%s @ %lu..%lu\n", (int) indent + 2, "", syn_kind_to_string(piece->kind), offset + start, offset + end);
+        print_line(piece->kind, start + offset, end + offset, NULL, (int) indent + 2, out);
       }
     }
   } else {
     size_t i;
     struct syn_tree const *n = (struct syn_tree const *) node;
-    fprintf(out, "%*s%s @ %lu..%lu\n", (int) indent, "", syn_kind_to_string(node->kind), offset, offset + fw_query(n->offsets, syn_child_count(node)));
+
+    print_line(node->kind, offset, offset + fw_query(n->offsets, syn_child_count(node)), NULL, (int) indent, out);
     for (i = 0; i < syn_child_count(node); ++i) {
-      struct syn_node const *child = syn_child_at(node, i);
-      if (child) {
-        syn_print_impl(child, out, offset + fw_query(n->offsets, i), indent + 2);
-      } else {
-        fprintf(out, "%*s[EMPTY]\n", (int) indent + 2, "");
-      }
+      print_tree(syn_child_at(node, i), out, offset + fw_query(n->offsets, i), indent + 2);
     }
   }
 }
 
 void syn_print(struct syn_node const *node, FILE *out)
 {
-  syn_print_impl(node, out, 0, 0);
+  print_tree(node, out, 0, 0);
 }
 
 void syn_bldr_init(struct syn_bldr *b)
