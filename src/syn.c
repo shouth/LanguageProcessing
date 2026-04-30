@@ -85,30 +85,66 @@ DEF_SYN(TOK, SEQ, ALT, REP)
 
 void syn_free(struct syn_node *node)
 {
-  if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
-    struct syn_tok *tok = (struct syn_tok *) node;
-    if (tok->text) {
-      free((char *) tok->text);
-    }
-    if (tok->triv) {
-      size_t i;
-      for (i = 0; i < tok->triv->count; ++i) {
-        free((char *) tok->triv->pieces[i].text);
-      }
-      free(tok->triv->pieces);
-      free(tok->triv->offsets);
-      free(tok->triv);
-    }
-    free(tok);
-  } else {
-    size_t i;
-    for (i = 0; i < syn_child_count(node); ++i) {
-      struct syn_node *child = syn_child_at(node, i);
-      if (child) {
-        syn_free(child);
-      }
-    }
-    free(node);
+  if (!node) {
+    return;
+  }
+
+  switch (node->kind) {
+#define TOK(KIND, LEXEME) \
+  case KIND: { \
+    struct syn_tok *tok = (struct syn_tok *) node; \
+    if (tok->text) { \
+      free((char *) tok->text); \
+    } \
+    if (tok->triv) { \
+      size_t i; \
+      for (i = 0; i < tok->triv->count; ++i) { \
+        free((char *) tok->triv->pieces[i].text); \
+      } \
+      free(tok->triv->pieces); \
+      free(tok->triv->offsets); \
+      free(tok->triv); \
+    } \
+    free(tok); \
+    break; \
+  }
+
+#define FLD(KIND, TYPE, NAME) \
+  syn_free((struct syn_node *) n->NAME);
+
+#define SEQ(KIND, TYPE, FIELDS) \
+  case KIND: { \
+    struct TYPE *n = (struct TYPE *) node; \
+    FIELDS(FLD) \
+    free(n->syn.offsets); \
+    free(n); \
+    break; \
+  }
+
+#define ALT(KIND, TYPE, OPTIONS)
+
+#define REP(KIND, TYPE, ITEM) \
+  case KIND: { \
+    size_t i; \
+    struct TYPE *n = (struct TYPE *) node; \
+    for (i = 0; i < n->count; ++i) { \
+      syn_free((struct syn_node *) n->children[i]); \
+    } \
+    free(n->children); \
+    free(n->syn.offsets); \
+    free(n); \
+    break; \
+  }
+
+  DEF_SYN(TOK, SEQ, ALT, REP)
+
+#undef TOK
+#undef FLD
+#undef SEQ
+#undef ALT
+#undef REP
+
+  default: break;
   }
 }
 
