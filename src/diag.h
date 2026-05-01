@@ -70,9 +70,9 @@ void diag_init(struct diag *d);
 
 void diag_deinit(struct diag *d);
 
-diag_id_t diag_register(struct diag *d, char const *name, char const *text, size_t len);
-
 void diag_print(struct diag *d, FILE *out);
+
+diag_id_t diag_add_source(struct diag *d, char const *name, char const *text, size_t len);
 
 struct diag_report *diag_add_report(struct diag *d, diag_id_t src);
 

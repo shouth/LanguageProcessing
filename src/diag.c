@@ -140,7 +140,7 @@ void diag_deinit(struct diag *d)
   vec_deinit(&d->sources);
 }
 
-diag_id_t diag_register(struct diag *d, char const *name, char const *text, size_t len)
+diag_id_t diag_add_source(struct diag *d, char const *name, char const *text, size_t len)
 {
   struct diag_source source;
   source.name = diag_strdup(name);
