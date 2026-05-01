@@ -178,6 +178,32 @@ int raw_ht_release(struct ht_entry *entry, unsigned long *hop)
   }
 }
 
+/* bits */
+
+size_t raw_bits_count(bits_t *bits, size_t n)
+{
+#define B0(x) x, x + 1, x + 1, x + 2
+#define B1(x) B0(x), B0(x + 1), B0(x + 1), B0(x + 2)
+#define B2(x) B1(x), B1(x + 1), B1(x + 1), B1(x + 2)
+
+  static const size_t table[] = {
+    B2(0), B2(1), B2(1), B2(2),
+  };
+
+#undef B0
+#undef B1
+#undef B2
+
+  size_t count = 0;
+  size_t i;
+
+  for (i = 0; i < n; ++i) {
+    count += table[bits[i]];
+  }
+
+  return count;
+}
+
 /* fenwick tree */
 
 void fw_build(size_t *tree, size_t n)

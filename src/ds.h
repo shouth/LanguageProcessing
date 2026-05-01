@@ -193,6 +193,8 @@ int raw_ht_release(struct ht_entry *entry, unsigned long *hop);
 
 typedef unsigned char bits_t;
 
+size_t raw_bits_count(bits_t *bits, size_t n);
+
 #define bits(N) \
   struct { \
     bits_t data[((N) + sizeof(bits_t) * CHAR_BIT - 1) / (sizeof(bits_t) * CHAR_BIT)]; \
@@ -233,6 +235,9 @@ typedef unsigned char bits_t;
       ((bits_t *) (l))[i] |= ((bits_t *) (r))[i]; \
     } \
   } while (0)
+
+#define bits_count(bits) \
+  raw_bits_count((bits_t *) (bits), sizeof(*(bits)))
 
 /* fenwick tree */
 
