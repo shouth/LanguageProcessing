@@ -81,9 +81,9 @@ static void pretty_type(struct any_syn_type const *type, FILE *out)
     struct syn_array_type const *array_type = (struct syn_array_type *) type;
     pretty_kw(array_type->array_kw, out);
     pretty_space(out);
-    pretty_kw(array_type->lbrkt, out);
+    pretty_tok(array_type->lbrkt, out);
     pretty_expr(array_type->size, out);
-    pretty_kw(array_type->rbrkt, out);
+    pretty_tok(array_type->rbrkt, out);
     pretty_space(out);
     pretty_kw(array_type->of_kw, out);
     pretty_space(out);
