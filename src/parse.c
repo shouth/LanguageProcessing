@@ -547,13 +547,13 @@ static void parse_var_decl_part(struct parser *p, toks_t const *next, toks_t con
   close(p, var_decl_part, SYN_VAR_DECL_PART);
 }
 
-static void parse_fml_param_sec(struct parser *p, toks_t const *recovery)
+static void parse_fml_param_sec(struct parser *p, toks_t const *next, toks_t const *recovery)
 {
   syn_ckpt_t fml_param_sec = open(p);
   {
     toks_t next = { 0 };
     toks_t r = *recovery;
-    bits_set(&next, SYN_SEMI);
+    bits_set(&next, SYN_COLON);
     bits_or(&r, &next);
     parse_ident_list(p, &next, &r);
   }
@@ -563,7 +563,11 @@ static void parse_fml_param_sec(struct parser *p, toks_t const *recovery)
     bits_set(&r, SYN_SEMI);
     parse_type(p, &r);
   }
-  expect(p, SYN_SEMI);
+  if (!check_any(p, next)) {
+    expect(p, SYN_SEMI);
+  } else {
+    null(p);
+  }
   close(p, fml_param_sec, SYN_FML_PARAM_SEC);
 }
 
@@ -574,12 +578,14 @@ static void parse_fml_params(struct parser *p, toks_t const *recovery)
   {
     syn_ckpt_t fml_param_list = open(p);
     while (!eof(p) && !check(p, SYN_RPAREN)) {
+      toks_t next = { 0 };
       toks_t r = *recovery;
+      bits_set(&next, SYN_RPAREN);
       bits_set(&r, SYN_IDENT);
-      bits_set(&r, SYN_RPAREN);
+      bits_or(&r, &next);
 
       if (check(p, SYN_IDENT)) {
-        parse_fml_param_sec(p, &r);
+        parse_fml_param_sec(p, &next, &r);
       } else if (at_any(p, recovery)) {
         break;
       } else {
