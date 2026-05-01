@@ -30,6 +30,9 @@ target_link_libraries(mpplc mpplc_core mpplc_options)
 add_executable(tc task/1_tc.c)
 target_link_libraries(tc mpplc_core mpplc_options)
 
+add_executable(pp task/2_pp.c)
+target_link_libraries(pp mpplc_core mpplc_options)
+
 enable_testing()
 file(GLOB tests CONFIGURE_DEPENDS test/*.c)
 foreach(test ${tests})
