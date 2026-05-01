@@ -1,5 +1,5 @@
 /*
- * ty,c -- type system test
+ * ty.c -- type system test
  *
  * SPDX-FileCopyrightText: 2026 Shota Minami
  * SPDX-License-Identifier: Apache-2.0

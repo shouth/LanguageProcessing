@@ -1,3 +1,10 @@
+/*
+ * pretty.c -- pretty printer
+ *
+ * SPDX-FileCopyrightText: 2026 Shota Minami
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <stddef.h>
 #include <stdio.h>
 
