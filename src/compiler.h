@@ -9,6 +9,7 @@
 #define COMPILER_H
 
 #include <stddef.h>
+#include <stdio.h>
 
 #include "syn.h"
 
@@ -24,5 +25,7 @@ struct token {
 int lex(char const *text, size_t len, struct token *token);
 
 struct syn_program *parse(char const *text, size_t len);
+
+void pretty(struct syn_program const *program, FILE *out);
 
 #endif /* COMPILER_H */
