@@ -387,17 +387,17 @@ static void pretty_ident_list(struct syn_ident_list const *ident_list, FILE *out
   }
 }
 
-static void pretty_var_decl_part(struct syn_var_decl_part const *var_decl_part, int indent, FILE *out)
+static void pretty_var_decl_part(struct syn_var_decl_part const *var_decl_part, FILE *out)
 {
   size_t i;
 
-  pretty_indent(indent, out);
+  pretty_indent(4, out);
   pretty_kw(var_decl_part->var_kw, out);
   pretty_newline(out);
 
   for (i = 0; i < var_decl_part->var_decl_list->count; ++i) {
     struct syn_var_decl *var_decl = var_decl_part->var_decl_list->children[i];
-    pretty_indent(indent + 4, out);
+    pretty_indent(8, out);
     pretty_ident_list(var_decl->ident_list, out);
     pretty_space(out);
     pretty_tok(var_decl->colon, out);
@@ -439,7 +439,9 @@ static void pretty_proc_decl_head(struct syn_proc_decl_head const *proc_decl_hea
 static void pretty_proc_decl_part(struct syn_proc_decl_part const *proc_decl_part, FILE *out)
 {
   pretty_proc_decl_head(proc_decl_part->proc_decl_head, out);
-  pretty_var_decl_part(proc_decl_part->var_decl_part, 4, out);
+  if (proc_decl_part->var_decl_part) {
+    pretty_var_decl_part(proc_decl_part->var_decl_part, out);
+  }
   pretty_comp_stmt(proc_decl_part->comp_stmt, 4, out);
   pretty_tok(proc_decl_part->semi, out);
   pretty_newline(out);
@@ -451,7 +453,7 @@ static void pretty_block(struct syn_block const *block, FILE *out)
   for (i = 0; i < block->decl_part_list->count; ++i) {
     switch (any_syn_decl_part_kind(block->decl_part_list->children[i])) {
     case ANY_SYN_DECL_PART_VAR:
-      pretty_var_decl_part((struct syn_var_decl_part *) block->decl_part_list->children[i], 0, out);
+      pretty_var_decl_part((struct syn_var_decl_part *) block->decl_part_list->children[i], out);
       break;
 
     case ANY_SYN_DECL_PART_PROC:
