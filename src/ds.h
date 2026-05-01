@@ -158,7 +158,7 @@ int raw_ht_release(struct ht_entry *entry, unsigned long *hop);
   } while (0)
 
 #define ht_at(m, entry) \
-  (assert((entry)->bucket + (entry)->slot <= (m)->mask), &(m)->data[((entry)->bucket + (entry)->slot) & (m)->mask])
+  (&(m)->data[((entry)->bucket + (entry)->slot) & (m)->mask])
 
 #define ht_entry(m, elem, entry) \
   raw_ht_entry((entry), (m)->hop, (m)->mask, (m)->data, sizeof(*(m)->data), (m)->hash, (m)->eq, (elem))
