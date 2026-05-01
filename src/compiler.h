@@ -25,7 +25,7 @@ struct token {
 
 int lex(char const *text, size_t len, struct token *token);
 
-struct syn_program *parse(char const *text, size_t len, char const *filename, struct diag *diag);
+int parse(char const *text, size_t len, char const *filename, struct diag *diag, struct syn_program **program);
 
 void pretty(struct syn_program const *program, FILE *out);
 

@@ -24,7 +24,9 @@ struct parser {
   struct diag *diag;
   diag_id_t src;
   syn_kinds_t expected;
+  size_t loop;
   int recovery;
+  int error;
 
   syn_kinds_t first_type;
   syn_kinds_t first_rel_op;
@@ -48,12 +50,16 @@ static void bump(struct parser *p)
   if (p->tok.kind == SYN_ERROR) {
     diag_error_stray_char(p->diag, p->src, p->off, p->text[p->off], &p->expected);
     p->recovery = 1;
+    p->error = 1;
   } else if (p->tok.kind == SYN_STRING_LIT && p->tok.nonclosed) {
     diag_error_unterminated_string(p->diag, p->src, p->off, p->tok.len);
+    p->error = 1;
   } else if (p->tok.kind == SYN_SLASH_STAR_COMMENT && p->tok.nonclosed) {
     diag_error_unterminated_comment(p->diag, p->src, p->off, p->tok.len);
+    p->error = 1;
   } else if (p->tok.kind == SYN_NUMBER_LIT && strtoul(p->text + p->off, NULL, 10) > 32768) {
     diag_error_too_large_integer(p->diag, p->src, p->off, p->tok.len);
+    p->error = 1;
   }
 
   bits_clear(&p->expected);
@@ -112,6 +118,7 @@ static int expect_any(struct parser *p, syn_kinds_t const *kinds)
     if (!p->recovery) {
       diag_error_unexpected_token(p->diag, p->src, p->off, p->tok.len, p->text + p->off, &p->expected);
       p->recovery = 1;
+      p->error = 1;
     }
     return 0;
   }
@@ -236,7 +243,9 @@ static void parse_expr_with_power(struct parser *p, syn_kinds_t const *recovery,
     bits_or(&r, &p->first_add_op);
     bits_or(&r, &p->first_mul_op);
     bogus(p, ckpt, SYN_BOGUS_EXPR, &r);
+
     diag_error_expected(p->diag, p->src, p->off, p->tok.len, p->text + p->off, "expression");
+    p->error = 1;
   }
 
   while (!eof(p)) {
@@ -300,6 +309,7 @@ static void parse_if_stmt(struct parser *p, syn_kinds_t const *recovery)
 static void parse_while_stmt(struct parser *p, syn_kinds_t const *recovery)
 {
   syn_ckpt_t while_stmt = open(p);
+  ++p->loop;
   expect(p, SYN_WHILE_KW);
   {
     syn_kinds_t r = *recovery;
@@ -308,14 +318,21 @@ static void parse_while_stmt(struct parser *p, syn_kinds_t const *recovery)
   }
   expect(p, SYN_DO_KW);
   parse_stmt(p, recovery);
+  --p->loop;
   close(p, while_stmt, SYN_WHILE_STMT);
 }
 
 static void parse_break_stmt(struct parser *p)
 {
   syn_ckpt_t break_stmt = open(p);
+  assert(at(p, SYN_BREAK_KW));
+  if (!p->loop) {
+    diag_error_break_outside_loop(p->diag, p->src, p->off, p->tok.len);
+    p->error = 1;
+  }
   expect(p, SYN_BREAK_KW);
   close(p, break_stmt, SYN_BREAK_STMT);
+
 }
 
 static void parse_act_params(struct parser *p, syn_kinds_t const *recovery)
@@ -710,10 +727,8 @@ static void parse_program(struct parser *p)
   close(p, program, SYN_PROGRAM);
 }
 
-struct syn_program *parse(char const *text, size_t len, char const *filename, struct diag *diag)
+int parse(char const *text, size_t len, char const *filename, struct diag *diag, struct syn_program **program)
 {
-  struct syn_program *result;
-
   struct parser p;
   p.text = text;
   p.len = len;
@@ -725,7 +740,9 @@ struct syn_program *parse(char const *text, size_t len, char const *filename, st
   p.diag = diag;
   p.src = diag_register(diag, filename, text, len);
   bits_clear(&p.expected);
+  p.loop = 0;
   p.recovery = 0;
+  p.error = 0;
 
   bits_set(&p.first_rel_op, SYN_EQ);
   bits_set(&p.first_rel_op, SYN_NEQ);
@@ -760,7 +777,7 @@ struct syn_program *parse(char const *text, size_t len, char const *filename, st
   bits_set(&p.first_stmt, SYN_BEGIN_KW);
 
   parse_program(&p);
-  result = (struct syn_program *) syn_bldr_finish(&p.bldr);
+  *program = (struct syn_program *) syn_bldr_finish(&p.bldr);
   syn_bldr_deinit(&p.bldr);
-  return result;
+  return !p.error;
 }
