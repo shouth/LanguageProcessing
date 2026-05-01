@@ -471,6 +471,7 @@ static void parse_comp_stmt(struct parser *p, syn_kinds_t const *recovery)
       syn_kinds_t r = *recovery;
       bits_or(&r, &p->first_stmt);
       bits_set(&r, SYN_SEMI);
+      bits_set(&r, SYN_END_KW);
 
       if (check_any(p, &p->first_stmt)) {
         parse_stmt(p, &r);
