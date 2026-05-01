@@ -9,11 +9,13 @@
 
 #include "ds.h"
 
+#define ULONG_BIT (sizeof(unsigned long) * CHAR_BIT)
+
 int main(void)
 {
   size_t i;
-  bits_t bits[2] = {0};
-  bits_t values[2] = {0x0123456789abcdef, 0xfedcba9876543210};
+  unsigned long bits[] = {0, 0};
+  unsigned long values[] = {0x0123456789abcdef, 0xfedcba9876543210};
 
   for (i = 0; i < sizeof(bits) * CHAR_BIT; ++i) {
     assert(!bits_test(bits, i));
@@ -24,7 +26,7 @@ int main(void)
   }
 
   for (i = 0; i < sizeof(bits) * CHAR_BIT; ++i) {
-    if ((values[i / (sizeof(bits_t) * CHAR_BIT)] >> (i % (sizeof(bits_t) * CHAR_BIT))) & 1) {
+    if ((values[i / ULONG_BIT] >> (i % ULONG_BIT)) & 1) {
       bits_set(bits, i);
     } else {
       bits_unset(bits, i);
@@ -36,7 +38,7 @@ int main(void)
   }
 
   {
-    bits_t tmp;
+    unsigned long tmp;
 
     tmp = values[0];
     bits_and(&tmp, &values[1]);
@@ -46,6 +48,9 @@ int main(void)
     bits_or(&tmp, &values[1]);
     assert(tmp == 0xffffffffffffffff);
   }
+
+  assert(bits_count(&values[0]) == 32);
+  assert(bits_count(&values[1]) == 32);
 
   return EXIT_SUCCESS;
 }

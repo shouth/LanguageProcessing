@@ -191,7 +191,7 @@ int raw_ht_release(struct ht_entry *entry, unsigned long *hop);
 
 /* bits */
 
-typedef unsigned long bits_t;
+typedef unsigned char bits_t;
 
 #define bits(N) \
   struct { \
