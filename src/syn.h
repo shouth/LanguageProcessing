@@ -407,6 +407,8 @@ enum syn_kind {
 #undef ALT
 #undef REP
 
+typedef bits(SIZE_SYN) syn_kinds_t;
+
 char const *syn_kind_to_lexeme(enum syn_kind kind);
 
 char const *syn_kind_to_string(enum syn_kind kind);
