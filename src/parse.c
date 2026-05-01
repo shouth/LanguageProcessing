@@ -22,7 +22,7 @@ struct parser {
   struct token tok;
 
   struct diag *diag;
-  diag_id_t src;
+  struct diag_src *src;
   syn_kinds_t expected;
   size_t loop;
   int recovery;
@@ -739,7 +739,7 @@ int parse(char const *text, size_t len, char const *filename, struct diag *diag,
   bump(&p);
 
   p.diag = diag;
-  p.src = diag_add_source(diag, filename, text, len);
+  p.src = diag_add_src(diag, filename, text, len);
   bits_clear(&p.expected);
   p.loop = 0;
   p.recovery = 0;
