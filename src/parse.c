@@ -6,8 +6,10 @@
  */
 
 #include <limits.h>
+#include <stdlib.h>
 
 #include "compiler.h"
+#include "diag.h"
 #include "ds.h"
 #include "syn.h"
 
@@ -15,8 +17,12 @@ struct parser {
   char const *text;
   size_t len;
   size_t off;
+
   struct syn_bldr bldr;
   struct token tok;
+
+  struct diag *diag;
+  diag_id_t src;
   syn_kinds_t expected;
   int recovery;
 
@@ -38,6 +44,18 @@ static void bump(struct parser *p)
     syn_bldr_triv(&p->bldr, p->tok.kind, p->text + p->off, p->tok.len);
     p->off += p->tok.len;
   }
+
+  if (p->tok.kind == SYN_ERROR) {
+    diag_error_stray_char(p->diag, p->src, p->off, p->text[p->off], &p->expected);
+    p->recovery = 1;
+  } else if (p->tok.kind == SYN_STRING_LIT && p->tok.nonclosed) {
+    diag_error_unterminated_string(p->diag, p->src, p->off, p->tok.len);
+  } else if (p->tok.kind == SYN_SLASH_STAR_COMMENT && p->tok.nonclosed) {
+    diag_error_unterminated_comment(p->diag, p->src, p->off, p->tok.len);
+  } else if (p->tok.kind == SYN_NUMBER_LIT && strtoul(p->text + p->off, NULL, 10) > 32768) {
+    diag_error_too_large_integer(p->diag, p->src, p->off, p->tok.len);
+  }
+
   bits_clear(&p->expected);
 }
 
@@ -92,7 +110,7 @@ static int expect_any(struct parser *p, syn_kinds_t const *kinds)
   } else {
     null(p);
     if (!p->recovery) {
-      fprintf(stderr, "unexpected token: %s\n", syn_kind_to_string(p->tok.kind));
+      diag_error_unexpected_token(p->diag, p->src, p->off, p->tok.len, p->text + p->off, &p->expected);
       p->recovery = 1;
     }
     return 0;
@@ -218,6 +236,7 @@ static void parse_expr_with_power(struct parser *p, syn_kinds_t const *recovery,
     bits_or(&r, &p->first_add_op);
     bits_or(&r, &p->first_mul_op);
     bogus(p, ckpt, SYN_BOGUS_EXPR, &r);
+    diag_error_expected(p->diag, p->src, p->off, p->tok.len, p->text + p->off, "expression");
   }
 
   while (!eof(p)) {
@@ -691,14 +710,22 @@ static void parse_program(struct parser *p)
   close(p, program, SYN_PROGRAM);
 }
 
-struct syn_program *parse(char const *text, size_t len)
+struct syn_program *parse(char const *text, size_t len, char const *filename, struct diag *diag)
 {
   struct syn_program *result;
-  struct parser p = { 0 };
+
+  struct parser p;
   p.text = text;
   p.len = len;
+  p.off = 0;
+
   syn_bldr_init(&p.bldr);
   bump(&p);
+
+  p.diag = diag;
+  p.src = diag_register(diag, filename, text, len);
+  bits_clear(&p.expected);
+  p.recovery = 0;
 
   bits_set(&p.first_rel_op, SYN_EQ);
   bits_set(&p.first_rel_op, SYN_NEQ);

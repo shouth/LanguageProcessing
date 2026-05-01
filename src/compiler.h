@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "diag.h"
 #include "syn.h"
 
 char const *load(char const *path, size_t *len);
@@ -24,7 +25,7 @@ struct token {
 
 int lex(char const *text, size_t len, struct token *token);
 
-struct syn_program *parse(char const *text, size_t len);
+struct syn_program *parse(char const *text, size_t len, char const *filename, struct diag *diag);
 
 void pretty(struct syn_program const *program, FILE *out);
 
