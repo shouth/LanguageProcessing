@@ -451,6 +451,10 @@ static void pretty_block(struct syn_block const *block, FILE *out)
 {
   size_t i;
   for (i = 0; i < block->decl_part_list->count; ++i) {
+    if (i > 0) {
+      pretty_newline(out);
+    }
+
     switch (any_syn_decl_part_kind(block->decl_part_list->children[i])) {
     case ANY_SYN_DECL_PART_VAR:
       pretty_var_decl_part((struct syn_var_decl_part *) block->decl_part_list->children[i], out);
@@ -463,7 +467,6 @@ static void pretty_block(struct syn_block const *block, FILE *out)
     default:
       break;
     }
-    pretty_newline(out);
   }
   pretty_comp_stmt(block->comp_stmt, 0, out);
 }
