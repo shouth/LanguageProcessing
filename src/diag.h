@@ -62,7 +62,7 @@ void diag_init(struct diag *d);
 
 void diag_deinit(struct diag *d);
 
-void diag_print(struct diag *d, FILE *out);
+void diag_print(struct diag const *d, FILE *out);
 
 struct diag_report *diag_add_report(struct diag *d, struct src *src);
 

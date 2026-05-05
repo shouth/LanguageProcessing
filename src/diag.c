@@ -123,7 +123,7 @@ void diag_deinit(struct diag *d)
   vec_deinit(&d->reports);
 }
 
-void diag_print(struct diag *d, FILE *out)
+void diag_print(struct diag const *d, FILE *out)
 {
   /* TODO: implement detailed diagnostic printing */
 

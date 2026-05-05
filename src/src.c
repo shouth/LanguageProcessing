@@ -117,7 +117,7 @@ void src_deinit(struct src *src)
   free(src->line_offsets);
 }
 
-int src_locate(struct src *src, size_t offset, size_t *line, size_t *column)
+int src_locate(struct src const *src, size_t offset, size_t *line, size_t *column)
 {
   if (offset >= src->text_len) {
     return 0;

@@ -22,6 +22,6 @@ int src_init(struct src *src, const char *path);
 
 void src_deinit(struct src *src);
 
-int src_locate(struct src *src, size_t offset, size_t *line, size_t *column);
+int src_locate(struct src const *src, size_t offset, size_t *line, size_t *column);
 
 #endif /* SRC_H */
