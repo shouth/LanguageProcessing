@@ -12,6 +12,7 @@
 
 #include "compiler.h"
 #include "ds.h"
+#include "src.h"
 #include "syn.h"
 
 hash_t str_hash(void const *x)
@@ -35,9 +36,8 @@ int main(int argc, char const *argv[])
   struct ht_entry e;
   struct token token;
 
-  char const *text = NULL;
+  struct src src;
   size_t off = 0;
-  size_t len = 0;
 
   size_t counts[NONTRIV_END - NONTRIV_BEGIN + 1] = { 0 };
   hm(char const *, size_t) idents;
@@ -51,18 +51,18 @@ int main(int argc, char const *argv[])
     goto cleanup;
   }
 
-  if (!(text = load(argv[1], &len))) {
+  if (!src_init(&src, argv[1])) {
     fprintf(stderr, "error: failed to load file\n");
     goto cleanup;
   }
 
-  while (lex(text + off, len, &token)) {
+  while (lex(src.text + off, src.text_len - off, &token)) {
     if (token.kind >= NONTRIV_BEGIN && token.kind <= NONTRIV_END) {
       ++counts[token.kind - NONTRIV_BEGIN];
       if (token.kind == SYN_IDENT) {
         struct ht_entry e;
         char *lexeme = malloc(token.len + 1);
-        memcpy(lexeme, text + off, token.len);
+        memcpy(lexeme, src.text + off, token.len);
         lexeme[token.len] = '\0';
 
         if (ht_entry(&idents, &lexeme, &e)) {
@@ -72,7 +72,7 @@ int main(int argc, char const *argv[])
         }
         ++ht_at(&idents, &e)->value;
       } else if (token.kind == SYN_NUMBER_LIT) {
-        if (strtoul(text + off, NULL, 10) > 32768) {
+        if (strtoul(src.text + off, NULL, 10) > 32768) {
           fprintf(stderr, "error: number literal is larger than 32768\n");
           goto cleanup;
         }
@@ -92,7 +92,6 @@ int main(int argc, char const *argv[])
       }
     }
     off += token.len;
-    len -= token.len;
   }
 
   for (i = 0; i <= NONTRIV_END - NONTRIV_BEGIN; ++i) {
@@ -118,7 +117,7 @@ int main(int argc, char const *argv[])
   status = EXIT_SUCCESS;
 
 cleanup:
-  free((void *) text);
+  src_deinit(&src);
   for (ht_entry(&idents, NULL, &e); ht_next(&idents, &e);) {
     free((void *) ht_at(&idents, &e)->key);
   }

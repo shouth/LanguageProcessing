@@ -13,6 +13,7 @@
 
 #include "diag.h"
 #include "ds.h"
+#include "src.h"
 #include "syn.h"
 
 static char *diag_strdup(char const *s)
@@ -102,7 +103,6 @@ static char const *diag_syn_kinds_to_string(syn_kinds_t const *kinds)
 void diag_init(struct diag *d)
 {
   vec_init(&d->reports);
-  vec_init(&d->srcs);
 }
 
 void diag_deinit(struct diag *d)
@@ -132,22 +132,6 @@ void diag_deinit(struct diag *d)
     vec_deinit(&report->entries);
   }
   vec_deinit(&d->reports);
-
-  for (i = 0; i < d->srcs.count; i++) {
-    struct diag_src *source = vec_at(&d->srcs, i);
-    free(source->name);
-  }
-  vec_deinit(&d->srcs);
-}
-
-struct diag_src *diag_add_src(struct diag *d, char const *name, char const *text, size_t len)
-{
-  struct diag_src source;
-  source.name = diag_strdup(name);
-  source.text = text;
-  source.len = len;
-  vec_push(&d->srcs, &source);
-  return vec_back(&d->srcs);
 }
 
 void diag_print(struct diag *d, FILE *out)
@@ -166,7 +150,7 @@ void diag_print(struct diag *d, FILE *out)
   }
 }
 
-struct diag_report *diag_add_report(struct diag *d, struct diag_src *src)
+struct diag_report *diag_add_report(struct diag *d, struct src *src)
 {
   struct diag_report report;
   report.src = src;
@@ -213,35 +197,35 @@ struct diag_label *diag_add_label(struct diag_entry *entry, size_t start, size_t
 
 /* lex */
 
-void diag_error_stray_char(struct diag *d, struct diag_src *src, size_t off, int stray, syn_kinds_t const *expected)
+void diag_error_stray_char(struct diag *d, struct src *src, size_t off, int stray, syn_kinds_t const *expected)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "stray `%c` in program", stray);
   diag_add_label(entry, off, off + 1, "expected %s, found `%c`", diag_syn_kinds_to_string(expected), stray);
 }
 
-void diag_error_nongraphic_char(struct diag *d, struct diag_src *src, size_t off, int nongraphic)
+void diag_error_nongraphic_char(struct diag *d, struct src *src, size_t off, int nongraphic)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "nongraphic character `\\%02x` in program", nongraphic);
   diag_add_label(entry, off, off + 1, NULL);
 }
 
-void diag_error_unterminated_string(struct diag *d, struct diag_src *src, size_t off, size_t len)
+void diag_error_unterminated_string(struct diag *d, struct src *src, size_t off, size_t len)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "string is not terminated");
   diag_add_label(entry, off, off + len, NULL);
 }
 
-void diag_error_unterminated_comment(struct diag *d, struct diag_src *src, size_t off, size_t len)
+void diag_error_unterminated_comment(struct diag *d, struct src *src, size_t off, size_t len)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "comment is not terminated");
   diag_add_label(entry, off, off + len, NULL);
 }
 
-void diag_error_too_large_integer(struct diag *d, struct diag_src *src, size_t off, size_t len)
+void diag_error_too_large_integer(struct diag *d, struct src *src, size_t off, size_t len)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "integer literal is too large");
@@ -250,21 +234,21 @@ void diag_error_too_large_integer(struct diag *d, struct diag_src *src, size_t o
 
 /* parse */
 
-void diag_error_unexpected_token(struct diag *d, struct diag_src *src, size_t off, size_t len, char const *found, syn_kinds_t const *expected)
+void diag_error_unexpected_token(struct diag *d, struct src *src, size_t off, size_t len, char const *found, syn_kinds_t const *expected)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "unexpected token `%.*s`", (int) len, found);
   diag_add_label(entry, off, off + len, "expected %s, found `%.*s`", diag_syn_kinds_to_string(expected), (int) len, found);
 }
 
-void diag_error_expected(struct diag *d, struct diag_src *src, size_t off, size_t len, char const *found, char const *expected)
+void diag_error_expected(struct diag *d, struct src *src, size_t off, size_t len, char const *found, char const *expected)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "expected %s", expected);
   diag_add_label(entry, off, off + len, "expected %s, found `%.*s`", expected, (int) len, found);
 }
 
-void diag_error_break_outside_loop(struct diag *d, struct diag_src *src, size_t off, size_t len)
+void diag_error_break_outside_loop(struct diag *d, struct src *src, size_t off, size_t len)
 {
   struct diag_report *report = diag_add_report(d, src);
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "`break` outside of loop");

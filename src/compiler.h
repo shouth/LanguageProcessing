@@ -13,8 +13,7 @@
 
 #include "diag.h"
 #include "syn.h"
-
-char const *load(char const *path, size_t *len);
+#include "src.h"
 
 struct token {
   enum syn_kind kind;
@@ -25,7 +24,7 @@ struct token {
 
 int lex(char const *text, size_t len, struct token *token);
 
-int parse(char const *text, size_t len, char const *filename, struct diag *diag, struct syn_program **program);
+int parse(char const *text, size_t len, struct src *src, struct diag *diag, struct syn_program **program);
 
 void pretty(struct syn_program const *program, FILE *out);
 

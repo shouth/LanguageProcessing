@@ -11,6 +11,7 @@
 #include "compiler.h"
 #include "diag.h"
 #include "ds.h"
+#include "src.h"
 #include "syn.h"
 
 struct parser {
@@ -22,7 +23,7 @@ struct parser {
   struct token tok;
 
   struct diag *diag;
-  struct diag_src *src;
+  struct src *src;
   syn_kinds_t expected;
   size_t loop;
   int recovery;
@@ -728,7 +729,7 @@ static void parse_program(struct parser *p)
   close(p, program, SYN_PROGRAM);
 }
 
-int parse(char const *text, size_t len, char const *filename, struct diag *diag, struct syn_program **program)
+int parse(char const *text, size_t len, struct src *src, struct diag *diag, struct syn_program **program)
 {
   struct parser p;
   p.text = text;
@@ -739,7 +740,7 @@ int parse(char const *text, size_t len, char const *filename, struct diag *diag,
   bump(&p);
 
   p.diag = diag;
-  p.src = diag_add_src(diag, filename, text, len);
+  p.src = src;
   bits_clear(&p.expected);
   p.loop = 0;
   p.recovery = 0;

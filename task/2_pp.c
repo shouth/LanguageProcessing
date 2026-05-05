@@ -15,8 +15,7 @@
 
 int main(int argc, char const *argv[])
 {
-  char const *text = NULL;
-  size_t len;
+  struct src src;
   struct syn_program *program = NULL;
   struct diag diag;
 
@@ -27,18 +26,18 @@ int main(int argc, char const *argv[])
     goto cleanup;
   }
 
-  if (!(text = load(argv[1], &len))) {
+  if (!src_init(&src, argv[1])) {
     fprintf(stderr, "error: failed to load file\n");
     goto cleanup;
   }
 
-  if (parse(text, len, argv[1], &diag, &program)) {
+  if (parse(src.text, src.text_len, &src, &diag, &program)) {
     pretty(program, stdout);
   }
   diag_print(&diag, stdout);
 
 cleanup:
-  free((void *)text);
+  src_deinit(&src);
   syn_free((struct syn_node *) program);
   diag_deinit(&diag);
   return EXIT_SUCCESS;
