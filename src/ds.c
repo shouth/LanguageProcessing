@@ -232,3 +232,27 @@ size_t fw_query(size_t *tree, size_t i)
   }
   return sum;
 }
+
+size_t fw_upper_bound(size_t *tree, size_t n, size_t x, size_t *off)
+{
+  size_t i, j;
+
+  i = 1;
+  for (j = n; j > 0; j >>= 1) {
+    i <<= 1;
+  }
+  i >>= 1;
+
+  for (j = 0; i > 0; i >>= 1) {
+    if (j + i <= n && tree[j + i - 1] <= x) {
+      x -= tree[j + i - 1];
+      j += i;
+    }
+  }
+
+  if (off) {
+    *off = x;
+  }
+
+  return j;
+}

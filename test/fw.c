@@ -13,7 +13,7 @@
 
 int main(void)
 {
-  size_t i;
+  size_t i, j;
   size_t tree[10];
 
   memset(tree, 0, sizeof(tree));
@@ -38,6 +38,14 @@ int main(void)
   }
   printf("%lu\n", fw_query(tree, 10));
   assert(fw_query(tree, 10) == 55);
+
+  i = fw_upper_bound(tree, 10, 15, &j);
+  assert(i == 5);
+  assert(j == 0);
+
+  i = fw_upper_bound(tree, 10, 42, &j);
+  assert(i == 8);
+  assert(j == 6);
 
   return EXIT_SUCCESS;
 }

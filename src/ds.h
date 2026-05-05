@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -246,5 +247,7 @@ void fw_build(size_t *tree, size_t n);
 void fw_update(size_t *tree, size_t n, size_t i, size_t delta);
 
 size_t fw_query(size_t *tree, size_t i);
+
+size_t fw_upper_bound(size_t *tree, size_t n, size_t x, size_t *off);
 
 #endif /* DS_H */
