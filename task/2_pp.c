@@ -17,7 +17,7 @@ int main(int argc, char const *argv[])
 {
   struct query_ctxt ctxt;
   query_id_t id;
-  struct query_parse *parse;
+  struct query_parse const *parse;
 
   query_init(&ctxt);
 

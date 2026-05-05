@@ -64,7 +64,7 @@ query_id_t query_add(struct query_ctxt *query, char const *path)
   return id;
 }
 
-struct query_load *query_load(struct query_ctxt *query, query_id_t id)
+struct query_load const *query_load(struct query_ctxt *query, query_id_t id)
 {
   struct query_unit *u = get(query, id);
   if (!u) {
@@ -82,7 +82,7 @@ struct query_load *query_load(struct query_ctxt *query, query_id_t id)
   }
 }
 
-struct query_parse *query_parse(struct query_ctxt *query, query_id_t id)
+struct query_parse const *query_parse(struct query_ctxt *query, query_id_t id)
 {
   struct query_unit *u = get(query, id);
   if (!u) {
@@ -90,7 +90,7 @@ struct query_parse *query_parse(struct query_ctxt *query, query_id_t id)
   } else if (u->parse) {
     return u->parse;
   } else {
-    struct query_load *load = query_load(query, id);
+    struct query_load const *load = query_load(query, id);
     u->parse = malloc(sizeof(struct query_parse));
     u->parse->syn = NULL;
     diag_init(&u->parse->diag, NULL);

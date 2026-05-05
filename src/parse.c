@@ -23,7 +23,7 @@ struct parser {
   struct token tok;
 
   struct diag *diag;
-  struct src *src;
+  struct src const *src;
   syn_kinds_t expected;
   size_t loop;
   int recovery;
@@ -729,7 +729,7 @@ static void parse_program(struct parser *p)
   close(p, program, SYN_PROGRAM);
 }
 
-int parse(char const *text, size_t len, struct src *src, struct diag *diag, struct syn_program **program)
+int parse(char const *text, size_t len, struct src const *src, struct diag *diag, struct syn_program **program)
 {
   struct parser p;
   p.text = text;

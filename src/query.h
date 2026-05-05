@@ -48,8 +48,8 @@ void query_deinit(struct query_ctxt *query);
 
 query_id_t query_add(struct query_ctxt *query, char const *path);
 
-struct query_load *query_load(struct query_ctxt *query, query_id_t id);
+struct query_load const *query_load(struct query_ctxt *query, query_id_t id);
 
-struct query_parse *query_parse(struct query_ctxt *query, query_id_t id);
+struct query_parse const *query_parse(struct query_ctxt *query, query_id_t id);
 
 #endif /* QUERY_H */
