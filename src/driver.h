@@ -1,12 +1,12 @@
 /*
- * compiler.h -- compiler
+ * driver.h -- drivers of the compiler
  *
  * SPDX-FileCopyrightText: 2026 Shota Minami
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef COMPILER_H
-#define COMPILER_H
+#ifndef DRIVER_H
+#define DRIVER_H
 
 #include <stddef.h>
 #include <stdio.h>
@@ -28,4 +28,4 @@ int parse(char const *text, size_t len, struct src *src, struct diag *diag, stru
 
 void pretty(struct syn_program const *program, FILE *out);
 
-#endif /* COMPILER_H */
+#endif /* DRIVER_H */

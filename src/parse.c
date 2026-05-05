@@ -8,7 +8,7 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include "compiler.h"
+#include "driver.h"
 #include "diag.h"
 #include "ds.h"
 #include "src.h"

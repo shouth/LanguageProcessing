@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "compiler.h"
+#include "driver.h"
 #include "ds.h"
 #include "src.h"
 #include "syn.h"

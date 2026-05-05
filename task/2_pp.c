@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "compiler.h"
+#include "driver.h"
 #include "diag.h"
 #include "syn.h"
 

@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-#include "compiler.h"
+#include "driver.h"
 #include "syn.h"
 
 struct lexer {
