@@ -94,17 +94,18 @@ static size_t *make_offsets(char const *text, size_t text_len, size_t *line_coun
 
 int src_init(struct src *src, const char *path)
 {
-  size_t len = strlen(path);
-  src->name = malloc(len + 1);
-  memcpy(src->name, path, len + 1);
+  src->name = NULL;
   src->text = load_text(path, &src->text_len);
+  src->line_offsets = NULL;
+  src->line_count = 0;
 
   if (src->text) {
+    size_t len = strlen(path);
+    src->name = malloc(len + 1);
+    memcpy(src->name, path, len + 1);
     src->line_offsets = make_offsets(src->text, src->text_len, &src->line_count);
     return 1;
   } else {
-    src->line_offsets = NULL;
-    src->line_count = 0;
     return 0;
   }
 }
