@@ -11,34 +11,34 @@
 
 #include "driver.h"
 #include "diag.h"
-#include "syn.h"
+#include "query.h"
 
 int main(int argc, char const *argv[])
 {
-  struct src src;
-  struct syn_program *program = NULL;
-  struct diag diag;
+  struct query_ctxt ctxt;
+  query_id_t id;
+  struct query_parse *parse;
 
-  diag_init(&diag, NULL);
+  query_init(&ctxt);
 
   if (argc != 2) {
     fprintf(stderr, "usage: %s <file>\n", argv[0]);
     goto cleanup;
   }
 
-  if (!src_init(&src, argv[1])) {
-    fprintf(stderr, "error: failed to load file\n");
+  id = query_add(&ctxt, argv[1]);
+  parse = query_parse(&ctxt, id);
+  if (parse->status != QUERY_OK) {
+    if (parse->status == QUERY_ERR_NOT_FOUND) {
+      fprintf(stderr, "error: file not found: %s\n", argv[1]);
+    } else if (parse->status == QUERY_ERR_BAD_SYNTAX) {
+      diag_print(&parse->diag, stderr);
+    }
     goto cleanup;
   }
-
-  if (parse(src.text, src.text_len, &src, &diag, &program)) {
-    pretty(program, stdout);
-  }
-  diag_print(&diag, stdout);
+  pretty(parse->syn, stdout);
 
 cleanup:
-  src_deinit(&src);
-  syn_free((struct syn_node *) program);
-  diag_deinit(&diag);
+  query_deinit(&ctxt);
   return EXIT_SUCCESS;
 }
