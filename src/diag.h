@@ -55,10 +55,11 @@ struct diag_report {
 };
 
 struct diag {
+  struct diag const *upstream;
   vec(struct diag_report) reports;
 };
 
-void diag_init(struct diag *d);
+void diag_init(struct diag *d, struct diag const *upstream);
 
 void diag_deinit(struct diag *d);
 

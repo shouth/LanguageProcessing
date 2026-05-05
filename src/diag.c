@@ -89,8 +89,9 @@ static char const *diag_syn_kinds_to_string(syn_kinds_t const *kinds)
   return buffer;
 }
 
-void diag_init(struct diag *d)
+void diag_init(struct diag *d, struct diag const *upstream)
 {
+  d->upstream = upstream;
   vec_init(&d->reports);
 }
 
@@ -128,6 +129,10 @@ void diag_print(struct diag const *d, FILE *out)
   /* TODO: implement detailed diagnostic printing */
 
   size_t i, j;
+
+  if (d->upstream) {
+    diag_print(d->upstream, out);
+  }
 
   for (i = 0; i < d->reports.count; i++) {
     struct diag_report *report = vec_at(&d->reports, i);

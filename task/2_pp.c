@@ -19,7 +19,7 @@ int main(int argc, char const *argv[])
   struct syn_program *program = NULL;
   struct diag diag;
 
-  diag_init(&diag);
+  diag_init(&diag, NULL);
 
   if (argc != 2) {
     fprintf(stderr, "usage: %s <file>\n", argv[0]);
