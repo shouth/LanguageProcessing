@@ -16,17 +16,6 @@
 #include "src.h"
 #include "syn.h"
 
-static char *diag_strdup(char const *s)
-{
-  char *result = NULL;
-  size_t len = strlen(s);
-  if (!(result = malloc(len + 1))) {
-    return NULL;
-  }
-  memcpy(result, s, len + 1);
-  return result;
-}
-
 static char *diag_vasprintf(char const *fmt, va_list args)
 {
   char *result = NULL;
