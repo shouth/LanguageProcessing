@@ -15,10 +15,10 @@
 #include "src.h"
 #include "syn.h"
 
-static struct query_unit *get(struct query_ctxt *query, query_id_t id)
+static struct query_entry *get(struct query_ctxt *query, query_id_t id)
 {
-  if (id < query->units.count) {
-    return &query->units.data[id];
+  if (id < query->entries.count) {
+    return &query->entries.data[id];
   } else {
     return NULL;
   }
@@ -26,14 +26,14 @@ static struct query_unit *get(struct query_ctxt *query, query_id_t id)
 
 void query_init(struct query_ctxt *query)
 {
-  vec_init(&query->units);
+  vec_init(&query->entries);
 }
 
 void query_deinit(struct query_ctxt *query)
 {
   size_t i;
-  for (i = 0; i < query->units.count; ++i) {
-    struct query_unit *u = &query->units.data[i];
+  for (i = 0; i < query->entries.count; ++i) {
+    struct query_entry *u = &query->entries.data[i];
 
     free(u->path);
 
@@ -48,25 +48,25 @@ void query_deinit(struct query_ctxt *query)
       free(u->parse);
     }
   }
-  vec_deinit(&query->units);
+  vec_deinit(&query->entries);
 }
 
 query_id_t query_add(struct query_ctxt *query, char const *path)
 {
-  query_id_t id = query->units.count;
-  struct query_unit u;
+  query_id_t id = query->entries.count;
+  struct query_entry u;
   size_t len = strlen(path);
   u.path = malloc(len + 1);
   memcpy(u.path, path, len + 1);
   u.load = NULL;
   u.parse = NULL;
-  vec_push(&query->units, &u);
+  vec_push(&query->entries, &u);
   return id;
 }
 
 struct query_load const *query_load(struct query_ctxt *query, query_id_t id)
 {
-  struct query_unit *u = get(query, id);
+  struct query_entry *u = get(query, id);
   if (!u) {
     return NULL;
   } else if (u->load) {
@@ -84,7 +84,7 @@ struct query_load const *query_load(struct query_ctxt *query, query_id_t id)
 
 struct query_parse const *query_parse(struct query_ctxt *query, query_id_t id)
 {
-  struct query_unit *u = get(query, id);
+  struct query_entry *u = get(query, id);
   if (!u) {
     return NULL;
   } else if (u->parse) {

@@ -30,7 +30,7 @@ struct query_parse {
   struct diag diag;
 };
 
-struct query_unit {
+struct query_entry {
   char *path;
   struct query_load *load;
   struct query_parse *parse;
@@ -39,7 +39,7 @@ struct query_unit {
 typedef size_t query_id_t;
 
 struct query_ctxt {
-  vec(struct query_unit) units;
+  vec(struct query_entry) entries;
 };
 
 void query_init(struct query_ctxt *query);
