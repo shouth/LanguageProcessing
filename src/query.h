@@ -10,7 +10,7 @@
 
 #include "diag.h"
 #include "ds.h"
-#include "src.h"
+#include "file.h"
 #include "syn.h"
 
 enum query_status {
@@ -21,7 +21,7 @@ enum query_status {
 
 struct query_load {
   enum query_status status;
-  struct src src;
+  struct file file;
 };
 
 struct query_parse {

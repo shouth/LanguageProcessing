@@ -12,7 +12,7 @@
 
 #include "driver.h"
 #include "ds.h"
-#include "src.h"
+#include "file.h"
 #include "syn.h"
 
 hash_t str_hash(void const *x)
@@ -36,7 +36,7 @@ int main(int argc, char const *argv[])
   struct ht_entry e;
   struct token token;
 
-  struct src src;
+  struct file file;
   size_t off = 0;
 
   size_t counts[NONTRIV_END - NONTRIV_BEGIN + 1] = { 0 };
@@ -51,18 +51,18 @@ int main(int argc, char const *argv[])
     goto cleanup;
   }
 
-  if (!src_init(&src, argv[1])) {
+  if (!file_init(&file, argv[1])) {
     fprintf(stderr, "error: failed to load file\n");
     goto cleanup;
   }
 
-  while (lex(src.text + off, src.text_len - off, &token)) {
+  while (lex(file.text + off, file.text_len - off, &token)) {
     if (token.kind >= NONTRIV_BEGIN && token.kind <= NONTRIV_END) {
       ++counts[token.kind - NONTRIV_BEGIN];
       if (token.kind == SYN_IDENT) {
         struct ht_entry e;
         char *lexeme = malloc(token.len + 1);
-        memcpy(lexeme, src.text + off, token.len);
+        memcpy(lexeme, file.text + off, token.len);
         lexeme[token.len] = '\0';
 
         if (ht_entry(&idents, &lexeme, &e)) {
@@ -72,7 +72,7 @@ int main(int argc, char const *argv[])
         }
         ++ht_at(&idents, &e)->value;
       } else if (token.kind == SYN_NUMBER_LIT) {
-        if (strtoul(src.text + off, NULL, 10) > 32768) {
+        if (strtoul(file.text + off, NULL, 10) > 32768) {
           fprintf(stderr, "error: number literal is larger than 32768\n");
           goto cleanup;
         }
@@ -117,7 +117,7 @@ int main(int argc, char const *argv[])
   status = EXIT_SUCCESS;
 
 cleanup:
-  src_deinit(&src);
+  file_deinit(&file);
   for (ht_entry(&idents, NULL, &e); ht_next(&idents, &e);) {
     free((void *) ht_at(&idents, &e)->key);
   }

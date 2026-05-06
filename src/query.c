@@ -11,8 +11,8 @@
 #include "diag.h"
 #include "driver.h"
 #include "ds.h"
+#include "file.h"
 #include "query.h"
-#include "src.h"
 #include "syn.h"
 
 static struct query_entry *get(struct query_ctxt *query, query_id_t id)
@@ -38,7 +38,7 @@ void query_deinit(struct query_ctxt *query)
     free(u->path);
 
     if (u->load) {
-      src_deinit(&u->load->src);
+      file_deinit(&u->load->file);
       free(u->load);
     }
 
@@ -73,7 +73,7 @@ struct query_load const *query_load(struct query_ctxt *query, query_id_t id)
     return u->load;
   } else {
     u->load = malloc(sizeof(struct query_load));
-    if (src_init(&u->load->src, u->path)) {
+    if (file_init(&u->load->file, u->path)) {
       u->load->status = QUERY_OK;
     } else {
       u->load->status = QUERY_ERR_NOT_FOUND;
@@ -98,7 +98,7 @@ struct query_parse const *query_parse(struct query_ctxt *query, query_id_t id)
       u->parse->status = QUERY_ERR_NOT_FOUND;
     } else if (load->status != QUERY_OK) {
       u->parse->status = load->status;
-    } else if (parse(load->src.text, load->src.text_len, &load->src, &u->parse->diag, &u->parse->syn)) {
+    } else if (parse(load->file.text, load->file.text_len, &load->file, &u->parse->diag, &u->parse->syn)) {
       u->parse->status = QUERY_OK;
     } else {
       u->parse->status = QUERY_ERR_BAD_SYNTAX;

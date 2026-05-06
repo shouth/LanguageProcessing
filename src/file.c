@@ -1,5 +1,5 @@
 /*
- * src.c -- source code
+ * file.c -- file
  *
  * SPDX-FileCopyrightText: 2026 Shota Minami
  * SPDX-License-Identifier: Apache-2.0
@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "src.h"
 #include "ds.h"
+#include "file.h"
 
 static char *load_text(char const *path, size_t *len)
 {
@@ -92,37 +92,37 @@ static size_t *make_offsets(char const *text, size_t text_len, size_t *line_coun
   return offsets.data;
 }
 
-int src_init(struct src *src, const char *path)
+int file_init(struct file *file, const char *path)
 {
-  src->name = NULL;
-  src->text = load_text(path, &src->text_len);
-  src->line_offsets = NULL;
-  src->line_count = 0;
+  file->name = NULL;
+  file->text = load_text(path, &file->text_len);
+  file->line_offsets = NULL;
+  file->line_count = 0;
 
-  if (src->text) {
+  if (file->text) {
     size_t len = strlen(path);
-    src->name = malloc(len + 1);
-    memcpy(src->name, path, len + 1);
-    src->line_offsets = make_offsets(src->text, src->text_len, &src->line_count);
+    file->name = malloc(len + 1);
+    memcpy(file->name, path, len + 1);
+    file->line_offsets = make_offsets(file->text, file->text_len, &file->line_count);
     return 1;
   } else {
     return 0;
   }
 }
 
-void src_deinit(struct src *src)
+void file_deinit(struct file *file)
 {
-  free(src->name);
-  free(src->text);
-  free(src->line_offsets);
+  free(file->name);
+  free(file->text);
+  free(file->line_offsets);
 }
 
-int src_locate(struct src const *src, size_t offset, size_t *line, size_t *column)
+int file_locate(struct file const *file, size_t offset, size_t *line, size_t *column)
 {
-  if (offset >= src->text_len) {
+  if (offset >= file->text_len) {
     return 0;
   } else {
-    *line = fw_upper_bound(src->line_offsets, src->line_count, offset, column);
+    *line = fw_upper_bound(file->line_offsets, file->line_count, offset, column);
     return 1;
   }
 }
