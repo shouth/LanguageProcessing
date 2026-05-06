@@ -11,6 +11,7 @@
 #include "diag.h"
 #include "ds.h"
 #include "file.h"
+#include "sym.h"
 #include "syn.h"
 
 enum query_status {
@@ -30,8 +31,9 @@ struct query_parse {
   struct diag diag;
 };
 
-struct query_entry {
+struct query {
   char *path;
+  struct sym_ctxt sym_ctxt;
   struct query_load *load;
   struct query_parse *parse;
 };
@@ -39,7 +41,7 @@ struct query_entry {
 typedef size_t query_id_t;
 
 struct query_ctxt {
-  vec(struct query_entry) entries;
+  vec(struct query) entries;
 };
 
 void query_init(struct query_ctxt *query);

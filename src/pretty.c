@@ -15,33 +15,33 @@ static void pretty_kw(struct syn_tok const *tok, FILE *out)
 {
   struct fmt_style s = { 0 };
   s.color = FMT_BRIGHT_RED;
-  fmt_print(out, &s, "%s", tok->text);
+  fmt_print(out, &s, "%s", tok->text->str);
 }
 
 static void pretty_op(struct syn_tok const *op, FILE *out)
 {
   struct fmt_style s = { 0 };
   s.color = FMT_BRIGHT_RED;
-  fmt_print(out, &s, "%s", op->text);
+  fmt_print(out, &s, "%s", op->text->str);
 }
 
 static void pretty_num(struct syn_tok const *num, FILE *out)
 {
   struct fmt_style s = { 0 };
   s.color = FMT_BRIGHT_BLUE;
-  fmt_print(out, &s, "%s", num->text);
+  fmt_print(out, &s, "%s", num->text->str);
 }
 
 static void pretty_str(struct syn_tok const *str, FILE *out)
 {
   struct fmt_style s = { 0 };
   s.color = FMT_BRIGHT_YELLOW;
-  fmt_print(out, &s, "%s", str->text);
+  fmt_print(out, &s, "%s", str->text->str);
 }
 
 static void pretty_tok(struct syn_tok const *tok, FILE *out)
 {
-  fprintf(out, "%s", tok->text);
+  fprintf(out, "%s", tok->text->str);
 }
 
 static void pretty_indent(int indent, FILE *out)

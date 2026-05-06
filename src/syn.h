@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include "ds.h"
+#include "sym.h"
 
 #define DEF_FLD_SYN_PROGRAM(FLD) \
   FLD(SYN_PROGRAM_KW, syn_tok, program_kw) \
@@ -426,8 +427,7 @@ struct syn_tree {
 
 struct syn_tok {
   struct syn_node node;
-  char const *text;
-  size_t len;
+  struct sym const *text;
   struct syn_triv *triv;
 };
 
@@ -439,7 +439,7 @@ struct syn_triv {
 
 struct syn_triv_piece {
   enum syn_kind kind;
-  char const *text;
+  struct sym const *text;
 };
 
 #define TOK(KIND, LEXEME)
@@ -495,12 +495,13 @@ void syn_print(struct syn_node const *node, FILE *out);
 typedef unsigned long syn_ckpt_t;
 
 struct syn_bldr {
+  struct sym_ctxt *ctxt;
   vec(struct syn_triv_piece) trivs;
   vec(size_t) triv_lens;
   vec(struct syn_node *) stack;
 };
 
-void syn_bldr_init(struct syn_bldr *b);
+void syn_bldr_init(struct syn_bldr *b, struct sym_ctxt *ctxt);
 
 void syn_bldr_deinit(struct syn_bldr *b);
 

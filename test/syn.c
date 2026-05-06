@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "sym.h"
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdlib.h>
@@ -16,6 +17,8 @@ int main(void)
 {
   syn_ckpt_t binary, entire;
   struct syn_binary_expr *expr;
+
+  struct sym_ctxt ctxt;
   struct syn_bldr bldr;
 
   char buffer[256];
@@ -31,7 +34,8 @@ int main(void)
     "    SYN_IDENT @ 4..5 \"y\"\n"
     "      SYN_WHITESPACE @ 3..4\n";
 
-  syn_bldr_init(&bldr);
+  sym_init(&ctxt);
+  syn_bldr_init(&bldr, &ctxt);
 
   binary = syn_bldr_open(&bldr);
   entire = syn_bldr_open(&bldr);
@@ -54,5 +58,6 @@ int main(void)
 
   fclose(out);
   syn_free((struct syn_node *) expr);
+  sym_deinit(&ctxt);
   return EXIT_SUCCESS;
 }

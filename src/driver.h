@@ -13,6 +13,7 @@
 
 #include "diag.h"
 #include "file.h"
+#include "sym.h"
 #include "syn.h"
 
 struct token {
@@ -24,7 +25,7 @@ struct token {
 
 int lex(char const *text, size_t len, struct token *token);
 
-int parse(char const *text, size_t len, struct file const *file, struct diag *diag, struct syn_program **program);
+int parse(char const *text, size_t len, struct sym_ctxt *ctxt, struct file const *file, struct diag *diag, struct syn_program **program);
 
 void pretty(struct syn_program const *program, FILE *out);
 

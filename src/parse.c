@@ -729,14 +729,14 @@ static void parse_program(struct parser *p)
   close(p, program, SYN_PROGRAM);
 }
 
-int parse(char const *text, size_t len, struct file const *file, struct diag *diag, struct syn_program **program)
+int parse(char const *text, size_t len, struct sym_ctxt *ctxt, struct file const *file, struct diag *diag, struct syn_program **program)
 {
   struct parser p;
   p.text = text;
   p.len = len;
   p.off = 0;
 
-  syn_bldr_init(&p.bldr);
+  syn_bldr_init(&p.bldr, ctxt);
   bump(&p);
 
   p.diag = diag;

@@ -94,14 +94,7 @@ void syn_free(struct syn_node *node)
 #define TOK(KIND, LEXEME) \
   case KIND: { \
     struct syn_tok *tok = (struct syn_tok *) node; \
-    if (tok->text) { \
-      free((char *) tok->text); \
-    } \
     if (tok->triv) { \
-      size_t i; \
-      for (i = 0; i < tok->triv->count; ++i) { \
-        free((char *) tok->triv->pieces[i].text); \
-      } \
       free(tok->triv->pieces); \
       free(tok->triv->offsets); \
       free(tok->triv); \
@@ -153,7 +146,7 @@ size_t syn_text_len(struct syn_node const *node)
 {
   if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
     struct syn_tok const *tok = (struct syn_tok const *) node;
-    return tok->len + (tok->triv ? fw_query(tok->triv->offsets, tok->triv->count) : 0);
+    return tok->text->len + (tok->triv ? fw_query(tok->triv->offsets, tok->triv->count) : 0);
   } else {
     struct syn_tree const *tree = (struct syn_tree const *) node;
     return fw_query(tree->offsets, syn_child_count(node));
@@ -268,7 +261,7 @@ static void print_line(enum syn_kind kind, size_t start, size_t end, char const 
 }
 
 static void print_tree(struct syn_node const *node, FILE *out, size_t offset, size_t indent)
-{  
+{
   if (!node) {
     struct fmt_style s = { 0 };
 
@@ -284,7 +277,7 @@ static void print_tree(struct syn_node const *node, FILE *out, size_t offset, si
     struct syn_tok const *n = (struct syn_tok const *) node;
     size_t triv = n->triv ? fw_query(n->triv->offsets, n->triv->count) : 0;
 
-    print_line(node->kind, triv + offset, triv + offset + n->len, n->text, (int) indent, out);
+    print_line(node->kind, triv + offset, triv + offset + n->text->len, n->text->str, (int) indent, out);
     if (n->triv) {
       size_t i;
       for (i = 0; i < n->triv->count; ++i) {
@@ -310,8 +303,9 @@ void syn_print(struct syn_node const *node, FILE *out)
   print_tree(node, out, 0, 0);
 }
 
-void syn_bldr_init(struct syn_bldr *b)
+void syn_bldr_init(struct syn_bldr *b, struct sym_ctxt *ctxt)
 {
+  b->ctxt = ctxt;
   vec_init(&b->trivs);
   vec_init(&b->triv_lens);
   vec_init(&b->stack);
@@ -331,9 +325,7 @@ void syn_bldr_triv(struct syn_bldr *b, enum syn_kind kind, char const *text, siz
   piece.text = NULL;
 
   if (text) {
-    piece.text = malloc(len + 1);
-    memcpy((char *) piece.text, text, len);
-    ((char *) piece.text)[len] = '\0';
+    piece.text = sym_intern(b->ctxt, text, len);
   }
 
   vec_push(&b->trivs, &piece);
@@ -348,14 +340,10 @@ void syn_bldr_tok(struct syn_bldr *b, enum syn_kind kind, char const *text, size
   tok->node.kind = kind;
   tok->node.parent = NULL;
   tok->text = NULL;
-  tok->len = 0;
   tok->triv = NULL;
 
   if (text) {
-    tok->text = malloc(len + 1);
-    tok->len = len;
-    memcpy((char *) tok->text, text, len);
-    ((char *) tok->text)[len] = '\0';
+    tok->text = sym_intern(b->ctxt, text, len);
   }
 
   if (b->trivs.count > 0) {
