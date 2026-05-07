@@ -19,8 +19,12 @@ struct sym {
 };
 
 struct sym_ctxt {
-  hs(struct sym *) syms;
+  hs(struct sym *) registry;
 };
+
+hash_t sym_hash(void const *item);
+
+int sym_eq(void const *lhs, void const *rhs);
 
 void sym_init(struct sym_ctxt *ctxt);
 
