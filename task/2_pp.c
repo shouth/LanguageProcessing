@@ -11,34 +11,38 @@
 
 #include "driver.h"
 #include "diag.h"
-#include "query.h"
 
 int main(int argc, char const *argv[])
 {
-  struct query_ctxt ctxt;
-  query_id_t id;
-  struct query_parse const *parse;
+  int status = EXIT_FAILURE;
+  
+  struct q_ctxt ctxt;
+  struct q_load const *load;
+  struct q_parse const *parse;
 
-  query_init(&ctxt);
+  q_init(&ctxt);
 
   if (argc != 2) {
     fprintf(stderr, "usage: %s <file>\n", argv[0]);
-    goto cleanup;
+    goto exit;
   }
 
-  id = query_add(&ctxt, argv[1]);
-  parse = query_parse(&ctxt, id);
-  if (parse->status != QUERY_OK) {
-    if (parse->status == QUERY_ERR_NOT_FOUND) {
-      fprintf(stderr, "error: file not found: %s\n", argv[1]);
-    } else if (parse->status == QUERY_ERR_BAD_SYNTAX) {
-      diag_print(&parse->diag, stderr);
-    }
-    goto cleanup;
+  load = q_load(&ctxt, argv[1]);
+  if (load->status != Q_OK) {
+    fprintf(stderr, "error: file not found");
+    goto exit;
   }
+  
+  parse = q_parse(&ctxt, load->file);
+  if (parse->status != Q_OK) {
+    diag_print(parse->diag, stderr);
+    goto exit;
+  }
+
   pretty(parse->syn, stdout);
 
-cleanup:
-  query_deinit(&ctxt);
-  return EXIT_SUCCESS;
+exit:
+  q_deinit(&ctxt);
+
+  return status;
 }

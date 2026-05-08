@@ -7,104 +7,94 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "diag.h"
 #include "driver.h"
+#include "diag.h"
 #include "ds.h"
 #include "file.h"
 #include "sym.h"
 #include "syn.h"
 
-static struct query *get(struct query_ctxt *query, query_id_t id)
+static hash_t load_hash(void const *item)
 {
-  if (id < query->entries.count) {
-    return &query->entries.data[id];
-  } else {
-    return NULL;
+  char const *x = *(char **) item;
+  hash_t h;
+  hash_init(&h);
+  hash_add(&h, x, strlen(x));
+  return h;
+}
+
+static int load_eq(void const *lhs, void const *rhs)
+{
+  char const *l = *(char **) lhs;
+  char const *r = *(char **) rhs;
+  return !strcmp(l, r);
+}
+
+static hash_t parse_hash(void const *item)
+{
+  struct file const *x = *(struct file **) item;
+  hash_t h;
+  hash_init(&h);
+  hash_add(&h, &x, sizeof(struct file *));
+  return h;
+}
+
+static int parse_eq(void const *lhs, void const *rhs)
+{
+  struct file const *l = *(struct file **) lhs;
+  struct file const *r = *(struct file **) rhs;
+  return l == r;
+}
+
+void q_init(struct q_ctxt *q)
+{
+  sym_init(&q->sym);
+  ht_init(&q->load, load_hash, load_eq);
+  ht_init(&q->parse, parse_hash, parse_eq);
+}
+
+void q_deinit(struct q_ctxt *q)
+{
+  struct ht_entry e;
+  sym_deinit(&q->sym);
+
+  for (ht_entry(&q->load, NULL, &e); ht_next(&q->load, &e);) {
+    struct q_load *x = ht_at(&q->load, &e);
+    free(x->name);
+    file_deinit(x->file);
+    free(x->file);
   }
-}
+  ht_deinit(&q->load);
 
-void query_init(struct query_ctxt *query)
-{
-  vec_init(&query->entries);
-}
-
-void query_deinit(struct query_ctxt *query)
-{
-  size_t i;
-  for (i = 0; i < query->entries.count; ++i) {
-    struct query *u = &query->entries.data[i];
-
-    if (u->parse) {
-      syn_free((struct syn_node *) u->parse->syn);
-      diag_deinit(&u->parse->diag);
-      free(u->parse);
-    }
-
-    if (u->load) {
-      file_deinit(&u->load->file);
-      free(u->load);
-    }
-
-    sym_deinit(&u->sym_ctxt);
-    free(u->path);
+  for (ht_entry(&q->parse, NULL, &e); ht_next(&q->parse, &e);) {
+    struct q_parse *x = ht_at(&q->parse, &e);
+    syn_free(&x->syn->syn.node);
+    diag_deinit(x->diag);
+    free(x->diag);
   }
-  vec_deinit(&query->entries);
+  ht_deinit(&q->parse);
 }
 
-query_id_t query_add(struct query_ctxt *query, char const *path)
+struct q_load const *q_load(struct q_ctxt *q, char const *path)
 {
-  query_id_t id = query->entries.count;
-  struct query u;
-  size_t len = strlen(path);
-  u.path = malloc(len + 1);
-  memcpy(u.path, path, len + 1);
-  sym_init(&u.sym_ctxt);
-  u.load = NULL;
-  u.parse = NULL;
-  vec_push(&query->entries, &u);
-  return id;
-}
+  struct ht_entry e;
+  if (!ht_entry(&q->load, &path, &e)) {
+    struct q_load ql;
+    size_t len = strlen(path);
 
-struct query_load const *query_load(struct query_ctxt *query, query_id_t id)
-{
-  struct query *u = get(query, id);
-  if (!u) {
-    return NULL;
-  } else if (u->load) {
-    return u->load;
-  } else {
-    u->load = malloc(sizeof(struct query_load));
-    if (file_init(&u->load->file, u->path)) {
-      u->load->status = QUERY_OK;
+    ql.name = malloc(len + 1);
+    memcpy(ql.name, path, len + 1);
+
+    ql.file = malloc(sizeof(struct file));
+    if (file_init(ql.file, ql.name)) {
+      ql.status = Q_OK;
     } else {
-      u->load->status = QUERY_ERR_NOT_FOUND;
+      ql.status = Q_FILE_NOT_FOUND;
     }
-    return u->load;
-  }
-}
 
-struct query_parse const *query_parse(struct query_ctxt *query, query_id_t id)
-{
-  struct query *u = get(query, id);
-  if (!u) {
-    return NULL;
-  } else if (u->parse) {
-    return u->parse;
-  } else {
-    struct query_load const *load = query_load(query, id);
-    u->parse = malloc(sizeof(struct query_parse));
-    u->parse->syn = NULL;
-    diag_init(&u->parse->diag, NULL);
-    if (!load) {
-      u->parse->status = QUERY_ERR_NOT_FOUND;
-    } else if (load->status != QUERY_OK) {
-      u->parse->status = load->status;
-    } else if (parse(load->file.text, load->file.text_len, &u->sym_ctxt, &load->file, &u->parse->diag, &u->parse->syn)) {
-      u->parse->status = QUERY_OK;
-    } else {
-      u->parse->status = QUERY_ERR_BAD_SYNTAX;
-    }
-    return u->parse;
+    ht_occupy(&q->load, &e, &ql);
   }
+  return ht_at(&q->load, &e);
 }

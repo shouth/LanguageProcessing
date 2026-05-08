@@ -36,6 +36,67 @@ struct parser {
   syn_kinds_t first_stmt;
 };
 
+static void bump(struct parser *p);
+
+static void init(struct parser *p, struct q_ctxt *q, struct file const *file, struct diag *diag)
+{
+  p->text = file->text;
+  p->len = file->text_len;
+  p->off = 0;
+
+  syn_bldr_init(&p->bldr, &q->sym);
+  bump(p);
+
+  p->diag = diag;
+  p->file = file;
+  bits_clear(&p->expected);
+  p->loop = 0;
+  p->recovery = 0;
+  p->error = 0;
+
+  bits_clear(&p->first_rel_op);
+  bits_set(&p->first_rel_op, SYN_EQ);
+  bits_set(&p->first_rel_op, SYN_NEQ);
+  bits_set(&p->first_rel_op, SYN_LT);
+  bits_set(&p->first_rel_op, SYN_GT);
+  bits_set(&p->first_rel_op, SYN_LTEQ);
+  bits_set(&p->first_rel_op, SYN_GTEQ);
+
+  bits_clear(&p->first_add_op);
+  bits_set(&p->first_add_op, SYN_PLUS);
+  bits_set(&p->first_add_op, SYN_MINUS);
+  bits_set(&p->first_add_op, SYN_OR_KW);
+
+  bits_clear(&p->first_mul_op);
+  bits_set(&p->first_mul_op, SYN_STAR);
+  bits_set(&p->first_mul_op, SYN_DIV_KW);
+  bits_set(&p->first_mul_op, SYN_AND_KW);
+
+  bits_clear(&p->first_type);
+  bits_set(&p->first_type, SYN_INTEGER_KW);
+  bits_set(&p->first_type, SYN_BOOLEAN_KW);
+  bits_set(&p->first_type, SYN_CHAR_KW);
+  bits_set(&p->first_type, SYN_ARRAY_KW);
+
+  bits_clear(&p->first_stmt);
+  bits_set(&p->first_stmt, SYN_IDENT);
+  bits_set(&p->first_stmt, SYN_IF_KW);
+  bits_set(&p->first_stmt, SYN_WHILE_KW);
+  bits_set(&p->first_stmt, SYN_BREAK_KW);
+  bits_set(&p->first_stmt, SYN_CALL_KW);
+  bits_set(&p->first_stmt, SYN_RETURN_KW);
+  bits_set(&p->first_stmt, SYN_READ_KW);
+  bits_set(&p->first_stmt, SYN_READLN_KW);
+  bits_set(&p->first_stmt, SYN_WRITE_KW);
+  bits_set(&p->first_stmt, SYN_WRITELN_KW);
+  bits_set(&p->first_stmt, SYN_BEGIN_KW);
+}
+
+static void deinit(struct parser *p)
+{
+  syn_bldr_deinit(&p->bldr);
+}
+
 static void null(struct parser *p)
 {
   syn_bldr_empty(&p->bldr);
@@ -729,57 +790,28 @@ static void parse_program(struct parser *p)
   close(p, program, SYN_PROGRAM);
 }
 
-int parse(char const *text, size_t len, struct sym_ctxt *ctxt, struct file const *file, struct diag *diag, struct syn_program **program)
+struct q_parse const *q_parse(struct q_ctxt *q, struct file const *file)
 {
-  struct parser p;
-  p.text = text;
-  p.len = len;
-  p.off = 0;
+  struct ht_entry e;
+  if (!ht_entry(&q->parse, &file, &e)) {
+    struct parser p;
 
-  syn_bldr_init(&p.bldr, ctxt);
-  bump(&p);
+    struct q_parse parse;
+    parse.file = file;
+    parse.diag = malloc(sizeof(struct diag));
 
-  p.diag = diag;
-  p.file = file;
-  bits_clear(&p.expected);
-  p.loop = 0;
-  p.recovery = 0;
-  p.error = 0;
+    diag_init(parse.diag, NULL);
+    init(&p, q, file, parse.diag);
+    parse_program(&p);
+    parse.syn = (struct syn_program *) syn_bldr_finish(&p.bldr);
+    deinit(&p);
 
-  bits_set(&p.first_rel_op, SYN_EQ);
-  bits_set(&p.first_rel_op, SYN_NEQ);
-  bits_set(&p.first_rel_op, SYN_LT);
-  bits_set(&p.first_rel_op, SYN_GT);
-  bits_set(&p.first_rel_op, SYN_LTEQ);
-  bits_set(&p.first_rel_op, SYN_GTEQ);
-
-  bits_set(&p.first_add_op, SYN_PLUS);
-  bits_set(&p.first_add_op, SYN_MINUS);
-  bits_set(&p.first_add_op, SYN_OR_KW);
-
-  bits_set(&p.first_mul_op, SYN_STAR);
-  bits_set(&p.first_mul_op, SYN_DIV_KW);
-  bits_set(&p.first_mul_op, SYN_AND_KW);
-
-  bits_set(&p.first_type, SYN_INTEGER_KW);
-  bits_set(&p.first_type, SYN_BOOLEAN_KW);
-  bits_set(&p.first_type, SYN_CHAR_KW);
-  bits_set(&p.first_type, SYN_ARRAY_KW);
-
-  bits_set(&p.first_stmt, SYN_IDENT);
-  bits_set(&p.first_stmt, SYN_IF_KW);
-  bits_set(&p.first_stmt, SYN_WHILE_KW);
-  bits_set(&p.first_stmt, SYN_BREAK_KW);
-  bits_set(&p.first_stmt, SYN_CALL_KW);
-  bits_set(&p.first_stmt, SYN_RETURN_KW);
-  bits_set(&p.first_stmt, SYN_READ_KW);
-  bits_set(&p.first_stmt, SYN_READLN_KW);
-  bits_set(&p.first_stmt, SYN_WRITE_KW);
-  bits_set(&p.first_stmt, SYN_WRITELN_KW);
-  bits_set(&p.first_stmt, SYN_BEGIN_KW);
-
-  parse_program(&p);
-  *program = (struct syn_program *) syn_bldr_finish(&p.bldr);
-  syn_bldr_deinit(&p.bldr);
-  return !p.error;
+    if (p.error) {
+      parse.status = Q_BAD_SYNTAX;
+    } else {
+      parse.status = Q_OK;
+    }
+    ht_occupy(&q->parse, &e, &parse);
+  }
+  return ht_at(&q->parse, &e);
 }
