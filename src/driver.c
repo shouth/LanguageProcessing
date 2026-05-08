@@ -1,5 +1,5 @@
 /*
- * query.c -- queries for demand-driven compilation
+ * driver.c -- drivers of the compiler
  *
  * SPDX-FileCopyrightText: 2026 Shota Minami
  * SPDX-License-Identifier: Apache-2.0
@@ -12,7 +12,6 @@
 #include "driver.h"
 #include "ds.h"
 #include "file.h"
-#include "query.h"
 #include "sym.h"
 #include "syn.h"
 
