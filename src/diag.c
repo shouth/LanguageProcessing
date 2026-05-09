@@ -251,3 +251,24 @@ void diag_error_break_outside_loop(struct diag *d, struct file const *file, size
   struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "`break` outside of loop");
   diag_add_label(entry, off, off + len, "`break` can only be used inside loops");
 }
+
+/* resolve */
+
+void diag_error_conflict(struct diag *d, struct file const *file, size_t off, size_t len, char const *name, size_t *offs, size_t count)
+{
+  size_t i;
+  struct diag_report *report = diag_add_report(d, file);
+  struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "redefinition of `%s`", name);
+  diag_add_label(entry, off, off + len, "names needs to be unique in a scope");
+  for (i = 0; i < count; ++i) {
+    diag_add_label(entry, offs[i], offs[i] + len, "previous definition");
+  }
+}
+
+void diag_error_use_before_decl(struct diag *d, struct file const *file, size_t off, size_t len, size_t decl_off)
+{
+  struct diag_report *report = diag_add_report(d, file);
+  struct diag_entry *entry = diag_add_entry(report, DIAG_ERROR, off, "use before declaration");
+  diag_add_label(entry, off, off + len, "item needs to be declared before its usage");
+  diag_add_label(entry, decl_off, decl_off + len, "definition here");
+}

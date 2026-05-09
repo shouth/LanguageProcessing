@@ -15,8 +15,10 @@
 #include "file.h"
 #include "sym.h"
 #include "syn.h"
+#include "ty.h"
+#include "unit.h"
 
-static hash_t load_hash(void const *item)
+static hash_t str_hash(void const *item)
 {
   char const *x = *(char **) item;
   hash_t h;
@@ -25,14 +27,14 @@ static hash_t load_hash(void const *item)
   return h;
 }
 
-static int load_eq(void const *lhs, void const *rhs)
+static int str_eq(void const *lhs, void const *rhs)
 {
   char const *l = *(char **) lhs;
   char const *r = *(char **) rhs;
   return !strcmp(l, r);
 }
 
-static hash_t parse_hash(void const *item)
+static hash_t file_hash(void const *item)
 {
   struct file const *x = *(struct file **) item;
   hash_t h;
@@ -41,7 +43,7 @@ static hash_t parse_hash(void const *item)
   return h;
 }
 
-static int parse_eq(void const *lhs, void const *rhs)
+static int file_eq(void const *lhs, void const *rhs)
 {
   struct file const *l = *(struct file **) lhs;
   struct file const *r = *(struct file **) rhs;
@@ -51,14 +53,32 @@ static int parse_eq(void const *lhs, void const *rhs)
 void q_init(struct q_ctxt *q)
 {
   sym_init(&q->sym);
-  ht_init(&q->load, load_hash, load_eq);
-  ht_init(&q->parse, parse_hash, parse_eq);
+  ty_init(&q->ty);
+  ht_init(&q->load, str_hash, str_eq);
+  ht_init(&q->parse, file_hash, file_eq);
+  ht_init(&q->resolve, file_hash, file_eq);
 }
 
 void q_deinit(struct q_ctxt *q)
 {
   struct ht_entry e;
-  sym_deinit(&q->sym);
+
+  for (ht_entry(&q->resolve, NULL, &e); ht_next(&q->resolve, &e);) {
+    struct q_resolve *x = ht_at(&q->resolve, &e);
+    unit_deinit(x->unit);
+    free(x->unit);
+    diag_deinit(x->diag);
+    free(x->diag);
+  }
+  ht_deinit(&q->resolve);
+  
+  for (ht_entry(&q->parse, NULL, &e); ht_next(&q->parse, &e);) {
+    struct q_parse *x = ht_at(&q->parse, &e);
+    syn_free(&x->syn->syn.node);
+    diag_deinit(x->diag);
+    free(x->diag);
+  }
+  ht_deinit(&q->parse);
 
   for (ht_entry(&q->load, NULL, &e); ht_next(&q->load, &e);) {
     struct q_load *x = ht_at(&q->load, &e);
@@ -68,13 +88,8 @@ void q_deinit(struct q_ctxt *q)
   }
   ht_deinit(&q->load);
 
-  for (ht_entry(&q->parse, NULL, &e); ht_next(&q->parse, &e);) {
-    struct q_parse *x = ht_at(&q->parse, &e);
-    syn_free(&x->syn->syn.node);
-    diag_deinit(x->diag);
-    free(x->diag);
-  }
-  ht_deinit(&q->parse);
+  ty_deinit(&q->ty);
+  sym_deinit(&q->sym);
 }
 
 struct q_load const *q_load(struct q_ctxt *q, char const *path)

@@ -91,4 +91,10 @@ void diag_error_expected(struct diag *d, struct file const *file, size_t off, si
 
 void diag_error_break_outside_loop(struct diag *d, struct file const *file, size_t off, size_t len);
 
+/* resolve */
+
+void diag_error_conflict(struct diag *d, struct file const *file, size_t off, size_t len, char const *name, size_t *offs, size_t count);
+
+void diag_error_use_before_decl(struct diag *d, struct file const *file, size_t off, size_t len, size_t decl_off);
+
 #endif /* DIAG_H */
