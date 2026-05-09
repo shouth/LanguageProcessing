@@ -144,7 +144,7 @@ void syn_free(struct syn_node *node)
 
 size_t syn_text_off(struct syn_node const *node)
 {
-  return node ? syn_text_off(&node->parent->node) + fw_query(node->parent->offsets, node->index) : 0;
+  return node->parent ? syn_text_off(&node->parent->node) + fw_query(node->parent->offsets, node->index) : 0;
 }
 
 size_t syn_text_len(struct syn_node const *node)
@@ -247,7 +247,7 @@ struct syn_triv *syn_triv(struct syn_node const *node)
 size_t syn_triv_text_len(struct syn_node const *node)
 {
   struct syn_triv const *triv = syn_triv(node);
-  return fw_query(triv->offsets, triv->count);
+  return triv ? fw_query(triv->offsets, triv->count) : 0;
 }
 
 static void print_line(enum syn_kind kind, size_t start, size_t end, char const *text, int indent, FILE *out)
