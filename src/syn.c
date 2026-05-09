@@ -142,6 +142,11 @@ void syn_free(struct syn_node *node)
   }
 }
 
+size_t syn_text_off(struct syn_node const *node)
+{
+  return node ? syn_text_off(&node->parent->node) + fw_query(node->parent->offsets, node->index) : 0;
+}
+
 size_t syn_text_len(struct syn_node const *node)
 {
   if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
@@ -227,6 +232,22 @@ size_t syn_child_count(struct syn_node const *node)
 
   default: return 0;
   }
+}
+
+struct syn_triv *syn_triv(struct syn_node const *node)
+{
+  if (node->kind >= TOK_BEGIN && node->kind <= TOK_END) {
+    struct syn_tok const *tok = (struct syn_tok const *) node;
+    return tok->triv;
+  } else {
+    return syn_triv(syn_child_at(node, 0));
+  }
+}
+
+size_t syn_triv_text_len(struct syn_node const *node)
+{
+  struct syn_triv const *triv = syn_triv(node);
+  return fw_query(triv->offsets, triv->count);
 }
 
 static void print_line(enum syn_kind kind, size_t start, size_t end, char const *text, int indent, FILE *out)
@@ -389,7 +410,7 @@ void syn_bldr_close(struct syn_bldr *b, enum syn_kind kind, syn_ckpt_t ckpt)
     struct syn_node *child = *vec_at(&b->stack, ckpt + index_ ## NAME); \
     if (child) { \
       child->index = index_ ## NAME; \
-      child->parent = &node->syn.node; \
+      child->parent = &node->syn; \
     } \
     node->NAME = (struct TYPE *) child; \
     node->syn.offsets[index_ ## NAME] = child ? syn_text_len(child) : 0; \
@@ -431,7 +452,7 @@ void syn_bldr_close(struct syn_bldr *b, enum syn_kind kind, syn_ckpt_t ckpt)
       struct syn_node *child = *vec_at(&b->stack, ckpt + i); \
       if (child) { \
         child->index = i; \
-        child->parent = &node->syn.node; \
+        child->parent = &node->syn; \
       } \
       node->children[i] = (struct ITEM *) child; \
       node->syn.offsets[i] = child ? syn_text_len(child) : 0; \

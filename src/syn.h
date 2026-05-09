@@ -417,7 +417,7 @@ char const *syn_kind_to_string(enum syn_kind kind);
 struct syn_node {
   enum syn_kind kind;
   size_t index;
-  struct syn_node const *parent;
+  struct syn_tree const *parent;
 };
 
 struct syn_tree {
@@ -484,11 +484,17 @@ DEF_SYN(TOK, SEQ, ALT, REP)
 
 void syn_free(struct syn_node *node);
 
+size_t syn_text_off(struct syn_node const *node);
+
 size_t syn_text_len(struct syn_node const *node);
 
 struct syn_node *syn_child_at(struct syn_node const *node, size_t index);
 
 size_t syn_child_count(struct syn_node const *node);
+
+struct syn_triv *syn_triv(struct syn_node const *node);
+
+size_t syn_triv_text_len(struct syn_node const *node);
 
 void syn_print(struct syn_node const *node, FILE *out);
 
