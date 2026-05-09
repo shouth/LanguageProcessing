@@ -15,27 +15,11 @@ size_t const UNIT_INDEX_NULL = -1ul;
 unit_item_ref_t const UNIT_ITEM_REF_NULL = { UNIT_INDEX_NULL };
 unit_scope_ref_t const UNIT_SCOPE_REF_NULL = { UNIT_INDEX_NULL };
 
-static hash_t node_hash(void const *item)
-{
-  struct syn_node *x = *(struct syn_node **) item;
-  hash_t h;
-  hash_init(&h);
-  hash_add(&h, &x, sizeof(struct syn_node *));
-  return h;
-}
-
-static int node_eq(void const *lhs, void const *rhs)
-{
-  struct syn_node *l = *(struct syn_node **) lhs;
-  struct syn_node *r = *(struct syn_node **) rhs;
-  return l == r;
-}
-
 void unit_init(struct unit *unit)
 {
   vec_init(&unit->items);
   vec_init(&unit->scopes);
-  ht_init(&unit->uses, node_hash, node_eq);
+  ht_init(&unit->uses, syn_hash, syn_eq);
   vec_init(&unit->unresolved);
 }
 

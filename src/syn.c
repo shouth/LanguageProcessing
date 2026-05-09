@@ -14,6 +14,22 @@
 #include "fmt.h"
 #include "syn.h"
 
+hash_t syn_hash(void const *item)
+{
+  struct syn_node *x = *(struct syn_node **) item;
+  hash_t h;
+  hash_init(&h);
+  hash_add(&h, &x, sizeof(struct syn_node *));
+  return h;
+}
+
+int syn_eq(void const *lhs, void const *rhs)
+{
+  struct syn_node *l = *(struct syn_node **) lhs;
+  struct syn_node *r = *(struct syn_node **) rhs;
+  return l == r;
+}
+
 char const *syn_kind_to_lexeme(enum syn_kind kind)
 {
   switch (kind) {

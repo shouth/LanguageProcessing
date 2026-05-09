@@ -410,6 +410,10 @@ enum syn_kind {
 
 typedef bits(SIZE_SYN) syn_kinds_t;
 
+hash_t syn_hash(void const *item);
+
+int syn_eq(void const *lhs, void const *rhs);
+
 char const *syn_kind_to_lexeme(enum syn_kind kind);
 
 char const *syn_kind_to_string(enum syn_kind kind);
