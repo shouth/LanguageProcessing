@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "diag.h"
 #include "ds.h"
@@ -138,8 +139,10 @@ void diag_print(struct diag const *d, FILE *out)
     struct diag_report *report = vec_at(&d->reports, i);
 
     for (j = 0; j < report->entries.count; j++) {
+      size_t line, col;
       struct diag_entry *entry = vec_at(&report->entries, j);
-      fprintf(out, "%s:%lu: %s\n", report->file->name, entry->off, entry->message ? entry->message : "");
+      file_locate(report->file, entry->off, &line, &col);
+      fprintf(out, "%s:%lu:%lu %s\n", report->file->name, line + 1, col + 1, entry->message ? entry->message : "");
     }
   }
 }
