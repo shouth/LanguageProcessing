@@ -77,7 +77,7 @@ static void pop(struct resolver *r)
             diag_error_use_before_decl(r->diag, r->file, off, len, decl_off);
             r->error = 1;
           }
-          unit_use(r->unit, &ref->node, *vec_front(&entity->items));
+          unit_add_usage(r->unit, &ref->node, *vec_front(&entity->items));
         }
         break;
       }

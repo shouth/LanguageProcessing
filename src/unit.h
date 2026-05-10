@@ -47,7 +47,8 @@ struct unit_scope {
 struct unit {
   vec(struct unit_item) items;
   vec(struct unit_scope) scopes;
-  hm(struct syn_node const *, unit_item_ref_t) uses;
+  hm(struct syn_node const *, unit_item_ref_t) usages;
+  hm(struct syn_node const *, unit_item_ref_t) defs;
   vec(struct syn_node const *) unresolved;
 };
 
@@ -59,14 +60,18 @@ unit_item_ref_t unit_add_item(struct unit *unit, struct sym const *name, enum un
 
 unit_scope_ref_t unit_add_scope(struct unit *unit, unit_scope_ref_t parent);
 
-struct unit_item const *unit_get_item(struct unit *unit, unit_item_ref_t ref);
+struct unit_item const *unit_get_item(struct unit const *unit, unit_item_ref_t ref);
 
-struct unit_scope const *unit_get_scope(struct unit *unit, unit_scope_ref_t ref);
+struct unit_scope const *unit_get_scope(struct unit const *unit, unit_scope_ref_t ref);
 
 void unit_add_unresolved(struct unit *unit, struct syn_node const *node);
 
 void unit_populate(struct unit *unit, unit_scope_ref_t scope, unit_item_ref_t item);
 
-void unit_use(struct unit *unit, struct syn_node const *node, unit_item_ref_t item);
+void unit_add_usage(struct unit *unit, struct syn_node const *ident, unit_item_ref_t item);
+
+struct unit_item const *unit_get_usage(struct unit const *unit, struct syn_node const *ident);
+
+struct unit_item const *unit_get_def(struct unit *unit, struct syn_node const *ident);
 
 #endif /* UNIT_H */
